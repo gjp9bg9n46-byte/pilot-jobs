@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/mohamedalaa/pilot-jobs/**)",
+      "Read(//Users/mohamedalaa/**)"
+    ]
+  }
+}

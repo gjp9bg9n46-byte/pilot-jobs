@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(export PATH=\"$PATH:/usr/local/bin:/usr/bin\")",
+      "Bash(find /usr/local /opt /Users/mohamedalaa -name \"tsc\" -maxdepth 6 2>/dev/null | head -5)",
+      "Read(//usr/local/**)"
+    ]
+  }
+}

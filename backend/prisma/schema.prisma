@@ -1,0 +1,330 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CertificateType {
+  ATP
+  CPL
+  PPL
+  MPL
+  ATPL
+  IR
+  ME
+  SE
+}
+
+
+enum MedicalClass {
+  CLASS_1
+  CLASS_2
+  CLASS_3
+}
+
+enum JobStatus {
+  ACTIVE
+  EXPIRED
+  FILLED
+}
+
+enum LogSource {
+  MANUAL
+  FOREFLIGHT
+  LOGBOOK_PRO
+  OTHER
+}
+
+model Pilot {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  phone           String?
+  country         String?
+  city            String?
+  nationality     String?
+  dateOfBirth     DateTime?
+  passportNumber  String?
+  passportExpiry  DateTime?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  profilePhoto    String?
+  fcmToken        String?
+  willingToRelocate Boolean @default(false)
+  isInstructor    Boolean   @default(false)
+  isExaminer      Boolean   @default(false)
+  // Privacy flags
+  profileVisible     Boolean  @default(true)
+  anonymousBrowsing  Boolean  @default(false)
+  showSeniority      Boolean  @default(true)
+  // Soft-delete
+  deletedAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  certificates    PilotCertificate[]
+  ratings         PilotRating[]
+  medicals        PilotMedical[]
+  trainingRecords PilotTrainingRecord[]
+  rightToWork     PilotRightToWork[]
+  flightLogs      FlightLog[]
+  jobAlerts       JobAlert[]
+  preferences     PilotPreference?
+  sessions        PilotSession[]
+  twoFactor       TwoFactorSecret?
+  savedJobs       SavedJob[]
+  applications    Application[]
+  jobReports      JobReport[]
+}
+
+model PilotCertificate {
+  id               String          @id @default(uuid())
+  pilotId          String
+  type             CertificateType
+  issuingAuthority String
+  certificateNumber String?
+  issueDate        DateTime?
+  expiryDate       DateTime?
+  englishLevel     String?
+  endorsements     String[]
+  createdAt        DateTime        @default(now())
+
+  pilot            Pilot           @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model PilotRating {
+  id                   String    @id @default(uuid())
+  pilotId              String
+  aircraftType         String
+  category             String
+  issuingAuthority     String
+  expiryDate           DateTime?
+  hoursOnType          Float?
+  capacity             String?
+  proficiencyCheckDate DateTime?
+  proficiencyCheckDue  DateTime?
+  createdAt            DateTime  @default(now())
+
+  pilot                Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model PilotTrainingRecord {
+  id          String    @id @default(uuid())
+  pilotId     String
+  type        String
+  provider    String?
+  completedAt DateTime
+  expiresAt   DateTime?
+  remarks     String?
+  createdAt   DateTime  @default(now())
+
+  pilot       Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model PilotRightToWork {
+  id             String    @id @default(uuid())
+  pilotId        String
+  country        String
+  documentType   String
+  documentNumber String?
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  pilot          Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model PilotMedical {
+  id               String       @id @default(uuid())
+  pilotId          String
+  medicalClass     MedicalClass
+  issuingAuthority String
+  issueDate        DateTime
+  expiryDate       DateTime
+  createdAt        DateTime     @default(now())
+
+  pilot            Pilot        @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model PilotPreference {
+  id                  String   @id @default(uuid())
+  pilotId             String   @unique
+  preferredCountries  String[]
+  preferredAircraft   String[]
+  minSalary           Float?
+  // Extended job prefs
+  minSalaryCurrency         String   @default("USD")
+  minSalaryPeriod           String   @default("year")
+  salaryNegotiable          Boolean  @default(false)
+  preferredContractTypes    String[]
+  routePreferences          String[]
+  // Master notification toggles (backend-ready)
+  notifyEmail         Boolean  @default(true)
+  notifyPush          Boolean  @default(true)
+  // Granular notification categories (push + email per category)
+  notifyMatchesPush         Boolean  @default(true)
+  notifyMatchesEmail        Boolean  @default(true)
+  notifyAlertsPush          Boolean  @default(true)
+  notifyApplicationsPush    Boolean  @default(true)
+  notifyApplicationsEmail   Boolean  @default(true)
+  notifyExpiriesPush        Boolean  @default(true)
+  notifyExpiriesEmail       Boolean  @default(true)
+  notifyDigestEmail         Boolean  @default(true)
+  notifyProductUpdatesEmail Boolean  @default(true)
+  // Quiet hours
+  quietHoursEnabled   Boolean  @default(false)
+  quietHoursStart     String?
+  quietHoursEnd       String?
+  quietHoursTz        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  pilot               Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model PilotSession {
+  id          String   @id @default(uuid())
+  pilotId     String
+  tokenHash   String   @unique
+  deviceLabel String?
+  lastIp      String?
+  lastCity    String?
+  lastUsedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  pilot       Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model TwoFactorSecret {
+  id          String    @id @default(uuid())
+  pilotId     String    @unique
+  secret      String
+  verifiedAt  DateTime?
+  backupCodes String[]
+  createdAt   DateTime  @default(now())
+
+  pilot       Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model FlightLog {
+  id              String     @id @default(uuid())
+  pilotId         String
+  date            DateTime
+  aircraftType    String
+  registration    String?
+  departure       String?
+  arrival         String?
+  totalTime       Float      @default(0)
+  picTime         Float      @default(0)
+  sicTime         Float      @default(0)
+  multiEngineTime Float      @default(0)
+  turbineTime     Float      @default(0)
+  instrumentTime  Float      @default(0)
+  nightTime       Float      @default(0)
+  landingsDay     Int        @default(0)
+  landingsNight   Int        @default(0)
+  remarks         String?
+  source          LogSource  @default(MANUAL)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  pilot           Pilot      @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id                   String     @id @default(uuid())
+  title                String
+  company              String
+  location             String
+  country              String?
+  description          String
+  applyUrl             String
+  sourceUrl            String?
+  status               JobStatus  @default(ACTIVE)
+  postedAt             DateTime   @default(now())
+  expiresAt            DateTime?
+
+  // Classification
+  role                 String?
+  contractType         String?
+  region               String?
+
+  // Salary
+  salaryMin            Float?
+  salaryMax            Float?
+  salaryCurrency       String?
+  salaryPeriod         String?
+
+  reqCertificates      String[]
+  reqAuthorities       String[]
+  reqAircraftTypes     String[]
+  reqMedicalClass      String?
+  reqMinTotalHours     Float?
+  reqMinPicHours       Float?
+  reqMinMultiEngineHours Float?
+  reqMinTurbineHours   Float?
+  reqMinInstrumentHours Float?
+  reqWillingToRelocate Boolean    @default(false)
+
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  alerts               JobAlert[]
+  savedBy              SavedJob[]
+  applications         Application[]
+  reports              JobReport[]
+}
+
+model JobAlert {
+  id          String   @id @default(uuid())
+  pilotId     String
+  jobId       String
+  matchScore  Float
+  notifiedAt  DateTime?
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  pilot       Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([pilotId, jobId])
+}
+
+model SavedJob {
+  id        String   @id @default(uuid())
+  pilotId   String
+  jobId     String
+  createdAt DateTime @default(now())
+
+  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([pilotId, jobId])
+}
+
+model Application {
+  id        String   @id @default(uuid())
+  pilotId   String
+  jobId     String
+  appliedAt DateTime @default(now())
+
+  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([pilotId, jobId])
+}
+
+model JobReport {
+  id        String   @id @default(uuid())
+  pilotId   String
+  jobId     String
+  reason    String
+  createdAt DateTime @default(now())
+
+  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}

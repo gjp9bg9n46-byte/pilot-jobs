@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "CockpitHire",
+    "slug": "cockpithire",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0A1628"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cockpithire.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A1628"
+      },
+      "package": "com.cockpithire.app",
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      "expo-notifications",
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}
