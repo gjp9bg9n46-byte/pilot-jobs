@@ -9,7 +9,7 @@ router.post(
     body('email').isEmail(),
     body('password').isLength({ min: 8 }),
     body('firstName').notEmpty(),
-    body('lastName').notEmpty(),
+    body('lastName').optional(),
   ],
   authController.register
 );

@@ -102,23 +102,30 @@ async function matchJobToAllPilots(job) {
     const totals = await getPilotFlightTotals(pilot.id);
     const score = computeMatchScore(pilot, totals, job);
     if (score !== null && score >= 60) {
-      matched.push({ pilot, score });
+      matched.push({ pilot, score, totals });
     }
   }
 
-  for (const { pilot, score } of matched) {
+  for (const { pilot, score, totals } of matched) {
     try {
       const existing = await prisma.jobAlert.findUnique({
         where: { pilotId_jobId: { pilotId: pilot.id, jobId: job.id } },
       });
       if (existing) continue;
 
+      const breakdown = computeMatchBreakdown(pilot, totals, job);
       const alert = await prisma.jobAlert.create({
-        data: { pilotId: pilot.id, jobId: job.id, matchScore: score },
+        data: {
+          pilotId: pilot.id,
+          jobId: job.id,
+          matchScore: score,
+          breakdown,
+        },
+        include: { job: true },
       });
 
       if (pilot.fcmToken) {
-        await notificationService.sendJobAlert(pilot.fcmToken, job, score);
+        await notificationService.sendJobAlert(pilot.fcmToken, job, score, alert);
         await prisma.jobAlert.update({
           where: { id: alert.id },
           data: { notifiedAt: new Date() },
@@ -141,4 +148,92 @@ async function runFullMatch() {
   logger.info('Full matching pass complete');
 }
 
-module.exports = { matchJobToAllPilots, runFullMatch, computeMatchScore, getPilotFlightTotals };
+/**
+ * Returns terse per-criterion strings in three buckets.
+ * Called after we know the pilot qualifies (score !== null).
+ */
+function computeMatchBreakdown(pilot, pilotTotals, job) {
+  const matched = [];
+  const missing = [];
+  const marginal = [];
+
+  const certTypes = pilot.certificates.map((c) => c.type);
+  const certAuthorities = pilot.certificates.map((c) => c.issuingAuthority);
+  const ratingAircraft = pilot.ratings.map((r) => r.aircraftType.toLowerCase());
+  const medicalClasses = pilot.medicals.map((m) => m.medicalClass);
+  const fmt = (n) => Math.round(n).toLocaleString();
+
+  // Certificates
+  if (job.reqCertificates.length > 0) {
+    const met = job.reqCertificates.filter((rc) => certTypes.includes(rc));
+    if (met.length) matched.push(`${met.join(', ')} certificate`);
+    else missing.push(`${job.reqCertificates.join(' or ')} certificate required`);
+  }
+
+  // Authorities
+  if (job.reqAuthorities.length > 0) {
+    const met = job.reqAuthorities.filter((a) => certAuthorities.includes(a));
+    if (met.length) matched.push(`${met.join(', ')} authority`);
+    else missing.push(`${job.reqAuthorities.join(' or ')} authority required`);
+  }
+
+  // Total hours
+  if (job.reqMinTotalHours) {
+    if (pilotTotals.totalTime >= job.reqMinTotalHours) {
+      matched.push(`${fmt(pilotTotals.totalTime)} total hrs · req. ${fmt(job.reqMinTotalHours)}`);
+    } else if (pilotTotals.totalTime >= job.reqMinTotalHours * 0.9) {
+      marginal.push(`Total hrs: ${fmt(pilotTotals.totalTime)} of ${fmt(job.reqMinTotalHours)}`);
+    } else {
+      missing.push(`Total hrs: ${fmt(pilotTotals.totalTime)} of ${fmt(job.reqMinTotalHours)} req.`);
+    }
+  } else if (pilotTotals.totalTime > 0) {
+    matched.push(`${fmt(pilotTotals.totalTime)} total hrs`);
+  }
+
+  // PIC hours
+  if (job.reqMinPicHours) {
+    if (pilotTotals.picTime >= job.reqMinPicHours) {
+      matched.push(`${fmt(pilotTotals.picTime)} PIC hrs · req. ${fmt(job.reqMinPicHours)}`);
+    } else if (pilotTotals.picTime >= job.reqMinPicHours * 0.9) {
+      marginal.push(`PIC hrs: ${fmt(pilotTotals.picTime)} of ${fmt(job.reqMinPicHours)}`);
+    } else {
+      missing.push(`PIC hrs: ${fmt(pilotTotals.picTime)} of ${fmt(job.reqMinPicHours)} req.`);
+    }
+  }
+
+  // Multi-engine
+  if (job.reqMinMultiEngineHours) {
+    const ratio = job.reqMinMultiEngineHours ? pilotTotals.multiEngineTime / job.reqMinMultiEngineHours : 1;
+    if (ratio >= 1) matched.push(`${fmt(pilotTotals.multiEngineTime)} multi-engine hrs`);
+    else if (ratio >= 0.8) marginal.push(`Multi-engine hrs: ${fmt(pilotTotals.multiEngineTime)} of ${fmt(job.reqMinMultiEngineHours)}`);
+    else missing.push(`Multi-engine hrs: ${fmt(pilotTotals.multiEngineTime)} of ${fmt(job.reqMinMultiEngineHours)} req.`);
+  }
+
+  // Turbine
+  if (job.reqMinTurbineHours) {
+    const ratio = job.reqMinTurbineHours ? pilotTotals.turbineTime / job.reqMinTurbineHours : 1;
+    if (ratio >= 1) matched.push(`${fmt(pilotTotals.turbineTime)} turbine hrs`);
+    else if (ratio >= 0.8) marginal.push(`Turbine hrs: ${fmt(pilotTotals.turbineTime)} of ${fmt(job.reqMinTurbineHours)}`);
+    else missing.push(`Turbine hrs: ${fmt(pilotTotals.turbineTime)} of ${fmt(job.reqMinTurbineHours)} req.`);
+  }
+
+  // Aircraft type rating
+  if (job.reqAircraftTypes.length > 0) {
+    const met = job.reqAircraftTypes.filter((a) => ratingAircraft.includes(a.toLowerCase()));
+    if (met.length) matched.push(`${met.join(', ')} type rating`);
+    else marginal.push(`No ${job.reqAircraftTypes.join(' or ')} type rating`);
+  }
+
+  // Medical
+  if (job.reqMedicalClass) {
+    if (medicalClasses.includes(job.reqMedicalClass)) {
+      matched.push(`${job.reqMedicalClass.replace('_', ' ')} medical`);
+    } else {
+      missing.push(`${job.reqMedicalClass.replace('_', ' ')} medical required`);
+    }
+  }
+
+  return { matched, missing, marginal };
+}
+
+module.exports = { matchJobToAllPilots, runFullMatch, computeMatchScore, getPilotFlightTotals, computeMatchBreakdown };

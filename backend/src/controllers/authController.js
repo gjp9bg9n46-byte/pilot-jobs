@@ -40,7 +40,7 @@ exports.register = async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const pilot = await prisma.pilot.create({
-      data: { email, passwordHash, firstName, lastName, phone, country, city },
+      data: { email, passwordHash, firstName, lastName: lastName || '', phone, country, city },
       select: { id: true, email: true, firstName: true, lastName: true },
     });
 

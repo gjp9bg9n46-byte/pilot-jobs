@@ -1,17 +1,19 @@
 const admin = require('../config/firebase');
 const logger = require('../config/logger');
 
-async function sendJobAlert(fcmToken, job, matchScore) {
+async function sendJobAlert(fcmToken, job, matchScore, alert = null) {
   const message = {
     token: fcmToken,
     notification: {
       title: `New Job Match — ${Math.round(matchScore)}% fit`,
-      body: `${job.title} at ${job.company} (${job.location})`,
+      body: `${job.title} at ${job.company} (${job.location || job.country || ''})`,
     },
     data: {
+      type: 'MATCH_ALERT',
       jobId: job.id,
-      type: 'JOB_MATCH',
       matchScore: String(matchScore),
+      // Full alert object serialised so the mobile client can prepend to Redux without a refetch.
+      alert: alert ? JSON.stringify(alert) : '',
     },
     apns: {
       payload: { aps: { sound: 'default', badge: 1 } },

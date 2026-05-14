@@ -168,12 +168,53 @@ exports.getJob = async (req, res, next) => {
 
 exports.getMyAlerts = async (req, res, next) => {
   try {
-    const alerts = await prisma.jobAlert.findMany({
-      where: { pilotId: req.pilot.id },
-      include: { job: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json(alerts);
+    const { page = 1, limit = 20, filter = 'all', sort = 'newest' } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const where = { pilotId: req.pilot.id };
+
+    // Filter bucket
+    if (filter === 'unread') {
+      where.readAt = null;
+      where.dismissedAt = null;
+    } else if (filter === 'dismissed') {
+      where.dismissedAt = { not: null };
+    } else if (filter === 'saved') {
+      const savedJobIds = (
+        await prisma.savedJob.findMany({ where: { pilotId: req.pilot.id }, select: { jobId: true } })
+      ).map((s) => s.jobId);
+      where.jobId = { in: savedJobIds };
+      where.dismissedAt = null;
+    } else {
+      // 'all' — exclude dismissed
+      where.dismissedAt = null;
+    }
+
+    // Sort
+    let orderBy;
+    switch (sort) {
+      case 'score':
+        orderBy = [{ matchScore: 'desc' }, { createdAt: 'desc' }];
+        break;
+      case 'deadline':
+        orderBy = [{ job: { expiresAt: { sort: 'asc', nulls: 'last' } } }, { createdAt: 'desc' }];
+        break;
+      default:
+        orderBy = { createdAt: 'desc' };
+    }
+
+    const [alerts, total] = await Promise.all([
+      prisma.jobAlert.findMany({
+        where,
+        include: { job: true },
+        orderBy,
+        skip,
+        take: Number(limit),
+      }),
+      prisma.jobAlert.count({ where }),
+    ]);
+
+    res.json({ alerts, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
   } catch (err) {
     next(err);
   }
@@ -256,6 +297,87 @@ exports.reportJob = async (req, res, next) => {
       data: { pilotId: req.pilot.id, jobId: req.params.id, reason },
     });
     res.json({ reported: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.markAllAlertsRead = async (req, res, next) => {
+  try {
+    const { count } = await prisma.jobAlert.updateMany({
+      where: { pilotId: req.pilot.id, readAt: null, dismissedAt: null },
+      data: { readAt: new Date() },
+    });
+    res.json({ updated: count });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.dismissAlert = async (req, res, next) => {
+  try {
+    await prisma.jobAlert.updateMany({
+      where: { id: req.params.id, pilotId: req.pilot.id },
+      data: { dismissedAt: new Date() },
+    });
+    res.json({ dismissed: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Saved searches ───────────────────────────────────────────────────────────
+
+exports.getSavedSearches = async (req, res, next) => {
+  try {
+    const searches = await prisma.savedSearch.findMany({
+      where: { pilotId: req.pilot.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(searches);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.createSavedSearch = async (req, res, next) => {
+  try {
+    const { name, filters, frequency = 'INSTANT' } = req.body;
+    if (!name || !filters) return res.status(400).json({ error: 'name and filters are required' });
+    const search = await prisma.savedSearch.create({
+      data: { pilotId: req.pilot.id, name, filters, frequency },
+    });
+    res.status(201).json(search);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateSavedSearch = async (req, res, next) => {
+  try {
+    const { name, filters, frequency, paused } = req.body;
+    const search = await prisma.savedSearch.updateMany({
+      where: { id: req.params.id, pilotId: req.pilot.id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(filters !== undefined && { filters }),
+        ...(frequency !== undefined && { frequency }),
+        ...(paused !== undefined && { paused }),
+      },
+    });
+    if (!search.count) return res.status(404).json({ error: 'Not found' });
+    res.json({ updated: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteSavedSearch = async (req, res, next) => {
+  try {
+    await prisma.savedSearch.deleteMany({
+      where: { id: req.params.id, pilotId: req.pilot.id },
+    });
+    res.json({ deleted: true });
   } catch (err) {
     next(err);
   }

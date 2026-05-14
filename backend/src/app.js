@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/errorHandler');
-const { runScraper } = require('./services/scraperService');
+const { runIngestion } = require('./scrapers/index');
 const { runFullMatch } = require('./services/matchingService');
 
 const app = express();
@@ -39,11 +39,16 @@ app.use(errorHandler);
 const intervalHours = parseInt(process.env.SCRAPE_INTERVAL_HOURS || '6', 10);
 cron.schedule(`0 */${intervalHours} * * *`, async () => {
   try {
-    await runScraper();
+    await runIngestion();
   } catch (err) {
     logger.error(`Scheduled scrape failed: ${err.message}`);
   }
 });
+
+// Immediate run on dev startup so fresh data is available without waiting for cron
+if (process.env.NODE_ENV !== 'production') {
+  setImmediate(() => runIngestion().catch((err) => logger.error(`Dev startup scrape failed: ${err.message}`)));
+}
 
 // Run matching on startup to catch missed matches
 cron.schedule('0 2 * * *', async () => {

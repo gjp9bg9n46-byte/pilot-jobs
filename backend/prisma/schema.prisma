@@ -38,12 +38,18 @@ enum LogSource {
   OTHER
 }
 
+enum AlertFrequency {
+  INSTANT
+  DAILY
+  WEEKLY
+}
+
 model Pilot {
   id              String    @id @default(uuid())
   email           String    @unique
   passwordHash    String
   firstName       String
-  lastName        String
+  lastName        String    @default("")
   phone           String?
   country         String?
   city            String?
@@ -80,6 +86,7 @@ model Pilot {
   savedJobs       SavedJob[]
   applications    Application[]
   jobReports      JobReport[]
+  savedSearches   SavedSearch[]
 }
 
 model PilotCertificate {
@@ -270,6 +277,11 @@ model Job {
   reqMinInstrumentHours Float?
   reqWillingToRelocate Boolean    @default(false)
 
+  // Ingestion provenance
+  sourcePlatform       String?    // 'LEVER' | 'GREENHOUSE' | 'WORKDAY' | null (manual / legacy)
+  externalId           String?    // stable posting ID from source — used for upsert dedup
+  mergedInto           String?    // self-ref to canonical Job.id when cross-source dedup collapses this row
+
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 
@@ -277,6 +289,8 @@ model Job {
   savedBy              SavedJob[]
   applications         Application[]
   reports              JobReport[]
+
+  @@unique([sourcePlatform, externalId])
 }
 
 model JobAlert {
@@ -284,14 +298,31 @@ model JobAlert {
   pilotId     String
   jobId       String
   matchScore  Float
+  breakdown   Json?
   notifiedAt  DateTime?
   readAt      DateTime?
+  dismissedAt DateTime?
   createdAt   DateTime @default(now())
 
   pilot       Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
   job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([pilotId, jobId])
+}
+
+model SavedSearch {
+  id              String         @id @default(uuid())
+  pilotId         String
+  name            String
+  filters         Json
+  frequency       AlertFrequency @default(INSTANT)
+  paused          Boolean        @default(false)
+  newMatchCount   Int            @default(0)
+  lastTriggeredAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  pilot           Pilot          @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model SavedJob {
