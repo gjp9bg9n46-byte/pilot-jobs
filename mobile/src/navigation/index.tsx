@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,8 @@ import LogbookScreen from '../screens/logbook/LogbookScreen';
 import AddLogScreen from '../screens/logbook/AddLogScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
+
+export const navigationRef = createNavigationContainerRef();
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const JobsNav = createNativeStackNavigator<JobsStackParamList>();
@@ -38,6 +40,10 @@ const bs = StyleSheet.create({
 });
 
 function MainTabs() {
+  const unreadCount = useAppSelector((s) =>
+    s.jobs.alerts.filter((a: any) => !a.readAt && !a.dismissedAt).length
+  );
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -59,7 +65,11 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Jobs" component={JobsStack} />
-      <Tab.Screen name="Alerts" component={AlertsScreen} />
+      <Tab.Screen
+        name="Alerts"
+        component={AlertsScreen}
+        options={{ tabBarBadge: unreadCount || undefined }}
+      />
       <Tab.Screen name="Logbook" component={LogbookStack} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
@@ -97,21 +107,18 @@ function LogbookStack() {
 export default function AppNavigator() {
   const { token, bootstrapping } = useAppSelector((s) => s.auth);
 
-  // Hide the native splash once we know which screen to show.
   useEffect(() => {
     if (!bootstrapping) {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [bootstrapping]);
 
-  // While session restore is in flight, keep the JS tree quiet.
-  // The native splash is still covering everything at this point.
   if (bootstrapping) {
     return <BootSplash />;
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {token ? (
           <RootStack.Screen name="Main" component={MainTabs} />

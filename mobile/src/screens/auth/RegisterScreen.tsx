@@ -48,6 +48,7 @@ function parseError(err: unknown): string {
   const status = e.response.status ?? 0;
   if (status === 409) return e.response.data?.error ?? 'An account with that email already exists.';
   if (status === 429) return 'Too many attempts. Please wait a moment and try again.';
+  if (status === 422) return 'Please fill in all required fields correctly.';
   if (status >= 500) return 'Server error. Please try again shortly.';
   return e.response.data?.error ?? 'Something went wrong. Try again.';
 }

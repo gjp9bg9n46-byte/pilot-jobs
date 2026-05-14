@@ -27,8 +27,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#0A1628"
       },
-      "package": "com.cockpithire.app",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.cockpithire.app"
     },
     "plugins": [
       "expo-notifications",

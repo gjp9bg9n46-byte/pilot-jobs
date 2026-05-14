@@ -94,13 +94,26 @@ export const flightLogApi = {
 export const jobApi = {
   list: (params?: any, signal?: AbortSignal) => api.get('/jobs', { params, signal }),
   get: (id: string) => api.get(`/jobs/${id}`),
-  getAlerts: () => api.get('/jobs/alerts'),
+  // Alerts
+  getAlerts: (params?: { page?: number; limit?: number; filter?: string; sort?: string }) =>
+    api.get('/jobs/alerts', { params }),
   markRead: (id: string) => api.patch(`/jobs/alerts/${id}/read`),
+  markAllRead: () => api.patch('/jobs/alerts/read-all'),
+  dismissAlert: (id: string) => api.patch(`/jobs/alerts/${id}/dismiss`),
+  // Saved jobs
   getSaved: () => api.get('/jobs/saved'),
   saveJob: (id: string) => api.post(`/jobs/${id}/save`),
   unsaveJob: (id: string) => api.delete(`/jobs/${id}/save`),
+  // Apply & report
   applyToJob: (id: string) => api.post(`/jobs/${id}/apply`),
   reportJob: (id: string, reason: string) => api.post(`/jobs/${id}/report`, { reason }),
+  // Saved searches
+  getSavedSearches: () => api.get('/jobs/saved-searches'),
+  createSavedSearch: (data: { name: string; filters: object; frequency: string }) =>
+    api.post('/jobs/saved-searches', data),
+  updateSavedSearch: (id: string, data: Partial<{ name: string; filters: object; frequency: string; paused: boolean }>) =>
+    api.patch(`/jobs/saved-searches/${id}`, data),
+  deleteSavedSearch: (id: string) => api.delete(`/jobs/saved-searches/${id}`),
 };
 
 // Types
