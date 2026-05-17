@@ -24,7 +24,7 @@ app.use(
 );
 
 // Landing page
-app.use(express.static(path.join(__dirname, '../../web')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
