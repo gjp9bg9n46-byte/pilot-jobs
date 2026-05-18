@@ -23,6 +23,8 @@ export const authApi = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   me: () => api.get('/auth/me'),
   updateFcmToken: (fcmToken) => api.patch('/auth/fcm-token', { fcmToken }),
+  exportData: () => api.get('/auth/export', { responseType: 'blob' }),
+  deleteAccount: () => api.delete('/auth/account'),
 };
 
 export const profileApi = {
@@ -36,6 +38,12 @@ export const profileApi = {
   addMedical: (data) => api.post('/profile/medicals', data),
   deleteMedical: (id) => api.delete(`/profile/medicals/${id}`),
   updatePreferences: (data) => api.put('/profile/preferences', data),
+  getRecurrent: () => api.get('/profile/recurrent'),
+  addRecurrent: (data) => api.post('/profile/recurrent', data),
+  deleteRecurrent: (id) => api.delete(`/profile/recurrent/${id}`),
+  getRTW: () => api.get('/profile/rtw'),
+  addRTW: (data) => api.post('/profile/rtw', data),
+  deleteRTW: (id) => api.delete(`/profile/rtw/${id}`),
 };
 
 export const flightLogApi = {
@@ -46,13 +54,23 @@ export const flightLogApi = {
   import: (formData) => api.post('/flight-logs/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  export: (format) => api.get('/flight-logs/export', { params: { format }, responseType: 'blob' }),
 };
+
+
 
 export const jobApi = {
   list: (params) => api.get('/jobs', { params }),
   get: (id) => api.get(`/jobs/${id}`),
-  getAlerts: () => api.get('/jobs/alerts'),
+  getAlerts: (params) => api.get('/jobs/alerts', { params }),
   markRead: (id) => api.patch(`/jobs/alerts/${id}/read`),
+  markAllAlertsRead: () => api.patch('/jobs/alerts/read-all'),
+  getSavedSearches: () => api.get('/jobs/saved-searches'),
+  createSavedSearch: (data) => api.post('/jobs/saved-searches', data),
+  updateSavedSearch: (id, data) => api.patch(`/jobs/saved-searches/${id}`, data),
+  deleteSavedSearch: (id) => api.delete(`/jobs/saved-searches/${id}`),
+  saveJob: (id) => api.post(`/jobs/${id}/save`),
+  unsaveJob: (id) => api.delete(`/jobs/${id}/save`),
 };
 
 export default api;

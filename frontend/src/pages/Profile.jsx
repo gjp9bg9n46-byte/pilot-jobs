@@ -3,12 +3,12 @@ import { useSelector } from 'react-redux';
 import { profileApi } from '../services/api';
 
 const LICENCE_TYPES = [
-  { value: 'ATP',  label: 'ATPL — Airline Transport Pilot' },
-  { value: 'CPL',  label: 'CPL — Commercial Pilot' },
-  { value: 'MPL',  label: 'MPL — Multi-crew Pilot' },
-  { value: 'PPL',  label: 'PPL — Private Pilot' },
-  { value: 'IR',   label: 'IR — Instrument Rating' },
-  { value: 'ME',   label: 'ME — Multi-Engine Rating' },
+  { value: 'ATP', label: 'ATPL — Airline Transport Pilot' },
+  { value: 'CPL', label: 'CPL — Commercial Pilot' },
+  { value: 'MPL', label: 'MPL — Multi-crew Pilot' },
+  { value: 'PPL', label: 'PPL — Private Pilot' },
+  { value: 'IR',  label: 'IR — Instrument Rating' },
+  { value: 'ME',  label: 'ME — Multi-Engine Rating' },
 ];
 
 const AUTHORITIES = [
@@ -29,6 +29,31 @@ const MEDICAL_CLASSES = [
   { value: 'CLASS_1', label: 'Class 1 — Airline pilots' },
   { value: 'CLASS_2', label: 'Class 2 — Commercial pilots' },
   { value: 'CLASS_3', label: 'Class 3 — Private pilots' },
+];
+
+const RECURRENT_TYPES = [
+  { value: 'CRM',       label: 'CRM' },
+  { value: 'DGR',       label: 'DGR' },
+  { value: 'AVSEC',     label: 'AVSEC' },
+  { value: 'SMS',       label: 'SMS' },
+  { value: 'First Aid', label: 'First Aid' },
+  { value: 'RVSM',      label: 'RVSM' },
+  { value: 'EFB',       label: 'EFB' },
+  { value: 'Custom',    label: 'Custom' },
+];
+
+const RTW_DOC_TYPES = [
+  { value: 'Passport',          label: 'Passport' },
+  { value: 'Work Visa',         label: 'Work Visa' },
+  { value: 'Residence Permit',  label: 'Residence Permit' },
+  { value: 'Citizen',           label: 'Citizen' },
+  { value: 'Right of Abode',    label: 'Right of Abode' },
+];
+
+const ENGLISH_LEVELS = [
+  { value: 'Level 4', label: 'Level 4' },
+  { value: 'Level 5', label: 'Level 5' },
+  { value: 'Level 6', label: 'Level 6' },
 ];
 
 const css = {
@@ -55,11 +80,11 @@ const css = {
   label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#7A8CA0', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 },
   input: {
     width: '100%', background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none',
+    borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   },
   select: {
     width: '100%', background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none', cursor: 'pointer',
+    borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none', cursor: 'pointer', boxSizing: 'border-box',
   },
   formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 },
   saveBtn: {
@@ -76,22 +101,104 @@ const css = {
   },
 };
 
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const diff = new Date(dateStr) - new Date();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function ExpiryBadge({ dateStr }) {
+  const days = daysUntil(dateStr);
+  if (days === null) return null;
+  if (days < 0) return <span style={{ color: '#FF4757', fontSize: 12, fontWeight: 600 }}> · Expired</span>;
+  if (days < 30) return <span style={{ color: '#FF4757', fontSize: 12, fontWeight: 600 }}> · Expires in {days}d</span>;
+  if (days < 90) return <span style={{ color: '#F0A500', fontSize: 12, fontWeight: 600 }}> · Expires in {days}d</span>;
+  return null;
+}
+
 function SelectOptions({ options }) {
-  return options.map((o) => <option key={o.value} value={o.value}>{o.flag ? `${o.flag} ${o.label}` : o.label}</option>);
+  return options.map((o) => (
+    <option key={o.value} value={o.value}>{o.flag ? `${o.flag} ${o.label}` : o.label}</option>
+  ));
+}
+
+function FlightTotalsCard({ totals }) {
+  const stats = [
+    { key: 'totalHours',    label: 'Total Hours' },
+    { key: 'picHours',      label: 'PIC Hours' },
+    { key: 'sicHours',      label: 'SIC Hours' },
+    { key: 'multiEngine',   label: 'Multi-Engine' },
+    { key: 'turbine',       label: 'Turbine' },
+    { key: 'night',         label: 'Night' },
+    { key: 'instrument',    label: 'Instrument' },
+  ];
+
+  const allZero = !totals || stats.every((s) => !totals[s.key] || totals[s.key] === 0);
+
+  return (
+    <div style={css.cardFull}>
+      <div style={css.cardHeader}>
+        <span style={css.cardIcon}>📊</span>
+        <div>
+          <div style={css.cardTitle}>Flight Experience Totals</div>
+          <div style={css.cardSubtitle}>Aggregated from your logbook</div>
+        </div>
+      </div>
+      {allZero ? (
+        <div style={{ color: '#7A8CA0', fontSize: 13, fontStyle: 'italic' }}>
+          Log flights in your logbook to see your totals here.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 12 }}>
+          {stats.map(({ key, label }) => (
+            <div
+              key={key}
+              style={{
+                background: '#0A1628', border: '1px solid #1E3050', borderRadius: 10,
+                padding: '14px 10px', textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#00B4D8', lineHeight: 1.1 }}>
+                {totals?.[key] ?? 0}
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#7A8CA0', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 5 }}>
+                {label}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function LicencesCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
-  const [type, setType] = useState('ATP');
-  const [authority, setAuthority] = useState('FAA');
+  const [form, setForm] = useState({
+    type: 'ATP',
+    authority: 'FAA',
+    certificateNumber: '',
+    issueDate: '',
+    expiryDate: '',
+    englishProficiency: '',
+  });
   const [saving, setSaving] = useState(false);
 
   const handleAdd = async () => {
     setSaving(true);
     try {
-      const { data } = await profileApi.addCertificate({ type, issuingAuthority: authority });
+      const payload = {
+        type: form.type,
+        issuingAuthority: form.authority,
+        ...(form.certificateNumber && { certificateNumber: form.certificateNumber }),
+        ...(form.issueDate && { issueDate: new Date(form.issueDate).toISOString() }),
+        ...(form.expiryDate && { expiryDate: new Date(form.expiryDate).toISOString() }),
+        ...(form.englishProficiency && { englishProficiency: form.englishProficiency }),
+      };
+      const { data } = await profileApi.addCertificate(payload);
       setProfile((p) => ({ ...p, certificates: [...(p.certificates || []), data] }));
       setShowForm(false);
+      setForm({ type: 'ATP', authority: 'FAA', certificateNumber: '', issueDate: '', expiryDate: '', englishProficiency: '' });
     } finally { setSaving(false); }
   };
 
@@ -110,11 +217,23 @@ function LicencesCard({ profile, setProfile }) {
       {profile?.certificates?.map((cert) => {
         const lic = LICENCE_TYPES.find((l) => l.value === cert.type);
         const auth = AUTHORITIES.find((a) => a.value === cert.issuingAuthority);
+        const days = daysUntil(cert.expiryDate);
+        const expiryColor = days !== null && days < 90 ? (days < 0 ? '#FF4757' : days < 30 ? '#FF4757' : '#F0A500') : null;
         return (
           <div key={cert.id} style={css.item}>
             <div>
               <div style={css.itemTitle}>{lic?.label || cert.type}</div>
-              <div style={css.itemSub}>{auth?.flag} {auth?.label || cert.issuingAuthority}</div>
+              <div style={css.itemSub}>
+                {auth?.flag} {auth?.label || cert.issuingAuthority}
+                {cert.certificateNumber && <span> · #{cert.certificateNumber}</span>}
+                {cert.englishProficiency && <span> · ELP {cert.englishProficiency}</span>}
+                {cert.expiryDate && (
+                  <span style={{ color: expiryColor || '#7A8CA0' }}>
+                    {' · Exp '}{new Date(cert.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {expiryColor && <ExpiryBadge dateStr={cert.expiryDate} />}
+                  </span>
+                )}
+              </div>
             </div>
             <button style={css.deleteBtn} onClick={async () => {
               if (!window.confirm('Remove this licence?')) return;
@@ -132,15 +251,34 @@ function LicencesCard({ profile, setProfile }) {
             <div style={css.formRow}>
               <div>
                 <label style={css.label}>Licence type</label>
-                <select style={css.select} value={type} onChange={(e) => setType(e.target.value)}>
+                <select style={css.select} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
                   <SelectOptions options={LICENCE_TYPES} />
                 </select>
               </div>
               <div>
                 <label style={css.label}>Issuing authority</label>
-                <select style={css.select} value={authority} onChange={(e) => setAuthority(e.target.value)}>
+                <select style={css.select} value={form.authority} onChange={(e) => setForm((f) => ({ ...f, authority: e.target.value }))}>
                   <SelectOptions options={AUTHORITIES} />
                 </select>
+              </div>
+              <div>
+                <label style={css.label}>Certificate Number</label>
+                <input style={css.input} value={form.certificateNumber} onChange={(e) => setForm((f) => ({ ...f, certificateNumber: e.target.value }))} placeholder="Optional" />
+              </div>
+              <div>
+                <label style={css.label}>English Proficiency Level</label>
+                <select style={css.select} value={form.englishProficiency} onChange={(e) => setForm((f) => ({ ...f, englishProficiency: e.target.value }))}>
+                  <option value="">— Not specified —</option>
+                  <SelectOptions options={ENGLISH_LEVELS} />
+                </select>
+              </div>
+              <div>
+                <label style={css.label}>Issue Date</label>
+                <input style={css.input} type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
+              </div>
+              <div>
+                <label style={css.label}>Expiry Date</label>
+                <input style={css.input} type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
               </div>
             </div>
             <div style={{ display: 'flex' }}>
@@ -323,17 +461,306 @@ function TypeRatingsCard({ profile, setProfile }) {
   );
 }
 
+function RecurrentTrainingCard() {
+  const [items, setItems] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    trainingType: 'CRM',
+    provider: '',
+    completionDate: '',
+    expiryDate: '',
+    remarks: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    profileApi.getRecurrent().then(({ data }) => setItems(data || [])).catch(() => setItems([]));
+  }, []);
+
+  const handleAdd = async () => {
+    if (!form.completionDate) return alert('Please enter a completion date.');
+    setSaving(true);
+    try {
+      const payload = {
+        trainingType: form.trainingType,
+        provider: form.provider,
+        completionDate: new Date(form.completionDate).toISOString(),
+        ...(form.expiryDate && { expiryDate: new Date(form.expiryDate).toISOString() }),
+        ...(form.remarks && { remarks: form.remarks }),
+      };
+      const { data } = await profileApi.addRecurrent(payload);
+      setItems((prev) => [...prev, data]);
+      setShowForm(false);
+      setForm({ trainingType: 'CRM', provider: '', completionDate: '', expiryDate: '', remarks: '' });
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Remove this training record?')) return;
+    await profileApi.deleteRecurrent(id);
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  return (
+    <div style={{ ...css.cardFull, marginBottom: 24 }}>
+      <div style={css.cardHeader}>
+        <span style={css.cardIcon}>🔄</span>
+        <div>
+          <div style={css.cardTitle}>Recurrent Training</div>
+          <div style={css.cardSubtitle}>Track your mandatory recurrent training</div>
+        </div>
+      </div>
+
+      {!items.length && !showForm && (
+        <div style={css.emptyNote}>No recurrent training records.</div>
+      )}
+
+      {items.map((item) => {
+        const days = daysUntil(item.expiryDate);
+        const expiryWarningColor = days !== null && days < 0
+          ? '#FF4757'
+          : days !== null && days < 30
+            ? '#FF4757'
+            : days !== null && days < 90
+              ? '#F0A500'
+              : null;
+
+        return (
+          <div key={item.id} style={css.item}>
+            <div>
+              <div style={css.itemTitle}>
+                {item.trainingType}
+                {expiryWarningColor && (
+                  <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: expiryWarningColor }}>
+                    {days < 0 ? '⚠ Expired' : `⚠ Expires in ${days}d`}
+                  </span>
+                )}
+              </div>
+              <div style={css.itemSub}>
+                {item.provider && <span>{item.provider} · </span>}
+                Completed: {new Date(item.completionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {item.expiryDate && (
+                  <span style={{ color: expiryWarningColor || '#7A8CA0' }}>
+                    {' · Exp '}{new Date(item.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                )}
+                {item.remarks && <span> · {item.remarks}</span>}
+              </div>
+            </div>
+            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}>🗑</button>
+          </div>
+        );
+      })}
+
+      {!showForm
+        ? <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add recurrent training</button>
+        : (
+          <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+            <div style={css.formRow}>
+              <div>
+                <label style={css.label}>Training Type</label>
+                <select style={css.select} value={form.trainingType} onChange={(e) => setForm((f) => ({ ...f, trainingType: e.target.value }))}>
+                  <SelectOptions options={RECURRENT_TYPES} />
+                </select>
+              </div>
+              <div>
+                <label style={css.label}>Provider</label>
+                <input style={css.input} value={form.provider} onChange={(e) => setForm((f) => ({ ...f, provider: e.target.value }))} placeholder="Training organisation" />
+              </div>
+              <div>
+                <label style={css.label}>Completion Date</label>
+                <input style={css.input} type="date" value={form.completionDate} onChange={(e) => setForm((f) => ({ ...f, completionDate: e.target.value }))} />
+              </div>
+              <div>
+                <label style={css.label}>Expiry Date (optional)</label>
+                <input style={css.input} type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={css.label}>Remarks</label>
+              <input style={css.input} value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))} placeholder="Optional notes" />
+            </div>
+            <div style={{ display: 'flex' }}>
+              <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
+              <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
+    </div>
+  );
+}
+
+function RightToWorkCard() {
+  const [items, setItems] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    country: '',
+    documentType: 'Passport',
+    documentNumber: '',
+    expiryDate: '',
+    noExpiry: false,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    profileApi.getRTW().then(({ data }) => setItems(data || [])).catch(() => setItems([]));
+  }, []);
+
+  const handleAdd = async () => {
+    if (!form.country.trim()) return alert('Please enter a country.');
+    setSaving(true);
+    try {
+      const payload = {
+        country: form.country,
+        documentType: form.documentType,
+        ...(form.documentNumber && { documentNumber: form.documentNumber }),
+        noExpiry: form.noExpiry,
+        ...(!form.noExpiry && form.expiryDate && { expiryDate: new Date(form.expiryDate).toISOString() }),
+      };
+      const { data } = await profileApi.addRTW(payload);
+      setItems((prev) => [...prev, data]);
+      setShowForm(false);
+      setForm({ country: '', documentType: 'Passport', documentNumber: '', expiryDate: '', noExpiry: false });
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Remove this right-to-work document?')) return;
+    await profileApi.deleteRTW(id);
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  return (
+    <div style={css.cardFull}>
+      <div style={css.cardHeader}>
+        <span style={css.cardIcon}>🌍</span>
+        <div>
+          <div style={css.cardTitle}>Right to Work</div>
+          <div style={css.cardSubtitle}>Countries where you have the right to work</div>
+        </div>
+      </div>
+
+      {!items.length && !showForm && (
+        <div style={css.emptyNote}>No right-to-work documents added.</div>
+      )}
+
+      {items.map((item) => {
+        const days = item.noExpiry ? null : daysUntil(item.expiryDate);
+        const expiryWarningColor = days !== null && days < 0
+          ? '#FF4757'
+          : days !== null && days < 30
+            ? '#FF4757'
+            : days !== null && days < 90
+              ? '#F0A500'
+              : null;
+
+        return (
+          <div key={item.id} style={css.item}>
+            <div>
+              <div style={css.itemTitle}>
+                {item.country}
+                {expiryWarningColor && (
+                  <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: expiryWarningColor }}>
+                    {days < 0 ? '⚠ Expired' : `⚠ Expires in ${days}d`}
+                  </span>
+                )}
+              </div>
+              <div style={css.itemSub}>
+                {item.documentType}
+                {item.documentNumber && <span> · #{item.documentNumber}</span>}
+                {item.noExpiry
+                  ? <span style={{ color: '#2ECC71' }}> · No expiry</span>
+                  : item.expiryDate && (
+                    <span style={{ color: expiryWarningColor || '#7A8CA0' }}>
+                      {' · Exp '}{new Date(item.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+              </div>
+            </div>
+            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}>🗑</button>
+          </div>
+        );
+      })}
+
+      {!showForm
+        ? <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add document</button>
+        : (
+          <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+            <div style={css.formRow}>
+              <div>
+                <label style={css.label}>Country</label>
+                <input style={css.input} value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))} placeholder="e.g. United Arab Emirates" />
+              </div>
+              <div>
+                <label style={css.label}>Document Type</label>
+                <select style={css.select} value={form.documentType} onChange={(e) => setForm((f) => ({ ...f, documentType: e.target.value }))}>
+                  <SelectOptions options={RTW_DOC_TYPES} />
+                </select>
+              </div>
+              <div>
+                <label style={css.label}>Document Number (optional)</label>
+                <input style={css.input} value={form.documentNumber} onChange={(e) => setForm((f) => ({ ...f, documentNumber: e.target.value }))} placeholder="Optional" />
+              </div>
+              <div>
+                <label style={css.label}>Expiry Date (optional)</label>
+                <input
+                  style={{ ...css.input, opacity: form.noExpiry ? 0.4 : 1 }}
+                  type="date"
+                  value={form.expiryDate}
+                  disabled={form.noExpiry}
+                  onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <input
+                type="checkbox"
+                id="noExpiry"
+                checked={form.noExpiry}
+                onChange={(e) => setForm((f) => ({ ...f, noExpiry: e.target.checked, expiryDate: e.target.checked ? '' : f.expiryDate }))}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              <label htmlFor="noExpiry" style={{ color: '#C0CDE0', fontSize: 13, cursor: 'pointer' }}>No expiry</label>
+            </div>
+            <div style={{ display: 'flex' }}>
+              <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
+              <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
+    </div>
+  );
+}
+
 export default function Profile() {
   const pilot = useSelector((s) => s.auth.pilot);
   const [profile, setProfile] = useState(null);
+  const [totals, setTotals] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [personalForm, setPersonalForm] = useState(null);
 
   useEffect(() => {
-    profileApi.get().then(({ data }) => {
-      setProfile(data);
-      setPersonalForm({ firstName: data.firstName, lastName: data.lastName, phone: data.phone || '', country: data.country || '', city: data.city || '', willingToRelocate: data.willingToRelocate, isExaminer: data.isExaminer ?? false, isInstructor: data.isInstructor ?? false });
+    Promise.all([
+      profileApi.get(),
+      profileApi.getTotals().catch(() => ({ data: null })),
+    ]).then(([{ data: profileData }, { data: totalsData }]) => {
+      setProfile(profileData);
+      setTotals(totalsData);
+      setPersonalForm({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone || '',
+        country: profileData.country || '',
+        city: profileData.city || '',
+        willingToRelocate: profileData.willingToRelocate,
+        isExaminer: profileData.isExaminer ?? false,
+        isInstructor: profileData.isInstructor ?? false,
+      });
       setLoading(false);
     });
   }, []);
@@ -349,6 +776,9 @@ export default function Profile() {
 
   return (
     <div>
+      {/* Flight Experience Totals */}
+      <FlightTotalsCard totals={totals} />
+
       {/* Personal info */}
       <div style={css.cardFull}>
         <div style={css.cardHeader}>
@@ -364,15 +794,16 @@ export default function Profile() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
               {[
                 { k: 'firstName', label: 'First Name' },
-                { k: 'lastName', label: 'Last Name' },
-                { k: 'phone', label: 'Phone' },
-                { k: 'country', label: 'Country' },
-                { k: 'city', label: 'City' },
+                { k: 'lastName',  label: 'Last Name' },
+                { k: 'phone',     label: 'Phone' },
+                { k: 'country',   label: 'Country' },
+                { k: 'city',      label: 'City' },
               ].map(({ k, label }) => (
                 <div key={k}>
                   <label style={css.label}>{label}</label>
                   <input
-                    style={css.input} value={personalForm[k] || ''}
+                    style={css.input}
+                    value={personalForm[k] || ''}
                     onChange={(e) => setPersonalForm((f) => ({ ...f, [k]: e.target.value }))}
                     placeholder={label}
                   />
@@ -421,15 +852,22 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Three cards in a grid */}
+      {/* Licences and Medical in a two-column grid */}
       <div style={css.grid}>
         <LicencesCard profile={profile} setProfile={setProfile} />
         <MedicalCard profile={profile} setProfile={setProfile} />
       </div>
 
-      <div style={{ marginTop: 24 }}>
+      {/* Type Ratings */}
+      <div style={{ marginTop: 24, marginBottom: 24 }}>
         <TypeRatingsCard profile={profile} setProfile={setProfile} />
       </div>
+
+      {/* Recurrent Training */}
+      <RecurrentTrainingCard />
+
+      {/* Right to Work */}
+      <RightToWorkCard />
     </div>
   );
 }
