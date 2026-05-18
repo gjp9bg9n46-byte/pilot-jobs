@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://api.cockpithire.com/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://e7n28gw7.up.railway.app/api/:path*" }
   ]
 }
