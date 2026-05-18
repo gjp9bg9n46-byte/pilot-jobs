@@ -4,10 +4,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store';
 
 const NAV = [
-  { to: '/jobs',    icon: '💼', label: 'Job Openings'  },
-  { to: '/alerts',  icon: '🔔', label: 'My Alerts'     },
-  { to: '/logbook', icon: '📖', label: 'Flight Logbook' },
-  { to: '/profile', icon: '👤', label: 'My Profile'    },
+  { to: '/jobs',     icon: '💼', label: 'Job Openings'   },
+  { to: '/alerts',   icon: '🔔', label: 'My Alerts'      },
+  { to: '/logbook',  icon: '📖', label: 'Flight Logbook'  },
+  { to: '/profile',  icon: '👤', label: 'My Profile'     },
+  { to: '/settings', icon: '⚙️', label: 'Settings'       },
 ];
 
 const css = {
@@ -62,7 +63,7 @@ const css = {
   content: { flex: 1, padding: '32px', overflowY: 'auto' },
 };
 
-const PAGE_TITLES = { '/jobs': 'Job Openings', '/alerts': 'My Alerts', '/logbook': 'Flight Logbook', '/profile': 'My Profile' };
+const PAGE_TITLES = { '/jobs': 'Job Openings', '/alerts': 'My Alerts', '/logbook': 'Flight Logbook', '/profile': 'My Profile', '/settings': 'Settings' };
 
 export default function Layout() {
   const dispatch = useDispatch();

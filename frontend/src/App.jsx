@@ -11,6 +11,7 @@ import Jobs from './pages/Jobs';
 import Alerts from './pages/Alerts';
 import Logbook from './pages/Logbook';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 
 function RequireAuth({ children }) {
   const token = useSelector((s) => s.auth.token);
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="logbook" element={<Logbook />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/jobs" replace />} />
       </Routes>

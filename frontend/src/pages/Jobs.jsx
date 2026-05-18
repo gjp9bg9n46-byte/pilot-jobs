@@ -13,6 +13,7 @@ const AUTHORITIES = [
   { value: 'CASA',   label: '🇦🇺 CASA — Australia' },
   { value: 'CAA_UK', label: '🇬🇧 CAA — UK' },
   { value: 'TCCA',   label: '🇨🇦 TCCA — Canada' },
+  { value: 'ICAO',   label: '🌍 ICAO — International' },
 ];
 
 function matchLabel(score) {

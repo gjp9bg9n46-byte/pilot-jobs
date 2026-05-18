@@ -22,6 +22,7 @@ const AUTHORITIES = [
   { value: 'TCCA',   flag: '🇨🇦', label: 'TCCA — Canada' },
   { value: 'ANAC',   flag: '🇧🇷', label: 'ANAC — Brazil' },
   { value: 'JCAB',   flag: '🇯🇵', label: 'JCAB — Japan' },
+  { value: 'ICAO',   flag: '🌍', label: 'ICAO — International' },
 ];
 
 const MEDICAL_CLASSES = [
@@ -332,14 +333,13 @@ export default function Profile() {
   useEffect(() => {
     profileApi.get().then(({ data }) => {
       setProfile(data);
-      setPersonalForm({ firstName: data.firstName, lastName: data.lastName, phone: data.phone || '', country: data.country || '', city: data.city || '', willingToRelocate: data.willingToRelocate, hoursOnType: data.hoursOnType ?? 0, isExaminer: data.isExaminer ?? false, isInstructor: data.isInstructor ?? false });
+      setPersonalForm({ firstName: data.firstName, lastName: data.lastName, phone: data.phone || '', country: data.country || '', city: data.city || '', willingToRelocate: data.willingToRelocate, isExaminer: data.isExaminer ?? false, isInstructor: data.isInstructor ?? false });
       setLoading(false);
     });
   }, []);
 
   const savePersonal = async () => {
-    if (personalForm.hoursOnType === '' || Number(personalForm.hoursOnType) < 0) return;
-    await profileApi.update({ ...personalForm, hoursOnType: Number(personalForm.hoursOnType) });
+    await profileApi.update(personalForm);
     setProfile((p) => ({ ...p, ...personalForm }));
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -378,23 +378,6 @@ export default function Profile() {
                   />
                 </div>
               ))}
-              <div>
-                <label style={css.label}>Hours on Type <span style={{ color: '#00B4D8' }}>*</span></label>
-                <input
-                  style={{
-                    ...css.input,
-                    borderColor: (personalForm.hoursOnType === '' || Number(personalForm.hoursOnType) < 0)
-                      ? '#5C2626'
-                      : '#243050',
-                  }}
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={personalForm.hoursOnType}
-                  onChange={(e) => setPersonalForm((f) => ({ ...f, hoursOnType: e.target.value }))}
-                  placeholder="0.0"
-                />
-              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 24 }}>
                 <input
                   type="checkbox" id="relocate"
