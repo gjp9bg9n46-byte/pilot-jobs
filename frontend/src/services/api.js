@@ -44,6 +44,9 @@ export const profileApi = {
   getRTW: () => api.get('/profile/rtw'),
   addRTW: (data) => api.post('/profile/rtw', data),
   deleteRTW: (id) => api.delete(`/profile/rtw/${id}`),
+  getELP: () => api.get('/profile/elp'),
+  addELP: (data) => api.post('/profile/elp', data),
+  deleteELP: (id) => api.delete(`/profile/elp/${id}`),
 };
 
 export const flightLogApi = {

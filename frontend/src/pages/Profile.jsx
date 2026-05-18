@@ -461,6 +461,132 @@ function TypeRatingsCard({ profile, setProfile }) {
   );
 }
 
+function EnglishProficiencyCard() {
+  const [items, setItems] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ level: 'Level 4', issuingAuthority: 'ICAO', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    profileApi.getELP?.().then(({ data }) => setItems(data)).catch(() => {});
+  }, []);
+
+  const handleAdd = async () => {
+    setSaving(true);
+    try {
+      const payload = { ...form, ...(form.noExpiry ? { expiryDate: null } : {}) };
+      const { data } = await profileApi.addELP(payload);
+      setItems((prev) => [...prev, data]);
+      setShowForm(false);
+      setForm({ level: 'Level 4', issuingAuthority: 'ICAO', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Remove this English proficiency record?')) return;
+    await profileApi.deleteELP(id);
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  const levelColors = { 'Level 4': '#F39C12', 'Level 5': '#00B4D8', 'Level 6': '#2ECC71' };
+
+  return (
+    <div style={{ ...css.cardFull, marginTop: 24 }}>
+      <div style={css.cardHeader}>
+        <span style={css.cardIcon}>🗣</span>
+        <div>
+          <div style={css.cardTitle}>English Language Proficiency</div>
+          <div style={css.cardSubtitle}>ICAO ELP — required for all international operations</div>
+        </div>
+      </div>
+
+      {items.length === 0 && !showForm && (
+        <div style={css.emptyNote}>No ELP record added. ICAO Level 4 minimum is required by most airlines.</div>
+      )}
+
+      {items.map((item) => {
+        const auth = AUTHORITIES.find((a) => a.value === item.issuingAuthority);
+        const color = levelColors[item.level] || '#7A8CA0';
+        return (
+          <div key={item.id} style={css.item}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{
+                  background: `${color}20`, border: `1px solid ${color}40`,
+                  color, borderRadius: 6, padding: '3px 10px',
+                  fontSize: 13, fontWeight: 800,
+                }}>
+                  ICAO {item.level}
+                </span>
+                {item.level === 'Level 6' && (
+                  <span style={{ color: '#2ECC71', fontSize: 12, fontWeight: 700 }}>Expert — No expiry</span>
+                )}
+              </div>
+              <div style={{ ...css.itemSub, marginTop: 6 }}>
+                {auth?.flag} {auth?.label || item.issuingAuthority}
+                {item.endorsementNumber && ` · #${item.endorsementNumber}`}
+                {item.issueDate && ` · Issued ${new Date(item.issueDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`}
+                {item.expiryDate && <ExpiryBadge dateStr={item.expiryDate} />}
+                {item.noExpiry && item.level !== 'Level 6' && <span style={{ color: '#2ECC71', fontSize: 12, fontWeight: 600 }}> · No expiry</span>}
+              </div>
+            </div>
+            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}>🗑</button>
+          </div>
+        );
+      })}
+
+      {!showForm ? (
+        <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add ELP record</button>
+      ) : (
+        <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+          <div style={css.formRow}>
+            <div>
+              <label style={css.label}>Proficiency Level</label>
+              <select style={css.select} value={form.level} onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}>
+                <option value="Level 4">ICAO Level 4 — Operational</option>
+                <option value="Level 5">ICAO Level 5 — Extended</option>
+                <option value="Level 6">ICAO Level 6 — Expert (no expiry)</option>
+              </select>
+            </div>
+            <div>
+              <label style={css.label}>Issuing Authority</label>
+              <select style={css.select} value={form.issuingAuthority} onChange={(e) => setForm((f) => ({ ...f, issuingAuthority: e.target.value }))}>
+                {AUTHORITIES.map((a) => <option key={a.value} value={a.value}>{a.flag} {a.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={css.label}>Endorsement / Certificate #</label>
+              <input style={css.input} value={form.endorsementNumber} onChange={(e) => setForm((f) => ({ ...f, endorsementNumber: e.target.value }))} placeholder="Optional" />
+            </div>
+            <div>
+              <label style={css.label}>Issue Date</label>
+              <input style={css.input} type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
+            </div>
+            {form.level !== 'Level 6' && (
+              <>
+                <div>
+                  <label style={css.label}>Expiry Date</label>
+                  <input style={{ ...css.input, opacity: form.noExpiry ? 0.4 : 1 }} type="date" value={form.expiryDate} disabled={form.noExpiry} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 24 }}>
+                  <input type="checkbox" id="elpNoExpiry" checked={form.noExpiry} onChange={(e) => setForm((f) => ({ ...f, noExpiry: e.target.checked }))} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                  <label htmlFor="elpNoExpiry" style={{ color: '#C0CDE0', fontSize: 13, cursor: 'pointer' }}>No expiry</label>
+                </div>
+              </>
+            )}
+          </div>
+          <div style={{ display: 'flex', marginTop: 4 }}>
+            <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
+            <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RecurrentTrainingCard() {
   const [items, setItems] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -862,6 +988,9 @@ export default function Profile() {
       <div style={{ marginTop: 24, marginBottom: 24 }}>
         <TypeRatingsCard profile={profile} setProfile={setProfile} />
       </div>
+
+      {/* English Language Proficiency */}
+      <EnglishProficiencyCard />
 
       {/* Recurrent Training */}
       <RecurrentTrainingCard />
