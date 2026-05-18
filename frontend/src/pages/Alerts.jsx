@@ -67,7 +67,7 @@ export default function Alerts() {
   useEffect(() => {
     setLoading(true);
     jobApi.getAlerts()
-      .then(({ data }) => dispatch(setAlerts(data)))
+      .then(({ data }) => dispatch(setAlerts(data.alerts ?? [])))
       .finally(() => setLoading(false));
   }, []);
 
