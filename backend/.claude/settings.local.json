@@ -5,7 +5,9 @@
       "Bash(npx tsc *)",
       "Bash(export PATH=\"$PATH:/usr/local/bin:/usr/bin\")",
       "Bash(find /usr/local /opt /Users/mohamedalaa -name \"tsc\" -maxdepth 6 2>/dev/null | head -5)",
-      "Read(//usr/local/**)"
+      "Read(//usr/local/**)",
+      "Bash(curl -sLI \"https://jobs.aa.com\" --max-time 12)",
+      "Bash(curl -sL \"https://jobs.aa.com\" --max-time 15)"
     ]
   }
 }

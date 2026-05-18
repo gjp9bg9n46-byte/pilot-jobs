@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "CockpitHire aviation job matching API",
   "main": "src/app.js",
+  "engines": { "node": ">=20" },
   "prisma": {
     "seed": "node prisma/seed.js"
   },

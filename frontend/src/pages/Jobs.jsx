@@ -239,6 +239,7 @@ export default function Jobs() {
   const dispatch = useDispatch();
   const { list: jobs, total } = useSelector((s) => s.jobs);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [hoverId, setHoverId] = useState(null);
@@ -304,6 +305,7 @@ export default function Jobs() {
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = {};
       if (authority) params.authority = authority;
@@ -316,12 +318,13 @@ export default function Jobs() {
       if (sort) params.sort = sort;
       const { data } = await jobApi.list(params);
       dispatch(setJobs({ jobs: data.jobs, total: data.total }));
-      // Initialize savedMap from API response
       const initSaved = {};
       (data.jobs || []).forEach((j) => {
         if (j.isSaved !== undefined) initSaved[j.id] = j.isSaved;
       });
       setSavedMap((prev) => ({ ...initSaved, ...prev }));
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || 'Failed to load jobs');
     } finally {
       setLoading(false);
     }
@@ -459,6 +462,18 @@ export default function Jobs() {
 
       {loading ? (
         <div style={css.loading}>⏳ Loading jobs from around the world...</div>
+      ) : error ? (
+        <div style={css.empty}>
+          <div style={css.emptyIcon}>⚠️</div>
+          <div style={css.emptyTitle}>Could not load jobs</div>
+          <div style={css.emptyText}>{error}</div>
+          <button
+            onClick={fetchJobs}
+            style={{ marginTop: 20, background: '#00B4D8', border: 'none', borderRadius: 8, padding: '10px 24px', color: '#0A1628', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}
+          >
+            Retry
+          </button>
+        </div>
       ) : filtered.length === 0 ? (
         <div style={css.empty}>
           <div style={css.emptyIcon}>🔍</div>

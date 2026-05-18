@@ -99,9 +99,9 @@ New section "Appearance & Locale":
 
 New section "Privacy":
 
-- **Profile visible to recruiters** (default on). When off, the matching service should skip this user as a candidate — confirm with `matchingService.js` and propose the backend flag if missing (`profileVisible` on `User`).
-- **Anonymous browsing** — when on, viewing a job listing doesn't record a "viewed by" entry. Backend wiring as above.
-- **Show seniority / years of experience publicly** — granular control over what shows on a recruiter-facing profile preview.
+- **Save view history** (default on). When off, the app doesn't record which job listings you've opened. Useful when browsing privately on a shared device. Backend wiring: skip writing to the view-history table when this flag is off; allow users to clear existing history with a "Clear view history" button next to the toggle.
+- **Save search history** (default on). When off, the recent-searches feature from the Search prompt is disabled and existing local history is cleared.
+- **Share anonymous usage analytics** (default off). When on, the app reports anonymous interaction counts (screen opens, taps, apply-button presses — never profile data or job titles) to help us improve matching. Whatever analytics SDK ends up wired in must check this flag on every event.
 
 ### 8. Security
 
@@ -149,7 +149,7 @@ Move sign out from `ProfileScreen` to the bottom of Settings (the conventional p
 
 1. The backend-support table at the top of your reply.
 2. The modified and new files.
-3. The proposed Prisma migration + new route signatures for anything that needed backend work (granular notifications, quiet hours, sessions, 2FA, data export, soft-delete, profileVisible, etc.).
+3. The proposed Prisma migration + new route signatures for anything that needed backend work (granular notifications, quiet hours, sessions, 2FA, data export, soft-delete, view-history table + flag, analytics-opt-in flag, etc.).
 4. A short summary at the end: what shipped end-to-end, what's stubbed pending backend work, and anything you deliberately deferred (e.g. real translation strings, light-mode rollout to non-Settings screens) with rationale.
 
 Do not start writing UI until you've read the relevant Prisma models and the auth + preferences controllers. The goal is to wire the UI to what the server already accepts wherever possible, and only propose schema changes where the user-facing win is clear.
