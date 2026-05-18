@@ -1,8 +1,65 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import api, { profileApi, flightLogApi, authApi } from '../services/api';
 import { logout } from '../store';
+
+// ── Shared styles (module-level so components don't recreate on each render) ──
+const inputStyle = {
+  background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8,
+  padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+};
+const saveButtonStyle = {
+  background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 8,
+  padding: '11px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+};
+
+// ── Components defined OUTSIDE Settings to prevent remount-on-keypress ────────
+function Toggle({ value, onChange }) {
+  return (
+    <div onClick={() => onChange(!value)} style={{ width: 44, height: 24, borderRadius: 12, background: value ? '#00B4D8' : '#1E3050', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
+      <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+    </div>
+  );
+}
+
+function Chip({ label, active, onClick }) {
+  return (
+    <button type="button" onClick={onClick} style={{ background: active ? 'rgba(0,180,216,0.18)' : '#1B2B4B', border: `1px solid ${active ? '#00B4D8' : '#243050'}`, borderRadius: 20, padding: '6px 14px', color: active ? '#00B4D8' : '#7A8CA0', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      {label}
+    </button>
+  );
+}
+
+function Tag({ label, onRemove }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(0,180,216,0.12)', border: '1px solid #00B4D8', borderRadius: 20, padding: '4px 12px', fontSize: 13, color: '#00B4D8', fontWeight: 600 }}>
+      {label}
+      <span onClick={onRemove} style={{ cursor: 'pointer', lineHeight: 1, color: '#7A8CA0', fontSize: 14 }}>✕</span>
+    </span>
+  );
+}
+
+function TagInput({ inputVal, setInputVal, tags, setTags, placeholder }) {
+  const handleAdd = () => {
+    const val = inputVal.trim();
+    if (val && !tags.includes(val)) setTags((prev) => [...prev, val]);
+    setInputVal('');
+  };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }} placeholder={placeholder} style={{ ...inputStyle, flex: 1 }} />
+        <button type="button" onClick={handleAdd} style={{ ...saveButtonStyle, padding: '11px 18px', whiteSpace: 'nowrap' }}>Add</button>
+      </div>
+      {tags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {tags.map((t) => <Tag key={t} label={t} onRemove={() => setTags((prev) => prev.filter((v) => v !== t))} />)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Settings() {
   const pilot = useSelector((s) => s.auth.pilot);
@@ -123,19 +180,7 @@ export default function Settings() {
   }
 
   function toggleChip(value, list, setList) {
-    setList((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
-  }
-
-  function addTag(input, setInput, list, setList) {
-    const val = input.trim();
-    if (val && !list.includes(val)) setList((prev) => [...prev, val]);
-    setInput('');
-  }
-
-  function removeTag(value, setList) {
-    setList((prev) => prev.filter((v) => v !== value));
+    setList((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
   }
 
   async function handleSavePreferences() {
@@ -222,193 +267,13 @@ export default function Settings() {
     }
   }
 
-  // ── Shared styles ─────────────────────────────────────────────────────
-  const cardStyle = {
-    background: '#0D1E35',
-    border: '1px solid #1E3050',
-    borderRadius: 16,
-    padding: 28,
-    marginBottom: 24,
-  };
-
-  const inputStyle = {
-    background: '#1B2B4B',
-    border: '1px solid #243050',
-    borderRadius: 8,
-    padding: '11px 12px',
-    color: '#fff',
-    fontSize: 14,
-    outline: 'none',
-    boxSizing: 'border-box',
-  };
-
-  const labelStyle = {
-    display: 'block',
-    fontSize: 13,
-    color: '#7A8CA0',
-    marginBottom: 6,
-    fontWeight: 600,
-  };
-
-  const saveButtonStyle = {
-    background: 'linear-gradient(135deg, #00B4D8, #0077A8)',
-    border: 'none',
-    borderRadius: 8,
-    padding: '11px 22px',
-    color: '#fff',
-    fontWeight: 700,
-    fontSize: 14,
-    cursor: 'pointer',
-  };
-
-  const sectionTitleStyle = {
-    fontSize: 18,
-    fontWeight: 800,
-    color: '#fff',
-    marginBottom: 4,
-  };
-
-  const sectionSubtitleStyle = {
-    fontSize: 13,
-    color: '#4A6080',
-    marginBottom: 20,
-  };
-
-  const successBanner = {
-    background: '#0A2A1A',
-    border: '1px solid #1A5C3A',
-    borderRadius: 8,
-    padding: '10px 14px',
-    color: '#4ADE80',
-    fontSize: 13,
-    marginBottom: 14,
-  };
-
-  const errorBanner = {
-    background: '#2A0A0A',
-    border: '1px solid #5C1A1A',
-    borderRadius: 8,
-    padding: '10px 14px',
-    color: '#F87171',
-    fontSize: 13,
-    marginBottom: 14,
-  };
-
-  function Toggle({ value, onChange }) {
-    return (
-      <div
-        onClick={() => onChange(!value)}
-        style={{
-          width: 44,
-          height: 24,
-          borderRadius: 12,
-          background: value ? '#00B4D8' : '#1E3050',
-          position: 'relative',
-          cursor: 'pointer',
-          flexShrink: 0,
-          transition: 'background 0.2s',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 3,
-            left: value ? 23 : 3,
-            width: 18,
-            height: 18,
-            borderRadius: '50%',
-            background: '#fff',
-            transition: 'left 0.2s',
-          }}
-        />
-      </div>
-    );
-  }
-
-  function Chip({ label, active, onClick }) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        style={{
-          background: active ? 'rgba(0,180,216,0.18)' : '#1B2B4B',
-          border: `1px solid ${active ? '#00B4D8' : '#243050'}`,
-          borderRadius: 20,
-          padding: '6px 14px',
-          color: active ? '#00B4D8' : '#7A8CA0',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {label}
-      </button>
-    );
-  }
-
-  function Tag({ label, onRemove }) {
-    return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          background: 'rgba(0,180,216,0.12)',
-          border: '1px solid #00B4D8',
-          borderRadius: 20,
-          padding: '4px 12px',
-          fontSize: 13,
-          color: '#00B4D8',
-          fontWeight: 600,
-        }}
-      >
-        {label}
-        <span
-          onClick={onRemove}
-          style={{ cursor: 'pointer', lineHeight: 1, color: '#7A8CA0', fontSize: 14 }}
-        >
-          ✕
-        </span>
-      </span>
-    );
-  }
-
-  function TagInput({ inputVal, setInputVal, tags, setTags, placeholder }) {
-    return (
-      <div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-          <input
-            type="text"
-            value={inputVal}
-            onChange={(e) => setInputVal(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(inputVal, setInputVal, tags, setTags); } }}
-            placeholder={placeholder}
-            style={{ ...inputStyle, flex: 1 }}
-          />
-          <button
-            type="button"
-            onClick={() => addTag(inputVal, setInputVal, tags, setTags)}
-            style={{
-              ...saveButtonStyle,
-              padding: '11px 18px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Add
-          </button>
-        </div>
-        {tags.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {tags.map((t) => (
-              <Tag key={t} label={t} onRemove={() => removeTag(t, setTags)} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
+  // ── Shared styles (local to render, plain objects are fine here) ──────
+  const cardStyle = { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 28, marginBottom: 24 };
+  const labelStyle = { display: 'block', fontSize: 13, color: '#7A8CA0', marginBottom: 6, fontWeight: 600 };
+  const sectionTitleStyle = { fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 4 };
+  const sectionSubtitleStyle = { fontSize: 13, color: '#4A6080', marginBottom: 20 };
+  const successBanner = { background: '#0A2A1A', border: '1px solid #1A5C3A', borderRadius: 8, padding: '10px 14px', color: '#4ADE80', fontSize: 13, marginBottom: 14 };
+  const errorBanner = { background: '#2A0A0A', border: '1px solid #5C1A1A', borderRadius: 8, padding: '10px 14px', color: '#F87171', fontSize: 13, marginBottom: 14 };
   const divider = { borderTop: '1px solid #1E3050', margin: '20px 0' };
 
   return (

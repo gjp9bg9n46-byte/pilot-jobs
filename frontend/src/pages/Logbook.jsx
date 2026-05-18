@@ -15,6 +15,11 @@ const css = {
   totalValue: { fontSize: 26, fontWeight: 800, color: '#00B4D8', marginBottom: 4 },
   totalLabel: { fontSize: 11, color: '#4A6080', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
 
+  searchBar: {
+    width: '100%', background: '#1B2B4B', border: '1px solid #243050',
+    borderRadius: 10, padding: '12px 16px', color: '#fff', fontSize: 14,
+    outline: 'none', marginBottom: 20,
+  },
   currencyCard: {
     background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 14,
     padding: '18px 22px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap',
@@ -108,10 +113,13 @@ const css = {
   },
 };
 
+const TAIL_PREFIXES = ['', 'A6-', 'N', 'G-', 'OE-', 'D-', 'F-', 'HB-', 'TC-', 'SU-', 'AP-', 'VT-', '7T-', 'HL', 'B-', 'JA', 'VH-', 'ZS-', 'C-', 'OY-', 'SE-', 'LN-', 'OH-', 'PH-', 'CS-', 'EC-', 'EI-', 'TS-', 'CN-', 'EP-'];
+
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
-  aircraftType: '', registration: '',
+  flightNumber: '', tailPrefix: '', aircraftType: '', registration: '',
   departure: '', arrival: '',
+  picName: '', sicName: '',
   totalTime: '', picTime: '', sicTime: '',
   multiEngineTime: '', turbineTime: '',
   instrumentTime: '', nightTime: '',
@@ -122,10 +130,14 @@ const EMPTY_FORM = {
 function formFromLog(log) {
   return {
     date: log.date ? new Date(log.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+    flightNumber: log.flightNumber || '',
+    tailPrefix: log.tailPrefix || '',
     aircraftType: log.aircraftType || '',
     registration: log.registration || '',
     departure: log.departure || '',
     arrival: log.arrival || '',
+    picName: log.picName || '',
+    sicName: log.sicName || '',
     totalTime: log.totalTime != null ? String(log.totalTime) : '',
     picTime: log.picTime != null ? String(log.picTime) : '',
     sicTime: log.sicTime != null ? String(log.sicTime) : '',
@@ -194,13 +206,28 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
         <div style={css.sectionTitle}>✈  Flight Details</div>
         <div style={css.formGrid}>
           <Field k="date" label="Date *" type="date" />
+          <Field k="flightNumber" label="Flight Number" hint="e.g. QR435, EK201" />
           <Field k="aircraftType" label="Aircraft Type *" hint="e.g. B737, A320, C172" />
-          <Field k="registration" label="Registration" hint="e.g. A6-EKA" />
+          <div>
+            <label style={css.label}>Tail Number (Registration)</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <select
+                value={form.tailPrefix}
+                onChange={set('tailPrefix')}
+                style={{ ...css.input, width: 90, padding: '11px 6px', flexShrink: 0 }}
+              >
+                {TAIL_PREFIXES.map((p) => <option key={p} value={p}>{p || 'Prefix'}</option>)}
+              </select>
+              <input style={{ ...css.input, flex: 1 }} value={form.registration} onChange={set('registration')} placeholder="EKA, 123AB…" />
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}><Field k="departure" label="From" hint="e.g. OMDB" /></div>
             <div style={{ paddingBottom: 10, color: '#4A6080', fontSize: 18 }}>→</div>
             <div style={{ flex: 1 }}><Field k="arrival" label="To" hint="e.g. EGLL" /></div>
           </div>
+          <Field k="picName" label="Pilot in Command" hint="e.g. Capt. Al Rashid" />
+          <Field k="sicName" label="Second in Command" hint="e.g. F/O Smith" />
         </div>
 
         <div style={css.sectionTitle}>⏱  Flight Hours  <span style={{ fontSize: 11, color: '#4A6080', fontWeight: 400 }}>Enter as decimals — 1h 30m = 1.5</span></div>
@@ -437,15 +464,13 @@ export default function Logbook() {
       </div>
 
       {/* Search bar */}
-      <div style={{ marginBottom: 18 }}>
-        <input
-          style={css.searchInput}
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by aircraft, registration, or airport..."
-        />
-      </div>
+      <input
+        style={css.searchBar}
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search by aircraft, registration, or airport..."
+      />
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#7A8CA0' }}>Loading your logbook...</div>

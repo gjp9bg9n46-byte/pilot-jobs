@@ -8,6 +8,7 @@ const NAV = [
   { to: '/alerts',   icon: '🔔', label: 'My Alerts'      },
   { to: '/logbook',  icon: '📖', label: 'Flight Logbook'  },
   { to: '/profile',  icon: '👤', label: 'My Profile'     },
+  { to: '/support',  icon: '💬', label: 'Support'        },
   { to: '/settings', icon: '⚙️', label: 'Settings'       },
 ];
 
@@ -63,7 +64,7 @@ const css = {
   content: { flex: 1, padding: '32px', overflowY: 'auto' },
 };
 
-const PAGE_TITLES = { '/jobs': 'Job Openings', '/alerts': 'My Alerts', '/logbook': 'Flight Logbook', '/profile': 'My Profile', '/settings': 'Settings' };
+const PAGE_TITLES = { '/jobs': 'Job Openings', '/alerts': 'My Alerts', '/logbook': 'Flight Logbook', '/profile': 'My Profile', '/support': 'Support', '/settings': 'Settings' };
 
 export default function Layout() {
   const dispatch = useDispatch();
