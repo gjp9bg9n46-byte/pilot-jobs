@@ -5,7 +5,8 @@
     "buildCommand": "npm install && npx prisma generate"
   },
   "deploy": {
-    "startCommand": "npx prisma db push --accept-data-loss && node src/app.js",
+    "preDeployCommand": "npx prisma db push --accept-data-loss",
+    "startCommand": "node src/app.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
