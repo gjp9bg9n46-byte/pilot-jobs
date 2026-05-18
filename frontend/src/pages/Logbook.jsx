@@ -246,9 +246,15 @@ export default function Logbook() {
   const { logs, totals } = useSelector((s) => s.logbook);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [editFlight, setEditFlight] = useState(null);   // log object to edit
-  const [cloneFlight, setCloneFlight] = useState(null); // log object to clone
+  const [editFlight, setEditFlight] = useState(null);
+  const [cloneFlight, setCloneFlight] = useState(null);
   const [search, setSearch] = useState('');
+  const [showCarryForward, setShowCarryForward] = useState(false);
+  const [carryForward, setCarryForward] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('logbook_carry_forward') || '{}'); } catch { return {}; }
+  });
+  const [carryForwardForm, setCarryForwardForm] = useState({});
+  const [carryForwardSaved, setCarryForwardSaved] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -323,20 +329,77 @@ export default function Logbook() {
     { key: 'nightTime', label: 'Night' },
   ];
 
+  const saveCarryForward = () => {
+    const parsed = {};
+    Object.entries(carryForwardForm).forEach(([k, v]) => { parsed[k] = parseFloat(v) || 0; });
+    setCarryForward(parsed);
+    localStorage.setItem('logbook_carry_forward', JSON.stringify(parsed));
+    setCarryForwardSaved(true);
+    setTimeout(() => setCarryForwardSaved(false), 2000);
+  };
+
+  const totalWithCarry = (key) => ((totals?.[key] || 0) + (carryForward[key] || 0)).toFixed(1);
+
   const cloneInitial = cloneFlight ? { ...cloneFlight, date: '' } : null;
 
   return (
     <div>
-      {totals && (
-        <div style={css.totalsGrid}>
-          {TOTALS_DISPLAY.map(({ key, label }) => (
-            <div key={key} style={css.totalCard}>
-              <div style={css.totalValue}>{(totals[key] || 0).toFixed(1)}</div>
-              <div style={css.totalLabel}>{label}</div>
+      <div style={css.totalsGrid}>
+        {TOTALS_DISPLAY.map(({ key, label }) => (
+          <div key={key} style={css.totalCard}>
+            <div style={css.totalValue}>{totalWithCarry(key)}</div>
+            <div style={css.totalLabel}>{label}</div>
+            {carryForward[key] > 0 && (
+              <div style={{ fontSize: 10, color: '#4A6080', marginTop: 2 }}>
+                +{carryForward[key].toFixed(1)} carry-fwd
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Previous / Carry-Forward Hours */}
+      <div style={{ marginBottom: 24 }}>
+        <button
+          onClick={() => { setShowCarryForward((v) => !v); setCarryForwardForm(Object.fromEntries(Object.entries(carryForward).map(([k, v]) => [k, v || '']))); }}
+          style={{ background: 'none', border: 'none', color: '#4A6080', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          {showCarryForward ? '▾' : '▸'} Previous / carry-forward hours
+          {Object.values(carryForward).some((v) => v > 0) && (
+            <span style={{ background: '#00B4D820', border: '1px solid #00B4D840', color: '#00B4D8', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>active</span>
+          )}
+        </button>
+        {showCarryForward && (
+          <div style={{ background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 12, padding: 20, marginTop: 10 }}>
+            <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 14 }}>
+              Enter hours from your previous logbooks. These are added to the totals above.
             </div>
-          ))}
-        </div>
-      )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+              {TOTALS_DISPLAY.map(({ key, label }) => (
+                <div key={key}>
+                  <label style={{ display: 'block', fontSize: 11, color: '#7A8CA0', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</label>
+                  <input
+                    type="number" min="0" step="0.1"
+                    style={{ width: '100%', background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                    value={carryForwardForm[key] ?? ''}
+                    onChange={(e) => setCarryForwardForm((f) => ({ ...f, [key]: e.target.value }))}
+                    placeholder="0.0"
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16 }}>
+              <button
+                onClick={saveCarryForward}
+                style={{ background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 8, padding: '10px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+              >
+                Save
+              </button>
+              {carryForwardSaved && <span style={{ color: '#2ECC71', fontSize: 13, fontWeight: 600 }}>✓ Saved</span>}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Currency card */}
       <div style={css.currencyCard}>

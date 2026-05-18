@@ -391,16 +391,23 @@ function TypeRatingsCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
   const [aircraftType, setAircraftType] = useState('');
   const [authority, setAuthority] = useState('FAA');
+  const [hoursOnType, setHoursOnType] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleAdd = async () => {
     if (!aircraftType.trim()) return alert('Please enter an aircraft type.');
     setSaving(true);
     try {
-      const { data } = await profileApi.addRating({ aircraftType: aircraftType.toUpperCase(), issuingAuthority: authority, category: 'Multi-Engine' });
+      const { data } = await profileApi.addRating({
+        aircraftType: aircraftType.toUpperCase(),
+        issuingAuthority: authority,
+        category: 'Multi-Engine',
+        hoursOnType: parseFloat(hoursOnType) || 0,
+      });
       setProfile((p) => ({ ...p, ratings: [...(p.ratings || []), data] }));
       setShowForm(false);
       setAircraftType('');
+      setHoursOnType('');
     } finally { setSaving(false); }
   };
 
@@ -422,7 +429,10 @@ function TypeRatingsCard({ profile, setProfile }) {
           <div key={r.id} style={css.item}>
             <div>
               <div style={css.itemTitle}>{r.aircraftType}</div>
-              <div style={css.itemSub}>{auth?.flag} {auth?.label || r.issuingAuthority}</div>
+              <div style={css.itemSub}>
+                {auth?.flag} {auth?.label || r.issuingAuthority}
+                {r.hoursOnType > 0 && <span style={{ color: '#00B4D8', marginLeft: 8, fontWeight: 600 }}>{r.hoursOnType.toLocaleString()} hrs on type</span>}
+              </div>
             </div>
             <button style={css.deleteBtn} onClick={async () => {
               if (!window.confirm('Remove this type rating?')) return;
@@ -447,6 +457,10 @@ function TypeRatingsCard({ profile, setProfile }) {
                 <select style={css.select} value={authority} onChange={(e) => setAuthority(e.target.value)}>
                   <SelectOptions options={AUTHORITIES} />
                 </select>
+              </div>
+              <div>
+                <label style={css.label}>Hours on Type</label>
+                <input style={css.input} type="number" min="0" step="0.1" value={hoursOnType} onChange={(e) => setHoursOnType(e.target.value)} placeholder="0.0" />
               </div>
             </div>
             <div style={{ display: 'flex' }}>
