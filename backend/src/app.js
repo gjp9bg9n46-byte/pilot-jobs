@@ -1,3 +1,4 @@
+if (typeof File === 'undefined') global.File = class File {};
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
