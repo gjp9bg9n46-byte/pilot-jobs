@@ -5,8 +5,9 @@ import { setAlerts, markAlertRead } from '../store';
 
 function PlaneSave({ saved, size = 18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#4A6080'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 10L2 4l4 6-4 6 16-6z" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#4A6080'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* Top-down commercial airplane silhouette */}
+      <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 12 2a1.5 1.5 0 0 0-1.5 1.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
     </svg>
   );
 }
@@ -291,17 +292,49 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 <div style={{ fontSize: 14, color: '#00B4D8', fontWeight: 600, marginBottom: 8 }}>
                   {alert.job?.company ?? alert.company ?? '—'}
                 </div>
-                <div style={{ display: 'flex', gap: 20 }}>
+                <div style={{ display: 'flex', gap: 20, marginBottom: 8 }}>
                   {(alert.job?.location ?? alert.location) && (
                     <span style={{ fontSize: 12, color: '#7A8CA0' }}>📍 {alert.job?.location ?? alert.location}</span>
                   )}
                   {alert.job?.reqAuthorities?.[0] && (
                     <span style={{ fontSize: 12, color: '#7A8CA0' }}>🏛 {alert.job.reqAuthorities[0]}</span>
                   )}
-                  {alert.job?.reqMinTotalHours && (
-                    <span style={{ fontSize: 12, color: '#7A8CA0' }}>⏱ {alert.job.reqMinTotalHours.toLocaleString()} hrs min</span>
-                  )}
                 </div>
+                {(() => {
+                  const job = alert.job;
+                  if (!job) return null;
+                  const pills = [];
+                  if (job.role) {
+                    const roleLabels = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', FLIGHT_ENGINEER: 'Flight Engineer', INSTRUCTOR: 'Instructor' };
+                    pills.push({ key: 'role', text: roleLabels[job.role] || job.role, color: '#00B4D8', bg: 'rgba(0,180,216,0.12)' });
+                  }
+                  if (job.contractType) {
+                    const ctLabels = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', acmi: 'ACMI', permanent: 'Permanent' };
+                    pills.push({ key: 'ct', text: ctLabels[job.contractType] || job.contractType, color: '#7A8CA0', bg: '#1B2B4B' });
+                  }
+                  (job.reqAircraftTypes || []).forEach((a) => pills.push({ key: `ac-${a}`, text: a, color: '#7A8CA0', bg: '#1B2B4B' }));
+                  (job.reqCertificates || []).forEach((c) => pills.push({ key: `cert-${c}`, text: c, color: '#F39C12', bg: 'rgba(243,156,18,0.1)' }));
+                  if (job.reqMinTotalHours) pills.push({ key: 'th', text: `${job.reqMinTotalHours.toLocaleString()} hrs total`, color: '#7A8CA0', bg: '#1B2B4B' });
+                  if (job.reqMinPicHours) pills.push({ key: 'pic', text: `${job.reqMinPicHours.toLocaleString()} PIC`, color: '#7A8CA0', bg: '#1B2B4B' });
+                  if (job.reqMinMultiEngineHours) pills.push({ key: 'me', text: `${job.reqMinMultiEngineHours.toLocaleString()} multi-eng`, color: '#7A8CA0', bg: '#1B2B4B' });
+                  if (job.reqMinTurbineHours) pills.push({ key: 'turb', text: `${job.reqMinTurbineHours.toLocaleString()} turbine`, color: '#7A8CA0', bg: '#1B2B4B' });
+                  if (job.reqMedicalClass) pills.push({ key: 'med', text: job.reqMedicalClass.replace('CLASS_', 'Class '), color: '#7A8CA0', bg: '#1B2B4B' });
+                  if (job.salaryMin && job.salaryMax) {
+                    pills.push({ key: 'sal', text: `${job.salaryCurrency || 'USD'} ${job.salaryMin.toLocaleString()}–${job.salaryMax.toLocaleString()}`, color: '#2ECC71', bg: 'rgba(46,204,113,0.1)' });
+                  } else if (job.salaryMin) {
+                    pills.push({ key: 'sal', text: `${job.salaryCurrency || 'USD'} ${job.salaryMin.toLocaleString()}+`, color: '#2ECC71', bg: 'rgba(46,204,113,0.1)' });
+                  }
+                  if (pills.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {pills.map((p) => (
+                        <span key={p.key} style={{ fontSize: 11, color: p.color, background: p.bg, borderRadius: 6, padding: '3px 9px', fontWeight: 600 }}>
+                          {p.text}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                 <button

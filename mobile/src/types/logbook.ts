@@ -1,6 +1,7 @@
 export interface FlightLog {
   id: string;
   pilotId: string;
+  dutyId: string | null; // shared UUID for multi-sector legs from the same operating day
   date: string; // ISO
   aircraftType: string;
   registration: string | null;

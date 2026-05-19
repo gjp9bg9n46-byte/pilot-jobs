@@ -276,6 +276,12 @@ export default function Logbook() {
   const [editFlight, setEditFlight] = useState(null);
   const [cloneFlight, setCloneFlight] = useState(null);
   const [search, setSearch] = useState('');
+  const [expandedDuties, setExpandedDuties] = useState(new Set());
+  const toggleDuty = (id) => setExpandedDuties((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [showCarryForward, setShowCarryForward] = useState(false);
   const [carryForward, setCarryForward] = useState(() => {
     try { return JSON.parse(localStorage.getItem('logbook_carry_forward') || '{}'); } catch { return {}; }
@@ -322,6 +328,26 @@ export default function Logbook() {
       (log.arrival || '').toLowerCase().includes(q)
     );
   }, [logs, search]);
+
+  // Group by dutyId: multi-sector legs collapse to one expandable row
+  const groupedRows = useMemo(() => {
+    const groups = [];
+    const seenDuty = new Set();
+    for (const log of filteredLogs) {
+      if (!log.dutyId) {
+        groups.push({ type: 'single', id: log.id, log });
+      } else if (!seenDuty.has(log.dutyId)) {
+        seenDuty.add(log.dutyId);
+        const legs = filteredLogs.filter((l) => l.dutyId === log.dutyId);
+        if (legs.length === 1) {
+          groups.push({ type: 'single', id: log.id, log });
+        } else {
+          groups.push({ type: 'duty', id: log.dutyId, legs });
+        }
+      }
+    }
+    return groups;
+  }, [filteredLogs]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this flight from your logbook?')) return;
@@ -474,7 +500,9 @@ export default function Logbook() {
             }
           }} />
         </label>
-        <span style={{ color: '#4A6080', fontSize: 13, marginLeft: 'auto' }}>{logs.length} flights</span>
+        <span style={{ color: '#4A6080', fontSize: 13, marginLeft: 'auto' }}>
+          {groupedRows.length} {groupedRows.length !== logs.length ? `entries (${logs.length} sectors)` : 'flights'}
+        </span>
       </div>
 
       {/* Search bar */}
@@ -498,38 +526,118 @@ export default function Logbook() {
             </tr>
           </thead>
           <tbody>
-            {filteredLogs.length === 0 && (
+            {groupedRows.length === 0 && (
               <tr><td colSpan={10} style={css.emptyRow}>
                 {search ? 'No flights match your search.' : 'No flights logged yet. Click "Log a Flight" to get started.'}
               </td></tr>
             )}
-            {filteredLogs.map((log) => (
-              <tr key={log.id}>
-                <td style={{ ...css.td, ...css.tdFirst, color: '#7A8CA0', fontSize: 12 }}>
-                  {new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </td>
-                <td style={css.td}>
-                  <div style={{ fontWeight: 600 }}>{log.aircraftType}</div>
-                  {log.registration && <div style={css.route}>{log.registration}</div>}
-                </td>
-                <td style={css.td}>
-                  {log.departure || log.arrival
-                    ? <div style={css.route}>{log.departure} → {log.arrival}</div>
-                    : <span style={{ color: '#4A6080' }}>—</span>}
-                </td>
-                <td style={{ ...css.td, ...css.hours }}>{log.totalTime.toFixed(1)}</td>
-                <td style={css.td}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
-                <td style={css.td}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
-                <td style={css.td}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
-                <td style={css.td}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
-                <td style={css.td}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
-                <td style={{ ...css.td, ...css.tdLast, whiteSpace: 'nowrap' }}>
-                  <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit">✎</button>
-                  <button style={css.cloneBtn} onClick={() => setCloneFlight(log)} title="Clone">⧉</button>
-                  <button style={css.deleteBtn} onClick={() => handleDelete(log.id)} title="Delete">✕</button>
-                </td>
-              </tr>
-            ))}
+            {groupedRows.map((row) => {
+              if (row.type === 'single') {
+                const log = row.log;
+                return (
+                  <tr key={log.id}>
+                    <td style={{ ...css.td, ...css.tdFirst, color: '#7A8CA0', fontSize: 12 }}>
+                      {new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td style={css.td}>
+                      <div style={{ fontWeight: 600 }}>{log.aircraftType}</div>
+                      {log.registration && <div style={css.route}>{log.registration}</div>}
+                    </td>
+                    <td style={css.td}>
+                      {log.departure || log.arrival
+                        ? <div style={css.route}>{log.departure} → {log.arrival}</div>
+                        : <span style={{ color: '#4A6080' }}>—</span>}
+                    </td>
+                    <td style={{ ...css.td, ...css.hours }}>{log.totalTime.toFixed(1)}</td>
+                    <td style={css.td}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
+                    <td style={css.td}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
+                    <td style={css.td}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
+                    <td style={css.td}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
+                    <td style={css.td}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
+                    <td style={{ ...css.td, ...css.tdLast, whiteSpace: 'nowrap' }}>
+                      <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit">✎</button>
+                      <button style={css.cloneBtn} onClick={() => setCloneFlight(log)} title="Clone">⧉</button>
+                      <button style={css.deleteBtn} onClick={() => handleDelete(log.id)} title="Delete">✕</button>
+                    </td>
+                  </tr>
+                );
+              }
+
+              // Duty day group
+              const { id: dutyId, legs } = row;
+              const first = legs[0];
+              const last  = legs[legs.length - 1];
+              const totalTime    = legs.reduce((s, l) => s + (l.totalTime || 0), 0);
+              const totalPic     = legs.reduce((s, l) => s + (l.picTime || 0), 0);
+              const totalMulti   = legs.reduce((s, l) => s + (l.multiEngineTime || 0), 0);
+              const totalTurbine = legs.reduce((s, l) => s + (l.turbineTime || 0), 0);
+              const totalNight   = legs.reduce((s, l) => s + (l.nightTime || 0), 0);
+              const totalLdg     = legs.reduce((s, l) => s + (l.landingsDay || 0) + (l.landingsNight || 0), 0);
+              const isExpanded   = expandedDuties.has(dutyId);
+
+              return (
+                <React.Fragment key={dutyId}>
+                  {/* Duty summary row */}
+                  <tr
+                    onClick={() => toggleDuty(dutyId)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td style={{ ...css.td, ...css.tdFirst, color: '#7A8CA0', fontSize: 12 }}>
+                      {new Date(first.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td style={css.td}>
+                      <div style={{ fontWeight: 600 }}>{first.aircraftType}</div>
+                      {first.registration && <div style={css.route}>{first.registration}</div>}
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, color: '#00B4D8',
+                        background: 'rgba(0,180,216,0.12)', borderRadius: 6,
+                        padding: '2px 7px', display: 'inline-block', marginTop: 4,
+                      }}>
+                        {legs.length} sectors
+                      </span>
+                    </td>
+                    <td style={css.td}>
+                      <div style={css.route}>{first.departure || '?'} → {last.arrival || '?'}</div>
+                      <div style={{ fontSize: 11, color: '#4A6080', marginTop: 3 }}>
+                        {legs.map((l) => `${l.departure || '?'}→${l.arrival || '?'}`).join(' · ')}
+                      </div>
+                    </td>
+                    <td style={{ ...css.td, ...css.hours }}>{totalTime.toFixed(1)}</td>
+                    <td style={css.td}>{totalPic > 0 ? totalPic.toFixed(1) : '—'}</td>
+                    <td style={css.td}>{totalMulti > 0 ? totalMulti.toFixed(1) : '—'}</td>
+                    <td style={css.td}>{totalTurbine > 0 ? totalTurbine.toFixed(1) : '—'}</td>
+                    <td style={css.td}>{totalNight > 0 ? totalNight.toFixed(1) : '—'}</td>
+                    <td style={css.td}>{totalLdg}</td>
+                    <td style={{ ...css.td, ...css.tdLast, color: '#7A8CA0', fontSize: 13 }}>
+                      {isExpanded ? '▲' : '▼'}
+                    </td>
+                  </tr>
+                  {/* Expanded sector rows */}
+                  {isExpanded && legs.map((log, idx) => (
+                    <tr key={log.id} style={{ opacity: 0.9 }}>
+                      <td style={{ ...css.td, ...css.tdFirst, color: '#4A6080', fontSize: 11, paddingLeft: 28 }}>
+                        Leg {idx + 1}
+                      </td>
+                      <td style={{ ...css.td, color: '#4A6080', fontSize: 12 }}>—</td>
+                      <td style={css.td}>
+                        <div style={css.route}>{log.departure} → {log.arrival}</div>
+                      </td>
+                      <td style={{ ...css.td, ...css.hours, fontSize: 13 }}>{log.totalTime.toFixed(1)}</td>
+                      <td style={{ ...css.td, fontSize: 13 }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, fontSize: 13 }}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, fontSize: 13 }}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, fontSize: 13 }}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, fontSize: 13 }}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
+                      <td style={{ ...css.td, ...css.tdLast, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                        <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit">✎</button>
+                        <button style={css.cloneBtn} onClick={() => setCloneFlight(log)} title="Clone">⧉</button>
+                        <button style={css.deleteBtn} onClick={() => handleDelete(log.id)} title="Delete">✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       )}

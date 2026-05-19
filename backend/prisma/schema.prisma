@@ -221,6 +221,7 @@ model TwoFactorSecret {
 model FlightLog {
   id              String     @id @default(uuid())
   pilotId         String
+  dutyId          String?    // shared UUID grouping multi-sector legs from the same operating day
   date            DateTime
   aircraftType    String
   registration    String?

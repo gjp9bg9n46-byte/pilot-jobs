@@ -1,3 +1,4 @@
+const { randomUUID } = require('crypto');
 const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
 
@@ -31,17 +32,18 @@ exports.createLog = async (req, res, next) => {
   }
 };
 
-// Creates multiple legs in one request. Returns all created records.
+// Creates multiple legs in one request, all sharing a dutyId so they group as one operating day.
 exports.bulkCreate = async (req, res, next) => {
   try {
     const { legs } = req.body;
     if (!Array.isArray(legs) || legs.length === 0)
       return res.status(400).json({ error: 'legs must be a non-empty array' });
 
+    const dutyId = randomUUID();
     const logs = await Promise.all(
       legs.map((leg) =>
         prisma.flightLog.create({
-          data: { ...leg, pilotId: req.pilot.id, source: 'MANUAL' },
+          data: { ...leg, pilotId: req.pilot.id, source: 'MANUAL', dutyId },
         })
       )
     );

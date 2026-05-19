@@ -109,9 +109,10 @@ interface LogRowProps {
   onEdit: () => void;
   onClone: () => void;
   onReverse: () => void;
+  compact?: boolean;
 }
 
-function LogRow({ log, onDelete, onEdit, onClone, onReverse }: LogRowProps) {
+function LogRow({ log, onDelete, onEdit, onClone, onReverse, compact }: LogRowProps) {
   const swipeRef = useRef<Swipeable>(null);
   const date = new Date(log.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -157,23 +158,96 @@ function LogRow({ log, onDelete, onEdit, onClone, onReverse }: LogRowProps) {
 
   return (
     <Swipeable ref={swipeRef} renderRightActions={renderRight} renderLeftActions={renderLeft} friction={2}>
-      <View style={s.logRow}>
+      <View style={[s.logRow, compact && s.logRowCompact]}>
         <View style={{ flex: 1 }}>
-          <Text style={s.logDate}>{date}</Text>
-          <Text style={s.logAircraft}>
-            {log.aircraftType}{log.registration ? ` · ${log.registration}` : ''}
-            {log.pending ? '  🔴 pending sync' : ''}
-          </Text>
+          {!compact && <Text style={s.logDate}>{date}</Text>}
+          {!compact && (
+            <Text style={s.logAircraft}>
+              {log.aircraftType}{log.registration ? ` · ${log.registration}` : ''}
+              {log.pending ? '  🔴 pending sync' : ''}
+            </Text>
+          )}
           {(log.departure || log.arrival) && (
-            <Text style={s.logRoute}>{log.departure} → {log.arrival}</Text>
+            <Text style={[s.logRoute, compact && { fontSize: 13, color: '#C0D0E0' }]}>
+              {log.departure} → {log.arrival}
+            </Text>
           )}
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={s.logHours}>{Number(log.totalTime).toFixed(1)} hrs</Text>
+          <Text style={[s.logHours, compact && { fontSize: 14 }]}>{Number(log.totalTime).toFixed(1)} hrs</Text>
           {log.picTime > 0 && <Text style={s.logSub}>PIC {Number(log.picTime).toFixed(1)}</Text>}
         </View>
       </View>
     </Swipeable>
+  );
+}
+
+// ─── Duty day row (expandable group of sectors) ───────────────────────────────
+
+interface DutyRowProps {
+  legs: any[];
+  onDelete: (id: string) => void;
+  onEdit: (log: any) => void;
+  onClone: (log: any) => void;
+  onReverse: (log: any) => void;
+}
+
+function DutyRow({ legs, onDelete, onEdit, onClone, onReverse }: DutyRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const first = legs[0];
+  const last = legs[legs.length - 1];
+  const totalTime = legs.reduce((sum, l) => sum + (l.totalTime || 0), 0);
+  const totalPic  = legs.reduce((sum, l) => sum + (l.picTime  || 0), 0);
+  const date = new Date(first.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  return (
+    <View style={s.dutyGroup}>
+      {/* Summary header — tap to expand/collapse */}
+      <TouchableOpacity style={s.dutyHeaderRow} onPress={() => setExpanded((e) => !e)} activeOpacity={0.75}>
+        <View style={{ flex: 1 }}>
+          <View style={s.dutyTitleRow}>
+            <Text style={s.logDate}>{date}</Text>
+            <View style={s.sectorBadge}>
+              <Text style={s.sectorBadgeText}>{legs.length} sectors</Text>
+            </View>
+          </View>
+          <Text style={s.logAircraft}>
+            {first.aircraftType}{first.registration ? ` · ${first.registration}` : ''}
+          </Text>
+          <Text style={s.logRoute}>
+            {first.departure || '?'} → {last.arrival || '?'}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={s.logHours}>{totalTime.toFixed(1)} hrs</Text>
+          {totalPic > 0 && <Text style={s.logSub}>PIC {totalPic.toFixed(1)}</Text>}
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={14} color="#7A8CA0"
+            style={{ marginTop: 6 }}
+          />
+        </View>
+      </TouchableOpacity>
+
+      {/* Expanded sector list */}
+      {expanded && (
+        <View style={s.dutyLegs}>
+          {legs.map((leg, idx) => (
+            <View key={leg.id}>
+              <Text style={s.legIndexLabel}>Leg {idx + 1}</Text>
+              <LogRow
+                log={leg}
+                compact
+                onDelete={() => onDelete(leg.id)}
+                onEdit={() => onEdit(leg)}
+                onClone={() => onClone(leg)}
+                onReverse={() => onReverse(leg)}
+              />
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -203,6 +277,30 @@ export default function LogbookScreen({ navigation }: any) {
         l.arrival?.toLowerCase().includes(q),
     );
   }, [logs, search]);
+
+  // Group logs: multi-sector dutyIds collapse into one DutyRow entry
+  const groupedData = useMemo(() => {
+    const groups: Array<
+      | { type: 'single'; id: string; log: any }
+      | { type: 'duty'; id: string; legs: any[] }
+    > = [];
+    const seenDuty = new Set<string>();
+
+    for (const log of filtered) {
+      if (!log.dutyId) {
+        groups.push({ type: 'single', id: log.id, log });
+      } else if (!seenDuty.has(log.dutyId)) {
+        seenDuty.add(log.dutyId);
+        const dutyLegs = filtered.filter((l) => l.dutyId === log.dutyId);
+        if (dutyLegs.length === 1) {
+          groups.push({ type: 'single', id: log.id, log });
+        } else {
+          groups.push({ type: 'duty', id: log.dutyId, legs: dutyLegs });
+        }
+      }
+    }
+    return groups;
+  }, [filtered]);
 
   const fetchData = async (refresh = false) => {
     refresh ? setRefreshing(true) : undefined;
@@ -276,7 +374,6 @@ export default function LogbookScreen({ navigation }: any) {
     Alert.alert('Import Logbook', 'Choose logbook format', [
       { text: 'ForeFlight (CSV)', onPress: () => pickFile('FOREFLIGHT') },
       { text: 'Logbook Pro (CSV)', onPress: () => pickFile('LOGBOOK_PRO') },
-      // TODO: backend — add parsers for LogTen Pro, MyFlightbook, generic CSV
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -337,23 +434,36 @@ export default function LogbookScreen({ navigation }: any) {
         />
 
         <FlatList
-          data={filtered}
-          keyExtractor={(l) => l.id}
+          data={groupedData}
+          keyExtractor={(item) => item.id}
           ListHeaderComponent={totals ? (
             <TotalsCard totals={totals} currency={currency} />
           ) : null}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} tintColor="#00B4D8" />
           }
-          renderItem={({ item }) => (
-            <LogRow
-              log={item}
-              onDelete={() => handleDelete(item.id)}
-              onEdit={() => navigation.navigate('AddLog', { logId: item.id, mode: 'edit', prefill: item })}
-              onClone={() => navigation.navigate('AddLog', { mode: 'clone', prefill: item })}
-              onReverse={() => navigation.navigate('AddLog', { mode: 'reverse', prefill: item })}
-            />
-          )}
+          renderItem={({ item }) => {
+            if (item.type === 'duty') {
+              return (
+                <DutyRow
+                  legs={item.legs}
+                  onDelete={handleDelete}
+                  onEdit={(log) => navigation.navigate('AddLog', { logId: log.id, mode: 'edit', prefill: log })}
+                  onClone={(log) => navigation.navigate('AddLog', { mode: 'clone', prefill: log })}
+                  onReverse={(log) => navigation.navigate('AddLog', { mode: 'reverse', prefill: log })}
+                />
+              );
+            }
+            return (
+              <LogRow
+                log={item.log}
+                onDelete={() => handleDelete(item.log.id)}
+                onEdit={() => navigation.navigate('AddLog', { logId: item.log.id, mode: 'edit', prefill: item.log })}
+                onClone={() => navigation.navigate('AddLog', { mode: 'clone', prefill: item.log })}
+                onReverse={() => navigation.navigate('AddLog', { mode: 'reverse', prefill: item.log })}
+              />
+            );
+          }}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={
@@ -397,11 +507,29 @@ const s = StyleSheet.create({
     backgroundColor: '#1B2B4B', borderRadius: 10, padding: 14,
     marginBottom: 6, flexDirection: 'row', alignItems: 'center',
   },
+  logRowCompact: { backgroundColor: '#0F1E38', borderRadius: 8, paddingVertical: 10 },
   logDate:    { color: '#7A8CA0', fontSize: 12, marginBottom: 2 },
   logAircraft: { color: '#fff', fontWeight: '700', fontSize: 14 },
   logRoute:   { color: '#7A8CA0', fontSize: 12, marginTop: 2 },
   logHours:   { color: '#00B4D8', fontWeight: '800', fontSize: 16 },
   logSub:     { color: '#4A6080', fontSize: 11, marginTop: 2 },
+
+  // Duty day group
+  dutyGroup:      { marginBottom: 6 },
+  dutyHeaderRow:  {
+    backgroundColor: '#1B2B4B', borderRadius: 10, padding: 14,
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: '#1E3A5F',
+  },
+  dutyTitleRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  sectorBadge:    {
+    backgroundColor: '#0A2F50', borderRadius: 8,
+    paddingHorizontal: 7, paddingVertical: 2,
+    borderWidth: 1, borderColor: '#00B4D8',
+  },
+  sectorBadgeText: { color: '#00B4D8', fontSize: 10, fontWeight: '800' },
+  dutyLegs:       { marginLeft: 10, marginTop: 2 },
+  legIndexLabel:  { color: '#4A6080', fontSize: 11, fontWeight: '600', paddingHorizontal: 14, paddingTop: 8, paddingBottom: 2 },
 
   swipeContainer: { flexDirection: 'row', alignItems: 'center' },
   swipeBtn: {
