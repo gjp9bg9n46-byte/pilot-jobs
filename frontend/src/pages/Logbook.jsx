@@ -517,7 +517,8 @@ export default function Logbook() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#7A8CA0' }}>Loading your logbook...</div>
       ) : (
-        <table style={css.table}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table style={{ ...css.table, minWidth: 700 }}>
           <thead>
             <tr>
               {['Date', 'Aircraft', 'Route', 'Total', 'PIC', 'Multi', 'Turbine', 'Night', 'Ldg', ''].map((h) => (
@@ -640,6 +641,7 @@ export default function Logbook() {
             })}
           </tbody>
         </table>
+        </div>
       )}
 
       {showModal && (

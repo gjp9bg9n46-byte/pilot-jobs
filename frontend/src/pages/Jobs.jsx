@@ -5,8 +5,9 @@ import { setJobs } from '../store';
 
 function PlaneSave({ saved, size = 18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#4A6080'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 10L2 4l4 6-4 6 16-6z" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#4A6080'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* Top-down commercial airplane silhouette */}
+      <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 12 2a1.5 1.5 0 0 0-1.5 1.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
     </svg>
   );
 }
@@ -69,10 +70,10 @@ function postedAgo(postedAt) {
 
 const css = {
   page: {},
-  topBar: { display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' },
+  topBar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
   search: {
-    flex: 1, minWidth: 260, background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 10, padding: '12px 16px', color: '#fff', fontSize: 14, outline: 'none',
+    flex: 1, minWidth: 200, background: '#1B2B4B', border: '1px solid #243050',
+    borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none',
     fontFamily: 'Inter, sans-serif',
   },
   select: {
@@ -139,7 +140,7 @@ const css = {
     fontFamily: 'Inter, sans-serif',
   },
   toolbar: { display: 'flex', gap: 16, marginBottom: 28, flexWrap: 'wrap', alignItems: 'center' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: 20 },
   card: {
     background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16,
     padding: 24, display: 'flex', flexDirection: 'column', gap: 12,

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { authApi } from '../../services/api';
 import { setAuth } from '../../store';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const css = {
   page: {
@@ -49,8 +50,9 @@ const FIELDS = [
 ];
 
 export default function Register() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const dispatch  = useDispatch();
+  const navigate  = useNavigate();
+  const isMobile  = useIsMobile();
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', country: '', city: '', phone: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -76,7 +78,7 @@ export default function Register() {
 
   return (
     <div style={css.page}>
-      <div style={css.card}>
+      <div style={{ ...css.card, padding: isMobile ? '32px 20px' : '48px 40px' }}>
         <div style={css.logo}>✈ CockpitHire</div>
         <div style={css.subtitle}>
           Create your free account — you'll add your pilot details after sign-up.
@@ -85,9 +87,9 @@ export default function Register() {
         {error && <div style={css.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          <div style={css.grid}>
+          <div style={{ ...css.grid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
             {FIELDS.map(({ name, label, type = 'text', required, half, full, hint }) => (
-              <div key={name} style={{ ...(full || !half ? css.full : {}), ...css.field }}>
+              <div key={name} style={{ ...(isMobile || full || !half ? css.full : {}), ...css.field }}>
                 <label style={css.label}>
                   {label}{required && <span style={css.required}> *</span>}
                   {hint && <span style={{ color: '#4A6080', fontSize: 11, fontWeight: 400, marginLeft: 8 }}>{hint}</span>}

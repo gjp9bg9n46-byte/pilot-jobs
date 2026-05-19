@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { jobApi } from '../services/api';
 import { setAlerts, markAlertRead } from '../store';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 function PlaneSave({ saved, size = 18 }) {
   return (
@@ -40,6 +41,7 @@ const FREQ_COLORS = {
 // ─── MatchBreakdown ──────────────────────────────────────────────────────────
 
 function MatchBreakdown({ breakdown }) {
+  const isMobile = useIsMobile();
   if (!breakdown) return null;
   const cols = [
     { label: 'Matched',  items: breakdown.matched  ?? [], icon: '✓', color: '#2ECC71', bg: 'rgba(46,204,113,0.08)'  },
@@ -47,7 +49,7 @@ function MatchBreakdown({ breakdown }) {
     { label: 'Missing',  items: breakdown.missing  ?? [], icon: '✗', color: '#E74C3C', bg: 'rgba(231,76,60,0.08)'   },
   ];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
       {cols.map((col) => (
         <div key={col.label} style={{ background: col.bg, borderRadius: 10, padding: '12px 14px' }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: col.color, letterSpacing: 1, marginBottom: 8 }}>
@@ -159,7 +161,7 @@ function SavedSearchModal({ initial, onClose, onSave }) {
 
 // ─── MatchesTab ──────────────────────────────────────────────────────────────
 
-function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefresh }) {
+function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefresh, isMobile }) {
   const [expanded, setExpanded] = useState(null);
   const [markingAll, setMarkingAll] = useState(false);
   const [savedMap, setSavedMap] = useState(() => {
@@ -213,8 +215,8 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
   return (
     <div>
       {/* Controls row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
           {chips.map((c) => (
             <button key={c.key} style={chipStyle(filter === c.key)} onClick={() => setFilter(c.key)}>
               {c.label}
@@ -273,8 +275,8 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 border: `1px solid ${isUnread ? '#00B4D8' : '#1E3050'}`,
                 borderLeft: `4px solid ${isUnread ? '#00B4D8' : '#1E3050'}`,
                 borderRadius: isOpen ? '14px 14px 0 0' : 14,
-                padding: '20px 24px', cursor: 'pointer',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20,
+                padding: isMobile ? '14px 14px' : '20px 24px', cursor: 'pointer',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: isMobile ? 10 : 20,
                 transition: 'border-color 0.2s',
               }}
               onClick={() => handleClick(alert)}
@@ -344,19 +346,19 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 >
                   <PlaneSave saved={savedMap[alert.job?.id]} />
                 </button>
-                <div style={{ textAlign: 'center', minWidth: 90 }}>
+                <div style={{ textAlign: 'center', minWidth: isMobile ? 60 : 90 }}>
                   <div style={{
-                    width: 68, height: 68, borderRadius: '50%',
+                    width: isMobile ? 52 : 68, height: isMobile ? 52 : 68, borderRadius: '50%',
                     border: `3px solid ${m.color}`, background: m.bg,
                     display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px',
+                    alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px',
                   }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: m.color, lineHeight: 1 }}>
+                    <div style={{ fontSize: isMobile ? 14 : 18, fontWeight: 800, color: m.color, lineHeight: 1 }}>
                       {Math.round(alert.matchScore)}%
                     </div>
-                    <div style={{ fontSize: 9, color: m.color, fontWeight: 700, marginTop: 2 }}>MATCH</div>
+                    <div style={{ fontSize: 8, color: m.color, fontWeight: 700, marginTop: 2 }}>MATCH</div>
                   </div>
-                  <div style={{ fontSize: 11, color: m.color, fontWeight: 700 }}>{m.label}</div>
+                  {!isMobile && <div style={{ fontSize: 11, color: m.color, fontWeight: 700 }}>{m.label}</div>}
                 </div>
               </div>
             </div>
@@ -570,6 +572,7 @@ function ApplicationsTab() {
 export default function Alerts() {
   const dispatch = useDispatch();
   const alerts = useSelector((s) => s.jobs.alerts);
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState('matches');
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
@@ -659,7 +662,7 @@ export default function Alerts() {
       {tab === 'matches' && (
         loading
           ? <div style={{ color: '#7A8CA0', textAlign: 'center', padding: 60 }}>Loading your alerts…</div>
-          : <MatchesTab alerts={alerts} dispatch={dispatch} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} onRefresh={() => loadAlerts(filter, sort)} />
+          : <MatchesTab alerts={alerts} dispatch={dispatch} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} onRefresh={() => loadAlerts(filter, sort)} isMobile={isMobile} />
       )}
       {tab === 'savedSearches' && <SavedSearchesTab />}
       {tab === 'applications'  && <ApplicationsTab />}
