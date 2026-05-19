@@ -63,7 +63,7 @@ function postedAgo(postedAt) {
 
 const css = {
   page: {},
-  topBar: { display: 'flex', gap: 16, marginBottom: 0, flexWrap: 'wrap', alignItems: 'center' },
+  topBar: { display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' },
   search: {
     flex: 1, minWidth: 260, background: '#1B2B4B', border: '1px solid #243050',
     borderRadius: 10, padding: '12px 16px', color: '#fff', fontSize: 14, outline: 'none',
@@ -307,14 +307,14 @@ export default function Jobs() {
     setLoading(true);
     setError(null);
     try {
-      const params = {};
+      const params = { limit: 100 };
       if (authority) params.authority = authority;
-      if (aircraftType) params.aircraftType = aircraftType;
+      if (aircraftType) params.aircraft = aircraftType;
       if (role) params.role = role;
       if (contractType) params.contractType = contractType;
       if (postedWithin) params.postedWithin = postedWithin;
-      if (minSalary) params.minSalary = minSalary;
-      if (qualifiedOnly) params.qualified = true;
+      if (minSalary) params.salaryMin = minSalary;
+      if (qualifiedOnly) params.qualifiedOnly = true;
       if (sort) params.sort = sort;
       const { data } = await jobApi.list(params);
       dispatch(setJobs({ jobs: data.jobs, total: data.total }));

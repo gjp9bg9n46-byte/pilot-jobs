@@ -16,6 +16,7 @@ enum CertificateType {
   IR
   ME
   SE
+  ELP
 }
 
 

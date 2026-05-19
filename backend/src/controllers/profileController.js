@@ -145,6 +145,161 @@ exports.deleteTraining = async (req, res, next) => {
   }
 };
 
+// Recurrent training — maps frontend field names to DB schema
+exports.getRecurrent = async (req, res, next) => {
+  try {
+    const records = await prisma.pilotTrainingRecord.findMany({
+      where: { pilotId: req.pilot.id },
+      orderBy: { completedAt: 'desc' },
+    });
+    res.json(records.map((r) => ({
+      id: r.id,
+      trainingType: r.type,
+      provider: r.provider,
+      completionDate: r.completedAt,
+      expiryDate: r.expiresAt,
+      remarks: r.remarks,
+    })));
+  } catch (err) { next(err); }
+};
+
+exports.addRecurrent = async (req, res, next) => {
+  try {
+    const { trainingType, provider, completionDate, expiryDate, remarks } = req.body;
+    const record = await prisma.pilotTrainingRecord.create({
+      data: {
+        pilotId: req.pilot.id,
+        type: trainingType,
+        provider,
+        completedAt: new Date(completionDate),
+        expiresAt: expiryDate ? new Date(expiryDate) : null,
+        remarks,
+      },
+    });
+    res.status(201).json({
+      id: record.id,
+      trainingType: record.type,
+      provider: record.provider,
+      completionDate: record.completedAt,
+      expiryDate: record.expiresAt,
+      remarks: record.remarks,
+    });
+  } catch (err) { next(err); }
+};
+
+exports.deleteRecurrent = async (req, res, next) => {
+  try {
+    await prisma.pilotTrainingRecord.deleteMany({
+      where: { id: req.params.id, pilotId: req.pilot.id },
+    });
+    res.status(204).send();
+  } catch (err) { next(err); }
+};
+
+// ELP — stored as PilotCertificate with type='ELP'
+exports.getELP = async (req, res, next) => {
+  try {
+    const certs = await prisma.pilotCertificate.findMany({
+      where: { pilotId: req.pilot.id, type: 'ELP' },
+      orderBy: { issueDate: 'desc' },
+    });
+    res.json(certs.map((c) => ({
+      id: c.id,
+      level: c.englishLevel,
+      issuingAuthority: c.issuingAuthority,
+      endorsementNumber: c.certificateNumber,
+      issueDate: c.issueDate,
+      expiryDate: c.expiryDate,
+      noExpiry: !c.expiryDate,
+    })));
+  } catch (err) { next(err); }
+};
+
+exports.addELP = async (req, res, next) => {
+  try {
+    const { level, issuingAuthority, endorsementNumber, issueDate, expiryDate, noExpiry } = req.body;
+    const cert = await prisma.pilotCertificate.create({
+      data: {
+        pilotId: req.pilot.id,
+        type: 'ELP',
+        issuingAuthority: issuingAuthority || 'ICAO',
+        certificateNumber: endorsementNumber || null,
+        issueDate: issueDate ? new Date(issueDate) : null,
+        expiryDate: (!noExpiry && expiryDate) ? new Date(expiryDate) : null,
+        englishLevel: level,
+      },
+    });
+    res.status(201).json({
+      id: cert.id,
+      level: cert.englishLevel,
+      issuingAuthority: cert.issuingAuthority,
+      endorsementNumber: cert.certificateNumber,
+      issueDate: cert.issueDate,
+      expiryDate: cert.expiryDate,
+      noExpiry: !cert.expiryDate,
+    });
+  } catch (err) { next(err); }
+};
+
+exports.deleteELP = async (req, res, next) => {
+  try {
+    await prisma.pilotCertificate.deleteMany({
+      where: { id: req.params.id, pilotId: req.pilot.id, type: 'ELP' },
+    });
+    res.status(204).send();
+  } catch (err) { next(err); }
+};
+
+// Right to Work — maps frontend field names to DB schema
+exports.getRTW = async (req, res, next) => {
+  try {
+    const records = await prisma.pilotRightToWork.findMany({
+      where: { pilotId: req.pilot.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(records.map((r) => ({
+      id: r.id,
+      country: r.country,
+      documentType: r.documentType,
+      documentNumber: r.documentNumber,
+      expiryDate: r.expiresAt,
+      noExpiry: !r.expiresAt,
+    })));
+  } catch (err) { next(err); }
+};
+
+exports.addRTW = async (req, res, next) => {
+  try {
+    const { country, documentType, documentNumber, expiryDate, noExpiry } = req.body;
+    const rtw = await prisma.pilotRightToWork.create({
+      data: {
+        pilotId: req.pilot.id,
+        country,
+        documentType,
+        documentNumber: documentNumber || null,
+        expiresAt: (!noExpiry && expiryDate) ? new Date(expiryDate) : null,
+      },
+    });
+    res.status(201).json({
+      id: rtw.id,
+      country: rtw.country,
+      documentType: rtw.documentType,
+      documentNumber: rtw.documentNumber,
+      expiryDate: rtw.expiresAt,
+      noExpiry: !rtw.expiresAt,
+    });
+  } catch (err) { next(err); }
+};
+
+exports.deleteRTW = async (req, res, next) => {
+  try {
+    await prisma.pilotRightToWork.deleteMany({
+      where: { id: req.params.id, pilotId: req.pilot.id },
+    });
+    res.status(204).send();
+  } catch (err) { next(err); }
+};
+
 exports.addRightToWork = async (req, res, next) => {
   try {
     const { country, documentType, documentNumber, expiresAt } = req.body;

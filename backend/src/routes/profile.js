@@ -20,6 +20,18 @@ router.delete('/medicals/:id', profileController.deleteMedical);
 router.post('/training', profileController.addTraining);
 router.delete('/training/:id', profileController.deleteTraining);
 
+router.get('/recurrent', profileController.getRecurrent);
+router.post('/recurrent', profileController.addRecurrent);
+router.delete('/recurrent/:id', profileController.deleteRecurrent);
+
+router.get('/elp', profileController.getELP);
+router.post('/elp', profileController.addELP);
+router.delete('/elp/:id', profileController.deleteELP);
+
+router.get('/rtw', profileController.getRTW);
+router.post('/rtw', profileController.addRTW);
+router.delete('/rtw/:id', profileController.deleteRTW);
+
 router.post('/right-to-work', profileController.addRightToWork);
 router.delete('/right-to-work/:id', profileController.deleteRightToWork);
 
