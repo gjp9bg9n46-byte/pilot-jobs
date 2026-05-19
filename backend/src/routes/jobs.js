@@ -10,6 +10,7 @@ router.get('/saved', c.getSavedJobs);
 
 // Alerts — fixed paths must come before /:id segments
 router.get('/alerts', c.getMyAlerts);
+router.post('/alerts/run-match', c.triggerMatch);
 router.patch('/alerts/read-all', c.markAllAlertsRead);
 router.patch('/alerts/:id/read', c.markAlertRead);
 router.patch('/alerts/:id/dismiss', c.dismissAlert);

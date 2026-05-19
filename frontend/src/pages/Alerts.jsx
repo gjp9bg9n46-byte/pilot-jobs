@@ -13,7 +13,13 @@ function matchStyle(score) {
 }
 
 const AUTHORITIES = [
-  'FAA', 'EASA', 'GCAA', 'CAAS', 'DGCA', 'JCAB', 'CASA', 'TCCA', 'CAA-UK', 'CAAC',
+  { value: 'FAA',  label: '🇺🇸 FAA' },
+  { value: 'EASA', label: '🇪🇺 EASA' },
+  { value: 'CAA',  label: '🇬🇧 UK CAA' },
+  { value: 'TCCA', label: '🇨🇦 Transport Canada' },
+  { value: 'CAAC', label: '🇨🇳 CAAC' },
+  { value: 'ICAO', label: '🌍 ICAO' },
+  { value: 'FATA', label: '🇷🇺 Russia/CIS' },
 ];
 
 const FREQ_COLORS = {
@@ -111,7 +117,7 @@ function SavedSearchModal({ initial, onClose, onSave }) {
           <label style={labelStyle}>AUTHORITY (optional)</label>
           <select style={inputStyle} value={form.authority} onChange={(e) => set('authority', e.target.value)}>
             <option value="">Any authority</option>
-            {AUTHORITIES.map((a) => <option key={a} value={a}>{a}</option>)}
+            {AUTHORITIES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
           </select>
         </div>
 
@@ -197,7 +203,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort }) {
           }}
         >
           <option value="newest">Newest</option>
-          <option value="bestMatch">Best Match</option>
+          <option value="score">Best Match</option>
           <option value="deadline">Deadline</option>
         </select>
         {unreadCount > 0 && (
@@ -500,15 +506,28 @@ export default function Alerts() {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('newest');
+  const matchTriggered = React.useRef(false);
 
   const unreadCount = alerts.filter((a) => !a.readAt).length;
 
-  useEffect(() => {
+  const loadAlerts = React.useCallback((f, s) => {
     setLoading(true);
-    jobApi.getAlerts({ filter, sort })
+    return jobApi.getAlerts({ filter: f, sort: s })
       .then(({ data }) => dispatch(setAlerts(data.alerts ?? [])))
       .finally(() => setLoading(false));
-  }, [filter, sort]);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!matchTriggered.current) {
+      matchTriggered.current = true;
+      // Run matching in background, then refresh the list
+      jobApi.triggerMatch()
+        .then(() => loadAlerts(filter, sort))
+        .catch(() => loadAlerts(filter, sort));
+    } else {
+      loadAlerts(filter, sort);
+    }
+  }, [filter, sort, loadAlerts]);
 
   const tabs = [
     { key: 'matches',       label: 'Matches',       badge: unreadCount },

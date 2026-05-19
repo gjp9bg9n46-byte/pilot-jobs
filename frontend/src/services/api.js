@@ -74,6 +74,7 @@ export const jobApi = {
   deleteSavedSearch: (id) => api.delete(`/jobs/saved-searches/${id}`),
   saveJob: (id) => api.post(`/jobs/${id}/save`),
   unsaveJob: (id) => api.delete(`/jobs/${id}/save`),
+  triggerMatch: () => api.post('/jobs/alerts/run-match'),
 };
 
 export default api;

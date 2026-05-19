@@ -4,16 +4,14 @@ import { jobApi } from '../services/api';
 import { setJobs } from '../store';
 
 const AUTHORITIES = [
-  { value: '', label: 'All Authorities' },
-  { value: 'FAA',    label: '🇺🇸 FAA — USA' },
-  { value: 'EASA',   label: '🇪🇺 EASA — Europe' },
-  { value: 'GCAA',   label: '🇦🇪 GCAA — UAE' },
-  { value: 'CAAC',   label: '🇨🇳 CAAC — China' },
-  { value: 'DGCA',   label: '🇮🇳 DGCA — India' },
-  { value: 'CASA',   label: '🇦🇺 CASA — Australia' },
-  { value: 'CAA_UK', label: '🇬🇧 CAA — UK' },
-  { value: 'TCCA',   label: '🇨🇦 TCCA — Canada' },
-  { value: 'ICAO',   label: '🌍 ICAO — International' },
+  { value: '',     label: 'All Authorities' },
+  { value: 'FAA',  label: '🇺🇸 FAA — USA' },
+  { value: 'EASA', label: '🇪🇺 EASA — Europe' },
+  { value: 'CAA',  label: '🇬🇧 UK CAA' },
+  { value: 'TCCA', label: '🇨🇦 Transport Canada' },
+  { value: 'CAAC', label: '🇨🇳 CAAC — China' },
+  { value: 'ICAO', label: '🌍 ICAO — International' },
+  { value: 'FATA', label: '🇷🇺 Russia / CIS' },
 ];
 
 const ROLES = [

@@ -1,5 +1,5 @@
 const prisma = require('../config/database');
-const { getPilotFlightTotals } = require('../services/matchingService');
+const { getPilotFlightTotals, runMatchForPilot } = require('../services/matchingService');
 
 async function enrichJobs(jobs, pilotId) {
   const [saved, applied] = await Promise.all([
@@ -100,11 +100,12 @@ exports.getJobs = async (req, res, next) => {
       });
       const totals = await getPilotFlightTotals(req.pilot.id);
 
-      // Normalize cert types: treat ATP and ATPL as equivalent
+      // Normalize cert types: treat ATP/ATPL and CAA variants as equivalent
       const normalise = (t) => (t === 'ATP' ? ['ATP', 'ATPL'] : t === 'ATPL' ? ['ATPL', 'ATP'] : [t]);
+      const normaliseAuth = (a) => (a === 'CAA_UK' || a === 'CAA-UK') ? ['CAA', 'CAA_UK', 'CAA-UK'] : a === 'CAA' ? ['CAA', 'CAA_UK', 'CAA-UK'] : [a];
       const flightCerts = pilot.certificates.filter((c) => c.type !== 'ELP');
       const certTypes = [...new Set(flightCerts.flatMap((c) => normalise(c.type)))];
-      const certAuthorities = [...new Set(flightCerts.map((c) => c.issuingAuthority))];
+      const certAuthorities = [...new Set(flightCerts.flatMap((c) => normaliseAuth(c.issuingAuthority)))];
       const ratingTypes = pilot.ratings.map((r) => r.aircraftType.toUpperCase());
 
       // Only restrict by certs if pilot has certs on file
@@ -407,6 +408,15 @@ exports.deleteSavedSearch = async (req, res, next) => {
       where: { id: req.params.id, pilotId: req.pilot.id },
     });
     res.json({ deleted: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.triggerMatch = async (req, res, next) => {
+  try {
+    const matched = await runMatchForPilot(req.pilot.id);
+    res.json({ matched });
   } catch (err) {
     next(err);
   }

@@ -11,8 +11,9 @@ function computeMatchScore(pilot, pilotTotals, job) {
   const maxScore = 100;
 
   const normalise = (t) => (t === 'ATP' ? ['ATP', 'ATPL'] : t === 'ATPL' ? ['ATPL', 'ATP'] : [t]);
+  const normaliseAuth = (a) => (a === 'CAA_UK' || a === 'CAA-UK') ? ['CAA', 'CAA_UK', 'CAA-UK'] : a === 'CAA' ? ['CAA', 'CAA_UK', 'CAA-UK'] : [a];
   const certTypes = [...new Set(pilot.certificates.filter((c) => c.type !== 'ELP').flatMap((c) => normalise(c.type)))];
-  const certAuthorities = pilot.certificates.filter((c) => c.type !== 'ELP').map((c) => c.issuingAuthority);
+  const certAuthorities = [...new Set(pilot.certificates.filter((c) => c.type !== 'ELP').flatMap((c) => normaliseAuth(c.issuingAuthority)))];
   const ratingAircraft = pilot.ratings.map((r) => r.aircraftType.toLowerCase());
   const medicalClasses = pilot.medicals.map((m) => m.medicalClass);
 
@@ -237,4 +238,36 @@ function computeMatchBreakdown(pilot, pilotTotals, job) {
   return { matched, missing, marginal };
 }
 
-module.exports = { matchJobToAllPilots, runFullMatch, computeMatchScore, getPilotFlightTotals, computeMatchBreakdown };
+async function runMatchForPilot(pilotId) {
+  const pilot = await prisma.pilot.findUnique({
+    where: { id: pilotId },
+    include: { certificates: true, ratings: true, medicals: true },
+  });
+  if (!pilot) return 0;
+
+  const totals = await getPilotFlightTotals(pilotId);
+  const jobs = await prisma.job.findMany({ where: { status: 'ACTIVE' } });
+
+  let matched = 0;
+  for (const job of jobs) {
+    const score = computeMatchScore(pilot, totals, job);
+    if (score === null || score < 60) continue;
+    try {
+      const exists = await prisma.jobAlert.findUnique({
+        where: { pilotId_jobId: { pilotId, jobId: job.id } },
+      });
+      if (exists) continue;
+      const breakdown = computeMatchBreakdown(pilot, totals, job);
+      await prisma.jobAlert.create({
+        data: { pilotId, jobId: job.id, matchScore: score, breakdown },
+      });
+      matched++;
+    } catch (err) {
+      logger.error(`runMatchForPilot alert error: ${err.message}`);
+    }
+  }
+  logger.info(`Pilot ${pilotId}: ${matched} new alerts created`);
+  return matched;
+}
+
+module.exports = { matchJobToAllPilots, runFullMatch, runMatchForPilot, computeMatchScore, getPilotFlightTotals, computeMatchBreakdown };

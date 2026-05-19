@@ -12,17 +12,13 @@ const LICENCE_TYPES = [
 ];
 
 const AUTHORITIES = [
-  { value: 'FAA',    flag: '🇺🇸', label: 'FAA — United States' },
-  { value: 'EASA',   flag: '🇪🇺', label: 'EASA — Europe' },
-  { value: 'GCAA',   flag: '🇦🇪', label: 'GCAA — UAE' },
-  { value: 'CAAC',   flag: '🇨🇳', label: 'CAAC — China' },
-  { value: 'DGCA',   flag: '🇮🇳', label: 'DGCA — India' },
-  { value: 'CASA',   flag: '🇦🇺', label: 'CASA — Australia' },
-  { value: 'CAA_UK', flag: '🇬🇧', label: 'CAA — United Kingdom' },
-  { value: 'TCCA',   flag: '🇨🇦', label: 'TCCA — Canada' },
-  { value: 'ANAC',   flag: '🇧🇷', label: 'ANAC — Brazil' },
-  { value: 'JCAB',   flag: '🇯🇵', label: 'JCAB — Japan' },
-  { value: 'ICAO',   flag: '🌍', label: 'ICAO — International' },
+  { value: 'FAA',  flag: '🇺🇸', label: 'FAA — United States' },
+  { value: 'EASA', flag: '🇪🇺', label: 'EASA — Europe' },
+  { value: 'CAA',  flag: '🇬🇧', label: 'UK CAA — United Kingdom' },
+  { value: 'TCCA', flag: '🇨🇦', label: 'Transport Canada — TCCA' },
+  { value: 'CAAC', flag: '🇨🇳', label: 'CAAC — China' },
+  { value: 'ICAO', flag: '🌍',  label: 'ICAO — International' },
+  { value: 'FATA', flag: '🇷🇺', label: 'Rosaviatsiya — Russia/CIS' },
 ];
 
 const MEDICAL_CLASSES = [
