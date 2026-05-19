@@ -3,6 +3,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { jobApi } from '../services/api';
 import { setAlerts, markAlertRead } from '../store';
 
+function PlaneSave({ saved, size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#4A6080'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 10L2 4l4 6-4 6 16-6z" />
+    </svg>
+  );
+}
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function matchStyle(score) {
@@ -301,7 +309,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                   title={savedMap[alert.job?.id] ? 'Unsave' : 'Save job'}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1 }}
                 >
-                  {savedMap[alert.job?.id] ? '❤️' : '🤍'}
+                  <PlaneSave saved={savedMap[alert.job?.id]} />
                 </button>
                 <div style={{ textAlign: 'center', minWidth: 90 }}>
                   <div style={{

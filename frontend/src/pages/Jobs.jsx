@@ -3,6 +3,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { jobApi } from '../services/api';
 import { setJobs } from '../store';
 
+function PlaneSave({ saved, size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#4A6080'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 10L2 4l4 6-4 6 16-6z" />
+    </svg>
+  );
+}
+
 const AUTHORITIES = [
   { value: '',     label: 'All Authorities' },
   { value: 'FAA',  label: '🇺🇸 FAA — USA' },
@@ -499,7 +507,7 @@ export default function Jobs() {
                   onClick={(e) => handleSaveToggle(e, job.id)}
                   title={isSaved ? 'Unsave job' : 'Save job'}
                 >
-                  {isSaved ? '❤️' : '🤍'}
+                  <PlaneSave saved={isSaved} />
                 </button>
 
                 <div style={css.cardTop}>

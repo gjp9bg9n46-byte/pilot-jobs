@@ -3,13 +3,27 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store';
 
+const S = { strokeLinecap: 'round', strokeLinejoin: 'round' };
+const Ico = ({ d, extra, size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" {...S}>
+    {d && <path d={d} />}
+    {extra}
+  </svg>
+);
+
 const NAV = [
-  { to: '/jobs',     icon: '💼', label: 'Job Openings'   },
-  { to: '/alerts',   icon: '🔔', label: 'My Alerts'      },
-  { to: '/logbook',  icon: '📖', label: 'Flight Logbook'  },
-  { to: '/profile',  icon: '👤', label: 'My Profile'     },
-  { to: '/support',  icon: '💬', label: 'Support'        },
-  { to: '/settings', icon: '⚙️', label: 'Settings'       },
+  { to: '/jobs', label: 'Job Openings',
+    icon: <Ico extra={<><rect x="2" y="6" width="14" height="10" rx="1.5"/><path d="M6 6V4.5A1.5 1.5 0 017.5 3h3A1.5 1.5 0 0112 4.5V6"/><line x1="2" y1="11" x2="16" y2="11"/></>} /> },
+  { to: '/alerts', label: 'My Alerts',
+    icon: <Ico extra={<><path d="M9 2.5a4.5 4.5 0 00-4.5 4.5v2.5L3 12h12l-1.5-2.5V7A4.5 4.5 0 009 2.5z"/><path d="M7.5 14.5a1.5 1.5 0 003 0"/></>} /> },
+  { to: '/logbook', label: 'Flight Logbook',
+    icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="6.5" x2="12" y2="6.5"/><line x1="6" y1="9" x2="12" y2="9"/><line x1="6" y1="11.5" x2="10" y2="11.5"/></>} /> },
+  { to: '/profile', label: 'My Profile',
+    icon: <Ico extra={<><circle cx="9" cy="6.5" r="2.5"/><path d="M3 16a6 6 0 0112 0"/></>} /> },
+  { to: '/support', label: 'Support',
+    icon: <Ico extra={<><path d="M2.5 3h13a1 1 0 011 1v7.5a1 1 0 01-1 1H5.5l-3 3V4a1 1 0 011-1z"/></>} /> },
+  { to: '/settings', label: 'Settings',
+    icon: <Ico extra={<><circle cx="9" cy="9" r="2.5"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.6 3.6l1.4 1.4M13 13l1.4 1.4M3.6 14.4l1.4-1.4M13 5l1.4-1.4"/></>} /> },
 ];
 
 const css = {
@@ -85,7 +99,10 @@ export default function Layout() {
       {/* Sidebar */}
       <aside style={css.sidebar}>
         <div style={css.logo}>
-          ✈ CockpitHire
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#00B4D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }}>
+            <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
+          </svg>
+          CockpitHire
           <div style={css.logoSub}>Aviation Careers Worldwide</div>
         </div>
 
@@ -107,7 +124,10 @@ export default function Layout() {
         </nav>
 
         <button style={css.logoutBtn} onClick={handleLogout}>
-          <span style={css.navIcon}>🚪</span> Sign Out
+          <span style={css.navIcon}>
+            <Ico size={18} extra={<><path d="M7 3H3a1 1 0 00-1 1v10a1 1 0 001 1h4"/><polyline points="12 5 16 9 12 13"/><line x1="16" y1="9" x2="6" y2="9"/></>} />
+          </span>
+          Sign Out
         </button>
       </aside>
 

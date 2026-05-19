@@ -203,7 +203,7 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
           </div>
         )}
 
-        <div style={css.sectionTitle}>✈  Flight Details</div>
+        <div style={css.sectionTitle}>Flight Details</div>
         <div style={css.formGrid}>
           <Field k="date" label="Date *" type="date" />
           <Field k="flightNumber" label="Flight Number" hint="e.g. QR435, EK201" />
@@ -230,7 +230,7 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
           <Field k="sicName" label="Second in Command" hint="e.g. F/O Smith" />
         </div>
 
-        <div style={css.sectionTitle}>⏱  Flight Hours  <span style={{ fontSize: 11, color: '#4A6080', fontWeight: 400 }}>Enter as decimals — 1h 30m = 1.5</span></div>
+        <div style={css.sectionTitle}>Flight Hours  <span style={{ fontSize: 11, color: '#4A6080', fontWeight: 400 }}>Enter as decimals — 1h 30m = 1.5</span></div>
         <div style={css.formGrid}>
           <Field k="totalTime" label="Total Time *" type="number" />
           <Field k="picTime" label="PIC (Captain)" type="number" />
@@ -241,7 +241,7 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
           <Field k="nightTime" label="Night" type="number" />
         </div>
 
-        <div style={css.sectionTitle}>🛬  Landings</div>
+        <div style={css.sectionTitle}>Landings</div>
         <div style={css.formGrid}>
           <Field k="landingsDay" label="Day Landings" type="number" />
           <Field k="landingsNight" label="Night Landings" type="number" />
@@ -358,7 +358,9 @@ export default function Logbook() {
 
   const saveCarryForward = () => {
     const parsed = {};
-    Object.entries(carryForwardForm).forEach(([k, v]) => { parsed[k] = parseFloat(v) || 0; });
+    Object.entries(carryForwardForm).forEach(([k, v]) => {
+      parsed[k] = k === 'aircraftType' ? (v || '') : (parseFloat(v) || 0);
+    });
     setCarryForward(parsed);
     localStorage.setItem('logbook_carry_forward', JSON.stringify(parsed));
     setCarryForwardSaved(true);
@@ -392,14 +394,26 @@ export default function Logbook() {
           style={{ background: 'none', border: 'none', color: '#4A6080', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}
         >
           {showCarryForward ? '▾' : '▸'} Previous / carry-forward hours
-          {Object.values(carryForward).some((v) => v > 0) && (
-            <span style={{ background: '#00B4D820', border: '1px solid #00B4D840', color: '#00B4D8', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>active</span>
+          {Object.entries(carryForward).some(([k, v]) => k !== 'aircraftType' && v > 0) && (
+            <span style={{ background: '#00B4D820', border: '1px solid #00B4D840', color: '#00B4D8', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>
+              {carryForward.aircraftType ? carryForward.aircraftType : 'active'}
+            </span>
           )}
         </button>
         {showCarryForward && (
           <div style={{ background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 12, padding: 20, marginTop: 10 }}>
             <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 14 }}>
               Enter hours from your previous logbooks. These are added to the totals above.
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, color: '#7A8CA0', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 }}>Aircraft Type</label>
+              <input
+                type="text"
+                style={{ width: '100%', maxWidth: 240, background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                value={carryForwardForm.aircraftType ?? ''}
+                onChange={(e) => setCarryForwardForm((f) => ({ ...f, aircraftType: e.target.value }))}
+                placeholder="e.g. A320, B737"
+              />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
               {TOTALS_DISPLAY.map(({ key, label }) => (
@@ -510,9 +524,9 @@ export default function Logbook() {
                 <td style={css.td}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
                 <td style={css.td}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
                 <td style={{ ...css.td, ...css.tdLast, whiteSpace: 'nowrap' }}>
-                  <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit">✏️</button>
-                  <button style={css.cloneBtn} onClick={() => setCloneFlight(log)} title="Clone">⎘</button>
-                  <button style={css.deleteBtn} onClick={() => handleDelete(log.id)} title="Delete">🗑</button>
+                  <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit">✎</button>
+                  <button style={css.cloneBtn} onClick={() => setCloneFlight(log)} title="Clone">⧉</button>
+                  <button style={css.deleteBtn} onClick={() => handleDelete(log.id)} title="Delete">✕</button>
                 </td>
               </tr>
             ))}
