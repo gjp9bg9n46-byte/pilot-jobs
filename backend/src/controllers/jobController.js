@@ -92,28 +92,57 @@ exports.getJobs = async (req, res, next) => {
       where.postedAt = { gte: since };
     }
 
-    // Qualified-only: filter by pilot's hard requirements at DB level
+    // Qualified-only: filter by pilot's profile against job requirements
     if (qualifiedOnly === 'true') {
       const pilot = await prisma.pilot.findUnique({
         where: { id: req.pilot.id },
-        include: { certificates: true },
+        include: { certificates: true, ratings: true },
       });
       const totals = await getPilotFlightTotals(req.pilot.id);
-      const certTypes = pilot.certificates.map((c) => c.type);
-      const certAuthorities = pilot.certificates.map((c) => c.issuingAuthority);
 
-      andConditions.push({
-        OR: [{ reqCertificates: { isEmpty: true } }, { reqCertificates: { hasSome: certTypes } }],
-      });
-      andConditions.push({
-        OR: [{ reqAuthorities: { isEmpty: true } }, { reqAuthorities: { hasSome: certAuthorities } }],
-      });
-      andConditions.push({
-        OR: [{ reqMinTotalHours: null }, { reqMinTotalHours: { lte: totals.totalTime } }],
-      });
-      andConditions.push({
-        OR: [{ reqMinPicHours: null }, { reqMinPicHours: { lte: totals.picTime } }],
-      });
+      // Normalize cert types: treat ATP and ATPL as equivalent
+      const normalise = (t) => (t === 'ATP' ? ['ATP', 'ATPL'] : t === 'ATPL' ? ['ATPL', 'ATP'] : [t]);
+      const flightCerts = pilot.certificates.filter((c) => c.type !== 'ELP');
+      const certTypes = [...new Set(flightCerts.flatMap((c) => normalise(c.type)))];
+      const certAuthorities = [...new Set(flightCerts.map((c) => c.issuingAuthority))];
+      const ratingTypes = pilot.ratings.map((r) => r.aircraftType.toUpperCase());
+
+      // Only restrict by certs if pilot has certs on file
+      if (certTypes.length > 0) {
+        andConditions.push({
+          OR: [{ reqCertificates: { isEmpty: true } }, { reqCertificates: { hasSome: certTypes } }],
+        });
+      }
+
+      // Only restrict by authority if pilot has cert authorities on file
+      if (certAuthorities.length > 0) {
+        andConditions.push({
+          OR: [{ reqAuthorities: { isEmpty: true } }, { reqAuthorities: { hasSome: certAuthorities } }],
+        });
+      }
+
+      // Only restrict by hours if pilot has actually logged hours
+      if (totals.totalTime > 0) {
+        andConditions.push({
+          OR: [{ reqMinTotalHours: null }, { reqMinTotalHours: { lte: totals.totalTime } }],
+        });
+      }
+
+      if (totals.picTime > 0) {
+        andConditions.push({
+          OR: [{ reqMinPicHours: null }, { reqMinPicHours: { lte: totals.picTime } }],
+        });
+      }
+
+      // Only restrict by aircraft type if pilot has type ratings
+      if (ratingTypes.length > 0) {
+        andConditions.push({
+          OR: [
+            { reqAircraftTypes: { isEmpty: true } },
+            { reqAircraftTypes: { hasSome: ratingTypes } },
+          ],
+        });
+      }
     }
 
     if (andConditions.length > 0) where.AND = andConditions;

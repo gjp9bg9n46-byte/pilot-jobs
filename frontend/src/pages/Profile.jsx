@@ -3,12 +3,12 @@ import { useSelector } from 'react-redux';
 import { profileApi } from '../services/api';
 
 const LICENCE_TYPES = [
-  { value: 'ATP', label: 'ATPL — Airline Transport Pilot' },
-  { value: 'CPL', label: 'CPL — Commercial Pilot' },
-  { value: 'MPL', label: 'MPL — Multi-crew Pilot' },
-  { value: 'PPL', label: 'PPL — Private Pilot' },
-  { value: 'IR',  label: 'IR — Instrument Rating' },
-  { value: 'ME',  label: 'ME — Multi-Engine Rating' },
+  { value: 'ATPL', label: 'ATPL — Airline Transport Pilot' },
+  { value: 'CPL',  label: 'CPL — Commercial Pilot' },
+  { value: 'MPL',  label: 'MPL — Multi-crew Pilot' },
+  { value: 'PPL',  label: 'PPL — Private Pilot' },
+  { value: 'IR',   label: 'IR — Instrument Rating' },
+  { value: 'ME',   label: 'ME — Multi-Engine Rating' },
 ];
 
 const AUTHORITIES = [

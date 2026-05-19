@@ -10,8 +10,9 @@ function computeMatchScore(pilot, pilotTotals, job) {
   let score = 0;
   const maxScore = 100;
 
-  const certTypes = pilot.certificates.map((c) => c.type);
-  const certAuthorities = pilot.certificates.map((c) => c.issuingAuthority);
+  const normalise = (t) => (t === 'ATP' ? ['ATP', 'ATPL'] : t === 'ATPL' ? ['ATPL', 'ATP'] : [t]);
+  const certTypes = [...new Set(pilot.certificates.filter((c) => c.type !== 'ELP').flatMap((c) => normalise(c.type)))];
+  const certAuthorities = pilot.certificates.filter((c) => c.type !== 'ELP').map((c) => c.issuingAuthority);
   const ratingAircraft = pilot.ratings.map((r) => r.aircraftType.toLowerCase());
   const medicalClasses = pilot.medicals.map((m) => m.medicalClass);
 
