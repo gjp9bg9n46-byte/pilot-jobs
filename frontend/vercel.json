@@ -1,5 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://cockpithire.com/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://cockpithire.com/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
