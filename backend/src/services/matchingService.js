@@ -3,8 +3,63 @@ const notificationService = require('./notificationService');
 const logger = require('../config/logger');
 
 /**
- * Score how well a pilot matches a job (0–100).
- * Returns null if any hard requirement fails.
+ * Lenient score for alerts/notifications (0–100).
+ * Only cert type and authority are hard requirements.
+ * Hours and ratings are proportional soft scores — missing hours
+ * does NOT exclude the job, it just lowers the score.
+ */
+function computeAlertScore(pilot, pilotTotals, job) {
+  const normalise = (t) => (t === 'ATP' ? ['ATP', 'ATPL'] : t === 'ATPL' ? ['ATPL', 'ATP'] : [t]);
+  const normaliseAuth = (a) => (a === 'CAA_UK' || a === 'CAA-UK') ? ['CAA', 'CAA_UK', 'CAA-UK'] : a === 'CAA' ? ['CAA', 'CAA_UK', 'CAA-UK'] : [a];
+  const certTypes = [...new Set(pilot.certificates.filter((c) => c.type !== 'ELP').flatMap((c) => normalise(c.type)))];
+  const certAuthorities = [...new Set(pilot.certificates.filter((c) => c.type !== 'ELP').flatMap((c) => normaliseAuth(c.issuingAuthority)))];
+  const ratingAircraft = pilot.ratings.map((r) => r.aircraftType.toLowerCase());
+
+  let score = 0;
+
+  // Hard: cert type — wrong license category means irrelevant job
+  if (job.reqCertificates.length > 0) {
+    if (certTypes.length === 0 || !job.reqCertificates.some((rc) => certTypes.includes(rc))) return null;
+    score += 40;
+  } else {
+    score += 40;
+  }
+
+  // Hard: authority — only if pilot has authorities on file
+  if (job.reqAuthorities.length > 0 && certAuthorities.length > 0) {
+    if (!job.reqAuthorities.some((a) => certAuthorities.includes(a))) return null;
+    score += 20;
+  } else {
+    score += 20;
+  }
+
+  // Soft: total hours (proportional 0–20, capped)
+  if (job.reqMinTotalHours > 0) {
+    score += Math.min(20, Math.round((pilotTotals.totalTime / job.reqMinTotalHours) * 20));
+  } else {
+    score += 20;
+  }
+
+  // Soft: PIC hours (proportional 0–10)
+  if (job.reqMinPicHours > 0) {
+    score += Math.min(10, Math.round((pilotTotals.picTime / job.reqMinPicHours) * 10));
+  } else {
+    score += 10;
+  }
+
+  // Soft: aircraft type rating (0 or 10)
+  if (job.reqAircraftTypes.length > 0) {
+    score += job.reqAircraftTypes.some((a) => ratingAircraft.includes(a.toLowerCase())) ? 10 : 0;
+  } else {
+    score += 10;
+  }
+
+  return Math.round(score);
+}
+
+/**
+ * Strict score for the "Qualified only" filter (0–100).
+ * Returns null if any hard requirement fails (cert, authority, hours).
  */
 function computeMatchScore(pilot, pilotTotals, job) {
   let score = 0;
@@ -250,13 +305,21 @@ async function runMatchForPilot(pilotId) {
 
   let matched = 0;
   for (const job of jobs) {
-    const score = computeMatchScore(pilot, totals, job);
-    if (score === null || score < 60) continue;
+    // Use lenient alert scorer — hours are soft, threshold 40
+    const score = computeAlertScore(pilot, totals, job);
+    if (score === null || score < 40) continue;
     try {
       const exists = await prisma.jobAlert.findUnique({
         where: { pilotId_jobId: { pilotId, jobId: job.id } },
       });
-      if (exists) continue;
+      if (exists) {
+        // Update score in case profile has changed
+        await prisma.jobAlert.update({
+          where: { pilotId_jobId: { pilotId, jobId: job.id } },
+          data: { matchScore: score },
+        });
+        continue;
+      }
       const breakdown = computeMatchBreakdown(pilot, totals, job);
       await prisma.jobAlert.create({
         data: { pilotId, jobId: job.id, matchScore: score, breakdown },
@@ -270,4 +333,4 @@ async function runMatchForPilot(pilotId) {
   return matched;
 }
 
-module.exports = { matchJobToAllPilots, runFullMatch, runMatchForPilot, computeMatchScore, getPilotFlightTotals, computeMatchBreakdown };
+module.exports = { matchJobToAllPilots, runFullMatch, runMatchForPilot, computeMatchScore, computeAlertScore, getPilotFlightTotals, computeMatchBreakdown };

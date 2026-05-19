@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { jobApi } from '../services/api';
 import { setAlerts, markAlertRead } from '../store';
@@ -150,9 +150,27 @@ function SavedSearchModal({ initial, onClose, onSave }) {
 
 // ─── MatchesTab ──────────────────────────────────────────────────────────────
 
-function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort }) {
+function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefresh }) {
   const [expanded, setExpanded] = useState(null);
   const [markingAll, setMarkingAll] = useState(false);
+  const [savedMap, setSavedMap] = useState(() => {
+    const m = {};
+    alerts.forEach((a) => { if (a.job?.id) m[a.job.id] = false; });
+    return m;
+  });
+
+  const handleSaveToggle = async (e, jobId) => {
+    e.stopPropagation();
+    const isSaved = savedMap[jobId];
+    setSavedMap((prev) => ({ ...prev, [jobId]: !isSaved }));
+    try {
+      if (isSaved) await jobApi.unsaveJob(jobId);
+      else await jobApi.saveJob(jobId);
+      if (filter === 'saved') onRefresh();
+    } catch {
+      setSavedMap((prev) => ({ ...prev, [jobId]: isSaved }));
+    }
+  };
 
   const handleClick = async (alert) => {
     if (!alert.readAt) {
@@ -277,19 +295,28 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort }) {
                   )}
                 </div>
               </div>
-              <div style={{ textAlign: 'center', flexShrink: 0, minWidth: 100 }}>
-                <div style={{
-                  width: 72, height: 72, borderRadius: '50%',
-                  border: `3px solid ${m.color}`, background: m.bg,
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px',
-                }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: m.color, lineHeight: 1 }}>
-                    {Math.round(alert.matchScore)}%
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <button
+                  onClick={(e) => handleSaveToggle(e, alert.job?.id)}
+                  title={savedMap[alert.job?.id] ? 'Unsave' : 'Save job'}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1 }}
+                >
+                  {savedMap[alert.job?.id] ? '❤️' : '🤍'}
+                </button>
+                <div style={{ textAlign: 'center', minWidth: 90 }}>
+                  <div style={{
+                    width: 68, height: 68, borderRadius: '50%',
+                    border: `3px solid ${m.color}`, background: m.bg,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px',
+                  }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: m.color, lineHeight: 1 }}>
+                      {Math.round(alert.matchScore)}%
+                    </div>
+                    <div style={{ fontSize: 9, color: m.color, fontWeight: 700, marginTop: 2 }}>MATCH</div>
                   </div>
-                  <div style={{ fontSize: 9, color: m.color, fontWeight: 700, marginTop: 2 }}>MATCH</div>
+                  <div style={{ fontSize: 11, color: m.color, fontWeight: 700 }}>{m.label}</div>
                 </div>
-                <div style={{ fontSize: 11, color: m.color, fontWeight: 700 }}>{m.label}</div>
               </div>
             </div>
 
@@ -506,7 +533,7 @@ export default function Alerts() {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('newest');
-  const matchTriggered = React.useRef(false);
+  const matchTriggered = useRef(false);
 
   const unreadCount = alerts.filter((a) => !a.readAt).length;
 
@@ -591,7 +618,7 @@ export default function Alerts() {
       {tab === 'matches' && (
         loading
           ? <div style={{ color: '#7A8CA0', textAlign: 'center', padding: 60 }}>Loading your alerts…</div>
-          : <MatchesTab alerts={alerts} dispatch={dispatch} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} />
+          : <MatchesTab alerts={alerts} dispatch={dispatch} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} onRefresh={() => loadAlerts(filter, sort)} />
       )}
       {tab === 'savedSearches' && <SavedSearchesTab />}
       {tab === 'applications'  && <ApplicationsTab />}

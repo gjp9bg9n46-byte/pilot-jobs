@@ -1,5 +1,5 @@
 const prisma = require('../config/database');
-const { getPilotFlightTotals, runMatchForPilot } = require('../services/matchingService');
+const { getPilotFlightTotals, runMatchForPilot, computeAlertScore, computeMatchBreakdown } = require('../services/matchingService');
 
 async function enrichJobs(jobs, pilotId) {
   const [saved, applied] = await Promise.all([
@@ -289,6 +289,27 @@ exports.saveJob = async (req, res, next) => {
       create: { pilotId: req.pilot.id, jobId: req.params.id },
       update: {},
     });
+    // Ensure a JobAlert exists so this job appears in the Saved filter on Alerts page
+    const alertExists = await prisma.jobAlert.findUnique({
+      where: { pilotId_jobId: { pilotId: req.pilot.id, jobId: req.params.id } },
+    });
+    if (!alertExists) {
+      try {
+        const [job, pilot] = await Promise.all([
+          prisma.job.findUnique({ where: { id: req.params.id } }),
+          prisma.pilot.findUnique({
+            where: { id: req.pilot.id },
+            include: { certificates: true, ratings: true, medicals: true },
+          }),
+        ]);
+        const totals = await getPilotFlightTotals(req.pilot.id);
+        const score = computeAlertScore(pilot, totals, job) ?? 0;
+        const breakdown = computeMatchBreakdown(pilot, totals, job);
+        await prisma.jobAlert.create({
+          data: { pilotId: req.pilot.id, jobId: req.params.id, matchScore: score, breakdown },
+        });
+      } catch (_) {}
+    }
     res.json({ saved: true });
   } catch (err) {
     next(err);
