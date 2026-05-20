@@ -314,7 +314,7 @@ export default function Jobs() {
     setLoading(true);
     setError(null);
     try {
-      const params = { limit: 100 };
+      const params = { limit: 1000 };
       if (authority) params.authority = authority;
       if (aircraftType) params.aircraft = aircraftType;
       if (role) params.role = role;
