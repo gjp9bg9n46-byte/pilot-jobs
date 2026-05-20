@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
+import {
+  BarChart2, FileText, Shield, Plane, MessageSquare,
+  RefreshCw, Globe, User, Trash2,
+} from 'lucide-react';
 import { profileApi } from '../services/api';
 
 const LICENCE_TYPES = [
@@ -12,13 +16,13 @@ const LICENCE_TYPES = [
 ];
 
 const AUTHORITIES = [
-  { value: 'FAA',  flag: '🇺🇸', label: 'FAA — United States' },
-  { value: 'EASA', flag: '🇪🇺', label: 'EASA — Europe' },
-  { value: 'CAA',  flag: '🇬🇧', label: 'UK CAA — United Kingdom' },
-  { value: 'TCCA', flag: '🇨🇦', label: 'Transport Canada — TCCA' },
-  { value: 'CAAC', flag: '🇨🇳', label: 'CAAC — China' },
-  { value: 'ICAO', flag: '🌍',  label: 'ICAO — International' },
-  { value: 'FATA', flag: '🇷🇺', label: 'Rosaviatsiya — Russia/CIS' },
+  { value: 'FAA',  label: 'FAA — United States' },
+  { value: 'EASA', label: 'EASA — Europe' },
+  { value: 'CAA',  label: 'UK CAA — United Kingdom' },
+  { value: 'TCCA', label: 'Transport Canada — TCCA' },
+  { value: 'CAAC', label: 'CAAC — China' },
+  { value: 'ICAO', label: 'ICAO — International' },
+  { value: 'FATA', label: 'Rosaviatsiya — Russia/CIS' },
 ];
 
 const MEDICAL_CLASSES = [
@@ -66,7 +70,7 @@ const css = {
   },
   itemTitle: { fontSize: 14, fontWeight: 600, color: '#fff' },
   itemSub: { fontSize: 12, color: '#7A8CA0', marginTop: 3 },
-  deleteBtn: { background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer', fontSize: 15, padding: 4 },
+  deleteBtn: { background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer', padding: 4, display: 'inline-flex', alignItems: 'center' },
   addBtn: {
     background: 'transparent', border: '1px dashed #243050', borderRadius: 8,
     padding: '10px 0', width: '100%', color: '#00B4D8', fontWeight: 600,
@@ -114,7 +118,7 @@ function ExpiryBadge({ dateStr }) {
 
 function SelectOptions({ options }) {
   return options.map((o) => (
-    <option key={o.value} value={o.value}>{o.flag ? `${o.flag} ${o.label}` : o.label}</option>
+    <option key={o.value} value={o.value}>{o.label}</option>
   ));
 }
 
@@ -134,7 +138,7 @@ function FlightTotalsCard({ totals }) {
   return (
     <div style={css.cardFull}>
       <div style={css.cardHeader}>
-        <span style={css.cardIcon}>📊</span>
+        <BarChart2 size={22} color="#00B4D8" />
         <div>
           <div style={css.cardTitle}>Flight Experience Totals</div>
           <div style={css.cardSubtitle}>Aggregated from your logbook</div>
@@ -201,7 +205,7 @@ function LicencesCard({ profile, setProfile }) {
   return (
     <div style={css.card}>
       <div style={css.cardHeader}>
-        <span style={css.cardIcon}>📋</span>
+        <FileText size={22} color="#00B4D8" />
         <div>
           <div style={css.cardTitle}>My Pilot Licences</div>
           <div style={css.cardSubtitle}>Add every licence you hold</div>
@@ -220,7 +224,7 @@ function LicencesCard({ profile, setProfile }) {
             <div>
               <div style={css.itemTitle}>{lic?.label || cert.type}</div>
               <div style={css.itemSub}>
-                {auth?.flag} {auth?.label || cert.issuingAuthority}
+                {auth?.label || cert.issuingAuthority}
                 {cert.certificateNumber && <span> · #{cert.certificateNumber}</span>}
                 {cert.englishProficiency && <span> · ELP {cert.englishProficiency}</span>}
                 {cert.expiryDate && (
@@ -235,7 +239,7 @@ function LicencesCard({ profile, setProfile }) {
               if (!window.confirm('Remove this licence?')) return;
               await profileApi.deleteCertificate(cert.id);
               setProfile((p) => ({ ...p, certificates: p.certificates.filter((c) => c.id !== cert.id) }));
-            }}>🗑</button>
+            }><Trash2 size={15} /></button>
           </div>
         );
       })}
@@ -311,7 +315,7 @@ function MedicalCard({ profile, setProfile }) {
   return (
     <div style={css.card}>
       <div style={css.cardHeader}>
-        <span style={css.cardIcon}>💊</span>
+        <Shield size={22} color="#00B4D8" />
         <div>
           <div style={css.cardTitle}>Medical Certificate</div>
           <div style={css.cardSubtitle}>Required by most airlines</div>
@@ -338,7 +342,7 @@ function MedicalCard({ profile, setProfile }) {
               if (!window.confirm('Remove this medical?')) return;
               await profileApi.deleteMedical(med.id);
               setProfile((p) => ({ ...p, medicals: p.medicals.filter((m) => m.id !== med.id) }));
-            }}>🗑</button>
+            }><Trash2 size={15} /></button>
           </div>
         );
       })}
@@ -400,7 +404,7 @@ function TypeRatingsCard({ profile, setProfile }) {
   return (
     <div style={css.card}>
       <div style={css.cardHeader}>
-        <span style={css.cardIcon}>✈</span>
+        <Plane size={22} color="#00B4D8" />
         <div>
           <div style={css.cardTitle}>Aircraft Type Ratings</div>
           <div style={css.cardSubtitle}>Aircraft you are rated to fly</div>
@@ -423,7 +427,7 @@ function TypeRatingsCard({ profile, setProfile }) {
               if (!window.confirm('Remove this type rating?')) return;
               await profileApi.deleteRating(r.id);
               setProfile((p) => ({ ...p, ratings: p.ratings.filter((rt) => rt.id !== r.id) }));
-            }}>🗑</button>
+            }><Trash2 size={15} /></button>
           </div>
         )
       )}
@@ -486,7 +490,7 @@ function EnglishProficiencyCard() {
   return (
     <div style={{ ...css.cardFull, marginTop: 24 }}>
       <div style={css.cardHeader}>
-        <span style={css.cardIcon}>🗣</span>
+        <MessageSquare size={22} color="#00B4D8" />
         <div>
           <div style={css.cardTitle}>English Language Proficiency</div>
           <div style={css.cardSubtitle}>ICAO ELP — required for all international operations</div>
@@ -521,7 +525,7 @@ function EnglishProficiencyCard() {
                 {item.noExpiry && item.level !== 'Level 6' && <span style={{ color: '#2ECC71', fontSize: 12, fontWeight: 600 }}> · No expiry</span>}
               </div>
             </div>
-            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}>🗑</button>
+            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}><Trash2 size={15} /></button>
           </div>
         );
       })}
@@ -615,7 +619,7 @@ function RecurrentTrainingCard() {
   return (
     <div style={{ ...css.cardFull, marginBottom: 24 }}>
       <div style={css.cardHeader}>
-        <span style={css.cardIcon}>🔄</span>
+        <RefreshCw size={22} color="#00B4D8" />
         <div>
           <div style={css.cardTitle}>Recurrent Training</div>
           <div style={css.cardSubtitle}>Track your mandatory recurrent training</div>
@@ -658,7 +662,7 @@ function RecurrentTrainingCard() {
                 {item.remarks && <span> · {item.remarks}</span>}
               </div>
             </div>
-            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}>🗑</button>
+            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}><Trash2 size={15} /></button>
           </div>
         );
       })}
@@ -746,7 +750,7 @@ function RightToWorkCard() {
   return (
     <div style={css.cardFull}>
       <div style={css.cardHeader}>
-        <span style={css.cardIcon}>🌍</span>
+        <Globe size={22} color="#00B4D8" />
         <div>
           <div style={css.cardTitle}>Right to Work</div>
           <div style={css.cardSubtitle}>Countries where you have the right to work</div>
@@ -790,7 +794,7 @@ function RightToWorkCard() {
                   )}
               </div>
             </div>
-            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}>🗑</button>
+            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}><Trash2 size={15} /></button>
           </div>
         );
       })}
@@ -893,7 +897,7 @@ export default function Profile() {
       {/* Personal info */}
       <div style={css.cardFull}>
         <div style={css.cardHeader}>
-          <span style={css.cardIcon}>👤</span>
+          <User size={22} color="#00B4D8" />
           <div>
             <div style={css.cardTitle}>Personal Information</div>
             <div style={css.cardSubtitle}>Basic details on your account</div>

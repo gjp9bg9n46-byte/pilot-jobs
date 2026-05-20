@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import {
+  MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
+  Shield, Search, SlidersHorizontal, AlertTriangle, X,
+} from 'lucide-react';
 import { jobApi } from '../services/api';
 import { setJobs } from '../store';
 
@@ -14,13 +18,13 @@ function PlaneSave({ saved, size = 18 }) {
 
 const AUTHORITIES = [
   { value: '',     label: 'All Authorities' },
-  { value: 'FAA',  label: '🇺🇸 FAA — USA' },
-  { value: 'EASA', label: '🇪🇺 EASA — Europe' },
-  { value: 'CAA',  label: '🇬🇧 UK CAA' },
-  { value: 'TCCA', label: '🇨🇦 Transport Canada' },
-  { value: 'CAAC', label: '🇨🇳 CAAC — China' },
-  { value: 'ICAO', label: '🌍 ICAO — International' },
-  { value: 'FATA', label: '🇷🇺 Russia / CIS' },
+  { value: 'FAA',  label: 'FAA — USA' },
+  { value: 'EASA', label: 'EASA — Europe' },
+  { value: 'CAA',  label: 'UK CAA' },
+  { value: 'TCCA', label: 'Transport Canada' },
+  { value: 'CAAC', label: 'CAAC — China' },
+  { value: 'ICAO', label: 'ICAO — International' },
+  { value: 'FATA', label: 'Russia / CIS' },
 ];
 
 const ROLES = [
@@ -199,24 +203,24 @@ function JobModal({ job, onClose }) {
   return (
     <div style={css.modal} onClick={onClose}>
       <div style={css.modalCard} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#7A8CA0', fontSize: 22, cursor: 'pointer' }}>✕</button>
+        <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#7A8CA0', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
         <div style={{ fontSize: 11, color: '#00B4D8', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>JOB DETAILS</div>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>{job.title}</div>
         <div style={{ fontSize: 15, color: '#00B4D8', fontWeight: 600, marginBottom: 20 }}>{job.company}</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
           {[
-            ['📍 Location', job.location],
-            ['🏛 Authority', job.reqAuthorities?.join(', ') || 'Any'],
-            ['📋 Certificates', job.reqCertificates?.join(', ') || 'Not specified'],
-            ['⏱ Min Total Hours', job.reqMinTotalHours ? `${job.reqMinTotalHours.toLocaleString()} hrs` : '—'],
-            ['🎯 Min PIC Hours', job.reqMinPicHours ? `${job.reqMinPicHours.toLocaleString()} hrs` : '—'],
-            ['✈ Aircraft Types', job.reqAircraftTypes?.join(', ') || 'Not specified'],
-            ['🔧 Multi-Engine Hrs', job.reqMinMultiEngineHours ? `${job.reqMinMultiEngineHours.toLocaleString()} hrs` : '—'],
-            ['💊 Medical Class', job.reqMedicalClass?.replace('CLASS_', 'Class ') || '—'],
-          ].map(([label, val]) => (
+            [<MapPin size={11} />, 'Location', job.location],
+            [<Building2 size={11} />, 'Authority', job.reqAuthorities?.join(', ') || 'Any'],
+            [<FileText size={11} />, 'Certificates', job.reqCertificates?.join(', ') || 'Not specified'],
+            [<Clock size={11} />, 'Min Total Hours', job.reqMinTotalHours ? `${job.reqMinTotalHours.toLocaleString()} hrs` : '—'],
+            [<Target size={11} />, 'Min PIC Hours', job.reqMinPicHours ? `${job.reqMinPicHours.toLocaleString()} hrs` : '—'],
+            [<Plane size={11} />, 'Aircraft Types', job.reqAircraftTypes?.join(', ') || 'Not specified'],
+            [<Wrench size={11} />, 'Multi-Engine Hrs', job.reqMinMultiEngineHours ? `${job.reqMinMultiEngineHours.toLocaleString()} hrs` : '—'],
+            [<Shield size={11} />, 'Medical Class', job.reqMedicalClass?.replace('CLASS_', 'Class ') || '—'],
+          ].map(([icon, label, val]) => (
             <div key={label} style={{ background: '#1B2B4B', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ fontSize: 11, color: '#4A6080', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 11, color: '#4A6080', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>{icon}{label}</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{val}</div>
             </div>
           ))}
@@ -367,14 +371,14 @@ export default function Jobs() {
       {/* Top bar */}
       <div style={css.topBar}>
         <input
-          style={css.search} placeholder="🔍  Search by airline, aircraft, or country..."
+          style={css.search} placeholder="Search by airline, aircraft, or country..."
           value={search} onChange={(e) => setSearch(e.target.value)}
         />
         <button
           style={css.filtersBtn(filtersOpen || activeFilterCount > 0, activeFilterCount)}
           onClick={filtersOpen ? closeFilters : openFilters}
         >
-          ⚙ Filters
+          <SlidersHorizontal size={15} /> Filters
           {activeFilterCount > 0 && (
             <span style={css.filtersBadge}>{activeFilterCount}</span>
           )}
@@ -468,10 +472,10 @@ export default function Jobs() {
       )}
 
       {loading ? (
-        <div style={css.loading}>⏳ Loading jobs from around the world...</div>
+        <div style={css.loading}>Loading jobs from around the world...</div>
       ) : error ? (
         <div style={css.empty}>
-          <div style={css.emptyIcon}>⚠️</div>
+          <div style={css.emptyIcon}><AlertTriangle size={48} color="#F39C12" /></div>
           <div style={css.emptyTitle}>Could not load jobs</div>
           <div style={css.emptyText}>{error}</div>
           <button
@@ -483,7 +487,7 @@ export default function Jobs() {
         </div>
       ) : filtered.length === 0 ? (
         <div style={css.empty}>
-          <div style={css.emptyIcon}>🔍</div>
+          <div style={css.emptyIcon}><Search size={48} color="#4A6080" /></div>
           <div style={css.emptyTitle}>No jobs found</div>
           <div style={css.emptyText}>Try adjusting your search or filters.<br />New jobs are scraped every 6 hours.</div>
         </div>
@@ -524,12 +528,12 @@ export default function Jobs() {
                 </div>
 
                 <div style={css.metaRow}>
-                  <span style={css.meta}>📍 {job.location}</span>
+                  <span style={css.meta}><MapPin size={11} /> {job.location}</span>
                   {job.reqMinTotalHours && (
-                    <span style={css.meta}>⏱ {job.reqMinTotalHours.toLocaleString()} hrs min</span>
+                    <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
                   )}
                   {job.reqCertificates?.[0] && (
-                    <span style={css.meta}>📋 {job.reqCertificates[0]}</span>
+                    <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
                   )}
                 </div>
 

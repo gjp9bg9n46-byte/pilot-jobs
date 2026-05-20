@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { MapPin, Building2, Search, Trash2 } from 'lucide-react';
 import { jobApi } from '../services/api';
 import { setAlerts, markAlertRead } from '../store';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -23,13 +24,13 @@ function matchStyle(score) {
 }
 
 const AUTHORITIES = [
-  { value: 'FAA',  label: '🇺🇸 FAA' },
-  { value: 'EASA', label: '🇪🇺 EASA' },
-  { value: 'CAA',  label: '🇬🇧 UK CAA' },
-  { value: 'TCCA', label: '🇨🇦 Transport Canada' },
-  { value: 'CAAC', label: '🇨🇳 CAAC' },
-  { value: 'ICAO', label: '🌍 ICAO' },
-  { value: 'FATA', label: '🇷🇺 Russia/CIS' },
+  { value: 'FAA',  label: 'FAA' },
+  { value: 'EASA', label: 'EASA' },
+  { value: 'CAA',  label: 'UK CAA' },
+  { value: 'TCCA', label: 'Transport Canada' },
+  { value: 'CAAC', label: 'CAAC' },
+  { value: 'ICAO', label: 'ICAO' },
+  { value: 'FATA', label: 'Russia/CIS' },
 ];
 
 const FREQ_COLORS = {
@@ -296,10 +297,10 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 </div>
                 <div style={{ display: 'flex', gap: 20, marginBottom: 8 }}>
                   {(alert.job?.location ?? alert.location) && (
-                    <span style={{ fontSize: 12, color: '#7A8CA0' }}>📍 {alert.job?.location ?? alert.location}</span>
+                    <span style={{ fontSize: 12, color: '#7A8CA0', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={11} /> {alert.job?.location ?? alert.location}</span>
                   )}
                   {alert.job?.reqAuthorities?.[0] && (
-                    <span style={{ fontSize: 12, color: '#7A8CA0' }}>🏛 {alert.job.reqAuthorities[0]}</span>
+                    <span style={{ fontSize: 12, color: '#7A8CA0', display: 'flex', alignItems: 'center', gap: 4 }}><Building2 size={11} /> {alert.job.reqAuthorities[0]}</span>
                   )}
                 </div>
                 {(() => {
@@ -462,7 +463,7 @@ function SavedSearchesTab() {
 
       {!loading && searches.length === 0 && (
         <div style={{ textAlign: 'center', padding: '80px 0' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+          <div style={{ marginBottom: 16 }}><Search size={48} color="#4A6080" /></div>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#7A8CA0', marginBottom: 10 }}>No saved searches yet</div>
           <div style={{ fontSize: 14, color: '#4A6080', lineHeight: 1.8 }}>
             Create one to get notified automatically.
@@ -534,7 +535,7 @@ function SavedSearchesTab() {
                 fontSize: 16, cursor: 'pointer',
               }}
             >
-              🗑️
+              <Trash2 size={16} />
             </button>
           </div>
         );
