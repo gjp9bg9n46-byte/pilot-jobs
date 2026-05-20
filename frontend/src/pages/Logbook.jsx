@@ -151,6 +151,16 @@ function formFromLog(log) {
   };
 }
 
+function Field({ value, onChange, label, hint, span, type = 'text' }) {
+  return (
+    <div style={span === 'full' ? css.formFull : {}}>
+      <label style={css.label}>{label}{hint && <span style={css.hint}>{hint}</span>}</label>
+      <input style={css.input} type={type} value={value} onChange={onChange}
+        placeholder={hint?.replace('e.g. ', '') || ''} />
+    </div>
+  );
+}
+
 function AddFlightModal({ onClose, onSave, initial, title }) {
   const [form, setForm] = useState(initial ? formFromLog(initial) : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -185,14 +195,6 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
     }
   };
 
-  const Field = ({ k, label, hint, span, type = 'text' }) => (
-    <div style={span === 'full' ? css.formFull : {}}>
-      <label style={css.label}>{label}{hint && <span style={css.hint}>{hint}</span>}</label>
-      <input style={css.input} type={type} value={form[k]} onChange={set(k)}
-        placeholder={hint?.replace('e.g. ', '') || ''} />
-    </div>
-  );
-
   return (
     <div style={css.overlay}>
       <div style={css.modal}>
@@ -205,9 +207,9 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
 
         <div style={css.sectionTitle}>Flight Details</div>
         <div style={css.formGrid}>
-          <Field k="date" label="Date *" type="date" />
-          <Field k="flightNumber" label="Flight Number" hint="e.g. QR435, EK201" />
-          <Field k="aircraftType" label="Aircraft Type *" hint="e.g. B737, A320, C172" />
+          <Field value={form.date} onChange={set('date')} label="Date *" type="date" />
+          <Field value={form.flightNumber} onChange={set('flightNumber')} label="Flight Number" hint="e.g. QR435, EK201" />
+          <Field value={form.aircraftType} onChange={set('aircraftType')} label="Aircraft Type *" hint="e.g. B737, A320, C172" />
           <div>
             <label style={css.label}>Tail Number (Registration)</label>
             <div style={{ display: 'flex', gap: 6 }}>
@@ -222,29 +224,29 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}><Field k="departure" label="From" hint="e.g. OMDB" /></div>
+            <div style={{ flex: 1 }}><Field value={form.departure} onChange={set('departure')} label="From" hint="e.g. OMDB" /></div>
             <div style={{ paddingBottom: 10, color: '#4A6080', fontSize: 18 }}>→</div>
-            <div style={{ flex: 1 }}><Field k="arrival" label="To" hint="e.g. EGLL" /></div>
+            <div style={{ flex: 1 }}><Field value={form.arrival} onChange={set('arrival')} label="To" hint="e.g. EGLL" /></div>
           </div>
-          <Field k="picName" label="Pilot in Command" hint="e.g. Capt. Al Rashid" />
-          <Field k="sicName" label="Second in Command" hint="e.g. F/O Smith" />
+          <Field value={form.picName} onChange={set('picName')} label="Pilot in Command" hint="e.g. Capt. Al Rashid" />
+          <Field value={form.sicName} onChange={set('sicName')} label="Second in Command" hint="e.g. F/O Smith" />
         </div>
 
         <div style={css.sectionTitle}>Flight Hours  <span style={{ fontSize: 11, color: '#4A6080', fontWeight: 400 }}>Enter as decimals — 1h 30m = 1.5</span></div>
         <div style={css.formGrid}>
-          <Field k="totalTime" label="Total Time *" type="number" />
-          <Field k="picTime" label="PIC (Captain)" type="number" />
-          <Field k="sicTime" label="SIC (Co-pilot)" type="number" />
-          <Field k="multiEngineTime" label="Multi-Engine" type="number" />
-          <Field k="turbineTime" label="Turbine" type="number" />
-          <Field k="instrumentTime" label="Instrument (IMC)" type="number" />
-          <Field k="nightTime" label="Night" type="number" />
+          <Field value={form.totalTime} onChange={set('totalTime')} label="Total Time *" type="number" />
+          <Field value={form.picTime} onChange={set('picTime')} label="PIC (Captain)" type="number" />
+          <Field value={form.sicTime} onChange={set('sicTime')} label="SIC (Co-pilot)" type="number" />
+          <Field value={form.multiEngineTime} onChange={set('multiEngineTime')} label="Multi-Engine" type="number" />
+          <Field value={form.turbineTime} onChange={set('turbineTime')} label="Turbine" type="number" />
+          <Field value={form.instrumentTime} onChange={set('instrumentTime')} label="Instrument (IMC)" type="number" />
+          <Field value={form.nightTime} onChange={set('nightTime')} label="Night" type="number" />
         </div>
 
         <div style={css.sectionTitle}>Landings</div>
         <div style={css.formGrid}>
-          <Field k="landingsDay" label="Day Landings" type="number" />
-          <Field k="landingsNight" label="Night Landings" type="number" />
+          <Field value={form.landingsDay} onChange={set('landingsDay')} label="Day Landings" type="number" />
+          <Field value={form.landingsNight} onChange={set('landingsNight')} label="Night Landings" type="number" />
         </div>
 
         <div style={{ marginBottom: 24 }}>
