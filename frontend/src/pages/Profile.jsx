@@ -239,7 +239,7 @@ function LicencesCard({ profile, setProfile }) {
               if (!window.confirm('Remove this licence?')) return;
               await profileApi.deleteCertificate(cert.id);
               setProfile((p) => ({ ...p, certificates: p.certificates.filter((c) => c.id !== cert.id) }));
-            }><Trash2 size={15} /></button>
+            }}><Trash2 size={15} /></button>
           </div>
         );
       })}
@@ -342,7 +342,7 @@ function MedicalCard({ profile, setProfile }) {
               if (!window.confirm('Remove this medical?')) return;
               await profileApi.deleteMedical(med.id);
               setProfile((p) => ({ ...p, medicals: p.medicals.filter((m) => m.id !== med.id) }));
-            }><Trash2 size={15} /></button>
+            }}><Trash2 size={15} /></button>
           </div>
         );
       })}
@@ -427,7 +427,7 @@ function TypeRatingsCard({ profile, setProfile }) {
               if (!window.confirm('Remove this type rating?')) return;
               await profileApi.deleteRating(r.id);
               setProfile((p) => ({ ...p, ratings: p.ratings.filter((rt) => rt.id !== r.id) }));
-            }><Trash2 size={15} /></button>
+            }}><Trash2 size={15} /></button>
           </div>
         )
       )}
