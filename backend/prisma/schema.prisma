@@ -221,12 +221,15 @@ model TwoFactorSecret {
 model FlightLog {
   id              String     @id @default(uuid())
   pilotId         String
-  dutyId          String?    // shared UUID grouping multi-sector legs from the same operating day
+  dutyId          String?
   date            DateTime
+  flightNumber    String?
   aircraftType    String
   registration    String?
   departure       String?
   arrival         String?
+  picName         String?
+  sicName         String?
   totalTime       Float      @default(0)
   picTime         Float      @default(0)
   sicTime         Float      @default(0)

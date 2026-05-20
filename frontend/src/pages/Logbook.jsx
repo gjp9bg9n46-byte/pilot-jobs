@@ -174,8 +174,10 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
     }
     setSaving(true);
     try {
+      const { tailPrefix, ...rest } = form;
       await onSave({
-        ...form,
+        ...rest,
+        registration: tailPrefix ? `${tailPrefix}${form.registration}` : form.registration,
         date: new Date(form.date).toISOString(),
         totalTime: parseFloat(form.totalTime) || 0,
         picTime: parseFloat(form.picTime) || 0,
