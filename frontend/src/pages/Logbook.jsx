@@ -737,10 +737,10 @@ export default function Logbook() {
       <div style={css.currencyCard}>
         <span style={css.currencyTitle}>Currency (90 days)</span>
         <span style={currency.dayCurrent ? css.pillCurrent : css.pillNotCurrent}>
-          {currency.dayCurrent ? '&#x2713; Day Current' : '&#x2715; Day Not Current'}
+          {currency.dayCurrent ? '✓ Day Current' : '✕ Day Not Current'}
         </span>
         <span style={currency.nightCurrent ? css.pillCurrent : css.pillNotCurrent}>
-          {currency.nightCurrent ? '&#x2713; Night Current' : '&#x2715; Night Not Current'}
+          {currency.nightCurrent ? '✓ Night Current' : '✕ Night Not Current'}
         </span>
       </div>
 
@@ -824,10 +824,10 @@ export default function Logbook() {
                         )}
                       </td>
                       <td style={{ ...css.td, ...css.hours }}>{displayBlock}</td>
-                      <td style={css.td}>{log.picTime > 0 ? log.picTime.toFixed(1) : '&#x2014;'}</td>
-                      <td style={css.td}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '&#x2014;'}</td>
-                      <td style={css.td}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '&#x2014;'}</td>
-                      <td style={css.td}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '&#x2014;'}</td>
+                      <td style={css.td}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
+                      <td style={css.td}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
+                      <td style={css.td}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
+                      <td style={css.td}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
                       <td style={css.td}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
                       <td style={{ ...css.td, ...css.tdLast, whiteSpace: 'nowrap' }}>
                         <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></button>
@@ -874,14 +874,14 @@ export default function Logbook() {
                           {last.arrival || '?'}
                         </div>
                         <div style={{ fontSize: 11, color: '#4A6080', marginTop: 3 }}>
-                          {legs.map((l) => `${l.departure || '?'}&#x2192;${l.arrival || '?'}`).join(' · ')}
+                          {legs.map((l) => `${l.departure || '?'}→${l.arrival || '?'}`).join(' · ')}
                         </div>
                       </td>
                       <td style={{ ...css.td, ...css.hours }}>{dutyBlock}</td>
-                      <td style={css.td}>{totalPic > 0 ? totalPic.toFixed(1) : '&#x2014;'}</td>
-                      <td style={css.td}>{totalMulti > 0 ? totalMulti.toFixed(1) : '&#x2014;'}</td>
-                      <td style={css.td}>{totalTurbine > 0 ? totalTurbine.toFixed(1) : '&#x2014;'}</td>
-                      <td style={css.td}>{totalNight > 0 ? totalNight.toFixed(1) : '&#x2014;'}</td>
+                      <td style={css.td}>{totalPic > 0 ? totalPic.toFixed(1) : '—'}</td>
+                      <td style={css.td}>{totalMulti > 0 ? totalMulti.toFixed(1) : '—'}</td>
+                      <td style={css.td}>{totalTurbine > 0 ? totalTurbine.toFixed(1) : '—'}</td>
+                      <td style={css.td}>{totalNight > 0 ? totalNight.toFixed(1) : '—'}</td>
                       <td style={css.td}>{totalLdg}</td>
                       <td style={{ ...css.td, ...css.tdLast, color: '#7A8CA0' }}>
                         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -895,7 +895,7 @@ export default function Logbook() {
                           <td style={{ ...css.td, ...css.tdFirst, color: '#4A6080', fontSize: 11, paddingLeft: 28 }}>
                             Leg {idx + 1}
                           </td>
-                          <td style={{ ...css.td, color: '#4A6080', fontSize: 12 }}>&#x2014;</td>
+                          <td style={{ ...css.td, color: '#4A6080', fontSize: 12 }}>—</td>
                           <td style={css.td}>
                             <div style={css.routeMain}>
                               {log.departure}
@@ -904,10 +904,10 @@ export default function Logbook() {
                             </div>
                           </td>
                           <td style={{ ...css.td, ...css.hours, fontSize: 13 }}>{legBlockDisplay}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '&#x2014;'}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '&#x2014;'}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '&#x2014;'}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '&#x2014;'}</td>
+                          <td style={{ ...css.td, fontSize: 13 }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
+                          <td style={{ ...css.td, fontSize: 13 }}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
+                          <td style={{ ...css.td, fontSize: 13 }}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
+                          <td style={{ ...css.td, fontSize: 13 }}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
                           <td style={{ ...css.td, fontSize: 13 }}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
                           <td style={{ ...css.td, ...css.tdLast, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
                             <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></button>
