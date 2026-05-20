@@ -36,7 +36,7 @@ const css = {
     borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700, color: '#FF4757',
   },
 
-  toolbar: { display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' },
+  toolbar: { display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' },
   addBtn: {
     background: 'linear-gradient(135deg, #00B4D8, #0077A8)',
     border: 'none', borderRadius: 10, padding: '11px 20px',
@@ -85,14 +85,14 @@ const css = {
   overlay: {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    zIndex: 1000, padding: 24,
+    zIndex: 1000, padding: 12,
   },
   modal: {
     background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 20,
-    padding: 36, maxWidth: 680, width: '100%', maxHeight: '90vh', overflowY: 'auto',
+    padding: '24px 20px', maxWidth: 680, width: '100%', maxHeight: '90vh', overflowY: 'auto',
   },
   modalTitle: { fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 24 },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 },
+  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 16 },
   formFull: { gridColumn: '1 / -1' },
   label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#7A8CA0', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   hint: { fontSize: 11, color: '#4A6080', fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6 },

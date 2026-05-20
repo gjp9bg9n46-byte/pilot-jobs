@@ -20,7 +20,7 @@ const { runAllEmployers } = require('./runner');
  * Run one full ingestion pass.
  *
  * @param {object} opts
- * @param {string}  [opts.source]    filter to one source platform ('LEVER'|'GREENHOUSE'|'WORKDAY')
+ * @param {string}  [opts.source]    filter to one source platform ('LEVER'|'GREENHOUSE'|'WORKDAY'|'PILOTCAREERCENTRE'|'SMARTRECRUITERS')
  * @param {string}  [opts.employer]  filter to one employer slug or config name
  * @param {boolean} [opts.dryRun]    fetch + normalize only — don't write to DB or trigger matching
  * @returns {Promise<import('./types').IngestionStats[]>}

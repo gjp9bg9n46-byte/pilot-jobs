@@ -22,13 +22,20 @@ const AVIATION_TITLE_PATTERNS = new RegExp(
     'captain',
     'first\\s+officer',
     '1st\\s+officer',
+    'second\\s+officer',
+    '2nd\\s+officer',
     'flight\\s+officer',
+    'co[-\\s]?pilot',
+    'copilot',
+    '\\bfo\\b',         // "FO" standalone (e.g. "B737 FO")
     'aviator',
     'flight\\s+instructor',
     'check\\s+airman',
     'chief\\s+pilot',
     'type\\s+rating\\s+examiner',
     'flight\\s+examiner',
+    'line\\s+training\\s+captain',
+    'training\\s+captain',
     // Aircraft-type prefix + role (catches "B737 Captain", "A320 FO", etc.)
     '(?:b7\\d{2}|a[23]\\d{2}|a220|e\\d{3}|crj|atr|dash\\s*8|dhc|q400|saab)\\s+(?:captain|pilot|first\\s+officer|fo)',
   ].join('|'),
@@ -48,6 +55,8 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
     'pilot\\s+initiative',
     'autopilot',
     'auto-pilot',
+    'drone\\s+pilot',         // UAV operators — different licence/career path
+    'co-founder',             // "Co-Pilot" false-positive guard for startup roles
   ].join('|'),
   'i',
 );

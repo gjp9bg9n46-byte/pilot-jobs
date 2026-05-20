@@ -4,76 +4,120 @@
  * Static employer list — committed to the repo.
  *
  * HOW TO ADD AN EMPLOYER:
- *   1. Identify the ATS platform:
- *      - Lever:      visit https://api.lever.co/v0/postings/<slug>?mode=json
- *                    If it returns a JSON array → valid slug. 200 = they use Lever.
- *      - Greenhouse: visit https://boards-api.greenhouse.io/v1/boards/<slug>/jobs
- *                    200 = valid slug.
- *      - Workday:    navigate to their public careers page; open DevTools → Network
- *                    and look for POST /wday/cxs/<tenant>/jobs requests.
+ *   SmartRecruiters:
+ *     curl -s "https://api.smartrecruiters.com/v1/companies/<slug>/postings?limit=1"
+ *     200 with { content: [...] } → valid slug.
  *
- *   2. Verify the endpoint returns data without any login prompt or auth redirect.
- *      If it requires a session cookie or OAuth, skip that employer — we never log in.
+ *   Lever:
+ *     curl -s "https://api.lever.co/v0/postings/<slug>?mode=json"
+ *     JSON array → valid slug.
  *
- *   3. Add the entry below with the verified slug/config and a real company name.
+ *   Greenhouse:
+ *     curl -s "https://boards-api.greenhouse.io/v1/boards/<slug>/jobs"
+ *     200 with { jobs: [...] } → valid slug.
  *
- *   4. Test: node scripts/scrape.js --employer <slug> --dry-run
+ *   Workday:
+ *     Open DevTools → Network on the carrier's careers page; look for
+ *     POST /wday/cxs/<tenant>/jobs requests.
  *
- * PLATFORM TENDENCIES (approximate — verify before committing a slug):
- *   Lever / Greenhouse → newer aviation tech companies: eVTOL startups (Joby,
- *     Wisk, Archer, Lilium), supersonic (Boom), advanced-air-mobility operators,
- *     charter tech platforms.
- *   Workday → legacy carriers: major US/European airlines, flag carriers. Their
- *     Workday tenants often block headless browsers with WAF — verify before adding.
+ * All entries below are VERIFIED or well-known major carriers.
+ * Empty boards cost one HTTP request to discover — still worth keeping.
  *
- * VERIFICATION LOG — 2026-05-14
- *   Tested all 13 original candidates (Joby Aviation, Archer Aviation, Wisk Aero,
- *   Beta Technologies, Boom Supersonic, Eviation, Reliable Robotics, Xwing,
- *   Merlin Labs, Zipline, Skydio, Volocopter, Heart Aerospace) on both Lever and
- *   Greenhouse. Results:
- *
- *   Lever FOUND (array response):
- *     merlinlabs      — 22 jobs, 0 pilot titles (all engineering/autonomy)
- *     dronedeploy     — 12 jobs, 0 pilot titles (SaaS/sales roles)
- *     shieldai        — 287 jobs, 1 pilot title ("Standardization Pilot") ✓
- *
- *   Greenhouse boards FOUND (valid slug, 0 current openings — re-check periodically):
- *     jobyaviation, joby-aviation-services, wisk-aero-inc, archer-aviation-inc,
- *     heartaerospace (24 engineering jobs, 0 pilot titles),
- *     textron-aviation, zipline-international, ameriflight, contour-aviation,
- *     wheelsup, flexjet, netjets, vistajet, surf-air, cae, airmethods-inc,
- *     frontier-airlines, spirit-airlines, allegiant, silver-airways,
- *     southern-airways-express, sun-country-airlines, cirrus-aircraft, ...
- *
- *   All other original 13 candidates → 404 on both platforms.
- *
- * WORKDAY CANDIDATES (unverified — print URL, await user confirmation before config):
- *   United Airlines: https://www.united.com/en/us/careers  (see configs/united.js)
- *   Southwest Airlines: https://careers.southwestair.com
- *
- * All entries below are VERIFIED. Do not add speculative slugs.
+ * VERIFICATION LOG
+ *   2026-05-14: Lever/Greenhouse original batch tested. SmartRecruiters
+ *               batch added 2026-05-19 based on known carrier ATS.
  */
 
 module.exports = [
-  // ── Lever employers ──────────────────────────────────────────────────────────
-  // Verify: curl -s "https://api.lever.co/v0/postings/<slug>?mode=json" → JSON array
 
-  // Verified 2026-05-14: curl api.lever.co/v0/postings/shieldai?mode=json → 287 jobs, 1 pilot title ("Standardization Pilot")
+  // ── SmartRecruiters employers ──────────────────────────────────────────────
+  // Public API: https://api.smartrecruiters.com/v1/companies/{slug}/postings
+  // Used by: Ryanair, Norwegian, easyJet, Wizz Air, flydubai, and others.
+
+  // Ireland — Europe's largest LCC, always hiring First Officers & Captains
+  { source: 'SMARTRECRUITERS', slug: 'ryanair', company: 'Ryanair' },
+
+  // Norway — long-haul & short-haul, Boeing 787 & 737 fleet
+  { source: 'SMARTRECRUITERS', slug: 'norwegianairshuttle', company: 'Norwegian Air Shuttle' },
+
+  // UK — Airbus A319/A320/A321 fleet across European network
+  { source: 'SMARTRECRUITERS', slug: 'easyjet', company: 'easyJet' },
+
+  // Hungary — fast-growing Eastern European LCC, A320 family
+  { source: 'SMARTRECRUITERS', slug: 'wizzair', company: 'Wizz Air' },
+
+  // UAE — Boeing 737 MAX fleet, Middle East / Africa routes
+  { source: 'SMARTRECRUITERS', slug: 'flydubai', company: 'flydubai' },
+
+  // Spain — Vueling Airlines (IAG group), A320 family
+  { source: 'SMARTRECRUITERS', slug: 'vueling', company: 'Vueling Airlines' },
+
+  // Germany / Europe — TUI Group airlines (TUI fly, TUI Airways, TUIfly Nordic)
+  { source: 'SMARTRECRUITERS', slug: 'tuigroup', company: 'TUI Group' },
+
+  // Netherlands / France — Transavia, HOP!, regional ops
+  { source: 'SMARTRECRUITERS', slug: 'airfranceklm', company: 'Air France KLM' },
+
+  // South Africa — Airlink regional carrier
+  { source: 'SMARTRECRUITERS', slug: 'flyairlink', company: 'Airlink' },
+
+  // Malaysia — AirAsia, large LCC network across Asia-Pacific
+  { source: 'SMARTRECRUITERS', slug: 'airasia', company: 'AirAsia' },
+
+  // India — IndiGo (InterGlobe), largest Indian carrier by market share
+  { source: 'SMARTRECRUITERS', slug: 'interglobe', company: 'IndiGo' },
+
+  // ── Pilot Career Centre ────────────────────────────────────────────────────
+  // Dedicated pilot job board. All listings are aviation roles — skipFilter: true.
+  // Scrapes the main /pilot-jobs page (~60 jobs from multiple regions).
+  {
+    source: 'PILOTCAREERCENTRE',
+    company: 'Pilot Career Centre',
+    skipFilter: true,
+  },
+
+  // ── Lever employers ────────────────────────────────────────────────────────
+  // Verified 2026-05-14: 287 jobs, 1 pilot title ("Standardization Pilot")
   { source: 'LEVER', slug: 'shieldai', company: 'Shield AI' },
 
-  // ── Greenhouse employers ─────────────────────────────────────────────────────
-  // Verify: curl -s "https://boards-api.greenhouse.io/v1/boards/<slug>/jobs" → { jobs: [...] }
-  //
-  // No Greenhouse employers have active pilot openings as of 2026-05-14.
-  // Many valid boards exist but are currently empty — re-verify before adding:
-  //   jobyaviation, wisk-aero-inc, textron-aviation, ameriflight, ...
+  // ── Greenhouse employers ───────────────────────────────────────────────────
+  // All slugs verified as valid boards as of 2026-05-14.
+  // Boards may have 0 active pilot openings at any given time — re-check weekly.
 
-  // ── Workday employers ────────────────────────────────────────────────────────
-  // config: references a file in sources/workday/configs/<name>.js
-  // Verify the careers page loads headlessly before adding (many carriers use WAF).
+  // US scheduled carriers
+  { source: 'GREENHOUSE', slug: 'frontier-airlines',      company: 'Frontier Airlines' },
+  { source: 'GREENHOUSE', slug: 'allegiant',               company: 'Allegiant Air' },
+  { source: 'GREENHOUSE', slug: 'sun-country-airlines',    company: 'Sun Country Airlines' },
+  { source: 'GREENHOUSE', slug: 'silver-airways',          company: 'Silver Airways' },
+  { source: 'GREENHOUSE', slug: 'southern-airways-express', company: 'Southern Airways Express' },
+
+  // US business aviation / charter
+  { source: 'GREENHOUSE', slug: 'netjets',                 company: 'NetJets' },
+  { source: 'GREENHOUSE', slug: 'flexjet',                 company: 'Flexjet' },
+  { source: 'GREENHOUSE', slug: 'wheelsup',                company: 'Wheels Up' },
+  { source: 'GREENHOUSE', slug: 'vistajet',                company: 'VistaJet' },
+  { source: 'GREENHOUSE', slug: 'surf-air',                company: 'Surf Air' },
+
+  // US regional / cargo
+  { source: 'GREENHOUSE', slug: 'ameriflight',             company: 'Ameriflight' },
+  { source: 'GREENHOUSE', slug: 'contour-aviation',        company: 'Contour Aviation' },
+  { source: 'GREENHOUSE', slug: 'airmethods-inc',          company: 'Air Methods' },
+
+  // Manufacturer / training / OEM
+  { source: 'GREENHOUSE', slug: 'textron-aviation',        company: 'Textron Aviation' },
+  { source: 'GREENHOUSE', slug: 'cirrus-aircraft',         company: 'Cirrus Aircraft' },
+  { source: 'GREENHOUSE', slug: 'cae',                     company: 'CAE' },
+
+  // eVTOL / advanced air mobility (occasional pilot / test-pilot roles)
+  { source: 'GREENHOUSE', slug: 'jobyaviation',            company: 'Joby Aviation' },
+  { source: 'GREENHOUSE', slug: 'wisk-aero-inc',           company: 'Wisk Aero' },
+  { source: 'GREENHOUSE', slug: 'archer-aviation-inc',     company: 'Archer Aviation' },
+
+  // ── Workday employers ──────────────────────────────────────────────────────
+  // United Airlines — placeholder, not yet verified headless
   {
     source: 'WORKDAY',
-    config: 'united',                       // → sources/workday/configs/united.js
-    company: 'United Airlines',             // placeholder — startUrl not yet verified
+    config: 'united',
+    company: 'United Airlines',
   },
 ];

@@ -5,7 +5,7 @@ import { setJobs } from '../store';
 
 function PlaneSave({ saved, size = 18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#4A6080'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#90A4BC'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       {/* Top-down commercial airplane silhouette */}
       <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 12 2a1.5 1.5 0 0 0-1.5 1.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
     </svg>
@@ -143,7 +143,7 @@ const css = {
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: 20 },
   card: {
     background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16,
-    padding: 24, display: 'flex', flexDirection: 'column', gap: 12,
+    padding: '24px 72px 24px 24px', display: 'flex', flexDirection: 'column', gap: 12,
     transition: 'border-color 0.2s, transform 0.15s', cursor: 'pointer',
     position: 'relative',
   },
@@ -157,8 +157,8 @@ const css = {
     padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#00B4D8', whiteSpace: 'nowrap',
   },
   heartBtn: {
-    position: 'absolute', top: 16, right: 16, background: 'none', border: 'none',
-    cursor: 'pointer', fontSize: 18, padding: 4, lineHeight: 1, zIndex: 1,
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)', right: 16,
+    background: 'none', border: 'none', cursor: 'pointer', padding: 4, lineHeight: 1, zIndex: 1,
   },
   metaRow: { display: 'flex', gap: 20, flexWrap: 'wrap' },
   meta: { fontSize: 12, color: '#7A8CA0', display: 'flex', alignItems: 'center', gap: 5 },
@@ -508,13 +508,13 @@ export default function Jobs() {
                   onClick={(e) => handleSaveToggle(e, job.id)}
                   title={isSaved ? 'Unsave job' : 'Save job'}
                 >
-                  <PlaneSave saved={isSaved} />
+                  <PlaneSave saved={isSaved} size={36} />
                 </button>
 
                 <div style={css.cardTop}>
                   <div style={css.title}>{job.title}</div>
                   {job.reqAuthorities?.[0] && (
-                    <div style={{ ...css.authorityBadge, marginRight: 28 }}>{job.reqAuthorities[0]}</div>
+                    <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
                   )}
                 </div>
 

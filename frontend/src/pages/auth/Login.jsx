@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { authApi } from '../../services/api';
 import { setAuth } from '../../store';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const css = {
   page: {
@@ -39,6 +40,7 @@ const css = {
 export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ export default function Login() {
 
   return (
     <div style={css.page}>
-      <div style={css.card}>
+      <div style={{ ...css.card, padding: isMobile ? '32px 20px' : '48px 40px' }}>
         <div style={css.logo}>✈ CockpitHire</div>
         <div style={css.subtitle}>Aviation careers worldwide, matched to your licence</div>
 

@@ -131,14 +131,19 @@ async function getRobotsChecker(hostname) {
 // ─── Anti-bot detection ───────────────────────────────────────────────────────
 
 const ANTIBOT_BODY_PATTERNS = [
-  /cloudflare/i,
+  // Cloudflare challenge pages — but NOT CDN resource URLs (cdnjs.cloudflare.com)
   /cf-browser-verification/i,
-  /ddos.?guard/i,
+  /checking your browser/i,
+  /cf_chl_/i,
+  /cloudflare-static\/rocket-loader/i,
+  // DDoS-Guard challenge page
+  /ddos.?guard\.io/i,
+  // Generic captcha/block pages
   /are you a human/i,
   /please verify you are a human/i,
-  /captcha/i,
-  /access denied/i,
-  /403 forbidden/i,
+  /enable javascript and cookies/i,
+  // Not plain "captcha" (too broad — many sites have captcha on login forms)
+  // Not plain "access denied" or "403" — legitimate pages can contain these in content
 ];
 
 function detectAntiBot(response) {

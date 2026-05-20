@@ -53,7 +53,7 @@ const ENGLISH_LEVELS = [
 ];
 
 const css = {
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24, alignItems: 'start' },
   card: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 28, marginBottom: 0 },
   cardFull: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 28, marginBottom: 24 },
   cardHeader: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 },
@@ -82,7 +82,7 @@ const css = {
     width: '100%', background: '#1B2B4B', border: '1px solid #243050',
     borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none', cursor: 'pointer', boxSizing: 'border-box',
   },
-  formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 },
+  formRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 14 },
   saveBtn: {
     background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none',
     borderRadius: 8, padding: '11px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
@@ -145,7 +145,7 @@ function FlightTotalsCard({ totals }) {
           Log flights in your logbook to see your totals here.
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 12 }}>
           {stats.map(({ key, label }) => (
             <div
               key={key}
@@ -291,7 +291,7 @@ function LicencesCard({ profile, setProfile }) {
 
 function MedicalCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ medicalClass: 'CLASS_1', issuingAuthority: 'FAA', issueDate: '', expiryDate: '' });
+  const [form, setForm] = useState({ medicalClass: 'CLASS_1', issueDate: '', expiryDate: '' });
   const [saving, setSaving] = useState(false);
 
   const handleAdd = async () => {
@@ -322,7 +322,6 @@ function MedicalCard({ profile, setProfile }) {
 
       {profile?.medicals?.map((med) => {
         const mc = MEDICAL_CLASSES.find((m) => m.value === med.medicalClass);
-        const auth = AUTHORITIES.find((a) => a.value === med.issuingAuthority);
         const expiry = new Date(med.expiryDate);
         const expired = expiry < new Date();
         return (
@@ -330,7 +329,6 @@ function MedicalCard({ profile, setProfile }) {
             <div>
               <div style={css.itemTitle}>{mc?.label || med.medicalClass}</div>
               <div style={css.itemSub}>
-                {auth?.flag} {auth?.label}  ·{' '}
                 <span style={{ color: expired ? '#FF4757' : '#2ECC71' }}>
                   {expired ? '⚠ Expired' : 'Valid until'} {expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
@@ -357,12 +355,6 @@ function MedicalCard({ profile, setProfile }) {
                 </select>
               </div>
               <div>
-                <label style={css.label}>Issued by</label>
-                <select style={css.select} value={form.issuingAuthority} onChange={(e) => setForm((f) => ({ ...f, issuingAuthority: e.target.value }))}>
-                  <SelectOptions options={AUTHORITIES} />
-                </select>
-              </div>
-              <div>
                 <label style={css.label}>Issue date</label>
                 <input style={css.input} type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
               </div>
@@ -386,7 +378,6 @@ function MedicalCard({ profile, setProfile }) {
 function TypeRatingsCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
   const [aircraftType, setAircraftType] = useState('');
-  const [authority, setAuthority] = useState('FAA');
   const [hoursOnType, setHoursOnType] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -396,7 +387,6 @@ function TypeRatingsCard({ profile, setProfile }) {
     try {
       const { data } = await profileApi.addRating({
         aircraftType: aircraftType.toUpperCase(),
-        issuingAuthority: authority,
         category: 'Multi-Engine',
         hoursOnType: parseFloat(hoursOnType) || 0,
       });
@@ -419,16 +409,15 @@ function TypeRatingsCard({ profile, setProfile }) {
 
       {(!profile?.ratings?.length) && <div style={css.emptyNote}>No type ratings added.</div>}
 
-      {profile?.ratings?.map((r) => {
-        const auth = AUTHORITIES.find((a) => a.value === r.issuingAuthority);
-        return (
+      {profile?.ratings?.map((r) => (
           <div key={r.id} style={css.item}>
             <div>
               <div style={css.itemTitle}>{r.aircraftType}</div>
-              <div style={css.itemSub}>
-                {auth?.flag} {auth?.label || r.issuingAuthority}
-                {r.hoursOnType > 0 && <span style={{ color: '#00B4D8', marginLeft: 8, fontWeight: 600 }}>{r.hoursOnType.toLocaleString()} hrs on type</span>}
-              </div>
+              {r.hoursOnType > 0 && (
+                <div style={css.itemSub}>
+                  <span style={{ color: '#00B4D8', fontWeight: 600 }}>{r.hoursOnType.toLocaleString()} hrs on type</span>
+                </div>
+              )}
             </div>
             <button style={css.deleteBtn} onClick={async () => {
               if (!window.confirm('Remove this type rating?')) return;
@@ -436,8 +425,8 @@ function TypeRatingsCard({ profile, setProfile }) {
               setProfile((p) => ({ ...p, ratings: p.ratings.filter((rt) => rt.id !== r.id) }));
             }}>🗑</button>
           </div>
-        );
-      })}
+        )
+      )}
 
       {!showForm
         ? <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add type rating</button>
@@ -447,12 +436,6 @@ function TypeRatingsCard({ profile, setProfile }) {
               <div>
                 <label style={css.label}>Aircraft type</label>
                 <input style={css.input} value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} placeholder="e.g. B737, A320, ATR72" />
-              </div>
-              <div>
-                <label style={css.label}>Issued by</label>
-                <select style={css.select} value={authority} onChange={(e) => setAuthority(e.target.value)}>
-                  <SelectOptions options={AUTHORITIES} />
-                </select>
               </div>
               <div>
                 <label style={css.label}>Hours on Type</label>
@@ -474,7 +457,7 @@ function TypeRatingsCard({ profile, setProfile }) {
 function EnglishProficiencyCard() {
   const [items, setItems] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ level: 'Level 4', issuingAuthority: 'ICAO', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
+  const [form, setForm] = useState({ level: 'Level 4', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -488,7 +471,7 @@ function EnglishProficiencyCard() {
       const { data } = await profileApi.addELP(payload);
       setItems((prev) => [...prev, data]);
       setShowForm(false);
-      setForm({ level: 'Level 4', issuingAuthority: 'ICAO', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
+      setForm({ level: 'Level 4', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
     } finally { setSaving(false); }
   };
 
@@ -515,7 +498,6 @@ function EnglishProficiencyCard() {
       )}
 
       {items.map((item) => {
-        const auth = AUTHORITIES.find((a) => a.value === item.issuingAuthority);
         const color = levelColors[item.level] || '#7A8CA0';
         return (
           <div key={item.id} style={css.item}>
@@ -533,8 +515,7 @@ function EnglishProficiencyCard() {
                 )}
               </div>
               <div style={{ ...css.itemSub, marginTop: 6 }}>
-                {auth?.flag} {auth?.label || item.issuingAuthority}
-                {item.endorsementNumber && ` · #${item.endorsementNumber}`}
+                {item.endorsementNumber && `#${item.endorsementNumber}`}
                 {item.issueDate && ` · Issued ${new Date(item.issueDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`}
                 {item.expiryDate && <ExpiryBadge dateStr={item.expiryDate} />}
                 {item.noExpiry && item.level !== 'Level 6' && <span style={{ color: '#2ECC71', fontSize: 12, fontWeight: 600 }}> · No expiry</span>}
@@ -556,12 +537,6 @@ function EnglishProficiencyCard() {
                 <option value="Level 4">ICAO Level 4 — Operational</option>
                 <option value="Level 5">ICAO Level 5 — Extended</option>
                 <option value="Level 6">ICAO Level 6 — Expert (no expiry)</option>
-              </select>
-            </div>
-            <div>
-              <label style={css.label}>Issuing Authority</label>
-              <select style={css.select} value={form.issuingAuthority} onChange={(e) => setForm((f) => ({ ...f, issuingAuthority: e.target.value }))}>
-                {AUTHORITIES.map((a) => <option key={a.value} value={a.value}>{a.flag} {a.label}</option>)}
               </select>
             </div>
             <div>
@@ -927,7 +902,7 @@ export default function Profile() {
 
         {personalForm && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
               {[
                 { k: 'firstName', label: 'First Name' },
                 { k: 'lastName',  label: 'Last Name' },

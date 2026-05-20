@@ -16,9 +16,11 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
-const { fetchLever }     = require('./sources/lever');
-const { fetchGreenhouse } = require('./sources/greenhouse');
-const { fetchWorkday }   = require('./sources/workday/index');
+const { fetchLever }           = require('./sources/lever');
+const { fetchGreenhouse }      = require('./sources/greenhouse');
+const { fetchWorkday }         = require('./sources/workday/index');
+const { fetchSmartRecruiters }     = require('./sources/smartrecruiters');
+const { fetchPilotCareerCentre }   = require('./sources/pilotcareercentre');
 const { normalize }      = require('./normalize');
 const { filterAviationJobs } = require('./filters');
 const { collapseXSourceDuplicates } = require('./dedup');
@@ -73,9 +75,10 @@ async function upsertJob(job) {
     where: { sourcePlatform_externalId: { sourcePlatform, externalId } },
     create: data,
     update: {
-      // On re-run: refresh mutable fields; keep postedAt stable
+      // On re-run: refresh all mutable fields; keep postedAt stable
       title, company, location, country: country || null,
       description: description || '',
+      applyUrl, sourceUrl: sourceUrl || applyUrl,
       status: 'ACTIVE', // re-activate if it was expired
       expiresAt: expiresAt || null,
       reqCertificates: reqCertificates || [],
@@ -88,7 +91,7 @@ async function upsertJob(job) {
       reqMinTurbineHours: reqMinTurbineHours || null,
       reqMinInstrumentHours: reqMinInstrumentHours || null,
       reqWillingToRelocate: !!reqWillingToRelocate,
-      mergedInto: null, // un-merge if re-listed
+      mergedInto: null,
     },
   });
 }
@@ -113,9 +116,11 @@ async function markStaleInactive(sourcePlatform, company, seenExternalIds) {
 
 async function fetchForEmployer(empConfig) {
   switch (empConfig.source) {
-    case 'LEVER':      return fetchLever(empConfig);
-    case 'GREENHOUSE': return fetchGreenhouse(empConfig);
-    case 'WORKDAY':    return fetchWorkday(empConfig);
+    case 'LEVER':           return fetchLever(empConfig);
+    case 'GREENHOUSE':      return fetchGreenhouse(empConfig);
+    case 'WORKDAY':         return fetchWorkday(empConfig);
+    case 'SMARTRECRUITERS':   return fetchSmartRecruiters(empConfig);
+    case 'PILOTCAREERCENTRE': return fetchPilotCareerCentre(empConfig);
     default:
       logger.warn({ msg: `unknown source: ${empConfig.source}` });
       return [];
@@ -145,7 +150,10 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       .map((r) => normalize(r, empConfig))
       .filter(Boolean);
 
-    const { kept, dropped } = filterAviationJobs(normalized, empConfig.source, empConfig.company);
+    // skipFilter: true → source is already a pilot-only board (e.g. PilotCareerCentre)
+    const { kept, dropped } = empConfig.skipFilter
+      ? { kept: normalized, dropped: 0 }
+      : filterAviationJobs(normalized, empConfig.source, empConfig.company);
     stats.keptAfterFilter = kept.length;
 
     logger.info({

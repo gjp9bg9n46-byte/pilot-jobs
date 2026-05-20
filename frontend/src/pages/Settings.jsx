@@ -279,9 +279,7 @@ export default function Settings() {
   return (
     <div
       style={{
-        minHeight: '100vh',
-        background: '#0A1628',
-        padding: '40px 20px',
+        padding: '0 0 24px',
         fontFamily: "'Inter', sans-serif",
       }}
     >

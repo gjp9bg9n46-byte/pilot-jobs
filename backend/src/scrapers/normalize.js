@@ -252,6 +252,151 @@ function normalizeWorkday(raw, empConfig) {
 }
 
 /**
+ * @param {object}  raw        PilotCareerCentre raw object
+ * @param {object}  empConfig
+ * @returns {import('./types').NormalizedJob}
+ */
+function normalizePCC(raw, empConfig) {
+  const { _position, _aircraftRaw, _airline, _urlRegion, _applyUrl, _detailUrl } = raw;
+
+  // Parse aircraft field: "Boeing 787 - Schiphol" → { aircraft: "Boeing 787", city: "Schiphol" }
+  const idx = (_aircraftRaw || '').lastIndexOf(' - ');
+  const aircraftStr = idx >= 0 ? _aircraftRaw.slice(0, idx).trim() : (_aircraftRaw || '').trim();
+  const city        = idx >= 0 ? _aircraftRaw.slice(idx + 3).trim() : '';
+
+  // Try to extract a standard aircraft code
+  const normAircraft = normaliseAircraft(aircraftStr);
+  const reqAircraftTypes = normAircraft ? [normAircraft] : [];
+
+  // Region → our label
+  const REGION_MAP = {
+    'europe-uk': 'Europe', 'usa': 'Americas', 'mena': 'Middle East',
+    'apac': 'Asia Pacific', 'africa': 'Africa', 'latin-america': 'Latin America',
+  };
+  const region = REGION_MAP[(_urlRegion || '').toLowerCase()] || null;
+
+  // Location: "City, Region" or just the city
+  const location = city ? (region ? `${city}, ${region}` : city) : (region || '');
+
+  // Role from position text
+  const posLower = (_position || '').toLowerCase();
+  let role = null;
+  if (posLower.includes('captain') || posLower.includes('command') || posLower.includes('pic')) role = 'CAPTAIN';
+  else if (posLower.includes('first officer') || posLower.includes('f/o') || posLower.includes(' fo') || posLower.includes('sic') || posLower.includes('second') || posLower.includes('copilot') || posLower.includes('co-pilot')) role = 'FIRST_OFFICER';
+  else if (posLower.includes('instructor') || posLower.includes('training')) role = 'INSTRUCTOR';
+
+  // Synthesise description from structured fields
+  const description = [
+    `${_airline} is recruiting ${_position}.`,
+    aircraftStr ? `Aircraft: ${aircraftStr}.` : '',
+    city ? `Base: ${city}.` : '',
+    region ? `Region: ${region}.` : '',
+  ].filter(Boolean).join(' ');
+
+  return {
+    sourcePlatform: 'PILOTCAREERCENTRE',
+    externalId: raw.externalId,
+    title: `${_position} – ${aircraftStr || _airline}`,
+    company: _airline,
+    location,
+    country: guessCountry(location),
+    description,
+    applyUrl: _applyUrl || _detailUrl,   // real airline URL, falls back to PCC detail
+    sourceUrl: _detailUrl,               // always the PCC page for attribution
+    postedAt: new Date(),
+    expiresAt: null,
+    role,
+    contractType: null,
+    region,
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: null,
+    salaryPeriod: null,
+    reqCertificates: [],
+    reqAuthorities: [],
+    reqAircraftTypes,
+    reqMedicalClass: null,
+    reqMinTotalHours: null,
+    reqMinPicHours: null,
+    reqMinMultiEngineHours: null,
+    reqMinTurbineHours: null,
+    reqMinInstrumentHours: null,
+    reqWillingToRelocate: false,
+  };
+}
+
+// Aircraft normaliser used by normalizePCC
+function normaliseAircraft(aircraft) {
+  const t = (aircraft || '').toUpperCase().replace(/[-\s]/g, '');
+  const a = (aircraft || '').toUpperCase();
+  if (/BOEING\s*7[0-9]{2}/.test(a) || /B7[0-9]{2}/.test(t)) {
+    const m = (a + t).match(/7([0-9]{2})/);
+    return m ? `B7${m[1]}` : null;
+  }
+  if (/A[23][0-9]{2}/.test(t)) { const m = t.match(/(A[23][0-9]{2})/); return m ? m[1] : null; }
+  if (/ATR/.test(t)) { const m = t.match(/ATR[\s-]?(\d+)/i); return m ? `ATR${m[1]}` : 'ATR'; }
+  if (/E[0-9]{3}/.test(t)) { const m = t.match(/(E[0-9]{3})/); return m ? m[1] : null; }
+  return null;
+}
+
+/**
+ * @param {object}  raw        SmartRecruiters raw object (has _summary and _detail)
+ * @param {object}  empConfig
+ * @returns {import('./types').NormalizedJob}
+ */
+function normalizeSmartRecruiters(raw, empConfig) {
+  const summary = raw._summary || {};
+  const detail  = raw._detail  || {};
+
+  // Description comes from jobAd sections (HTML)
+  const sections = detail.jobAd?.sections || {};
+  const descParts = [
+    sections.companyDescription?.text,
+    sections.jobDescription?.text,
+    sections.qualifications?.text,
+    sections.additionalInformation?.text,
+  ].filter(Boolean);
+  const description = htmlToText(descParts.join('\n'));
+
+  const loc = summary.location || {};
+  // SR uses ISO 2-letter country codes; keep the city+country string for display
+  const locationParts = [loc.city, loc.region, loc.country].filter(Boolean);
+  const location = locationParts.join(', ');
+
+  // Map SR employment type labels to our ContractType enum values
+  const typeLabel = (summary.typeOfEmployment?.label || '').toLowerCase();
+  let contractType = null;
+  if (typeLabel.includes('permanent') || typeLabel.includes('full')) contractType = 'PERMANENT';
+  else if (typeLabel.includes('contract') || typeLabel.includes('fixed')) contractType = 'CONTRACT';
+  else if (typeLabel.includes('freelance') || typeLabel.includes('self')) contractType = 'FREELANCE';
+  else if (typeLabel.includes('part')) contractType = 'PART_TIME';
+
+  const applyUrl = summary.applyUrl || `https://jobs.smartrecruiters.com/${empConfig.slug}/${raw.externalId}`;
+
+  return {
+    sourcePlatform: 'SMARTRECRUITERS',
+    externalId: raw.externalId,
+    title: (summary.name || detail.name || '').trim(),
+    company: empConfig.company,
+    location,
+    country: loc.country || guessCountry(location),
+    description,
+    applyUrl,
+    sourceUrl: applyUrl,
+    postedAt: summary.releasedDate ? new Date(summary.releasedDate) : new Date(),
+    expiresAt: null,
+    role: null,
+    contractType,
+    region: summary.department?.label || null,
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: null,
+    salaryPeriod: null,
+    ...extractRequirements(description),
+  };
+}
+
+/**
  * Normalize a raw job from any supported source.
  *
  * @param {import('./types').RawJob} raw
@@ -261,9 +406,11 @@ function normalizeWorkday(raw, empConfig) {
 function normalize(raw, empConfig) {
   try {
     switch (raw.sourcePlatform) {
-      case 'LEVER':      return normalizeLever(raw, empConfig);
-      case 'GREENHOUSE': return normalizeGreenhouse(raw, empConfig);
-      case 'WORKDAY':    return normalizeWorkday(raw, empConfig);
+      case 'LEVER':            return normalizeLever(raw, empConfig);
+      case 'GREENHOUSE':       return normalizeGreenhouse(raw, empConfig);
+      case 'WORKDAY':          return normalizeWorkday(raw, empConfig);
+      case 'SMARTRECRUITERS':    return normalizeSmartRecruiters(raw, empConfig);
+      case 'PILOTCAREERCENTRE':  return normalizePCC(raw, empConfig);
       default: return null;
     }
   } catch (err) {
