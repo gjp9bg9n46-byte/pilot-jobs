@@ -23,8 +23,23 @@ exports.getLogs = async (req, res, next) => {
 
 exports.createLog = async (req, res, next) => {
   try {
+    const {
+      date, aircraftType, registration, departure, arrival,
+      flightNumber, picName, sicName,
+      totalTime, picTime, sicTime,
+      multiEngineTime, turbineTime, instrumentTime, nightTime,
+      landingsDay, landingsNight, remarks,
+    } = req.body;
     const log = await prisma.flightLog.create({
-      data: { ...req.body, pilotId: req.pilot.id, source: 'MANUAL' },
+      data: {
+        date, aircraftType, registration, departure, arrival,
+        flightNumber, picName, sicName,
+        totalTime, picTime, sicTime,
+        multiEngineTime, turbineTime, instrumentTime, nightTime,
+        landingsDay, landingsNight, remarks,
+        pilotId: req.pilot.id,
+        source: 'MANUAL',
+      },
     });
     res.status(201).json(log);
   } catch (err) {
@@ -41,9 +56,22 @@ exports.bulkCreate = async (req, res, next) => {
 
     const dutyId = randomUUID();
     const logs = await Promise.all(
-      legs.map((leg) =>
+      legs.map(({
+        date, aircraftType, registration, departure, arrival,
+        flightNumber, picName, sicName,
+        totalTime, picTime, sicTime,
+        multiEngineTime, turbineTime, instrumentTime, nightTime,
+        landingsDay, landingsNight, remarks,
+      }) =>
         prisma.flightLog.create({
-          data: { ...leg, pilotId: req.pilot.id, source: 'MANUAL', dutyId },
+          data: {
+            date, aircraftType, registration, departure, arrival,
+            flightNumber, picName, sicName,
+            totalTime, picTime, sicTime,
+            multiEngineTime, turbineTime, instrumentTime, nightTime,
+            landingsDay, landingsNight, remarks,
+            pilotId: req.pilot.id, source: 'MANUAL', dutyId,
+          },
         })
       )
     );
@@ -94,9 +122,22 @@ exports.updateLog = async (req, res, next) => {
     });
     if (!existing) return res.status(404).json({ error: 'Log not found' });
 
+    const {
+      date, aircraftType, registration, departure, arrival,
+      flightNumber, picName, sicName,
+      totalTime, picTime, sicTime,
+      multiEngineTime, turbineTime, instrumentTime, nightTime,
+      landingsDay, landingsNight, remarks,
+    } = req.body;
     const log = await prisma.flightLog.update({
       where: { id: req.params.id },
-      data: req.body,
+      data: {
+        date, aircraftType, registration, departure, arrival,
+        flightNumber, picName, sicName,
+        totalTime, picTime, sicTime,
+        multiEngineTime, turbineTime, instrumentTime, nightTime,
+        landingsDay, landingsNight, remarks,
+      },
     });
     res.json(log);
   } catch (err) {
