@@ -190,8 +190,8 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
         landingsNight: parseInt(form.landingsNight) || 0,
       });
       onClose();
-    } catch {
-      setError('Could not save flight. Please try again.');
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || 'Could not save flight. Please try again.');
     } finally {
       setSaving(false);
     }
