@@ -25,6 +25,7 @@ exports.createLog = async (req, res, next) => {
   try {
     const {
       date, aircraftType, registration, departure, arrival,
+      offBlocksTime, takeoffTime, landingTime, onBlocksTime,
       flightNumber, picName, sicName,
       totalTime, picTime, sicTime,
       multiEngineTime, turbineTime, instrumentTime, nightTime,
@@ -33,6 +34,7 @@ exports.createLog = async (req, res, next) => {
     const log = await prisma.flightLog.create({
       data: {
         date, aircraftType, registration, departure, arrival,
+        offBlocksTime, takeoffTime, landingTime, onBlocksTime,
         flightNumber, picName, sicName,
         totalTime, picTime, sicTime,
         multiEngineTime, turbineTime, instrumentTime, nightTime,
@@ -58,6 +60,7 @@ exports.bulkCreate = async (req, res, next) => {
     const logs = await Promise.all(
       legs.map(({
         date, aircraftType, registration, departure, arrival,
+        offBlocksTime, takeoffTime, landingTime, onBlocksTime,
         flightNumber, picName, sicName,
         totalTime, picTime, sicTime,
         multiEngineTime, turbineTime, instrumentTime, nightTime,
@@ -66,6 +69,7 @@ exports.bulkCreate = async (req, res, next) => {
         prisma.flightLog.create({
           data: {
             date, aircraftType, registration, departure, arrival,
+            offBlocksTime, takeoffTime, landingTime, onBlocksTime,
             flightNumber, picName, sicName,
             totalTime, picTime, sicTime,
             multiEngineTime, turbineTime, instrumentTime, nightTime,
@@ -124,6 +128,7 @@ exports.updateLog = async (req, res, next) => {
 
     const {
       date, aircraftType, registration, departure, arrival,
+      offBlocksTime, takeoffTime, landingTime, onBlocksTime,
       flightNumber, picName, sicName,
       totalTime, picTime, sicTime,
       multiEngineTime, turbineTime, instrumentTime, nightTime,
@@ -133,6 +138,7 @@ exports.updateLog = async (req, res, next) => {
       where: { id: req.params.id },
       data: {
         date, aircraftType, registration, departure, arrival,
+        offBlocksTime, takeoffTime, landingTime, onBlocksTime,
         flightNumber, picName, sicName,
         totalTime, picTime, sicTime,
         multiEngineTime, turbineTime, instrumentTime, nightTime,

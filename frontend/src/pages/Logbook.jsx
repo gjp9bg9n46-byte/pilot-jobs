@@ -119,6 +119,7 @@ const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
   flightNumber: '', tailPrefix: '', aircraftType: '', registration: '',
   departure: '', arrival: '',
+  offBlocksTime: '', takeoffTime: '', landingTime: '', onBlocksTime: '',
   picName: '', sicName: '',
   totalTime: '', picTime: '', sicTime: '',
   multiEngineTime: '', turbineTime: '',
@@ -136,6 +137,10 @@ function formFromLog(log) {
     registration: log.registration || '',
     departure: log.departure || '',
     arrival: log.arrival || '',
+    offBlocksTime: log.offBlocksTime || '',
+    takeoffTime: log.takeoffTime || '',
+    landingTime: log.landingTime || '',
+    onBlocksTime: log.onBlocksTime || '',
     picName: log.picName || '',
     sicName: log.sicName || '',
     totalTime: log.totalTime != null ? String(log.totalTime) : '',
@@ -161,34 +166,72 @@ function Field({ value, onChange, label, hint, span, type = 'text' }) {
   );
 }
 
-function AddFlightModal({ onClose, onSave, initial, title }) {
-  const [form, setForm] = useState(initial ? formFromLog(initial) : EMPTY_FORM);
+function TimeField({ value, onChange, label }) {
+  return (
+    <div>
+      <label style={css.label}>{label}<span style={css.hint}>HH:MM UTC</span></label>
+      <input style={css.input} type="time" value={value} onChange={onChange} />
+    </div>
+  );
+}
+
+function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
+  const [legs, setLegs] = useState(initial ? [formFromLog(initial)] : [{ ...EMPTY_FORM }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setLegField = (idx, k) => (e) =>
+    setLegs((prev) => prev.map((leg, i) => i === idx ? { ...leg, [k]: e.target.value } : leg));
+
+  const addLeg = () => {
+    const prev = legs[legs.length - 1];
+    setLegs((l) => [...l, {
+      ...EMPTY_FORM,
+      date: prev.date,
+      tailPrefix: prev.tailPrefix,
+      aircraftType: prev.aircraftType,
+      registration: prev.registration,
+      picName: prev.picName,
+      sicName: prev.sicName,
+      departure: prev.arrival,
+    }]);
+  };
+
+  const removeLeg = (idx) => setLegs((l) => l.filter((_, i) => i !== idx));
+
+  const buildPayload = (leg) => {
+    const { tailPrefix, ...rest } = leg;
+    return {
+      ...rest,
+      registration: tailPrefix ? `${tailPrefix}${leg.registration}` : leg.registration,
+      date: new Date(leg.date).toISOString(),
+      totalTime: parseFloat(leg.totalTime) || 0,
+      picTime: parseFloat(leg.picTime) || 0,
+      sicTime: parseFloat(leg.sicTime) || 0,
+      multiEngineTime: parseFloat(leg.multiEngineTime) || 0,
+      turbineTime: parseFloat(leg.turbineTime) || 0,
+      instrumentTime: parseFloat(leg.instrumentTime) || 0,
+      nightTime: parseFloat(leg.nightTime) || 0,
+      landingsDay: parseInt(leg.landingsDay) || 0,
+      landingsNight: parseInt(leg.landingsNight) || 0,
+    };
+  };
 
   const handleSave = async () => {
-    if (!form.date || !form.aircraftType || !form.totalTime) {
-      return setError('Date, aircraft type, and total time are required.');
+    for (let i = 0; i < legs.length; i++) {
+      const leg = legs[i];
+      if (!leg.date || !leg.aircraftType || !leg.totalTime) {
+        return setError(`Leg ${i + 1}: date, aircraft type, and total time are required.`);
+      }
     }
     setSaving(true);
     try {
-      const { tailPrefix, ...rest } = form;
-      await onSave({
-        ...rest,
-        registration: tailPrefix ? `${tailPrefix}${form.registration}` : form.registration,
-        date: new Date(form.date).toISOString(),
-        totalTime: parseFloat(form.totalTime) || 0,
-        picTime: parseFloat(form.picTime) || 0,
-        sicTime: parseFloat(form.sicTime) || 0,
-        multiEngineTime: parseFloat(form.multiEngineTime) || 0,
-        turbineTime: parseFloat(form.turbineTime) || 0,
-        instrumentTime: parseFloat(form.instrumentTime) || 0,
-        nightTime: parseFloat(form.nightTime) || 0,
-        landingsDay: parseInt(form.landingsDay) || 0,
-        landingsNight: parseInt(form.landingsNight) || 0,
-      });
+      const payloads = legs.map(buildPayload);
+      if (payloads.length === 1) {
+        await onSave(payloads[0]);
+      } else {
+        await onSaveBulk(payloads);
+      }
       onClose();
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || 'Could not save flight. Please try again.');
@@ -207,64 +250,103 @@ function AddFlightModal({ onClose, onSave, initial, title }) {
           </div>
         )}
 
-        <div style={css.sectionTitle}>Flight Details</div>
-        <div style={css.formGrid}>
-          <Field value={form.date} onChange={set('date')} label="Date *" type="date" />
-          <Field value={form.flightNumber} onChange={set('flightNumber')} label="Flight Number" hint="e.g. QR435, EK201" />
-          <Field value={form.aircraftType} onChange={set('aircraftType')} label="Aircraft Type *" hint="e.g. B737, A320, C172" />
-          <div>
-            <label style={css.label}>Tail Number (Registration)</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <select
-                value={form.tailPrefix}
-                onChange={set('tailPrefix')}
-                style={{ ...css.input, width: 90, padding: '11px 6px', flexShrink: 0 }}
-              >
-                {TAIL_PREFIXES.map((p) => <option key={p} value={p}>{p || 'Prefix'}</option>)}
-              </select>
-              <input style={{ ...css.input, flex: 1 }} value={form.registration} onChange={set('registration')} placeholder="EKA, 123AB…" />
+        {legs.map((leg, idx) => {
+          const set = (k) => setLegField(idx, k);
+          return (
+            <div key={idx}>
+              {legs.length > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#00B4D8' }}>Leg {idx + 1}</div>
+                  {idx > 0 && (
+                    <button onClick={() => removeLeg(idx)} style={{ background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                      ✕ Remove leg
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div style={css.sectionTitle}>Flight Details</div>
+              <div style={css.formGrid}>
+                <Field value={leg.date} onChange={set('date')} label="Date *" type="date" />
+                <Field value={leg.flightNumber} onChange={set('flightNumber')} label="Flight Number" hint="e.g. QR435, EK201" />
+                <Field value={leg.aircraftType} onChange={set('aircraftType')} label="Aircraft Type *" hint="e.g. B737, A320, C172" />
+                <div>
+                  <label style={css.label}>Tail Number (Registration)</label>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <select value={leg.tailPrefix} onChange={set('tailPrefix')} style={{ ...css.input, width: 90, padding: '11px 6px', flexShrink: 0 }}>
+                      {TAIL_PREFIXES.map((p) => <option key={p} value={p}>{p || 'Prefix'}</option>)}
+                    </select>
+                    <input style={{ ...css.input, flex: 1 }} value={leg.registration} onChange={set('registration')} placeholder="EKA, 123AB…" />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                  <div style={{ flex: 1 }}><Field value={leg.departure} onChange={set('departure')} label="From" hint="e.g. OMDB" /></div>
+                  <div style={{ paddingBottom: 10, color: '#4A6080', fontSize: 18 }}>→</div>
+                  <div style={{ flex: 1 }}><Field value={leg.arrival} onChange={set('arrival')} label="To" hint="e.g. EGLL" /></div>
+                </div>
+                <Field value={leg.picName} onChange={set('picName')} label="Pilot in Command" hint="e.g. Capt. Al Rashid" />
+                <Field value={leg.sicName} onChange={set('sicName')} label="Second in Command" hint="e.g. F/O Smith" />
+              </div>
+
+              <div style={css.sectionTitle}>Times (UTC)</div>
+              <div style={css.formGrid}>
+                <TimeField value={leg.offBlocksTime} onChange={set('offBlocksTime')} label="Off Blocks" />
+                <TimeField value={leg.takeoffTime} onChange={set('takeoffTime')} label="Takeoff" />
+                <TimeField value={leg.landingTime} onChange={set('landingTime')} label="Landing" />
+                <TimeField value={leg.onBlocksTime} onChange={set('onBlocksTime')} label="On Blocks" />
+              </div>
+
+              <div style={css.sectionTitle}>Flight Hours <span style={{ fontSize: 11, color: '#4A6080', fontWeight: 400 }}>Enter as decimals — 1h 30m = 1.5</span></div>
+              <div style={css.formGrid}>
+                <Field value={leg.totalTime} onChange={set('totalTime')} label="Total Time *" type="number" />
+                <Field value={leg.picTime} onChange={set('picTime')} label="PIC (Captain)" type="number" />
+                <Field value={leg.sicTime} onChange={set('sicTime')} label="SIC (Co-pilot)" type="number" />
+                <Field value={leg.multiEngineTime} onChange={set('multiEngineTime')} label="Multi-Engine" type="number" />
+                <Field value={leg.turbineTime} onChange={set('turbineTime')} label="Turbine" type="number" />
+                <Field value={leg.instrumentTime} onChange={set('instrumentTime')} label="Instrument (IMC)" type="number" />
+                <Field value={leg.nightTime} onChange={set('nightTime')} label="Night" type="number" />
+              </div>
+
+              <div style={css.sectionTitle}>Landings</div>
+              <div style={css.formGrid}>
+                <Field value={leg.landingsDay} onChange={set('landingsDay')} label="Day Landings" type="number" />
+                <Field value={leg.landingsNight} onChange={set('landingsNight')} label="Night Landings" type="number" />
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={css.label}>Remarks</label>
+                <textarea
+                  style={{ ...css.input, height: 70, resize: 'vertical', fontFamily: 'inherit' }}
+                  value={leg.remarks}
+                  onChange={set('remarks')}
+                  placeholder="Any notes about this flight..."
+                />
+              </div>
+
+              {idx < legs.length - 1 && (
+                <div style={{ borderTop: '1px solid #1E3050', margin: '4px 0 28px' }} />
+              )}
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}><Field value={form.departure} onChange={set('departure')} label="From" hint="e.g. OMDB" /></div>
-            <div style={{ paddingBottom: 10, color: '#4A6080', fontSize: 18 }}>→</div>
-            <div style={{ flex: 1 }}><Field value={form.arrival} onChange={set('arrival')} label="To" hint="e.g. EGLL" /></div>
-          </div>
-          <Field value={form.picName} onChange={set('picName')} label="Pilot in Command" hint="e.g. Capt. Al Rashid" />
-          <Field value={form.sicName} onChange={set('sicName')} label="Second in Command" hint="e.g. F/O Smith" />
-        </div>
+          );
+        })}
 
-        <div style={css.sectionTitle}>Flight Hours  <span style={{ fontSize: 11, color: '#4A6080', fontWeight: 400 }}>Enter as decimals — 1h 30m = 1.5</span></div>
-        <div style={css.formGrid}>
-          <Field value={form.totalTime} onChange={set('totalTime')} label="Total Time *" type="number" />
-          <Field value={form.picTime} onChange={set('picTime')} label="PIC (Captain)" type="number" />
-          <Field value={form.sicTime} onChange={set('sicTime')} label="SIC (Co-pilot)" type="number" />
-          <Field value={form.multiEngineTime} onChange={set('multiEngineTime')} label="Multi-Engine" type="number" />
-          <Field value={form.turbineTime} onChange={set('turbineTime')} label="Turbine" type="number" />
-          <Field value={form.instrumentTime} onChange={set('instrumentTime')} label="Instrument (IMC)" type="number" />
-          <Field value={form.nightTime} onChange={set('nightTime')} label="Night" type="number" />
-        </div>
-
-        <div style={css.sectionTitle}>Landings</div>
-        <div style={css.formGrid}>
-          <Field value={form.landingsDay} onChange={set('landingsDay')} label="Day Landings" type="number" />
-          <Field value={form.landingsNight} onChange={set('landingsNight')} label="Night Landings" type="number" />
-        </div>
-
-        <div style={{ marginBottom: 24 }}>
-          <label style={css.label}>Remarks</label>
-          <textarea
-            style={{ ...css.input, height: 70, resize: 'vertical', fontFamily: 'inherit' }}
-            value={form.remarks}
-            onChange={set('remarks')}
-            placeholder="Any notes about this flight..."
-          />
-        </div>
+        {!initial && (
+          <button
+            onClick={addLeg}
+            style={{
+              width: '100%', background: 'transparent', border: '1px dashed #00B4D8',
+              borderRadius: 10, padding: '11px', color: '#00B4D8',
+              fontWeight: 600, fontSize: 14, cursor: 'pointer', marginBottom: 24,
+            }}
+          >
+            + Add another leg
+          </button>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button style={css.cancelBtn} onClick={onClose}>Cancel</button>
           <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Flight'}
+            {saving ? 'Saving...' : legs.length > 1 ? `Save ${legs.length} Legs` : 'Save Flight'}
           </button>
         </div>
       </div>
@@ -373,6 +455,11 @@ export default function Logbook() {
   const handleSaveClone = async (payload) => {
     const { data } = await flightLogApi.create(payload);
     dispatch(addLog(data));
+    fetchData();
+  };
+
+  const handleSaveBulk = async (payloads) => {
+    await flightLogApi.bulkCreate({ legs: payloads });
     fetchData();
   };
 
@@ -525,14 +612,14 @@ export default function Logbook() {
         <table style={{ ...css.table, minWidth: 700 }}>
           <thead>
             <tr>
-              {['Date', 'Aircraft', 'Route', 'Total', 'PIC', 'Multi', 'Turbine', 'Night', 'Ldg', ''].map((h) => (
+              {['Date', 'Aircraft', 'Route', 'Block', 'Total', 'PIC', 'Multi', 'Turbine', 'Night', 'Ldg', ''].map((h) => (
                 <th key={h} style={css.th}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {groupedRows.length === 0 && (
-              <tr><td colSpan={10} style={css.emptyRow}>
+              <tr><td colSpan={11} style={css.emptyRow}>
                 {search ? 'No flights match your search.' : 'No flights logged yet. Click "Log a Flight" to get started.'}
               </td></tr>
             )}
@@ -552,6 +639,11 @@ export default function Logbook() {
                       {log.departure || log.arrival
                         ? <div style={css.route}>{log.departure} → {log.arrival}</div>
                         : <span style={{ color: '#4A6080' }}>—</span>}
+                    </td>
+                    <td style={{ ...css.td, color: '#7A8CA0', fontSize: 12 }}>
+                      {log.offBlocksTime && log.onBlocksTime
+                        ? `${log.offBlocksTime}–${log.onBlocksTime}`
+                        : '—'}
                     </td>
                     <td style={{ ...css.td, ...css.hours }}>{log.totalTime.toFixed(1)}</td>
                     <td style={css.td}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
@@ -607,6 +699,11 @@ export default function Logbook() {
                         {legs.map((l) => `${l.departure || '?'}→${l.arrival || '?'}`).join(' · ')}
                       </div>
                     </td>
+                    <td style={{ ...css.td, color: '#7A8CA0', fontSize: 12 }}>
+                      {first.offBlocksTime && last.onBlocksTime
+                        ? `${first.offBlocksTime}–${last.onBlocksTime}`
+                        : '—'}
+                    </td>
                     <td style={{ ...css.td, ...css.hours }}>{totalTime.toFixed(1)}</td>
                     <td style={css.td}>{totalPic > 0 ? totalPic.toFixed(1) : '—'}</td>
                     <td style={css.td}>{totalMulti > 0 ? totalMulti.toFixed(1) : '—'}</td>
@@ -626,6 +723,11 @@ export default function Logbook() {
                       <td style={{ ...css.td, color: '#4A6080', fontSize: 12 }}>—</td>
                       <td style={css.td}>
                         <div style={css.route}>{log.departure} → {log.arrival}</div>
+                      </td>
+                      <td style={{ ...css.td, color: '#7A8CA0', fontSize: 12 }}>
+                        {log.offBlocksTime && log.onBlocksTime
+                          ? `${log.offBlocksTime}–${log.onBlocksTime}`
+                          : '—'}
                       </td>
                       <td style={{ ...css.td, ...css.hours, fontSize: 13 }}>{log.totalTime.toFixed(1)}</td>
                       <td style={{ ...css.td, fontSize: 13 }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
@@ -652,6 +754,7 @@ export default function Logbook() {
         <AddFlightModal
           onClose={() => setShowModal(false)}
           onSave={handleSaveNew}
+          onSaveBulk={handleSaveBulk}
           title="Log a Flight"
         />
       )}
