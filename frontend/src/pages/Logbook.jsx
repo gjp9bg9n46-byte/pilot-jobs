@@ -73,15 +73,15 @@ const css = {
   tdLast: { borderRight: '1px solid #1E3050', borderRadius: '0 10px 10px 0', paddingRight: 18 },
   deleteBtn: {
     background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer',
-    padding: 4, display: 'inline-flex', alignItems: 'center',
+    padding: '8px 6px', display: 'inline-flex', alignItems: 'center',
   },
   editBtn: {
     background: 'none', border: 'none', color: '#00B4D8', cursor: 'pointer',
-    padding: 4, display: 'inline-flex', alignItems: 'center',
+    padding: '8px 6px', display: 'inline-flex', alignItems: 'center',
   },
   cloneBtn: {
     background: 'none', border: 'none', color: '#7A8CA0', cursor: 'pointer',
-    padding: 4, display: 'inline-flex', alignItems: 'center',
+    padding: '8px 6px', display: 'inline-flex', alignItems: 'center',
   },
   hours: { color: '#00B4D8', fontWeight: 700 },
   route: { color: '#7A8CA0', fontSize: 12, marginTop: 2 },
@@ -662,7 +662,7 @@ export default function Logbook() {
           onMouseLeave={() => setCfHover(false)}
           style={{
             background: '#0D1E35',
-            border: `1px solid ${cfHover ? '#00B4D8' : '#1E3050'}`,
+            border: `1px solid ${cfHover ? '#00B4D8' : 'rgba(0,180,216,0.25)'}`,
             borderRadius: 10,
             padding: '12px 18px',
             color: '#D0E8F8',

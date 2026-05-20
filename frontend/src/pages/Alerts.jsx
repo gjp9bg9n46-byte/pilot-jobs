@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { MapPin, Building2, Search, Trash2 } from 'lucide-react';
+import { MapPin, Building2, Search, Trash2, Bell, Pencil, Rocket, Play, Pause } from 'lucide-react';
 import { jobApi } from '../services/api';
 import { setAlerts, markAlertRead } from '../store';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -254,7 +254,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
       {/* Empty state */}
       {alerts.length === 0 && (
         <div style={{ textAlign: 'center', padding: '80px 0' }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>🔔</div>
+          <div style={{ marginBottom: 16 }}><Bell size={56} color="#4A6080" /></div>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#7A8CA0', marginBottom: 10 }}>No alerts yet</div>
           <div style={{ fontSize: 14, color: '#4A6080', lineHeight: 1.8, maxWidth: 400, margin: '0 auto' }}>
             Once you complete your pilot profile with your licences, ratings, and flight hours,
@@ -507,9 +507,10 @@ function SavedSearchesTab() {
                 color: s.paused ? '#7A8CA0' : '#00B4D8',
                 borderRadius: 8, padding: '6px 14px', fontSize: 12,
                 fontWeight: 700, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 5,
               }}
             >
-              {s.paused ? '▶ Resume' : '⏸ Pause'}
+              {s.paused ? <><Play size={11} /> Resume</> : <><Pause size={11} /> Pause</>}
             </button>
 
             {/* Edit */}
@@ -519,10 +520,10 @@ function SavedSearchesTab() {
               style={{
                 background: 'transparent', border: '1px solid #1E3050',
                 color: '#7A8CA0', borderRadius: 8, padding: '6px 10px',
-                fontSize: 16, cursor: 'pointer',
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
               }}
             >
-              ✏️
+              <Pencil size={15} />
             </button>
 
             {/* Delete */}
@@ -557,7 +558,7 @@ function SavedSearchesTab() {
 function ApplicationsTab() {
   return (
     <div style={{ textAlign: 'center', padding: '80px 0' }}>
-      <div style={{ fontSize: 56, marginBottom: 16 }}>🚀</div>
+      <div style={{ marginBottom: 16 }}><Rocket size={56} color="#4A6080" /></div>
       <div style={{ fontSize: 22, fontWeight: 800, color: '#7A8CA0', marginBottom: 10 }}>
         Applications tracking coming soon.
       </div>
