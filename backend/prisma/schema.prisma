@@ -37,6 +37,7 @@ enum LogSource {
   FOREFLIGHT
   LOGBOOK_PRO
   OTHER
+  IMPORTED
 }
 
 enum AlertFrequency {
@@ -245,6 +246,7 @@ model FlightLog {
   landingsNight   Int        @default(0)
   remarks         String?
   source          LogSource  @default(MANUAL)
+  importBatchId   String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 

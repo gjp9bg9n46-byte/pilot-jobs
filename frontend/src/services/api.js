@@ -59,6 +59,10 @@ export const flightLogApi = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   export: (format) => api.get('/flight-logs/export', { params: { format }, responseType: 'blob' }),
+  importParse: (formData) => api.post('/flight-logs/import/parse', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  importConfirm: (rows) => api.post('/flight-logs/import/confirm', { rows }),
 };
 
 

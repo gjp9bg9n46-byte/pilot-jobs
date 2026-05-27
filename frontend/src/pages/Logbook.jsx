@@ -2,12 +2,13 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   ChevronDown, ChevronRight, ChevronUp,
-  Pencil, Copy, Trash2, Clock,
+  Pencil, Copy, Trash2, Clock, Upload,
 } from 'lucide-react';
 import SunCalc from 'suncalc';
 import { flightLogApi, profileApi } from '../services/api';
 import { setLogs, setTotals, addLog, removeLog } from '../store';
 import AIRPORTS from '../data/airports.json';
+import ImportModal from '../components/ImportModal';
 
 const css = {
   totalsGrid: {
@@ -510,6 +511,7 @@ export default function Logbook() {
   const [search, setSearch] = useState('');
   const [expandedDuties, setExpandedDuties] = useState(new Set());
   const [cfHover, setCfHover] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const toggleDuty = (id) => setExpandedDuties((prev) => {
     const next = new Set(prev);
@@ -746,25 +748,12 @@ export default function Logbook() {
 
       <div style={css.toolbar}>
         <button style={css.addBtn} onClick={() => setShowModal(true)}>+ Log a Flight</button>
-        <label style={css.importBtn}>
-          &#x2191; Import from ForeFlight / Logbook Pro
-          <input type="file" accept=".csv" style={{ display: 'none' }} onChange={async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const src = window.prompt('Which app?\n\nType: FOREFLIGHT or LOGBOOK_PRO');
-            if (!src) return;
-            const fd = new FormData();
-            fd.append('file', file);
-            fd.append('source', src.toUpperCase());
-            try {
-              const { data } = await flightLogApi.import(fd);
-              alert(`✓ ${data.imported} flights imported successfully!`);
-              fetchData();
-            } catch {
-              alert('Import failed. Check the file format and try again.');
-            }
-          }} />
-        </label>
+        <button
+          style={{ ...css.importBtn, display: 'inline-flex', alignItems: 'center', gap: 7 }}
+          onClick={() => setShowImport(true)}
+        >
+          <Upload size={14} /> Import
+        </button>
         <span style={{ color: '#4A6080', fontSize: 13, marginLeft: 'auto' }}>
           {groupedRows.length} {groupedRows.length !== logs.length ? `entries (${logs.length} sectors)` : 'flights'}
         </span>
@@ -949,6 +938,13 @@ export default function Logbook() {
           onSave={handleSaveClone}
           initial={cloneInitial}
           title="Clone Flight"
+        />
+      )}
+
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImportDone={fetchData}
         />
       )}
     </div>

@@ -1,6 +1,9 @@
 const { randomUUID } = require('crypto');
 const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
+const { parseCSV, detectMapping, coerceRow } = require('../services/importService');
+
+const IMPORT_ROW_LIMIT = 500;
 
 exports.getLogs = async (req, res, next) => {
   try {
@@ -161,6 +164,94 @@ exports.deleteLog = async (req, res, next) => {
     next(err);
   }
 };
+
+// ─── New generic CSV/Excel importer (two-step: parse then confirm) ────────────
+
+exports.importParse = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
+
+    const ext = (req.file.originalname || '').split('.').pop().toLowerCase();
+    if (ext !== 'csv') {
+      return res.status(422).json({ error: 'Only CSV files are supported at this step. Excel (.xlsx) support is coming.' });
+    }
+
+    let parsed;
+    try {
+      parsed = parseCSV(req.file.buffer);
+    } catch (e) {
+      return res.status(422).json({ error: e.message });
+    }
+
+    const { headers, rawRows } = parsed;
+
+    if (headers.length === 0) {
+      return res.status(422).json({ error: 'File is empty or contains no recognisable columns.' });
+    }
+    if (rawRows.length === 0) {
+      return res.status(422).json({ error: 'File has headers but no data rows.' });
+    }
+    if (rawRows.length > IMPORT_ROW_LIMIT) {
+      return res.status(422).json({
+        error: `File has ${rawRows.length} data rows. The limit is ${IMPORT_ROW_LIMIT} rows per import. Split the file into batches.`,
+      });
+    }
+
+    const mapping = detectMapping(headers);
+
+    res.json({ headers, mapping, rawRows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.importConfirm = async (req, res, next) => {
+  try {
+    const { rows } = req.body;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ error: 'rows must be a non-empty array.' });
+    }
+    if (rows.length > IMPORT_ROW_LIMIT) {
+      return res.status(400).json({ error: `Too many rows. Maximum ${IMPORT_ROW_LIMIT} per import.` });
+    }
+
+    const valid = [];
+    const skipped = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const { coerced, errors } = coerceRow(rows[i]);
+      if (errors.length > 0) {
+        skipped.push({ rowIndex: i + 1, errors });
+      } else {
+        valid.push(coerced);
+      }
+    }
+
+    if (valid.length === 0) {
+      return res.status(422).json({ error: 'No valid rows to import.', details: skipped });
+    }
+
+    const batchId = randomUUID();
+
+    await prisma.$transaction(
+      valid.map(row => prisma.flightLog.create({
+        data: {
+          ...row,
+          pilotId: req.pilot.id,
+          source: 'IMPORTED',
+          importBatchId: batchId,
+        },
+      }))
+    );
+
+    res.status(201).json({ imported: valid.length, skipped: skipped.length, batchId });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Legacy ForeFlight / Logbook Pro importer ─────────────────────────────────
 
 exports.importLogbook = async (req, res, next) => {
   try {
