@@ -375,6 +375,7 @@ model JobReport {
 model CvData {
   id        String   @id @default(uuid())
   pilotId   String   @unique
+  photoUrl  String?
   education Json     @default("[]")
   languages Json     @default("[]")
   skills    Json     @default("[]")

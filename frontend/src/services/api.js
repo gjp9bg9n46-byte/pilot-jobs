@@ -83,8 +83,10 @@ export const jobApi = {
 };
 
 export const cvApi = {
-  getData:  ()     => api.get('/cv'),
-  update:   (data) => api.put('/cv', data),
+  getData:      ()         => api.get('/cv'),
+  update:       (data)     => api.put('/cv', data),
+  uploadPhoto:  (formData) => api.post('/cv/photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deletePhoto:  ()         => api.delete('/cv/photo'),
 };
 
 export default api;

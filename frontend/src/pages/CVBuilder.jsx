@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import { Plus, Trash2, ChevronDown, ChevronUp, FileText, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, FileText, CheckCircle2, AlertTriangle, Upload } from 'lucide-react';
 import { cvApi } from '../services/api';
 import TemplateApproach from '../components/cv/TemplateApproach';
 import TemplateFinal from '../components/cv/TemplateFinal';
@@ -174,10 +174,15 @@ export default function CVBuilder() {
   const [languages, setLanguages] = useState([]);
   const [skills, setSkills]       = useState([]);
   const [other, setOther]         = useState([]);
-  const [template, setTemplate]   = useState('approach');
+  const [template, setTemplate]     = useState('approach');
   const [saveStatus, setSaveStatus] = useState('');  // '' | 'saving' | 'saved' | 'error'
   const [skillInput, setSkillInput] = useState('');
-  const saveTimer = useRef(null);
+  const [photoUrl, setPhotoUrl]         = useState(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoError, setPhotoError]     = useState('');
+  const [dragging, setDragging]         = useState(false);
+  const saveTimer   = useRef(null);
+  const fileInputRef = useRef(null);
 
   // ── Load all CV data on mount ───────────────────────────────────────────────
   useEffect(() => {
@@ -188,6 +193,7 @@ export default function CVBuilder() {
         setLanguages(data.cv?.languages ?? []);
         setSkills(data.cv?.skills ?? []);
         setOther(data.cv?.other ?? []);
+        setPhotoUrl(data.cv?.photoUrl ?? null);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -204,6 +210,35 @@ export default function CVBuilder() {
     }, 1500);
   }, []);
 
+  const handlePhotoSelect = async (file) => {
+    if (!file) return;
+    setPhotoError('');
+    setPhotoLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const { data } = await cvApi.uploadPhoto(fd);
+      setPhotoUrl(data.photoUrl);
+    } catch (err) {
+      setPhotoError(err?.response?.data?.error || 'Upload failed — please try again');
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    setPhotoError('');
+    setPhotoLoading(true);
+    try {
+      await cvApi.deletePhoto();
+      setPhotoUrl(null);
+    } catch {
+      setPhotoError('Failed to remove photo');
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
   const updateEducation = (val) => { setEducation(val); scheduleSave(val, languages, skills, other); };
   const updateLanguages = (val) => { setLanguages(val); scheduleSave(education, val, skills, other); };
   const updateSkills    = (val) => { setSkills(val);    scheduleSave(education, languages, val, other); };
@@ -212,7 +247,7 @@ export default function CVBuilder() {
   // ── Build PDF data bundle ───────────────────────────────────────────────────
   const pdfData = serverData ? {
     ...serverData,
-    cv: { education, languages, skills, other },
+    cv: { education, languages, skills, other, photoUrl },
   } : null;
 
   const fileName = serverData
@@ -315,6 +350,88 @@ export default function CVBuilder() {
         </div>
         <div style={{ marginTop: 8, fontSize: 12, color: '#4A6080' }}>
           Edit personal details on the <a href="/profile" style={{ color: '#00B4D8' }}>Profile page</a>.
+        </div>
+      </Accordion>
+
+      {/* ─── Photo / Headshot ── */}
+      <style>{`@keyframes uc-spin { to { transform: rotate(360deg); } }`}</style>
+      <Accordion title="Photo / Headshot" defaultOpen={!photoUrl} warning={false}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          style={{ display: 'none' }}
+          onChange={e => { handlePhotoSelect(e.target.files[0]); e.target.value = ''; }}
+        />
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
+
+          {/* Circle: preview or drop target */}
+          <div
+            onClick={() => !photoLoading && !photoUrl && fileInputRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); if (!photoUrl && !photoLoading) setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={e => { e.preventDefault(); setDragging(false); if (!photoUrl) handlePhotoSelect(e.dataTransfer.files[0]); }}
+            style={{
+              width: 110, height: 110, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+              border: photoUrl
+                ? '2.5px solid #00B4D8'
+                : `2px dashed ${dragging ? '#00B4D8' : 'rgba(0,180,216,0.35)'}`,
+              background: photoUrl ? 'transparent' : dragging ? 'rgba(0,180,216,0.12)' : 'rgba(0,180,216,0.04)',
+              cursor: photoLoading || photoUrl ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}
+          >
+            {photoLoading ? (
+              <div style={{ width: 26, height: 26, borderRadius: '50%', border: '3px solid #1B2B4B', borderTopColor: '#00B4D8', animation: 'uc-spin 0.8s linear infinite' }} />
+            ) : photoUrl ? (
+              <img src={photoUrl} alt="Headshot" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <Upload size={22} color="rgba(0,180,216,0.5)" />
+            )}
+          </div>
+
+          {/* Right side */}
+          <div style={{ flex: 1, minWidth: 180 }}>
+            {photoUrl ? (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#2ECC71', marginBottom: 4 }}>Photo uploaded</div>
+                <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 14 }}>
+                  Appears as a circular headshot on your CV. Upload again to replace it.
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => fileInputRef.current?.click()} disabled={photoLoading} style={css.addBtn}>
+                    <Upload size={13} /> Replace
+                  </button>
+                  <button
+                    onClick={handlePhotoDelete}
+                    disabled={photoLoading}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10, padding: '8px 14px', cursor: photoLoading ? 'not-allowed' : 'pointer', color: '#FF6B6B', fontSize: 13, fontWeight: 600 }}
+                  >
+                    <Trash2 size={13} /> {photoLoading ? 'Removing…' : 'Remove'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 4 }}>Add a headshot</div>
+                <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 8 }}>
+                  Optional. Appears as a circular photo on your CV.
+                </div>
+                <div style={{ fontSize: 11, color: '#4A6080', marginBottom: 14 }}>
+                  JPEG · PNG · WebP &nbsp;·&nbsp; Min 200×200 px &nbsp;·&nbsp; Max 5 MB
+                </div>
+                <button onClick={() => fileInputRef.current?.click()} disabled={photoLoading} style={css.addBtn}>
+                  <Upload size={13} /> Choose photo
+                </button>
+              </>
+            )}
+            {photoError && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#FF6B6B', marginTop: 10 }}>
+                <AlertTriangle size={12} /> {photoError}
+              </div>
+            )}
+          </div>
         </div>
       </Accordion>
 
