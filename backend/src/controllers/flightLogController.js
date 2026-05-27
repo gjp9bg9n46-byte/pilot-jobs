@@ -1,7 +1,7 @@
 const { randomUUID } = require('crypto');
 const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
-const { parseCSV, detectMapping, coerceRow } = require('../services/importService');
+const { parseCSV, detectMapping, coerceRow, extractKeyFields } = require('../services/importService');
 
 const IMPORT_ROW_LIMIT = 500;
 
@@ -199,7 +199,41 @@ exports.importParse = async (req, res, next) => {
 
     const mapping = detectMapping(headers);
 
-    res.json({ headers, mapping, rawRows });
+    // Duplicate detection — query DB for existing flights matching key fields
+    const keyFields = extractKeyFields(rawRows, headers, mapping);
+    const uniqueDates = [...new Set(keyFields.map(k => k.date).filter(Boolean))];
+
+    const duplicateIndices = [];
+    if (uniqueDates.length > 0) {
+      const existing = await prisma.flightLog.findMany({
+        where: { pilotId: req.pilot.id, date: { in: uniqueDates } },
+        select: { date: true, flightNumber: true, departure: true, arrival: true },
+      });
+
+      const byDate = {};
+      for (const e of existing) {
+        const d = new Date(e.date).toISOString().split('T')[0];
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push({
+          flightNumber: (e.flightNumber || '').toUpperCase().replace(/\s/g, ''),
+          departure:    (e.departure    || '').toUpperCase(),
+          arrival:      (e.arrival      || '').toUpperCase(),
+        });
+      }
+
+      keyFields.forEach((k, i) => {
+        if (!k.date) return;
+        const d = k.date.split('T')[0];
+        const candidates = byDate[d] || [];
+        const isDup = candidates.some(e =>
+          (k.flightNumber && e.flightNumber && k.flightNumber === e.flightNumber) ||
+          (k.departure && k.arrival && k.departure === e.departure && k.arrival === e.arrival)
+        );
+        if (isDup) duplicateIndices.push(i);
+      });
+    }
+
+    res.json({ headers, mapping, rawRows, duplicateIndices });
   } catch (err) {
     next(err);
   }

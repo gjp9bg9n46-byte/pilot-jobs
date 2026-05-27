@@ -82,4 +82,9 @@ export const jobApi = {
   triggerMatch: () => api.post('/jobs/alerts/run-match'),
 };
 
+export const cvApi = {
+  getData:  ()     => api.get('/cv'),
+  update:   (data) => api.put('/cv', data),
+};
+
 export default api;

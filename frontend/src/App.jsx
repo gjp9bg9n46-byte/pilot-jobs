@@ -13,6 +13,8 @@ import Logbook from './pages/Logbook';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Support from './pages/Support';
+import { lazy, Suspense } from 'react';
+const CVBuilder = lazy(() => import('./pages/CVBuilder'));
 
 function RequireAuth({ children }) {
   const token = useSelector((s) => s.auth.token);
@@ -43,6 +45,7 @@ export default function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="support" element={<Support />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="cv" element={<Suspense fallback={<div style={{padding:48,textAlign:'center',color:'#7A8CA0'}}>Loading…</div>}><CVBuilder /></Suspense>} />
         </Route>
         <Route path="*" element={<Navigate to="/jobs" replace />} />
       </Routes>

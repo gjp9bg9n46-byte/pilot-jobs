@@ -26,7 +26,13 @@ const NAV = [
 ];
 
 const SIDEBAR_NAV = [
-  ...NAV,
+  { to: '/jobs',    label: 'Jobs',    icon: NAV[0].icon },
+  { to: '/alerts',  label: 'Alerts',  icon: NAV[1].icon },
+  { to: '/logbook', label: 'Logbook', icon: NAV[2].icon },
+  { to: '/profile', label: 'Profile', icon: NAV[3].icon },
+  { to: '/cv',      label: 'CV Builder',
+    icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="5.5" x2="12" y2="5.5"/><line x1="6" y1="8" x2="12" y2="8"/><line x1="6" y1="10.5" x2="9" y2="10.5"/><circle cx="11.5" cy="12" r="2"/><path d="M13 13.5l1.5 1.5"/></>} /> },
+  { to: '/settings', label: 'Settings', icon: NAV[4].icon },
   { to: '/support', label: 'Support',
     icon: <Ico extra={<><path d="M2.5 3h13a1 1 0 011 1v7.5a1 1 0 01-1 1H5.5l-3 3V4a1 1 0 011-1z"/></>} /> },
 ];
@@ -34,7 +40,7 @@ const SIDEBAR_NAV = [
 const PAGE_TITLES = {
   '/jobs': 'Job Openings', '/alerts': 'My Alerts',
   '/logbook': 'Flight Logbook', '/profile': 'My Profile',
-  '/support': 'Support', '/settings': 'Settings',
+  '/cv': 'CV Builder', '/support': 'Support', '/settings': 'Settings',
 };
 
 export default function Layout() {

@@ -263,11 +263,32 @@ function parseCSV(buffer) {
   return { headers, rawRows };
 }
 
+// Extract key fields from rawRows using a given mapping — used for duplicate detection
+function extractKeyFields(rawRows, headers, mapping) {
+  const headerIdx = {};
+  headers.forEach((h, i) => { headerIdx[h] = i; });
+
+  const get = (raw, field) => {
+    const header = mapping[field];
+    if (!header || headerIdx[header] === undefined) return null;
+    const v = (raw[headerIdx[header]] ?? '').toString().trim();
+    return v || null;
+  };
+
+  return rawRows.map(raw => ({
+    date:         parseFlexDate(get(raw, 'date')),
+    flightNumber: (get(raw, 'flightNumber') || '').toUpperCase().replace(/\s/g, '') || null,
+    departure:    (get(raw, 'departure')    || '').toUpperCase() || null,
+    arrival:      (get(raw, 'arrival')      || '').toUpperCase() || null,
+  }));
+}
+
 module.exports = {
   detectMapping,
   parseCSV,
   coerceRow,
   parseFlexDate,
   parseFlexTime,
+  extractKeyFields,
   FIELD_SYNONYMS,
 };

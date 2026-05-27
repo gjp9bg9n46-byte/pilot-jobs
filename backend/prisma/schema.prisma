@@ -89,6 +89,7 @@ model Pilot {
   applications    Application[]
   jobReports      JobReport[]
   savedSearches   SavedSearch[]
+  cvData          CvData?
 }
 
 model PilotCertificate {
@@ -369,4 +370,17 @@ model JobReport {
 
   pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model CvData {
+  id        String   @id @default(uuid())
+  pilotId   String   @unique
+  education Json     @default("[]")
+  languages Json     @default("[]")
+  skills    Json     @default("[]")
+  other     Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }

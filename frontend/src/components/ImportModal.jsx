@@ -48,7 +48,7 @@ function clientValidate(fields) {
 }
 
 // Apply fieldName→headerName mapping to rawRows, return displayRows
-function applyMapping(rawRows, headers, mapping) {
+function applyMapping(rawRows, headers, mapping, duplicateSet = new Set()) {
   const headerIdx = {};
   headers.forEach((h, i) => { headerIdx[h] = i; });
 
@@ -62,7 +62,7 @@ function applyMapping(rawRows, headers, mapping) {
       }
       if (Object.values(fields).every(v => !v)) return null; // skip blank rows
       const error = clientValidate(fields);
-      return { rowIndex: i + 1, fields, error };
+      return { rowIndex: i + 1, fields, error, duplicate: duplicateSet.has(i) };
     })
     .filter(Boolean);
 }
@@ -196,11 +196,18 @@ export default function ImportModal({ onClose, onImportDone }) {
   // Derived display rows (re-computed when mapping changes — no API call)
   const displayRows = useMemo(() => {
     if (!parsedData) return [];
-    return applyMapping(parsedData.rawRows, parsedData.headers, effectiveMapping);
+    const dupSet = new Set(parsedData.duplicateIndices || []);
+    return applyMapping(parsedData.rawRows, parsedData.headers, effectiveMapping, dupSet);
   }, [parsedData, effectiveMapping]);
 
-  const validRows   = useMemo(() => displayRows.filter(r => !r.error), [displayRows]);
-  const errorRows   = useMemo(() => displayRows.filter(r =>  r.error), [displayRows]);
+  const validRows     = useMemo(() => displayRows.filter(r => !r.error), [displayRows]);
+  const errorRows     = useMemo(() => displayRows.filter(r =>  r.error), [displayRows]);
+  const duplicateRows = useMemo(() => validRows.filter(r => r.duplicate), [validRows]);
+  // Rows that will actually be submitted (excludes duplicates unless user opts in)
+  const toImportRows  = useMemo(
+    () => validRows.filter(r => includeDuplicates || !r.duplicate),
+    [validRows, includeDuplicates]
+  );
   const datesMapped = REQUIRED_FIELDS.every(f => effectiveMapping[f]);
 
   // Which columns to show in the preview table
@@ -239,7 +246,7 @@ export default function ImportModal({ onClose, onImportDone }) {
     setError('');
     setStep('confirming');
     try {
-      const toSubmit = validRows.map(r => r.fields);
+      const toSubmit = toImportRows.map(r => r.fields);
       const { data } = await flightLogApi.importConfirm(toSubmit);
       setResult({ imported: data.imported, skipped: data.skipped });
       setStep('done');
@@ -350,6 +357,11 @@ export default function ImportModal({ onClose, onImportDone }) {
                 <span style={{ color: '#2ECC71', fontWeight: 700 }}>
                   ✓ {validRows.length} ready
                 </span>
+                {duplicateRows.length > 0 && (
+                  <span style={{ color: '#F39C12', fontWeight: 700 }}>
+                    ⚠ {duplicateRows.length} {duplicateRows.length === 1 ? 'duplicate' : 'duplicates'}
+                  </span>
+                )}
                 {errorRows.length > 0 && (
                   <span style={{ color: '#FF4757', fontWeight: 700 }}>
                     ✗ {errorRows.length} {errorRows.length === 1 ? 'error' : 'errors'}
@@ -359,6 +371,19 @@ export default function ImportModal({ onClose, onImportDone }) {
                   {parsedData.rawRows.length} rows parsed from file
                 </span>
               </div>
+
+              {/* Include duplicates checkbox — only shown when duplicates exist */}
+              {duplicateRows.length > 0 && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#7A8CA0', cursor: 'pointer', marginBottom: 12 }}>
+                  <input
+                    type="checkbox"
+                    checked={includeDuplicates}
+                    onChange={e => setIncludeDuplicates(e.target.checked)}
+                    style={{ accentColor: '#00B4D8', width: 15, height: 15 }}
+                  />
+                  Include duplicates in import ({duplicateRows.length} flight{duplicateRows.length !== 1 ? 's' : ''} already in your logbook)
+                </label>
+              )}
 
               {/* Column mapping section */}
               <div style={css.mappingSection}>
@@ -428,17 +453,17 @@ export default function ImportModal({ onClose, onImportDone }) {
                   <tbody>
                     {displayRows.slice(0, 200).map((row, i) => {
                       const isErr = !!row.error;
+                      const isDup = !isErr && row.duplicate;
                       const rowStyle = {
                         ...css.td,
-                        ...(i === 0 ? {} : {}),
                         borderTop: '1px solid #1B2B4B',
                         borderBottom: '1px solid #1B2B4B',
-                        background: isErr ? 'rgba(255,71,87,0.05)' : '#0A1628',
-                        color: isErr ? '#FF6B6B' : '#fff',
+                        background: isErr ? 'rgba(255,71,87,0.05)' : isDup ? 'rgba(243,156,18,0.04)' : '#0A1628',
+                        color: isErr ? '#FF6B6B' : isDup ? '#C89A4A' : '#fff',
                       };
                       const cols = previewCols.map((col, ci) => {
                         let content = '';
-                        if (col === 'status') content = isErr ? '✗' : '✓';
+                        if (col === 'status') content = isErr ? '✗' : isDup ? '⚠' : '✓';
                         else if (col === 'date') content = row.fields.date || '—';
                         else if (col === 'route') content = formatRoute(row.fields);
                         else if (col === 'block') content = formatBlock(row.fields);
@@ -451,9 +476,9 @@ export default function ImportModal({ onClose, onImportDone }) {
                               ...(ci === 0 ? css.tdFirst : {}),
                               ...(ci === previewCols.length - 1 && errorRows.length === 0 ? css.tdLast : {}),
                               color: col === 'status'
-                                ? (isErr ? '#FF4757' : '#2ECC71')
+                                ? (isErr ? '#FF4757' : isDup ? '#F39C12' : '#2ECC71')
                                 : col === 'route'
-                                ? '#D0E8F8'
+                                ? (isDup ? '#C89A4A' : '#D0E8F8')
                                 : rowStyle.color,
                               fontWeight: col === 'status' ? 800 : col === 'route' ? 700 : 400,
                             }}
@@ -517,19 +542,20 @@ export default function ImportModal({ onClose, onImportDone }) {
           ) : (
             <>
               <button
-                style={css.cancelBtn}
-                onClick={() => { setStep('source'); setParsedData(null); setError(''); }}
+                style={{ ...css.cancelBtn, ...(step === 'confirming' ? { opacity: 0.45, cursor: 'not-allowed' } : {}) }}
+                onClick={step !== 'confirming' ? () => { setStep('source'); setParsedData(null); setError(''); setUserMapping({}); } : undefined}
+                disabled={step === 'confirming'}
               >
                 ← Back
               </button>
               <button
-                style={css.primaryBtn(!datesMapped || validRows.length === 0 || step === 'confirming')}
+                style={css.primaryBtn(!datesMapped || toImportRows.length === 0 || step === 'confirming')}
                 onClick={handleConfirm}
-                disabled={!datesMapped || validRows.length === 0 || step === 'confirming'}
+                disabled={!datesMapped || toImportRows.length === 0 || step === 'confirming'}
               >
                 {step === 'confirming'
                   ? 'Importing…'
-                  : `Import ${validRows.length} ${validRows.length === 1 ? 'Flight' : 'Flights'}`}
+                  : `Import ${toImportRows.length} ${toImportRows.length === 1 ? 'Flight' : 'Flights'}`}
               </button>
             </>
           )}
