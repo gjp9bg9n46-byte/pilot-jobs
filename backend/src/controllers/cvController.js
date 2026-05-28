@@ -42,9 +42,14 @@ exports.getCvData = async (req, res, next) => {
   try {
     const pilotId = req.pilot.id;
 
+    const now = Date.now();
+    const d90  = new Date(now - 90  * 86400000);
+    const d12m = new Date(now - 365 * 86400000);
+
     const [
       pilot, certificates, ratings, medicals,
       training, rtw, cvData, logAgg, aircraftRows,
+      rec90, rec12m,
     ] = await Promise.all([
       prisma.pilot.findUnique({ where: { id: pilotId } }),
       prisma.pilotCertificate.findMany({ where: { pilotId }, orderBy: { issueDate: 'desc' } }),
@@ -57,32 +62,54 @@ exports.getCvData = async (req, res, next) => {
         where: { pilotId },
         _sum: {
           totalTime: true, picTime: true, sicTime: true,
-          multiEngineTime: true, turbineTime: true,
-          instrumentTime: true, nightTime: true,
+          multiEngineTime: true, turbineTime: true, jetTime: true,
+          instrumentTime: true, instrumentActualTime: true, instrumentSimTime: true,
+          crossCountryTime: true, nightTime: true,
           landingsDay: true, landingsNight: true,
         },
       }),
-      prisma.flightLog.findMany({
+      prisma.flightLog.groupBy({
+        by: ['aircraftType'],
         where: { pilotId, aircraftType: { not: '' } },
-        select: { aircraftType: true },
-        distinct: ['aircraftType'],
-        orderBy: { date: 'desc' },
+        _sum: { totalTime: true },
+        orderBy: { _sum: { totalTime: 'desc' } },
         take: 20,
+      }),
+      prisma.flightLog.aggregate({
+        where: { pilotId, date: { gte: d90 } },
+        _sum: { totalTime: true, landingsDay: true, landingsNight: true },
+        _count: { _all: true },
+      }),
+      prisma.flightLog.aggregate({
+        where: { pilotId, date: { gte: d12m } },
+        _sum: { totalTime: true },
       }),
     ]);
 
     const { passwordHash, fcmToken, ...safePilot } = pilot;
 
     const totals = {
-      totalTime:       logAgg._sum.totalTime       ?? 0,
-      picTime:         logAgg._sum.picTime         ?? 0,
-      sicTime:         logAgg._sum.sicTime         ?? 0,
-      multiEngineTime: logAgg._sum.multiEngineTime ?? 0,
-      turbineTime:     logAgg._sum.turbineTime     ?? 0,
-      instrumentTime:  logAgg._sum.instrumentTime  ?? 0,
-      nightTime:       logAgg._sum.nightTime       ?? 0,
-      landingsDay:     logAgg._sum.landingsDay     ?? 0,
-      landingsNight:   logAgg._sum.landingsNight   ?? 0,
+      totalTime:            logAgg._sum.totalTime            ?? 0,
+      picTime:              logAgg._sum.picTime              ?? 0,
+      sicTime:              logAgg._sum.sicTime              ?? 0,
+      multiEngineTime:      logAgg._sum.multiEngineTime      ?? 0,
+      turbineTime:          logAgg._sum.turbineTime          ?? 0,
+      jetTime:              logAgg._sum.jetTime              ?? 0,
+      instrumentTime:       logAgg._sum.instrumentTime       ?? 0,
+      instrumentActualTime: logAgg._sum.instrumentActualTime ?? 0,
+      instrumentSimTime:    logAgg._sum.instrumentSimTime    ?? 0,
+      crossCountryTime:     logAgg._sum.crossCountryTime     ?? 0,
+      nightTime:            logAgg._sum.nightTime            ?? 0,
+      landingsDay:          logAgg._sum.landingsDay          ?? 0,
+      landingsNight:        logAgg._sum.landingsNight        ?? 0,
+    };
+
+    const recency = {
+      hours90d:      rec90._sum.totalTime    ?? 0,
+      landingsDay90: rec90._sum.landingsDay  ?? 0,
+      landingsNight90: rec90._sum.landingsNight ?? 0,
+      sectors90:     rec90._count._all       ?? 0,
+      hours12m:      rec12m._sum.totalTime   ?? 0,
     };
 
     res.json({
@@ -93,8 +120,9 @@ exports.getCvData = async (req, res, next) => {
       training,
       rtw,
       totals,
-      aircraftTypes: aircraftRows.map(r => r.aircraftType),
-      cv: cvData ?? { education: [], languages: [], skills: [], other: [] },
+      recency,
+      aircraftTypes: aircraftRows.map(r => ({ type: r.aircraftType, hours: r._sum.totalTime ?? 0 })),
+      cv: cvData ?? { education: [], languages: [], skills: [], other: [], typeRatings: [], licenses: [], medical: null, icaoEnglish: null, accentColor: '#0D1E35' },
     });
   } catch (err) {
     next(err);
@@ -104,11 +132,18 @@ exports.getCvData = async (req, res, next) => {
 // PUT /cv — upsert user-entered CV fields
 exports.updateCvData = async (req, res, next) => {
   try {
-    const { education, languages, skills, other } = req.body;
+    const { education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor } = req.body;
     const cvData = await prisma.cvData.upsert({
       where:  { pilotId: req.pilot.id },
-      create: { pilotId: req.pilot.id, education: education ?? [], languages: languages ?? [], skills: skills ?? [], other: other ?? [] },
-      update: { education, languages, skills, other },
+      create: {
+        pilotId: req.pilot.id,
+        education: education ?? [], languages: languages ?? [],
+        skills: skills ?? [], other: other ?? [],
+        typeRatings: typeRatings ?? [], licenses: licenses ?? [],
+        medical: medical ?? undefined, icaoEnglish: icaoEnglish ?? undefined,
+        accentColor: accentColor ?? '#0D1E35',
+      },
+      update: { education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor },
     });
     res.json(cvData);
   } catch (err) {

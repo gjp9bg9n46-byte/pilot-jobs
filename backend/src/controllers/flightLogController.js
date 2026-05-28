@@ -31,7 +31,9 @@ exports.createLog = async (req, res, next) => {
       offBlocksTime, takeoffTime, landingTime, onBlocksTime,
       flightNumber, picName, sicName,
       totalTime, picTime, sicTime,
-      multiEngineTime, turbineTime, instrumentTime, nightTime,
+      multiEngineTime, turbineTime, jetTime,
+      instrumentTime, instrumentActualTime, instrumentSimTime,
+      crossCountryTime, nightTime,
       landingsDay, landingsNight, remarks,
     } = req.body;
     const log = await prisma.flightLog.create({
@@ -40,7 +42,9 @@ exports.createLog = async (req, res, next) => {
         offBlocksTime, takeoffTime, landingTime, onBlocksTime,
         flightNumber, picName, sicName,
         totalTime, picTime, sicTime,
-        multiEngineTime, turbineTime, instrumentTime, nightTime,
+        multiEngineTime, turbineTime, jetTime,
+        instrumentTime, instrumentActualTime, instrumentSimTime,
+        crossCountryTime, nightTime,
         landingsDay, landingsNight, remarks,
         pilotId: req.pilot.id,
         source: 'MANUAL',
@@ -66,7 +70,9 @@ exports.bulkCreate = async (req, res, next) => {
         offBlocksTime, takeoffTime, landingTime, onBlocksTime,
         flightNumber, picName, sicName,
         totalTime, picTime, sicTime,
-        multiEngineTime, turbineTime, instrumentTime, nightTime,
+        multiEngineTime, turbineTime, jetTime,
+        instrumentTime, instrumentActualTime, instrumentSimTime,
+        crossCountryTime, nightTime,
         landingsDay, landingsNight, remarks,
       }) =>
         prisma.flightLog.create({
@@ -75,7 +81,9 @@ exports.bulkCreate = async (req, res, next) => {
             offBlocksTime, takeoffTime, landingTime, onBlocksTime,
             flightNumber, picName, sicName,
             totalTime, picTime, sicTime,
-            multiEngineTime, turbineTime, instrumentTime, nightTime,
+            multiEngineTime, turbineTime, jetTime,
+            instrumentTime, instrumentActualTime, instrumentSimTime,
+            crossCountryTime, nightTime,
             landingsDay, landingsNight, remarks,
             pilotId: req.pilot.id, source: 'MANUAL', dutyId,
           },
@@ -134,7 +142,9 @@ exports.updateLog = async (req, res, next) => {
       offBlocksTime, takeoffTime, landingTime, onBlocksTime,
       flightNumber, picName, sicName,
       totalTime, picTime, sicTime,
-      multiEngineTime, turbineTime, instrumentTime, nightTime,
+      multiEngineTime, turbineTime, jetTime,
+      instrumentTime, instrumentActualTime, instrumentSimTime,
+      crossCountryTime, nightTime,
       landingsDay, landingsNight, remarks,
     } = req.body;
     const log = await prisma.flightLog.update({
@@ -144,7 +154,9 @@ exports.updateLog = async (req, res, next) => {
         offBlocksTime, takeoffTime, landingTime, onBlocksTime,
         flightNumber, picName, sicName,
         totalTime, picTime, sicTime,
-        multiEngineTime, turbineTime, instrumentTime, nightTime,
+        multiEngineTime, turbineTime, jetTime,
+        instrumentTime, instrumentActualTime, instrumentSimTime,
+        crossCountryTime, nightTime,
         landingsDay, landingsNight, remarks,
       },
     });

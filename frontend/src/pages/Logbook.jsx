@@ -186,8 +186,9 @@ const EMPTY_FORM = {
   offBlocksTime: '', takeoffTime: '', landingTime: '', onBlocksTime: '',
   picName: '', sicName: '',
   picTime: '', sicTime: '',
-  multiEngineTime: '', turbineTime: '',
-  instrumentTime: '', nightTime: '',
+  multiEngineTime: '', turbineTime: '', jetTime: '',
+  instrumentTime: '', instrumentActualTime: '', instrumentSimTime: '',
+  crossCountryTime: '', nightTime: '',
   landingsDay: '', landingsNight: '',
   remarks: '',
 };
@@ -209,10 +210,14 @@ function formFromLog(log) {
     sicName: log.sicName || '',
     picTime: log.picTime != null ? String(log.picTime) : '',
     sicTime: log.sicTime != null ? String(log.sicTime) : '',
-    multiEngineTime: log.multiEngineTime != null ? String(log.multiEngineTime) : '',
-    turbineTime: log.turbineTime != null ? String(log.turbineTime) : '',
-    instrumentTime: log.instrumentTime != null ? String(log.instrumentTime) : '',
-    nightTime: log.nightTime != null ? String(log.nightTime) : '',
+    multiEngineTime:      log.multiEngineTime      != null ? String(log.multiEngineTime)      : '',
+    turbineTime:          log.turbineTime          != null ? String(log.turbineTime)          : '',
+    jetTime:              log.jetTime              != null ? String(log.jetTime)              : '',
+    instrumentTime:       log.instrumentTime       != null ? String(log.instrumentTime)       : '',
+    instrumentActualTime: log.instrumentActualTime != null ? String(log.instrumentActualTime) : '',
+    instrumentSimTime:    log.instrumentSimTime    != null ? String(log.instrumentSimTime)    : '',
+    crossCountryTime:     log.crossCountryTime     != null ? String(log.crossCountryTime)     : '',
+    nightTime:            log.nightTime            != null ? String(log.nightTime)            : '',
     landingsDay: log.landingsDay != null ? String(log.landingsDay) : '',
     landingsNight: log.landingsNight != null ? String(log.landingsNight) : '',
     remarks: log.remarks || '',
@@ -288,7 +293,10 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
   const buildPayload = (leg, derived) => {
     const {
       tailPrefix, _legacyTotal, nightTime: nightRaw,
-      picTime, sicTime, multiEngineTime, turbineTime, instrumentTime,
+      picTime, sicTime,
+      multiEngineTime, turbineTime, jetTime,
+      instrumentTime, instrumentActualTime, instrumentSimTime,
+      crossCountryTime,
       landingsDay, landingsNight,
       ...rest
     } = leg;
@@ -300,14 +308,18 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
       registration: tailPrefix ? `${tailPrefix}${leg.registration}` : leg.registration,
       date: new Date(leg.date).toISOString(),
       totalTime,
-      picTime: parseFloat(picTime) || 0,
-      sicTime: parseFloat(sicTime) || 0,
-      multiEngineTime: parseFloat(multiEngineTime) || 0,
-      turbineTime: parseFloat(turbineTime) || 0,
-      instrumentTime: parseFloat(instrumentTime) || 0,
-      nightTime: derived.nightHours,
-      landingsDay: parseInt(landingsDay) || 0,
-      landingsNight: parseInt(landingsNight) || 0,
+      picTime:              parseFloat(picTime)              || 0,
+      sicTime:              parseFloat(sicTime)              || 0,
+      multiEngineTime:      parseFloat(multiEngineTime)      || 0,
+      turbineTime:          parseFloat(turbineTime)          || 0,
+      jetTime:              parseFloat(jetTime)              || 0,
+      instrumentTime:       parseFloat(instrumentTime)       || 0,
+      instrumentActualTime: parseFloat(instrumentActualTime) || 0,
+      instrumentSimTime:    parseFloat(instrumentSimTime)    || 0,
+      crossCountryTime:     parseFloat(crossCountryTime)     || 0,
+      nightTime:            derived.nightHours,
+      landingsDay:          parseInt(landingsDay)            || 0,
+      landingsNight:        parseInt(landingsNight)          || 0,
     };
   };
 
@@ -450,8 +462,11 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                 <Field value={leg.picTime} onChange={set('picTime')} label="PIC (Captain)" type="number" />
                 <Field value={leg.sicTime} onChange={set('sicTime')} label="SIC (Co-pilot)" type="number" />
                 <Field value={leg.multiEngineTime} onChange={set('multiEngineTime')} label="Multi-Engine" type="number" />
-                <Field value={leg.turbineTime} onChange={set('turbineTime')} label="Turbine" type="number" />
-                <Field value={leg.instrumentTime} onChange={set('instrumentTime')} label="Instrument (IMC)" type="number" />
+                <Field value={leg.turbineTime} onChange={set('turbineTime')} label="Turbine" hint="jet + turboprop" type="number" />
+                <Field value={leg.jetTime} onChange={set('jetTime')} label="Jet" hint="subset of turbine — jet engines only" type="number" />
+                <Field value={leg.crossCountryTime} onChange={set('crossCountryTime')} label="Cross-Country" type="number" />
+                <Field value={leg.instrumentActualTime} onChange={set('instrumentActualTime')} label="IFR Actual (IMC)" type="number" />
+                <Field value={leg.instrumentSimTime} onChange={set('instrumentSimTime')} label="IFR Sim (FNPT/SIM)" type="number" />
               </div>
 
               <div style={css.sectionTitle}>Landings</div>

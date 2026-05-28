@@ -239,10 +239,14 @@ model FlightLog {
   totalTime       Float      @default(0)
   picTime         Float      @default(0)
   sicTime         Float      @default(0)
-  multiEngineTime Float      @default(0)
-  turbineTime     Float      @default(0)
-  instrumentTime  Float      @default(0)
-  nightTime       Float      @default(0)
+  multiEngineTime      Float  @default(0)
+  turbineTime          Float  @default(0)
+  jetTime              Float  @default(0)
+  instrumentTime       Float  @default(0)
+  instrumentActualTime Float  @default(0)
+  instrumentSimTime    Float  @default(0)
+  crossCountryTime     Float  @default(0)
+  nightTime            Float  @default(0)
   landingsDay     Int        @default(0)
   landingsNight   Int        @default(0)
   remarks         String?
@@ -375,11 +379,16 @@ model JobReport {
 model CvData {
   id        String   @id @default(uuid())
   pilotId   String   @unique
-  photoUrl  String?
-  education Json     @default("[]")
-  languages Json     @default("[]")
-  skills    Json     @default("[]")
-  other     Json     @default("[]")
+  photoUrl    String?
+  education   Json    @default("[]")
+  languages   Json    @default("[]")
+  skills      Json    @default("[]")
+  other       Json    @default("[]")
+  typeRatings Json    @default("[]")
+  licenses    Json    @default("[]")
+  medical     Json?
+  icaoEnglish Json?
+  accentColor String  @default("#0D1E35")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

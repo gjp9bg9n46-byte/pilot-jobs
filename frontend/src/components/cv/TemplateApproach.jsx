@@ -1,7 +1,9 @@
 import React from 'react';
 import {
   Document, Page, View, Text, StyleSheet, Svg, Path, Rect, Circle,
+  Image, Defs, ClipPath,
 } from '@react-pdf/renderer';
+import { ACCENT_MAP, DEFAULT_ACCENT } from './accentPalette';
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
 const C = {
@@ -52,6 +54,12 @@ const s = StyleSheet.create({
   totalBox:      { backgroundColor: C.offWhite, borderRadius: 5, paddingVertical: 6, paddingHorizontal: 8, alignItems: 'center', minWidth: 60 },
   totalBoxVal:   { fontFamily: 'Helvetica-Bold', fontSize: 11, color: C.navy },
   totalBoxLabel: { fontSize: 6.5, color: C.textLight, marginTop: 1, letterSpacing: 0.4 },
+  // Two-column hours table
+  hoursTable: { flexDirection: 'column', marginTop: 4 },
+  hoursPair:  { flexDirection: 'row', borderBottom: `0.5 solid ${C.border}`, paddingVertical: 3 },
+  hoursCell:  { flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
+  hoursLabel: { fontSize: 7.5, color: C.textLight },
+  hoursVal:   { fontFamily: 'Helvetica-Bold', fontSize: 7.5, color: C.navy },
   // Ratings list
   ratingRow:  { flexDirection: 'row', alignItems: 'center', backgroundColor: C.offWhite, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 5, marginBottom: 4 },
   ratingType: { fontFamily: 'Helvetica-Bold', fontSize: 8.5, color: C.navy, flex: 1 },
@@ -97,10 +105,10 @@ function SSection({ title, children }) {
 }
 
 // ─── Main section wrapper ─────────────────────────────────────────────────────
-function MSection({ title, children }) {
+function MSection({ title, children, accent }) {
   return (
     <View style={s.mSection}>
-      <Text style={s.mTitle}>{title}</Text>
+      <Text style={[s.mTitle, { color: accent }]}>{title}</Text>
       {children}
     </View>
   );
@@ -109,53 +117,98 @@ function MSection({ title, children }) {
 // ─── Document ─────────────────────────────────────────────────────────────────
 export default function TemplateApproach({ data }) {
   const { pilot, certificates = [], ratings = [], medicals = [], training = [],
-          totals = {}, aircraftTypes = [], cv = {} } = data;
-  const { education = [], languages = [], skills = [], other = [] } = cv;
+          totals = {}, recency = {}, aircraftTypes = [], cv = {} } = data;
+  const { education = [], languages = [], skills = [], other = [], photoUrl } = cv;
+
+  const accent      = cv.accentColor || DEFAULT_ACCENT;
+  const accentLight = ACCENT_MAP[accent]?.light || '#1B2B4B';
+  const accentDark  = ACCENT_MAP[accent]?.dark  || '#07101E';
+  const T = {
+    accentBg:      { backgroundColor: accent },
+    accentLightBg: { backgroundColor: accentLight },
+    accentColor:   { color: accent },
+  };
 
   const cert = topCert(certificates);
-  const medical = medicals[0];
   const elpCert = certificates.find(c => c.type === 'ELP');
 
-  // Merge ELP cert into languages display
-  const allLanguages = [...languages];
-  if (elpCert && !allLanguages.some(l => l.language?.toLowerCase() === 'english')) {
-    allLanguages.unshift({ language: 'English', level: `ICAO Level ${elpCert.englishLevel || '6'}` });
+  // Override logic: cv fields take precedence over profile data
+  const licencesToShow = cv.licenses?.length > 0 ? 'cv' : 'profile';
+  const medicalToShow  = cv.medical             ? 'cv' : 'profile';
+  const ratingsSource  = cv.typeRatings?.length > 0 ? 'cv' : 'profile';
+
+  // Languages: cv.icaoEnglish overrides ELP cert + manual languages
+  let displayLanguages;
+  if (cv.icaoEnglish) {
+    displayLanguages = [
+      { language: 'English', level: `ICAO Level ${cv.icaoEnglish.level}`, expiry: cv.icaoEnglish.expiryDate },
+      ...(cv.icaoEnglish.otherLanguages ?? []).map(l => ({ language: l.language, level: l.proficiency })),
+    ];
+  } else {
+    displayLanguages = [...languages];
+    if (elpCert && !displayLanguages.some(l => l.language?.toLowerCase() === 'english')) {
+      displayLanguages.unshift({ language: 'English', level: `ICAO Level ${elpCert.englishLevel || '6'}` });
+    }
   }
 
-  const totalRows = [
-    { label: 'TOTAL', value: fmt(totals.totalTime) + 'h' },
-    { label: 'PIC', value: fmt(totals.picTime) + 'h' },
-    { label: 'SIC', value: fmt(totals.sicTime) + 'h' },
-    { label: 'NIGHT', value: fmt(totals.nightTime) + 'h' },
-    { label: 'IFR', value: fmt(totals.instrumentTime) + 'h' },
-    { label: 'MULTI', value: fmt(totals.multiEngineTime) + 'h' },
-    { label: 'TURB', value: fmt(totals.turbineTime) + 'h' },
-  ].filter(r => r.value !== '0h');
+  // Hours: two-column paired table
+  const hasActualSim = (totals.instrumentActualTime ?? 0) > 0 || (totals.instrumentSimTime ?? 0) > 0;
+  const hoursPairs = [
+    ['Total',   fmt(totals.totalTime)            + 'h', 'PIC',     fmt(totals.picTime)             + 'h'],
+    ['SIC',     fmt(totals.sicTime)              + 'h', 'Night',   fmt(totals.nightTime)           + 'h'],
+    hasActualSim
+      ? ['IFR Act', fmt(totals.instrumentActualTime) + 'h', 'IFR Sim', fmt(totals.instrumentSimTime) + 'h']
+      : ['Instr', fmt(totals.instrumentTime)     + 'h', 'Multi',   fmt(totals.multiEngineTime)     + 'h'],
+    hasActualSim
+      ? ['Multi', fmt(totals.multiEngineTime)    + 'h', 'Turbine', fmt(totals.turbineTime)         + 'h']
+      : ['Turb',  fmt(totals.turbineTime)        + 'h', 'Cross',   fmt(totals.crossCountryTime)    + 'h'],
+    hasActualSim
+      ? ['Cross', fmt(totals.crossCountryTime)   + 'h', 'Jet',     fmt(totals.jetTime)             + 'h']
+      : ['Jet',   fmt(totals.jetTime)            + 'h', null,      null],
+  ].filter(([, lv, , rv]) => lv !== '0h' || (rv && rv !== '0h'));
+
+  // Type ratings for PDF: cv overrides profile
+  const shownRatings = ratingsSource === 'cv' ? cv.typeRatings : ratings;
+  // Aircraft Experience always shows all logbook aircraft with hours (separate from formal ratings)
 
   return (
     <Document>
       <Page size="A4" style={s.page}>
 
         {/* ── SIDEBAR ── */}
-        <View style={s.sidebar}>
+        <View style={[s.sidebar, T.accentBg]}>
           {/* Altitude-tape decoration */}
           <View style={s.tapeRow}>
             <View style={[s.tape, { backgroundColor: C.cyan }]} />
             <View style={[s.tape, { backgroundColor: C.cyanDim }]} />
-            <View style={[s.tape, { backgroundColor: C.navyLight }]} />
-            <View style={[s.tape, { backgroundColor: '#0A3050' }]} />
+            <View style={[s.tape, T.accentLightBg]} />
+            <View style={[s.tape, T.accentBg, { opacity: 0.6 }]} />
           </View>
 
-          {/* Avatar */}
-          <View style={s.avatar}>
-            <Text style={s.avatarTxt}>{initials(pilot)}</Text>
-          </View>
+          {/* Avatar — photo or initials fallback */}
+          {photoUrl ? (
+            <View style={{ alignSelf: 'center', marginBottom: 8 }}>
+              <Svg viewBox="0 0 60 60" width={60} height={60}>
+                <Defs>
+                  <ClipPath id="approachPhotoClip">
+                    <Circle cx="30" cy="30" r="30" />
+                  </ClipPath>
+                </Defs>
+                <Image href={photoUrl} x="0" y="0" width="60" height="60" clipPath="url(#approachPhotoClip)" />
+                <Circle cx="30" cy="30" r="29" fill="none" stroke={C.cyan} strokeWidth="2" />
+              </Svg>
+            </View>
+          ) : (
+            <View style={[s.avatar, T.accentLightBg]}>
+              <Text style={s.avatarTxt}>{initials(pilot)}</Text>
+            </View>
+          )}
           <Text style={s.sName}>{fullName(pilot)}</Text>
           <Text style={s.sRole}>
             {cert ? `${cert.type}(A) — ${cert.issuingAuthority || ''}` : 'Commercial Pilot'}
           </Text>
 
-          <View style={s.sDivider} />
+          <View style={[s.sDivider, T.accentLightBg]} />
 
           {/* Contact */}
           <SSection title="Contact">
@@ -168,41 +221,69 @@ export default function TemplateApproach({ data }) {
 
           <View style={s.sDivider} />
 
-          {/* Licences */}
-          {certificates.filter(c => c.type !== 'ELP').length > 0 && (
+          {/* Licences — cv.licenses overrides profile certs */}
+          {(licencesToShow === 'cv'
+            ? cv.licenses.length > 0
+            : certificates.filter(c => c.type !== 'ELP').length > 0
+          ) && (
             <SSection title="Licences">
-              {certificates.filter(c => c.type !== 'ELP').map((c, i) => (
-                <View key={i} style={[s.sBadge, { marginBottom: 4 }]}>
-                  <Text style={s.sBadgeTxt}>{c.type} — {c.issuingAuthority}</Text>
-                  {c.certificateNumber && <Text style={s.sBadgeSub}>#{c.certificateNumber}</Text>}
-                  {c.expiryDate && <Text style={[s.sBadgeSub, { color: C.amber }]}>Exp {fmtDate(c.expiryDate)}</Text>}
-                </View>
-              ))}
+              {licencesToShow === 'cv'
+                ? cv.licenses.map((l, i) => (
+                    <View key={i} style={[s.sBadge, T.accentLightBg, { marginBottom: 4 }]}>
+                      <Text style={s.sBadgeTxt}>{l.type} — {l.authority}</Text>
+                      {l.number && <Text style={s.sBadgeSub}>#{l.number}</Text>}
+                      {l.issueDate && <Text style={s.sBadgeSub}>{fmtDate(l.issueDate)}</Text>}
+                    </View>
+                  ))
+                : certificates.filter(c => c.type !== 'ELP').map((c, i) => (
+                    <View key={i} style={[s.sBadge, T.accentLightBg, { marginBottom: 4 }]}>
+                      <Text style={s.sBadgeTxt}>{c.type} — {c.issuingAuthority}</Text>
+                      {c.certificateNumber && <Text style={s.sBadgeSub}>#{c.certificateNumber}</Text>}
+                      {c.expiryDate && <Text style={[s.sBadgeSub, { color: C.amber }]}>Exp {fmtDate(c.expiryDate)}</Text>}
+                    </View>
+                  ))
+              }
             </SSection>
           )}
 
-          {/* Medical */}
-          {medical && (
+          {/* Medical — cv.medical overrides profile medicals */}
+          {(medicalToShow === 'cv' ? !!cv.medical : !!medicals[0]) && (
             <>
-              <View style={s.sDivider} />
+              <View style={[s.sDivider, T.accentLightBg]} />
               <SSection title="Medical">
-                <View style={s.sBadge}>
-                  <Text style={s.sBadgeTxt}>{medical.medicalClass.replace('_', ' ')} — {medical.issuingAuthority}</Text>
-                  <Text style={[s.sBadgeSub, { color: C.green }]}>Valid to {fmtDate(medical.expiryDate)}</Text>
-                </View>
+                {medicalToShow === 'cv' ? (
+                  <View style={[s.sBadge, T.accentLightBg]}>
+                    <Text style={s.sBadgeTxt}>Class {cv.medical.class} — {cv.medical.country}</Text>
+                    {cv.medical.expiryDate && <Text style={[s.sBadgeSub, { color: C.green }]}>Valid to {fmtDate(cv.medical.expiryDate)}</Text>}
+                    {cv.medical.issueDate  && <Text style={s.sBadgeSub}>Issued {fmtDate(cv.medical.issueDate)}</Text>}
+                  </View>
+                ) : (
+                  <View style={[s.sBadge, T.accentLightBg]}>
+                    <Text style={s.sBadgeTxt}>{medicals[0].medicalClass.replace('_', ' ')} — {medicals[0].issuingAuthority}</Text>
+                    <Text style={[s.sBadgeSub, { color: C.green }]}>Valid to {fmtDate(medicals[0].expiryDate)}</Text>
+                  </View>
+                )}
               </SSection>
             </>
           )}
 
-          {/* Languages */}
-          {allLanguages.length > 0 && (
+          {/* Languages — cv.icaoEnglish overrides ELP cert + manual languages */}
+          {displayLanguages.length > 0 && (
             <>
-              <View style={s.sDivider} />
+              <View style={[s.sDivider, T.accentLightBg]} />
               <SSection title="Languages">
-                {allLanguages.map((l, i) => (
-                  <View key={i} style={s.sRow}>
-                    <Text style={s.sLabel}>{l.language}</Text>
-                    <Text style={s.sValue}>{l.level}</Text>
+                {displayLanguages.map((l, i) => (
+                  <View key={i}>
+                    <View style={s.sRow}>
+                      <Text style={s.sLabel}>{l.language}</Text>
+                      <Text style={s.sValue}>{l.level}</Text>
+                    </View>
+                    {l.expiry && (
+                      <View style={[s.sRow, { marginTop: -2, marginBottom: 2 }]}>
+                        <Text style={s.sLabel} />
+                        <Text style={[s.sValue, { fontSize: 6.5, color: C.amber }]}>Exp {fmtDate(l.expiry)}</Text>
+                      </View>
+                    )}
                   </View>
                 ))}
               </SSection>
@@ -213,39 +294,71 @@ export default function TemplateApproach({ data }) {
         {/* ── MAIN CONTENT ── */}
         <View style={s.main}>
 
-          {/* Logbook totals */}
-          <MSection title="Logbook Summary">
-            <View style={s.totalsGrid}>
-              {totalRows.map(r => (
-                <View key={r.label} style={s.totalBox}>
-                  <Text style={s.totalBoxVal}>{r.value}</Text>
-                  <Text style={s.totalBoxLabel}>{r.label}</Text>
+          {/* Logbook summary — two-column hours table */}
+          <MSection title="Logbook Summary" accent={accent}>
+            <View style={s.hoursTable}>
+              {hoursPairs.map(([ll, lv, rl, rv], i) => (
+                <View key={i} style={s.hoursPair}>
+                  <View style={s.hoursCell}>
+                    <Text style={s.hoursLabel}>{ll}</Text>
+                    <Text style={[s.hoursVal, T.accentColor]}>{lv}</Text>
+                  </View>
+                  {rl && (
+                    <View style={[s.hoursCell, { borderLeft: `0.5 solid ${C.border}` }]}>
+                      <Text style={s.hoursLabel}>{rl}</Text>
+                      <Text style={[s.hoursVal, T.accentColor]}>{rv}</Text>
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
             {(totals.landingsDay || totals.landingsNight) ? (
-              <View style={[s.mRow, { marginTop: 8 }]}>
+              <View style={[s.mRow, { marginTop: 6 }]}>
                 <Text style={s.mLabel}>Landings</Text>
-                <Text style={s.mValue}>
-                  {totals.landingsDay ?? 0} day / {totals.landingsNight ?? 0} night
-                </Text>
+                <Text style={s.mValue}>{totals.landingsDay ?? 0} day / {totals.landingsNight ?? 0} night</Text>
               </View>
             ) : null}
+            {(recency.hours90d > 0 || recency.hours12m > 0) && (
+              <View style={[s.mRow, { marginTop: 4 }]}>
+                <Text style={s.mLabel}>Recency</Text>
+                <Text style={s.mValue}>
+                  {recency.hours90d > 0 ? `${fmt(recency.hours90d)}h/90d` : ''}
+                  {recency.hours90d > 0 && recency.hours12m > 0 ? '  ·  ' : ''}
+                  {recency.hours12m > 0 ? `${fmt(recency.hours12m)}h/12m` : ''}
+                  {recency.sectors90 > 0 ? `  ·  ${recency.sectors90} T/O` : ''}
+                </Text>
+              </View>
+            )}
           </MSection>
 
-          {/* Type ratings / aircraft experience */}
-          {(ratings.length > 0 || aircraftTypes.length > 0) && (
-            <MSection title="Aircraft Experience">
-              {ratings.map((r, i) => (
+          {/* Type Ratings — cv.typeRatings overrides profile ratings */}
+          {(shownRatings.length > 0) && (
+            <MSection title="Type Ratings" accent={accent}>
+              {ratingsSource === 'cv'
+                ? cv.typeRatings.map((r, i) => (
+                    <View key={i} style={s.ratingRow}>
+                      <Text style={[s.ratingType, T.accentColor]}>{r.aircraftType} ({r.capacity})</Text>
+                      {r.expiryDate && <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text>}
+                    </View>
+                  ))
+                : ratings.map((r, i) => (
+                    <View key={i} style={s.ratingRow}>
+                      <Text style={[s.ratingType, T.accentColor]}>{r.aircraftType} ({r.capacity || r.category})</Text>
+                      {r.hoursOnType ? <Text style={s.ratingHrs}>{fmt(r.hoursOnType)}h</Text> : null}
+                      {r.expiryDate  ? <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text> : null}
+                    </View>
+                  ))
+              }
+            </MSection>
+          )}
+
+          {/* Aircraft Experience — all logbook aircraft with hours */}
+          {aircraftTypes.length > 0 && (
+            <MSection title="Aircraft Experience" accent={accent}>
+              {aircraftTypes.map((t, i) => (
                 <View key={i} style={s.ratingRow}>
-                  <Text style={s.ratingType}>{r.aircraftType} ({r.category})</Text>
-                  {r.hoursOnType ? <Text style={s.ratingHrs}>{fmt(r.hoursOnType)}h on type</Text> : null}
-                  {r.expiryDate  ? <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text> : null}
-                </View>
-              ))}
-              {aircraftTypes.filter(t => !ratings.some(r => r.aircraftType === t)).map((t, i) => (
-                <View key={i} style={s.ratingRow}>
-                  <Text style={s.ratingType}>{t}</Text>
+                  <Text style={[s.ratingType, T.accentColor]}>{t.type}</Text>
+                  {t.hours > 0 && <Text style={s.ratingHrs}>{fmt(t.hours)}h</Text>}
                 </View>
               ))}
             </MSection>
@@ -253,7 +366,7 @@ export default function TemplateApproach({ data }) {
 
           {/* Education */}
           {education.length > 0 && (
-            <MSection title="Education">
+            <MSection title="Education" accent={accent}>
               {education.map((e, i) => (
                 <View key={i} style={s.eduEntry}>
                   <Text style={s.eduDegree}>{e.degree}{e.fieldOfStudy ? ` — ${e.fieldOfStudy}` : ''}</Text>
@@ -265,7 +378,7 @@ export default function TemplateApproach({ data }) {
 
           {/* Skills */}
           {skills.length > 0 && (
-            <MSection title="Skills">
+            <MSection title="Skills" accent={accent}>
               <View style={s.pillRow}>
                 {skills.map((sk, i) => (
                   <View key={i} style={s.pill}><Text style={s.pillTxt}>{sk}</Text></View>
@@ -276,7 +389,7 @@ export default function TemplateApproach({ data }) {
 
           {/* Recurrent training */}
           {training.length > 0 && (
-            <MSection title="Recurrent Training">
+            <MSection title="Recurrent Training" accent={accent}>
               {training.slice(0, 8).map((t, i) => (
                 <View key={i} style={s.bullet}>
                   <Text style={s.bulletDot}>›</Text>
@@ -291,7 +404,7 @@ export default function TemplateApproach({ data }) {
 
           {/* Custom sections */}
           {other.map((sec, i) => (
-            <MSection key={i} title={sec.title || 'Additional Information'}>
+            <MSection key={i} title={sec.title || 'Additional Information'} accent={accent}>
               <Text style={{ fontSize: 8, color: C.textDark, lineHeight: 1.5 }}>{sec.content}</Text>
             </MSection>
           ))}
