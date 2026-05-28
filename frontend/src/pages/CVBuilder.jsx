@@ -540,39 +540,48 @@ export default function CVBuilder() {
 
   // Updating badge: true during debounce wait AND during actual PDF blob generation
   const showUpdatingBadge = previewUpdating || pdfInstanceLoading;
-  // Placeholder spinner: true until PdfPreviewIframe has produced its first URL
-  const showPlaceholder = !pdfInstanceHasUrl;
 
   // ── Preview panel (non-mobile) ───────────────────────────────────────────────
+  // PdfPreviewIframe is always mounted inside the flex container so it can
+  // generate its first blob URL and call back via onLoadingChange.
+  // The spinner is an absolute overlay that covers it until the first URL is
+  // ready, then disappears permanently. Subsequent regenerations show only the
+  // small corner badge so the existing PDF stays visible during updates.
   const previewInner = (
     <>
       <div style={css.previewHeader}>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#7A8CA0', letterSpacing: 0.3 }}>
           Live Preview
         </span>
-        {showUpdatingBadge && (
+        {pdfInstanceHasUrl && showUpdatingBadge && (
           <span style={{ fontSize: 11, color: '#4A6080' }}>Updating…</span>
         )}
       </div>
-      {showPlaceholder ? (
-        // First render: no blob URL yet — show spinner until first PDF is ready
-        <div style={css.previewPlaceholder}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '3px solid #1B2B4B', borderTopColor: '#00B4D8', animation: 'uc-spin 0.8s linear infinite' }} />
-          <span style={{ fontSize: 13 }}>Generating preview…</span>
-        </div>
-      ) : (
-        // Subsequent renders: iframe stays mounted; PdfPreviewIframe keeps the old
-        // blob URL in the iframe src while regenerating (usePDF preserves url in
-        // state during loading), so no flash to blank occurs.
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-          {showUpdatingBadge && (
-            <div style={css.previewUpdatingBadge}>Updating…</div>
-          )}
-          {PreviewDoc && (
-            <PdfPreviewIframe doc={PreviewDoc} onLoadingChange={handlePdfLoadingChange} />
-          )}
-        </div>
-      )}
+
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        {/* Always-mounted iframe — must not be gated by any loading state */}
+        {PreviewDoc && (
+          <PdfPreviewIframe doc={PreviewDoc} onLoadingChange={handlePdfLoadingChange} />
+        )}
+
+        {/* First-render spinner: absolute overlay, removed once first URL is ready */}
+        {!pdfInstanceHasUrl && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 2,
+            background: '#0A1628',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 12,
+          }}>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '3px solid #1B2B4B', borderTopColor: '#00B4D8', animation: 'uc-spin 0.8s linear infinite' }} />
+            <span style={{ fontSize: 13, color: '#4A6080' }}>Generating preview…</span>
+          </div>
+        )}
+
+        {/* Corner badge during subsequent regenerations — old PDF stays visible */}
+        {pdfInstanceHasUrl && showUpdatingBadge && (
+          <div style={css.previewUpdatingBadge}>Updating…</div>
+        )}
+      </div>
     </>
   );
 
