@@ -6,7 +6,9 @@ router.use(authMiddleware);
 
 router.get('/', profileController.getProfile);
 router.patch('/', profileController.updateProfile);
-router.get('/totals', profileController.getFlightTotals);
+router.get('/totals',         profileController.getFlightTotals);
+router.get('/carry-forward',  profileController.getCarryForward);
+router.put('/carry-forward',  profileController.updateCarryForward);
 
 router.post('/certificates', profileController.addCertificate);
 router.delete('/certificates/:id', profileController.deleteCertificate);

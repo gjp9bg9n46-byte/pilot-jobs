@@ -394,29 +394,98 @@ exports.exportData = async (req, res, next) => {
   }
 };
 
+// Numeric keys stored in carryForward — must match FlightLog column names exactly.
+const CF_KEYS = [
+  'totalTime', 'picTime', 'sicTime',
+  'nightTime', 'instrumentTime', 'instrumentActualTime', 'instrumentSimTime',
+  'multiEngineTime', 'turbineTime', 'jetTime', 'crossCountryTime',
+  'landingsDay', 'landingsNight',
+];
+
 exports.getFlightTotals = async (req, res, next) => {
   try {
-    const logs = await prisma.flightLog.findMany({ where: { pilotId: req.pilot.id } });
+    const [logs, pilot] = await Promise.all([
+      prisma.flightLog.findMany({ where: { pilotId: req.pilot.id } }),
+      prisma.pilot.findUnique({ where: { id: req.pilot.id }, select: { carryForward: true } }),
+    ]);
+
+    const cf = pilot.carryForward ?? {};
+
     const totals = logs.reduce(
       (acc, log) => {
-        acc.totalTime += log.totalTime;
-        acc.picTime += log.picTime;
-        acc.sicTime += log.sicTime;
-        acc.multiEngineTime += log.multiEngineTime;
-        acc.turbineTime += log.turbineTime;
-        acc.instrumentTime += log.instrumentTime;
-        acc.nightTime += log.nightTime;
-        acc.landingsDay += log.landingsDay;
-        acc.landingsNight += log.landingsNight;
+        acc.totalTime            += log.totalTime;
+        acc.picTime              += log.picTime;
+        acc.sicTime              += log.sicTime;
+        acc.multiEngineTime      += log.multiEngineTime;
+        acc.turbineTime          += log.turbineTime;
+        acc.jetTime              += log.jetTime              ?? 0;
+        acc.instrumentTime       += log.instrumentTime;
+        acc.instrumentActualTime += log.instrumentActualTime ?? 0;
+        acc.instrumentSimTime    += log.instrumentSimTime    ?? 0;
+        acc.crossCountryTime     += log.crossCountryTime     ?? 0;
+        acc.nightTime            += log.nightTime;
+        acc.landingsDay          += log.landingsDay;
+        acc.landingsNight        += log.landingsNight;
         return acc;
       },
       {
         totalTime: 0, picTime: 0, sicTime: 0,
-        multiEngineTime: 0, turbineTime: 0, instrumentTime: 0,
-        nightTime: 0, landingsDay: 0, landingsNight: 0,
+        nightTime: 0, instrumentTime: 0, instrumentActualTime: 0, instrumentSimTime: 0,
+        multiEngineTime: 0, turbineTime: 0, jetTime: 0, crossCountryTime: 0,
+        landingsDay: 0, landingsNight: 0,
       }
     );
+
+    // Add carry-forward to all-time totals only.
+    // Recency (90d/12m) is computed separately with date filters and never includes carry-forward.
+    for (const key of CF_KEYS) {
+      totals[key] += (cf[key] ?? 0);
+    }
+
     res.json(totals);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getCarryForward = async (req, res, next) => {
+  try {
+    const pilot = await prisma.pilot.findUnique({
+      where: { id: req.pilot.id },
+      select: { carryForward: true },
+    });
+    // Return null when never set — the frontend uses null as the migration sentinel.
+    res.json(pilot.carryForward);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateCarryForward = async (req, res, next) => {
+  try {
+    const existing = await prisma.pilot.findUnique({
+      where: { id: req.pilot.id },
+      select: { carryForward: true },
+    });
+
+    const current = existing.carryForward ?? {};
+
+    // Merge: only update keys that are explicitly provided in the request body.
+    const updated = { ...current };
+    for (const key of CF_KEYS) {
+      if (req.body[key] !== undefined) {
+        const n = Number(req.body[key]);
+        updated[key] = (!isFinite(n) || n < 0) ? 0 : n;
+      }
+    }
+
+    const result = await prisma.pilot.update({
+      where: { id: req.pilot.id },
+      data:  { carryForward: updated },
+      select: { carryForward: true },
+    });
+
+    res.json(result.carryForward);
   } catch (err) {
     next(err);
   }

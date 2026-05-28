@@ -88,20 +88,25 @@ exports.getCvData = async (req, res, next) => {
 
     const { passwordHash, fcmToken, ...safePilot } = pilot;
 
+    // pilot.carryForward is null when never set (migration sentinel — see profileController).
+    // Add to all-time totals only; recency (rec90/rec12m) stays pure DB because
+    // carry-forward has no date and cannot be bucketed into a time window.
+    const cf = pilot.carryForward ?? {};
+
     const totals = {
-      totalTime:            logAgg._sum.totalTime            ?? 0,
-      picTime:              logAgg._sum.picTime              ?? 0,
-      sicTime:              logAgg._sum.sicTime              ?? 0,
-      multiEngineTime:      logAgg._sum.multiEngineTime      ?? 0,
-      turbineTime:          logAgg._sum.turbineTime          ?? 0,
-      jetTime:              logAgg._sum.jetTime              ?? 0,
-      instrumentTime:       logAgg._sum.instrumentTime       ?? 0,
-      instrumentActualTime: logAgg._sum.instrumentActualTime ?? 0,
-      instrumentSimTime:    logAgg._sum.instrumentSimTime    ?? 0,
-      crossCountryTime:     logAgg._sum.crossCountryTime     ?? 0,
-      nightTime:            logAgg._sum.nightTime            ?? 0,
-      landingsDay:          logAgg._sum.landingsDay          ?? 0,
-      landingsNight:        logAgg._sum.landingsNight        ?? 0,
+      totalTime:            (logAgg._sum.totalTime            ?? 0) + (cf.totalTime            ?? 0),
+      picTime:              (logAgg._sum.picTime              ?? 0) + (cf.picTime              ?? 0),
+      sicTime:              (logAgg._sum.sicTime              ?? 0) + (cf.sicTime              ?? 0),
+      multiEngineTime:      (logAgg._sum.multiEngineTime      ?? 0) + (cf.multiEngineTime      ?? 0),
+      turbineTime:          (logAgg._sum.turbineTime          ?? 0) + (cf.turbineTime          ?? 0),
+      jetTime:              (logAgg._sum.jetTime              ?? 0) + (cf.jetTime              ?? 0),
+      instrumentTime:       (logAgg._sum.instrumentTime       ?? 0) + (cf.instrumentTime       ?? 0),
+      instrumentActualTime: (logAgg._sum.instrumentActualTime ?? 0) + (cf.instrumentActualTime ?? 0),
+      instrumentSimTime:    (logAgg._sum.instrumentSimTime    ?? 0) + (cf.instrumentSimTime    ?? 0),
+      crossCountryTime:     (logAgg._sum.crossCountryTime     ?? 0) + (cf.crossCountryTime     ?? 0),
+      nightTime:            (logAgg._sum.nightTime            ?? 0) + (cf.nightTime            ?? 0),
+      landingsDay:          (logAgg._sum.landingsDay          ?? 0) + (cf.landingsDay          ?? 0),
+      landingsNight:        (logAgg._sum.landingsNight        ?? 0) + (cf.landingsNight        ?? 0),
     };
 
     const recency = {

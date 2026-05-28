@@ -70,6 +70,8 @@ model Pilot {
   profileVisible     Boolean  @default(true)
   anonymousBrowsing  Boolean  @default(false)
   showSeniority      Boolean  @default(true)
+  // Hours flown before using this app. null = never set (used as migration sentinel).
+  carryForward    Json?
   // Soft-delete
   deletedAt          DateTime?
   createdAt       DateTime  @default(now())
