@@ -338,6 +338,7 @@ export default function CVBuilder() {
   const [photoError, setPhotoError]     = useState('');
   const [dragging, setDragging]         = useState(false);
   const [accentColor, setAccentColor]   = useState(DEFAULT_ACCENT);
+  const [summary, setSummary]           = useState('');
 
   // Preview state
   const [debouncedPdfData, setDebouncedPdfData] = useState(null);
@@ -383,19 +384,20 @@ export default function CVBuilder() {
         setIcaoEnglish(data.cv?.icaoEnglish ?? null);
         setPhotoUrl(data.cv?.photoUrl ?? null);
         setAccentColor(data.cv?.accentColor ?? DEFAULT_ACCENT);
+        setSummary(data.cv?.summary ?? '');
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   // ── Auto-save editable fields (debounced 1.5s) ─────────────────────────────
-  const scheduleSave = useCallback((edu, lang, sk, oth, tr, lic, med, icao, ac) => {
+  const scheduleSave = useCallback((edu, lang, sk, oth, tr, lic, med, icao, ac, sum) => {
     clearTimeout(saveTimer.current);
     setSaveStatus('saving');
     saveTimer.current = setTimeout(() => {
       cvApi.update({ education: edu, languages: lang, skills: sk, other: oth,
                      typeRatings: tr, licenses: lic, medical: med, icaoEnglish: icao,
-                     accentColor: ac })
+                     accentColor: ac, summary: sum })
         .then(() => setSaveStatus('saved'))
         .catch(() => setSaveStatus('error'));
     }, 1500);
@@ -430,17 +432,18 @@ export default function CVBuilder() {
     }
   };
 
-  const s9 = (edu, lang, sk, oth, tr, lic, med, icao, ac) =>
-    scheduleSave(edu, lang, sk, oth, tr, lic, med, icao, ac);
+  const ss = (edu, lang, sk, oth, tr, lic, med, icao, ac, sum) =>
+    scheduleSave(edu, lang, sk, oth, tr, lic, med, icao, ac, sum);
 
-  const updateEducation   = (v) => { setEducation(v);   s9(v, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor); };
-  const updateLanguages   = (v) => { setLanguages(v);   s9(education, v, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor); };
-  const updateSkills      = (v) => { setSkills(v);      s9(education, languages, v, other, typeRatings, licenses, medical, icaoEnglish, accentColor); };
-  const updateOther       = (v) => { setOther(v);       s9(education, languages, skills, v, typeRatings, licenses, medical, icaoEnglish, accentColor); };
-  const updateTypeRatings = (v) => { setTypeRatings(v); s9(education, languages, skills, other, v, licenses, medical, icaoEnglish, accentColor); };
-  const updateLicenses    = (v) => { setLicenses(v);    s9(education, languages, skills, other, typeRatings, v, medical, icaoEnglish, accentColor); };
-  const updateMedical     = (v) => { setMedical(v);     s9(education, languages, skills, other, typeRatings, licenses, v, icaoEnglish, accentColor); };
-  const updateIcaoEnglish = (v) => { setIcaoEnglish(v); s9(education, languages, skills, other, typeRatings, licenses, medical, v, accentColor); };
+  const updateEducation   = (v) => { setEducation(v);   ss(v, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary); };
+  const updateLanguages   = (v) => { setLanguages(v);   ss(education, v, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary); };
+  const updateSkills      = (v) => { setSkills(v);      ss(education, languages, v, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary); };
+  const updateOther       = (v) => { setOther(v);       ss(education, languages, skills, v, typeRatings, licenses, medical, icaoEnglish, accentColor, summary); };
+  const updateTypeRatings = (v) => { setTypeRatings(v); ss(education, languages, skills, other, v, licenses, medical, icaoEnglish, accentColor, summary); };
+  const updateLicenses    = (v) => { setLicenses(v);    ss(education, languages, skills, other, typeRatings, v, medical, icaoEnglish, accentColor, summary); };
+  const updateMedical     = (v) => { setMedical(v);     ss(education, languages, skills, other, typeRatings, licenses, v, icaoEnglish, accentColor, summary); };
+  const updateIcaoEnglish = (v) => { setIcaoEnglish(v); ss(education, languages, skills, other, typeRatings, licenses, medical, v, accentColor, summary); };
+  const updateSummary     = (v) => { setSummary(v);     ss(education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, v); };
 
   const handleAccentChange = (hex) => {
     setAccentColor(hex);
@@ -450,14 +453,14 @@ export default function CVBuilder() {
       setDebouncedPdfData({ ...pdfData, cv: { ...pdfData.cv, accentColor: hex } });
       setPreviewUpdating(false);
     }
-    scheduleSave(education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, hex);
+    scheduleSave(education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, hex, summary);
   };
 
   // ── Build PDF data bundle (memoised to stabilise the debounce effect) ───────
   const pdfData = useMemo(() => serverData ? {
     ...serverData,
-    cv: { education, languages, skills, other, photoUrl, typeRatings, licenses, medical, icaoEnglish, accentColor },
-  } : null, [serverData, education, languages, skills, other, photoUrl, typeRatings, licenses, medical, icaoEnglish, accentColor]);
+    cv: { education, languages, skills, other, photoUrl, typeRatings, licenses, medical, icaoEnglish, accentColor, summary },
+  } : null, [serverData, education, languages, skills, other, photoUrl, typeRatings, licenses, medical, icaoEnglish, accentColor, summary]);
 
   // ── Debounce pdfData → debouncedPdfData (400ms) ────────────────────────────
   useEffect(() => {
@@ -599,6 +602,23 @@ export default function CVBuilder() {
         ))}
       </div>
 
+      {/* ── Colour Theme ── */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 12, color: '#4A6080', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Colour Theme</div>
+        <div style={css.swatchRow}>
+          {ACCENT_PALETTE.map(({ name, hex }) => (
+            <div key={hex} style={css.swatchWrap}>
+              <button
+                style={css.swatchCircle(accentColor === hex, hex)}
+                onClick={() => handleAccentChange(hex)}
+                title={name}
+              />
+              <span style={css.swatchLabel}>{name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ── Download bar ── */}
       <div style={css.dlBar}>
         <div>
@@ -628,24 +648,38 @@ export default function CVBuilder() {
         </div>
       </div>
 
-      {/* ── Colour Theme ── */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 12, color: '#4A6080', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Colour Theme</div>
-        <div style={css.swatchRow}>
-          {ACCENT_PALETTE.map(({ name, hex }) => (
-            <div key={hex} style={css.swatchWrap}>
-              <button
-                style={css.swatchCircle(accentColor === hex, hex)}
-                onClick={() => handleAccentChange(hex)}
-                title={name}
-              />
-              <span style={css.swatchLabel}>{name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ═══ EDITOR SECTIONS ═══ */}
+
+      {/* Professional Profile */}
+      <Accordion title="Professional Profile" defaultOpen>
+        {(() => {
+          const over = summary.length > 800;
+          return (
+            <>
+              <textarea
+                value={summary}
+                onChange={(e) => updateSummary(e.target.value)}
+                rows={5}
+                placeholder="Airline transport pilot with 2,400+ hours across A320 and B737 fleets. EU and UK work authorisation. Seeking long-haul First Officer position with a major carrier."
+                style={{
+                  ...css.textarea,
+                  minHeight: 100,
+                  fontSize: isMobileLayout ? 16 : 13,
+                  borderColor: over ? '#F39C12' : '#243050',
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, flexWrap: 'wrap', gap: 4 }}>
+                <span style={{ fontSize: 11, color: '#4A6080' }}>
+                  Appears at the top of your CV. Keep it concise — recruiters scan the first 5 seconds.
+                </span>
+                <span style={{ fontSize: 11, color: over ? '#F39C12' : '#4A6080', fontWeight: over ? 600 : 400, whiteSpace: 'nowrap' }}>
+                  {summary.length} / 800
+                </span>
+              </div>
+            </>
+          );
+        })()}
+      </Accordion>
 
       {/* Personal information (read-only — canonical from profile) */}
       <Accordion title="Personal Information" badge={null} defaultOpen>

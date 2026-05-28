@@ -99,6 +99,8 @@ const s = StyleSheet.create({
   langLevel:     { fontSize: 8, color: C.cyanDim },
   // Other
   otherContent:  { fontSize: 8, color: C.textDark, lineHeight: 1.5 },
+  // Profile / summary
+  summaryText:   { fontSize: 9, color: C.textMid, lineHeight: 1.6 },
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -252,6 +254,13 @@ export default function TemplateFinal({ data }) {
 
         {/* ── BODY ── */}
         <View style={s.body}>
+
+          {/* Profile / Professional Summary */}
+          {cv.summary?.trim() ? (
+            <Section title="Profile" accent={accent}>
+              <Text style={s.summaryText}>{cv.summary.trim()}</Text>
+            </Section>
+          ) : null}
 
           {/* Flight Hours — two-column table */}
           {hoursPairs.length > 0 && (

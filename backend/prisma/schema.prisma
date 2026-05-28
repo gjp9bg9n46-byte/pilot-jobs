@@ -391,6 +391,7 @@ model CvData {
   medical     Json?
   icaoEnglish Json?
   accentColor String  @default("#0D1E35")
+  summary     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

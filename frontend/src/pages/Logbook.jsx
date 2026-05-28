@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   ChevronDown, ChevronRight, ChevronUp,
-  Pencil, Copy, Trash2, Clock, Upload,
+  Pencil, Copy, Trash2, Clock, Upload, CheckCircle2,
 } from 'lucide-react';
 import SunCalc from 'suncalc';
 import { flightLogApi, profileApi } from '../services/api';
@@ -178,6 +178,13 @@ function computeNightHours(dateStr, takeoffHHMM, landingHHMM, depICAO, arrICAO) 
   }
   return parseFloat(((nightCount / total) * (durationMs / 3600000)).toFixed(2));
 }
+
+const CF_NUMERIC_KEYS = [
+  'totalTime', 'picTime', 'sicTime',
+  'nightTime', 'instrumentTime', 'instrumentActualTime', 'instrumentSimTime',
+  'multiEngineTime', 'turbineTime', 'jetTime', 'crossCountryTime',
+  'landingsDay', 'landingsNight',
+];
 
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
@@ -534,24 +541,59 @@ export default function Logbook() {
     return next;
   });
   const [showCarryForward, setShowCarryForward] = useState(false);
-  const [carryForward, setCarryForward] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('logbook_carry_forward') || '{}'); } catch { return {}; }
-  });
+  const [carryForward, setCarryForward] = useState({});
   const [carryForwardForm, setCarryForwardForm] = useState({});
   const [carryForwardSaved, setCarryForwardSaved] = useState(false);
+  const [migrationToast, setMigrationToast] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [logsRes, totalsRes] = await Promise.all([flightLogApi.list(), profileApi.getTotals()]);
+      const [logsRes, totalsRes, cfRes] = await Promise.all([
+        flightLogApi.list(),
+        profileApi.getTotals(),
+        profileApi.getCarryForward(),
+      ]);
       dispatch(setLogs({ logs: logsRes.data.logs, total: logsRes.data.total }));
       dispatch(setTotals(totalsRes.data));
+      setCarryForward(cfRes.data ?? {});
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const migrateCarryForward = async () => {
+    const raw = localStorage.getItem('logbook_carry_forward');
+    if (!raw) return;
+    let local;
+    try { local = JSON.parse(raw); } catch { localStorage.removeItem('logbook_carry_forward'); return; }
+    const hasData = CF_NUMERIC_KEYS.some((k) => (parseFloat(local[k]) || 0) > 0);
+    if (!hasData) { localStorage.removeItem('logbook_carry_forward'); return; }
+
+    const { data: serverCF } = await profileApi.getCarryForward();
+    if (serverCF !== null) {
+      // Already migrated on a previous session — just clear localStorage.
+      localStorage.removeItem('logbook_carry_forward');
+      return;
+    }
+
+    const payload = {};
+    for (const k of CF_NUMERIC_KEYS) {
+      payload[k] = parseFloat(local[k]) || 0;
+    }
+    await profileApi.updateCarryForward(payload); // throws on network failure → localStorage stays intact
+    localStorage.removeItem('logbook_carry_forward');
+    setMigrationToast(true);
+    setTimeout(() => setMigrationToast(false), 5000);
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      await migrateCarryForward().catch((err) => console.warn('CF migration failed, will retry on next mount:', err));
+      await fetchData();
+    };
+    init();
+  }, []);
 
   const currency = useMemo(() => {
     const cutoff = new Date();
@@ -635,22 +677,31 @@ export default function Logbook() {
     { key: 'nightTime', label: 'Night' },
   ];
 
-  const saveCarryForward = () => {
-    const parsed = {};
-    Object.entries(carryForwardForm).forEach(([k, v]) => {
-      parsed[k] = k === 'aircraftType' ? (v || '') : (parseFloat(v) || 0);
-    });
-    setCarryForward(parsed);
-    localStorage.setItem('logbook_carry_forward', JSON.stringify(parsed));
-    setCarryForwardSaved(true);
-    setTimeout(() => setCarryForwardSaved(false), 2000);
+  const saveCarryForward = async () => {
+    const payload = {};
+    for (const k of CF_NUMERIC_KEYS) {
+      if (carryForwardForm[k] !== undefined) {
+        payload[k] = parseFloat(carryForwardForm[k]) || 0;
+      }
+    }
+    try {
+      const { data } = await profileApi.updateCarryForward(payload);
+      setCarryForward(data ?? {});
+      // Refresh totals so the cards reflect the new carry-forward
+      const totalsRes = await profileApi.getTotals();
+      dispatch(setTotals(totalsRes.data));
+      setCarryForwardSaved(true);
+      setTimeout(() => setCarryForwardSaved(false), 2000);
+    } catch (err) {
+      console.error('Failed to save carry-forward:', err);
+    }
   };
 
-  const totalWithCarry = (key) => ((totals?.[key] || 0) + (carryForward[key] || 0)).toFixed(1);
+  const totalWithCarry = (key) => (totals?.[key] || 0).toFixed(1);
 
   const cloneInitial = cloneFlight ? { ...cloneFlight, date: '' } : null;
 
-  const cfHasSavedData = Object.entries(carryForward).some(([k, v]) => k !== 'aircraftType' && v > 0);
+  const cfHasSavedData = CF_NUMERIC_KEYS.some((k) => (carryForward[k] || 0) > 0);
 
   return (
     <div>
@@ -698,7 +749,7 @@ export default function Logbook() {
           Previous / carry-forward hours
           {cfHasSavedData && (
             <span style={{ background: '#00B4D820', border: '1px solid #00B4D840', color: '#00B4D8', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>
-              {carryForward.aircraftType ? carryForward.aircraftType : 'active'}
+              active
             </span>
           )}
           <ChevronDown
@@ -712,16 +763,6 @@ export default function Logbook() {
           <div style={{ background: '#0D1E35', border: '1px solid #1E3050', borderRadius: '0 0 10px 10px', borderTop: 'none', padding: 20 }}>
             <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 14 }}>
               Enter hours from your previous logbooks. These are added to the totals above.
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11, color: '#7A8CA0', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 }}>Aircraft Type</label>
-              <input
-                type="text"
-                style={{ width: '100%', maxWidth: 240, background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                value={carryForwardForm.aircraftType ?? ''}
-                onChange={(e) => setCarryForwardForm((f) => ({ ...f, aircraftType: e.target.value }))}
-                placeholder="e.g. A320, B737"
-              />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
               {TOTALS_DISPLAY.map(({ key, label }) => (
@@ -961,6 +1002,20 @@ export default function Logbook() {
           onClose={() => setShowImport(false)}
           onImportDone={fetchData}
         />
+      )}
+
+      {migrationToast && (
+        <div style={{
+          position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+          background: '#0D1E35', border: '1px solid rgba(46,204,113,0.5)',
+          borderRadius: 12, padding: '14px 22px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.4)', zIndex: 9999,
+          color: '#2ECC71', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
+        }}>
+          <CheckCircle2 size={18} />
+          Carry-forward hours saved to your account.
+        </div>
       )}
     </div>
   );

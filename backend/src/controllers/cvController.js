@@ -127,7 +127,7 @@ exports.getCvData = async (req, res, next) => {
       totals,
       recency,
       aircraftTypes: aircraftRows.map(r => ({ type: r.aircraftType, hours: r._sum.totalTime ?? 0 })),
-      cv: cvData ?? { education: [], languages: [], skills: [], other: [], typeRatings: [], licenses: [], medical: null, icaoEnglish: null, accentColor: '#0D1E35' },
+      cv: cvData ?? { education: [], languages: [], skills: [], other: [], typeRatings: [], licenses: [], medical: null, icaoEnglish: null, accentColor: '#0D1E35', summary: null },
     });
   } catch (err) {
     next(err);
@@ -137,7 +137,7 @@ exports.getCvData = async (req, res, next) => {
 // PUT /cv — upsert user-entered CV fields
 exports.updateCvData = async (req, res, next) => {
   try {
-    const { education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor } = req.body;
+    const { education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary } = req.body;
     const cvData = await prisma.cvData.upsert({
       where:  { pilotId: req.pilot.id },
       create: {
@@ -147,8 +147,9 @@ exports.updateCvData = async (req, res, next) => {
         typeRatings: typeRatings ?? [], licenses: licenses ?? [],
         medical: medical ?? undefined, icaoEnglish: icaoEnglish ?? undefined,
         accentColor: accentColor ?? '#0D1E35',
+        summary: summary ?? undefined,
       },
-      update: { education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor },
+      update: { education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary },
     });
     res.json(cvData);
   } catch (err) {

@@ -77,6 +77,8 @@ const s = StyleSheet.create({
   eduEntry:   { marginBottom: 6 },
   eduDegree:  { fontFamily: 'Helvetica-Bold', fontSize: 8.5, color: C.textDark },
   eduSub:     { fontSize: 7.5, color: C.textLight },
+  // Profile / summary
+  summaryText: { fontSize: 8.5, color: C.textMid, lineHeight: 1.6 },
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -126,6 +128,7 @@ export default function TemplateApproach({ data }) {
   const T = {
     accentBg:      { backgroundColor: accent },
     accentLightBg: { backgroundColor: accentLight },
+    accentDarkBg:  { backgroundColor: accentDark },
     accentColor:   { color: accent },
   };
 
@@ -182,7 +185,7 @@ export default function TemplateApproach({ data }) {
             <View style={[s.tape, { backgroundColor: C.cyan }]} />
             <View style={[s.tape, { backgroundColor: C.cyanDim }]} />
             <View style={[s.tape, T.accentLightBg]} />
-            <View style={[s.tape, T.accentBg, { opacity: 0.6 }]} />
+            <View style={[s.tape, T.accentDarkBg]} />
           </View>
 
           {/* Avatar — photo or initials fallback */}
@@ -293,6 +296,13 @@ export default function TemplateApproach({ data }) {
 
         {/* ── MAIN CONTENT ── */}
         <View style={s.main}>
+
+          {/* Profile / Professional Summary */}
+          {cv.summary?.trim() ? (
+            <MSection title="Profile" accent={accent}>
+              <Text style={s.summaryText}>{cv.summary.trim()}</Text>
+            </MSection>
+          ) : null}
 
           {/* Logbook summary — two-column hours table */}
           <MSection title="Logbook Summary" accent={accent}>
