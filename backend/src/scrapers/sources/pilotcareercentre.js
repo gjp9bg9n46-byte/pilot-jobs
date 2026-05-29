@@ -20,7 +20,7 @@
 const axios   = require('axios');
 const cheerio = require('cheerio');
 const { fetchHTML, RobotsDisallowedError, AntiBotBlockedError } = require('../http');
-const { extractRequirements } = require('../normalize');
+const { extractRequirements, extractSalary } = require('../normalize');
 const logger  = require('../../config/logger');
 
 const BASE_URL = 'https://pilotcareercenter.com'; // US spelling, no www — direct hit
@@ -226,7 +226,8 @@ async function enrichOneJob(job) {
       }
 
       const reqs = extractRequirements(result.text);
-      return { id: job.id, description: result.text, notes: result.notes, ...reqs };
+      const sal  = extractSalary(result.text);
+      return { id: job.id, description: result.text, notes: result.notes, ...reqs, ...(sal || {}) };
     } catch (err) {
       lastErr = err;
       if (attempt < MAX_TRIES) await new Promise((r) => setTimeout(r, 500 * attempt));

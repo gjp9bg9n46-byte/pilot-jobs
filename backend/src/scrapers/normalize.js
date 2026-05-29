@@ -200,6 +200,84 @@ function extractRequirements(text) {
   };
 }
 
+// ─── Salary extraction ───────────────────────────────────────────────────────
+
+const _MAX_ANNUAL = 1_000_000;
+
+function _parseNum(s) {
+  const clean = s.replace(/,/g, '').trim();
+  if (/[kK]$/.test(clean)) return parseFloat(clean) * 1000;
+  return parseFloat(clean);
+}
+
+function _detectCurrency(prefix) {
+  const p = (prefix || '').trim();
+  if (/^C\$/.test(p) || /^CAD/i.test(p)) return 'CAD';
+  if (/^A\$/.test(p) || /^AUD/i.test(p)) return 'AUD';
+  if (/^S\$/.test(p) || /^SGD/i.test(p)) return 'SGD';
+  if (/^€/.test(p)   || /^EUR/i.test(p)) return 'EUR';
+  if (/^£/.test(p)   || /^GBP/i.test(p)) return 'GBP';
+  return 'USD';
+}
+
+function _detectPeriod(ctx) {
+  if (/\/(year|yr|annum)\b|per\s+(year|yr|annum)\b|annually\b|per\s+annum\b/i.test(ctx)) return 'year';
+  if (/\/month\b|per\s+month\b|monthly\b/i.test(ctx)) return 'month';
+  if (/\/hour\b|per\s+hour\b|hourly\b/i.test(ctx))   return 'hour';
+  return 'year';
+}
+
+/**
+ * Extract salary from plain-text job description.
+ * Conservative: returns null when no confident match.
+ * Sanity cap: rejects any value > $1M/year equivalent.
+ *
+ * Handles: $280k–$302k  $250,000 – $290,000  €60,000  £50k  CAD 80k
+ *          up to $150k  from $80,000  starting at $100k/year
+ *
+ * @param {string} text
+ * @returns {{ salaryMin: number|null, salaryMax: number|null, salaryCurrency: string, salaryPeriod: string }|null}
+ */
+function extractSalary(text) {
+  if (!text || typeof text !== 'string') return null;
+
+  const N   = '\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?[kK]?|\\d+[kK]';
+  const C   = '(?:C\\$|A\\$|S\\$|CAD\\s*|AUD\\s*|SGD\\s*|EUR\\s*|GBP\\s*|[€£\\$])';
+  const SEP = '\\s*(?:–|—|to|-)\\s*';
+  const DIR = '(?:(up\\s+to|from|starting\\s+(?:at|from))\\s+)?';
+  const re  = new RegExp(`${DIR}(${C})(${N})(?:${SEP}(?:${C})?(${N}))?`, 'gi');
+
+  let best = null;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const dir      = (m[1] || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const currency = _detectCurrency(m[2]);
+    const v1       = _parseNum(m[3]);
+    const v2       = m[4] ? _parseNum(m[4]) : null;
+    if (isNaN(v1) || (v2 !== null && isNaN(v2))) continue;
+
+    let salaryMin = null, salaryMax = null;
+    if (dir.includes('up to'))                               { salaryMax = v1; }
+    else if (dir.includes('from') || dir.includes('starting')) { salaryMin = v1; }
+    else if (v2 != null)                                     { salaryMin = Math.min(v1, v2); salaryMax = Math.max(v1, v2); }
+    else                                                     { salaryMin = v1; salaryMax = v1; }
+
+    const ctx    = text.slice(Math.max(0, m.index - 20), Math.min(text.length, m.index + m[0].length + 80));
+    const period = _detectPeriod(ctx);
+
+    const refVal = salaryMax ?? salaryMin;
+    const annual = period === 'month' ? refVal * 12 : period === 'hour' ? refVal * 2000 : refVal;
+    if (annual < 10_000 || annual > _MAX_ANNUAL) continue;
+
+    const isRange    = v2 != null;
+    const prevRange  = best && best.salaryMin != null && best.salaryMax != null;
+    if (!best || (isRange && !prevRange)) {
+      best = { salaryMin, salaryMax, salaryCurrency: currency, salaryPeriod: period };
+    }
+  }
+  return best;
+}
+
 // ─── HTML → plain text ────────────────────────────────────────────────────────
 
 function htmlToText(html) {
@@ -249,6 +327,7 @@ function normalizeLever(raw, empConfig) {
     salaryCurrency: null,
     salaryPeriod: null,
     ...extractRequirements(description),
+    ...(extractSalary(description) || {}),
   };
 }
 
@@ -283,6 +362,7 @@ function normalizeGreenhouse(raw, empConfig) {
     salaryCurrency: null,
     salaryPeriod: null,
     ...extractRequirements(description),
+    ...(extractSalary(description) || {}),
   };
 }
 
@@ -462,6 +542,7 @@ function normalizeSmartRecruiters(raw, empConfig) {
     salaryCurrency: null,
     salaryPeriod: null,
     ...extractRequirements(description),
+    ...(extractSalary(description) || {}),
   };
 }
 
@@ -487,4 +568,4 @@ function normalize(raw, empConfig) {
   }
 }
 
-module.exports = { normalize, extractRequirements, htmlToText };
+module.exports = { normalize, extractRequirements, extractSalary, htmlToText };

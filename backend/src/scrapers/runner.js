@@ -284,6 +284,11 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
                   reqWorkAuthorization:    result.reqWorkAuthorization    ?? null,
                   reqEnglishLevel:         result.reqEnglishLevel         ?? null,
                   reqWillingToRelocate:    result.reqWillingToRelocate    ?? false,
+                  // Salary from prose — only set if not already populated
+                  ...(result.salaryMin      != null ? { salaryMin:      result.salaryMin }      : {}),
+                  ...(result.salaryMax      != null ? { salaryMax:      result.salaryMax }      : {}),
+                  ...(result.salaryCurrency         ? { salaryCurrency: result.salaryCurrency } : {}),
+                  ...(result.salaryPeriod           ? { salaryPeriod:   result.salaryPeriod }   : {}),
                 },
               });
             } catch (err) {

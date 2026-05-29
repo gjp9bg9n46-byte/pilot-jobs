@@ -20,7 +20,7 @@
 
 const axios  = require('axios');
 const logger = require('../config/logger');
-const { extractRequirements } = require('./normalize');
+const { extractRequirements, extractSalary } = require('./normalize');
 
 const WORKDAY_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 // Without a browser-style Accept header Workday returns a JSON redirect object instead of HTML.
@@ -173,11 +173,21 @@ async function enrichOneWorkdayJob(job) {
     lastEnrichedFromWorkdayAt: new Date(),
   };
 
-  // Salary — Workday wins
+  // Salary — structured JSON-LD wins; fall back to regex extraction from description text
   if (parsed.salaryMin != null)     updates.salaryMin = parsed.salaryMin;
   if (parsed.salaryMax != null)     updates.salaryMax = parsed.salaryMax;
   if (parsed.salaryCurrency)        updates.salaryCurrency = parsed.salaryCurrency;
   if (parsed.salaryPeriod)          updates.salaryPeriod = parsed.salaryPeriod;
+
+  if (updates.salaryMin == null && updates.salaryMax == null) {
+    const sal = extractSalary(parsed.description || parsed.reqText);
+    if (sal) {
+      updates.salaryMin      = sal.salaryMin;
+      updates.salaryMax      = sal.salaryMax;
+      updates.salaryCurrency = sal.salaryCurrency;
+      updates.salaryPeriod   = sal.salaryPeriod;
+    }
+  }
 
   // Dates — Workday wins
   if (parsed.postedAt)              updates.postedAt  = parsed.postedAt;
