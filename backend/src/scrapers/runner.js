@@ -31,7 +31,7 @@ const { matchJobToAllPilots } = require('../services/matchingService');
 async function upsertJob(job) {
   const {
     sourcePlatform, externalId,
-    title, company, location, country, description,
+    title, company, location, country, description, notes,
     applyUrl, sourceUrl, postedAt, expiresAt,
     role, contractType, region,
     salaryMin, salaryMax, salaryCurrency, salaryPeriod,
@@ -46,6 +46,7 @@ async function upsertJob(job) {
     title, company, location,
     country: country || null,
     description: description || '',
+    notes: notes || null,
     applyUrl, sourceUrl: sourceUrl || applyUrl,
     status: 'ACTIVE',
     postedAt: postedAt || new Date(),
@@ -83,6 +84,7 @@ async function upsertJob(job) {
       // On re-run: refresh all mutable fields; keep postedAt stable
       title, company, location, country: country || null,
       description: description || '',
+      notes: notes || null,
       applyUrl, sourceUrl: sourceUrl || applyUrl,
       status: 'ACTIVE', // re-activate if it was expired
       expiresAt: expiresAt || null,
@@ -183,18 +185,44 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
         try {
           const existing = await prisma.job.findUnique({
             where: { sourcePlatform_externalId: { sourcePlatform: job.sourcePlatform, externalId: job.externalId } },
-            select: { id: true, description: true },
+            select: {
+              id: true, description: true, notes: true,
+              reqCertificates: true, reqAuthorities: true, reqAircraftTypes: true,
+              reqMedicalClass: true, reqMinTotalHours: true, reqMinPicHours: true,
+              reqMinMultiEngineHours: true, reqMinTurbineHours: true, reqMinInstrumentHours: true,
+              reqMinCrossCountryHours: true, reqEducation: true, reqWorkAuthorization: true,
+              reqEnglishLevel: true, reqWillingToRelocate: true,
+            },
           });
           const isNew = !existing;
 
           // For PCC: the list-page always produces a stub description. Don't overwrite
-          // an already-enriched description (one that doesn't match the stub pattern).
-          const jobToUpsert = (
+          // an already-enriched description (or its extracted req fields) with fresh stubs.
+          const isEnrichedPcc = (
             !isNew &&
             job.sourcePlatform === 'PILOTCAREERCENTRE' &&
             existing.description &&
             !/ is recruiting /i.test(existing.description)
-          ) ? { ...job, description: existing.description } : job;
+          );
+          const jobToUpsert = isEnrichedPcc ? {
+            ...job,
+            description:            existing.description,
+            notes:                  existing.notes,
+            reqCertificates:        existing.reqCertificates,
+            reqAuthorities:         existing.reqAuthorities,
+            reqAircraftTypes:       existing.reqAircraftTypes,
+            reqMedicalClass:        existing.reqMedicalClass,
+            reqMinTotalHours:       existing.reqMinTotalHours,
+            reqMinPicHours:         existing.reqMinPicHours,
+            reqMinMultiEngineHours: existing.reqMinMultiEngineHours,
+            reqMinTurbineHours:     existing.reqMinTurbineHours,
+            reqMinInstrumentHours:  existing.reqMinInstrumentHours,
+            reqMinCrossCountryHours:existing.reqMinCrossCountryHours,
+            reqEducation:           existing.reqEducation,
+            reqWorkAuthorization:   existing.reqWorkAuthorization,
+            reqEnglishLevel:        existing.reqEnglishLevel,
+            reqWillingToRelocate:   existing.reqWillingToRelocate,
+          } : job;
 
           const upserted = await upsertJob(jobToUpsert);
           seenExternalIds.push(job.externalId);
@@ -211,15 +239,16 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       stats.markedInactive = await markStaleInactive(empConfig.source, empConfig.company, seenExternalIds);
 
       // PCC post-step: enrich any stub-description jobs with detail-page text + requirements.
-      // char_length < 300 identifies rows whose descriptions are still the synthesized one-liner
-      // (enriched descriptions are always much longer). New jobs upserted above will be picked up
-      // here; already-enriched jobs from prior runs are skipped automatically.
+      // Stub marker: 'is recruiting' AND char_length < 200 (avoids false positives where
+      // 'is recruiting' appears in a longer enriched description). New jobs from this run
+      // will be picked up here; already-enriched jobs are skipped automatically.
       if (empConfig.source === 'PILOTCAREERCENTRE') {
         const toEnrich = await prisma.$queryRaw`
           SELECT id, "sourceUrl", description
           FROM "Job"
           WHERE "sourcePlatform" = 'PILOTCAREERCENTRE'
             AND description ILIKE '% is recruiting %'
+            AND char_length(description) < 200
         `;
         if (toEnrich.length > 0) {
           logger.info({ source: 'PILOTCAREERCENTRE', count: toEnrich.length, msg: 'enriching PCC detail pages' });
@@ -233,6 +262,7 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
                 where: { id: result.id },
                 data: {
                   description:             result.description,
+                  notes:                   result.notes                   ?? null,
                   reqCertificates:         result.reqCertificates         ?? [],
                   reqAuthorities:          result.reqAuthorities          ?? [],
                   reqAircraftTypes:        result.reqAircraftTypes        ?? [],

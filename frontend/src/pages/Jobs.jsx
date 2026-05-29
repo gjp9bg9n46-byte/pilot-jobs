@@ -438,6 +438,17 @@ function JobModal({ job, onClose, pilotProfile, pilotTotals }) {
           </div>
         ) : null}
 
+        {job.notes ? (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 11, color: '#7A8CA0', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+              Notes / Benefits
+            </div>
+            <div style={{ fontSize: 13, color: '#A0B4C8', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: '#111D2B', borderRadius: 10, padding: '12px 14px' }}>
+              {job.notes}
+            </div>
+          </div>
+        ) : null}
+
         <a
           href={job.applyUrl} target="_blank" rel="noreferrer"
           style={{

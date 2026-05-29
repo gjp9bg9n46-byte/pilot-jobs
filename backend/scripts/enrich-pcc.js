@@ -131,6 +131,7 @@ async function runFetch() {
     FROM "Job"
     WHERE "sourcePlatform" = 'PILOTCAREERCENTRE'
       AND description ILIKE '% is recruiting %'
+      AND char_length(description) < 200
     ORDER BY "createdAt" DESC
   `;
 
@@ -170,6 +171,7 @@ async function runFetch() {
         where: { id: result.id },
         data: {
           description:             result.description,
+          notes:                   result.notes                   ?? null,
           reqCertificates:         result.reqCertificates         ?? [],
           reqAuthorities:          result.reqAuthorities          ?? [],
           reqAircraftTypes:        result.reqAircraftTypes        ?? [],

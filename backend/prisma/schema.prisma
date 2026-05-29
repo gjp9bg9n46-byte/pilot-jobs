@@ -276,6 +276,7 @@ model Job {
   location             String
   country              String?
   description          String
+  notes                String?
   applyUrl             String
   sourceUrl            String?
   status               JobStatus  @default(ACTIVE)

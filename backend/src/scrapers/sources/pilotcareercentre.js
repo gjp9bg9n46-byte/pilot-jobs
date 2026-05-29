@@ -23,7 +23,21 @@ const { fetchHTML, RobotsDisallowedError, AntiBotBlockedError } = require('../ht
 const { extractRequirements } = require('../normalize');
 const logger  = require('../../config/logger');
 
-const BASE_URL = 'https://www.pilotcareercentre.com';
+const BASE_URL = 'https://pilotcareercenter.com'; // US spelling, no www — direct hit
+
+// Deduplicate <td> text: PCC renders each cell with two identical sub-elements
+// (mobile + desktop). If the string is a clean self-repeat, return the first half.
+function dedupTdText(raw) {
+  if (!raw || raw.length < 20) return raw;
+  const half = Math.floor(raw.length / 2);
+  const a = raw.slice(0, half).trim();
+  const b = raw.slice(half).trim();
+  if (a === b) return a;
+  // Near-match: b starts with the first sentence of a
+  const firstSentence = (a.split(/[.\n]/)[0] || '').trim();
+  if (firstSentence.length > 30 && b.trimStart().startsWith(firstSentence)) return a;
+  return raw;
+}
 
 // Region pages that expose their job listings as static HTML.
 // Each page shows jobs in that region; there is overlap with the main /pilot-jobs
@@ -42,7 +56,9 @@ const REGION_PAGES = [
 
 // ─── Resolve the real airline apply URL from a PCC redirect page ──────────────
 
-const REDIRECT_URL_RE = /window\.location\s*=\s*['"]([^'"]+)['"]/;
+const REDIRECT_URL_RE   = /window\.location\s*=\s*['"]([^'"]+)['"]/;
+const META_REFRESH_RE   = /content=["'][^"']*?(?:url|URL)=([^"']+)["']/i;
+const PCC_DOMAIN_RE     = /pilotcareercen(?:ter|tre)\.com/i; // matches both spellings
 
 async function resolveApplyUrl(jobId, fallback) {
   // Try 'application' then 'url' redirect types — both give a direct job-posting link
@@ -60,11 +76,13 @@ async function resolveApplyUrl(jobId, fallback) {
       const body = typeof resp.data === 'string' ? resp.data : '';
       if (!body) continue;
 
-      const m = body.match(REDIRECT_URL_RE);
-      if (m && m[1].startsWith('http') && !m[1].includes('pilotcareercenter')) return m[1];
+      // 1. window.location = '...' (JS redirect)
+      const jsM = body.match(REDIRECT_URL_RE);
+      if (jsM && jsM[1].startsWith('http') && !PCC_DOMAIN_RE.test(jsM[1])) return jsM[1];
 
-      const metaM = body.match(/content=["'][^"']*URL=([^"']+)["']/i);
-      if (metaM && metaM[1].startsWith('http') && !metaM[1].includes('pilotcareercenter')) return metaM[1].trim();
+      // 2. <meta http-equiv="refresh" content="N; URL=..."> (HTML redirect)
+      const metaM = body.match(META_REFRESH_RE);
+      if (metaM && metaM[1].startsWith('http') && !PCC_DOMAIN_RE.test(metaM[1])) return metaM[1].trim();
     } catch {
       // continue to next type
     }
@@ -161,11 +179,13 @@ const DETAIL_HEADERS = {
 };
 
 /**
- * Fetch a PCC detail page and return the requirements text, or null on failure.
+ * Fetch a PCC detail page and return `{ text, notes }` or null on failure.
+ * - text:  deduplicated #RequirementsRow td content (requirements)
+ * - notes: deduplicated #NotesRow td content (benefits / compensation)
  * Uses a direct axios.get so we bypass the shared 3-s/host rate limiter.
  *
  * @param {string} url  Full PCC detail page URL (stored in Job.sourceUrl)
- * @returns {Promise<string|null>}
+ * @returns {Promise<{text:string|null, notes:string|null}|null>}
  */
 async function fetchPccDetailText(url) {
   const resp = await axios.get(url, {
@@ -176,10 +196,9 @@ async function fetchPccDetailText(url) {
   if (resp.status !== 200) return null;
 
   const $ = cheerio.load(resp.data);
-  // Primary: #RequirementsRow td; fallback: #NotesRow td
-  let text = $('#RequirementsRow td').text().trim();
-  if (!text) text = $('#NotesRow td').text().trim();
-  return text || null;
+  const text  = dedupTdText($('#RequirementsRow td').text().trim()) || null;
+  const notes = dedupTdText($('#NotesRow td').text().trim()) || null;
+  return { text, notes };
 }
 
 /**
@@ -194,20 +213,20 @@ async function enrichOneJob(job) {
   let lastErr;
   for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
     try {
-      const text = await fetchPccDetailText(job.sourceUrl);
-      if (!text) return null;
+      const result = await fetchPccDetailText(job.sourceUrl);
+      if (!result || !result.text) return null;
 
       // Write guard: if the existing description is more than 2× longer than the fetched
       // content, the current DB content is richer — skip this write to avoid overwriting
       // good data with a stub-echo or shorter page snapshot.
       const existingDesc = job.existingDescription ?? job.description ?? null;
-      if (existingDesc && existingDesc.length > text.length * 2) {
-        logger.info({ id: job.id, existingLen: existingDesc.length, newLen: text.length, msg: 'preserved existing enrichment' });
+      if (existingDesc && existingDesc.length > result.text.length * 2) {
+        logger.info({ id: job.id, existingLen: existingDesc.length, newLen: result.text.length, msg: 'preserved existing enrichment' });
         return null;
       }
 
-      const reqs = extractRequirements(text);
-      return { id: job.id, description: text, ...reqs };
+      const reqs = extractRequirements(result.text);
+      return { id: job.id, description: result.text, notes: result.notes, ...reqs };
     } catch (err) {
       lastErr = err;
       if (attempt < MAX_TRIES) await new Promise((r) => setTimeout(r, 500 * attempt));
