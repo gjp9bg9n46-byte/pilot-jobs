@@ -3,9 +3,136 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
   Shield, Search, SlidersHorizontal, AlertTriangle, X,
+  CheckCircle, XCircle, Minus, GraduationCap, Globe, Languages,
 } from 'lucide-react';
-import { jobApi } from '../services/api';
+import { jobApi, profileApi } from '../services/api';
 import { setJobs } from '../store';
+
+// ─── Match-count computation (client-side) ────────────────────────────────────
+// NOTE: matching logic is duplicated in the server-side qualifiedOnly filter
+// (jobController.js getJobs). Both must stay in sync.
+// Long-term: compute server-side and return in the API response.
+const EDU_RANK  = { high_school: 1, technical: 2, bachelor: 3, masters: 4, doctorate: 5 };
+const EDU_LABEL = { high_school: 'High School', technical: 'Technical / Vocational', bachelor: "Bachelor's Degree", masters: "Master's Degree", doctorate: 'Doctorate' };
+const WA_LABEL  = { EU: 'EU Work Authorization', US: 'US Work Authorization', UK: 'UK Work Authorization', required: 'Work Authorization Required' };
+
+// Pilot RTW country field is free text. Check if an entry matches a required region.
+function rtwMatchesRegion(country, region) {
+  const c = country.toLowerCase();
+  if (region === 'EU') {
+    return /\beu\b|european union|europe/.test(c) ||
+      ['germany','france','spain','italy','netherlands','belgium','poland','sweden','denmark',
+       'austria','portugal','greece','czech','hungary','romania','bulgaria','croatia','slovakia',
+       'slovenia','estonia','latvia','lithuania','luxembourg','malta','cyprus','finland','ireland'].some((k) => c.includes(k));
+  }
+  if (region === 'US') return /united states|\bu\.?s\.?a?\b/.test(c);
+  if (region === 'UK') return /united kingdom|\bu\.?k\.?\b|great britain|england|scotland|wales/.test(c);
+  return false;
+}
+
+function computeMatchCount(job, profile, totals) {
+  const normType = (t) => (t === 'ATP' || t === 'ATPL') ? ['ATP', 'ATPL'] : [t];
+  const normAuth = (a) => (['CAA', 'CAA_UK', 'CAA-UK'].includes(a)) ? ['CAA', 'CAA_UK', 'CAA-UK'] : [a];
+
+  const certTypes = [...new Set(
+    (profile.certificates || []).filter((c) => c.type !== 'ELP').flatMap((c) => normType(c.type))
+  )];
+  const certAuthorities = [...new Set(
+    (profile.certificates || []).filter((c) => c.type !== 'ELP').flatMap((c) => normAuth(c.issuingAuthority))
+  )];
+  const ratingTypes = (profile.ratings || []).map((r) => r.aircraftType.toUpperCase());
+
+  const bestMedical = (profile.medicals || []).reduce((best, m) => {
+    const rank = { CLASS_1: 3, CLASS_2: 2, CLASS_3: 1 };
+    return (rank[m.medicalClass] ?? 0) > (rank[best] ?? 0) ? m.medicalClass : best;
+  }, null);
+  const qualifiedMedicals = bestMedical === 'CLASS_1' ? ['CLASS_1', 'CLASS_2', 'CLASS_3']
+    : bestMedical === 'CLASS_2' ? ['CLASS_2', 'CLASS_3']
+    : bestMedical === 'CLASS_3' ? ['CLASS_3'] : [];
+
+  const totalTime = totals?.totalTime ?? 0;
+  const picTime   = totals?.picTime   ?? 0;
+
+  const requirements = [];
+  const req = (label, reqValue, icon, isMatch, pilotValue = null) =>
+    requirements.push({ label, reqValue, icon, matched: isMatch, pilotValue });
+
+  if (job.reqAuthorities?.length) {
+    const isMatch = job.reqAuthorities.some((a) => certAuthorities.includes(a));
+    const pilotAuth = certAuthorities.find((a) => job.reqAuthorities.includes(a)) ?? null;
+    req('Authority', job.reqAuthorities.join(', '), 'Building2', isMatch, pilotAuth);
+  }
+  if (job.reqCertificates?.length) {
+    const isMatch = job.reqCertificates.some((c) => certTypes.includes(c));
+    const pilotCert = certTypes.find((c) => job.reqCertificates.includes(c)) ?? null;
+    req('Certificate', job.reqCertificates.join(', '), 'FileText', isMatch, pilotCert);
+  }
+  if (job.reqMinTotalHours != null) {
+    req('Total Hours', `${job.reqMinTotalHours.toLocaleString()} hrs min`, 'Clock',
+      totalTime >= job.reqMinTotalHours, `${totalTime.toLocaleString()} hrs`);
+  }
+  if (job.reqMinPicHours != null) {
+    req('PIC Hours', `${job.reqMinPicHours.toLocaleString()} hrs min`, 'Target',
+      picTime >= job.reqMinPicHours, `${picTime.toLocaleString()} hrs`);
+  }
+  if (job.reqMedicalClass != null) {
+    const isMatch = qualifiedMedicals.includes(job.reqMedicalClass);
+    req('Medical Class', job.reqMedicalClass.replace('CLASS_', 'Class '), 'Shield',
+      isMatch, bestMedical ? bestMedical.replace('CLASS_', 'Class ') : null);
+  }
+  if (job.reqAircraftTypes?.length) {
+    const isMatch = job.reqAircraftTypes.some((a) => ratingTypes.includes(a.toUpperCase()));
+    const pilotType = ratingTypes.find((r) => job.reqAircraftTypes.some((a) => a.toUpperCase() === r)) ?? null;
+    req('Aircraft Type', job.reqAircraftTypes.join(', '), 'Plane', isMatch, pilotType);
+  }
+  if (job.reqEducation) {
+    const pilotRank = EDU_RANK[profile.education] ?? 0;
+    const reqRank   = EDU_RANK[job.reqEducation]  ?? 0;
+    req('Education', EDU_LABEL[job.reqEducation] || job.reqEducation, 'GraduationCap',
+      pilotRank >= reqRank, profile.education ? EDU_LABEL[profile.education] : null);
+  }
+  if (job.reqWorkAuthorization) {
+    const rtw = profile.rightToWork || [];
+    const isMatch = job.reqWorkAuthorization === 'required'
+      ? rtw.length > 0
+      : rtw.some((r) => rtwMatchesRegion(r.country, job.reqWorkAuthorization));
+    const matchingRtw = rtw.find((r) => rtwMatchesRegion(r.country, job.reqWorkAuthorization));
+    req('Work Auth', WA_LABEL[job.reqWorkAuthorization] || job.reqWorkAuthorization, 'Globe', isMatch,
+      matchingRtw ? matchingRtw.country : (rtw.length > 0 && job.reqWorkAuthorization === 'required' ? rtw[0].country : null));
+  }
+  if (job.reqEnglishLevel != null) {
+    const elpCerts  = (profile.certificates || []).filter((c) => c.type === 'ELP');
+    const maxLevel  = elpCerts.reduce((m, c) => Math.max(m, parseInt(c.englishLevel) || 0), 0);
+    req('English Level', `ICAO Level ${job.reqEnglishLevel}`, 'Languages',
+      maxLevel >= job.reqEnglishLevel, maxLevel > 0 ? `Level ${maxLevel}` : null);
+  }
+
+  const matched = requirements.filter((r) => r.matched).length;
+  return { matched, total: requirements.length, requirements };
+}
+
+function MatchCountBadge({ matched, total, hideIfEmpty = false }) {
+  if (total === 0) {
+    if (hideIfEmpty) return null;
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', background: '#1B2B3B', border: '1px solid #243050', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 600, color: '#4A6080' }}>
+        No requirements specified
+      </span>
+    );
+  }
+  const full = matched === total;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      background: full ? '#0D2B1A' : '#2B1F0A',
+      border: `1px solid ${full ? '#1A4A2A' : '#4A3A1A'}`,
+      borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700,
+      color: full ? '#2ECC71' : '#F39C12',
+    }}>
+      {matched}/{total} requirements matched
+    </span>
+  );
+}
 
 function PlaneSave({ saved, size = 18 }) {
   return (
@@ -198,37 +325,118 @@ const css = {
   },
 };
 
-function JobModal({ job, onClose }) {
+const REQ_ICON_MAP = {
+  Building2: <Building2 size={12} />,
+  FileText:  <FileText  size={12} />,
+  Clock:     <Clock     size={12} />,
+  Target:    <Target    size={12} />,
+  Shield:    <Shield    size={12} />,
+  Plane:     <Plane     size={12} />,
+  GraduationCap: <GraduationCap size={12} />,
+  Globe:     <Globe     size={12} />,
+  Languages: <Languages size={12} />,
+};
+
+function ReqRow({ req }) {
+  const icon = REQ_ICON_MAP[req.icon] || <Minus size={12} />;
+  const isMatch = req.matched;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #1B2B3B' }}>
+      <div style={{ flexShrink: 0 }}>
+        {isMatch
+          ? <CheckCircle size={16} color="#2ECC71" />
+          : <XCircle    size={16} color="#E74C3C" />}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 110, color: '#7A8CA0', fontSize: 12 }}>
+        {icon}
+        <span>{req.label}</span>
+      </div>
+      <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: isMatch ? '#fff' : '#C0402A' }}>
+        {req.reqValue}
+      </div>
+      <div style={{ fontSize: 12, color: isMatch ? '#2ECC71' : '#7A8CA0', textAlign: 'right', minWidth: 80 }}>
+        {req.pilotValue ?? 'Not on profile'}
+      </div>
+    </div>
+  );
+}
+
+function JobModal({ job, onClose, pilotProfile, pilotTotals }) {
   if (!job) return null;
+
+  const matchCount = pilotProfile && pilotTotals
+    ? computeMatchCount(job, pilotProfile, pilotTotals)
+    : null;
+
+  const missing = matchCount?.requirements.filter((r) => !r.matched) ?? [];
+  const hasReqs = matchCount && matchCount.total > 0;
+
+  // Extra non-matched fields for display only (not counted in match score)
+  const extraFields = [
+    job.location && ['Location', job.location, <MapPin size={11} />],
+    job.reqMinMultiEngineHours && ['Multi-Engine', `${job.reqMinMultiEngineHours.toLocaleString()} hrs`, <Wrench size={11} />],
+    job.reqMinTurbineHours     && ['Turbine Time', `${job.reqMinTurbineHours.toLocaleString()} hrs`, <Wrench size={11} />],
+  ].filter(Boolean);
+
   return (
     <div style={css.modal} onClick={onClose}>
       <div style={css.modalCard} onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#7A8CA0', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
         <div style={{ fontSize: 11, color: '#00B4D8', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>JOB DETAILS</div>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>{job.title}</div>
-        <div style={{ fontSize: 15, color: '#00B4D8', fontWeight: 600, marginBottom: 20 }}>{job.company}</div>
+        <div style={{ fontSize: 15, color: '#00B4D8', fontWeight: 600, marginBottom: matchCount ? 10 : 20 }}>{job.company}</div>
+        {matchCount && (
+          <div style={{ marginBottom: 16 }}>
+            <MatchCountBadge matched={matchCount.matched} total={matchCount.total} hideIfEmpty={false} />
+          </div>
+        )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-          {[
-            [<MapPin size={11} />, 'Location', job.location],
-            [<Building2 size={11} />, 'Authority', job.reqAuthorities?.join(', ') || 'Any'],
-            [<FileText size={11} />, 'Certificates', job.reqCertificates?.join(', ') || 'Not specified'],
-            [<Clock size={11} />, 'Min Total Hours', job.reqMinTotalHours ? `${job.reqMinTotalHours.toLocaleString()} hrs` : '—'],
-            [<Target size={11} />, 'Min PIC Hours', job.reqMinPicHours ? `${job.reqMinPicHours.toLocaleString()} hrs` : '—'],
-            [<Plane size={11} />, 'Aircraft Types', job.reqAircraftTypes?.join(', ') || 'Not specified'],
-            [<Wrench size={11} />, 'Multi-Engine Hrs', job.reqMinMultiEngineHours ? `${job.reqMinMultiEngineHours.toLocaleString()} hrs` : '—'],
-            [<Shield size={11} />, 'Medical Class', job.reqMedicalClass?.replace('CLASS_', 'Class ') || '—'],
-          ].map(([icon, label, val]) => (
-            <div key={label} style={{ background: '#1B2B4B', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ fontSize: 11, color: '#4A6080', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>{icon}{label}</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{val}</div>
+        {hasReqs ? (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: '#7A8CA0', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 }}>Requirements</div>
+            <div style={{ background: '#111D2B', borderRadius: 10, padding: '0 12px' }}>
+              {matchCount.requirements.map((r) => <ReqRow key={r.label} req={r} />)}
             </div>
-          ))}
-        </div>
 
-        <div style={{ fontSize: 13, color: '#7A8CA0', lineHeight: 1.7, marginBottom: 24 }}>
-          {job.description}
-        </div>
+            {missing.length > 0 && (
+              <div style={{ marginTop: 12, padding: '10px 14px', background: '#2B1A1A', border: '1px solid #4A2A2A', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, color: '#E74C3C', fontWeight: 700, marginBottom: 6 }}>WHAT YOU&apos;RE MISSING</div>
+                {missing.map((r) => (
+                  <div key={r.label} style={{ fontSize: 12, color: '#C07070', marginBottom: 3 }}>
+                    • {r.label}: {r.reqValue}{r.pilotValue ? ` (you have: ${r.pilotValue})` : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {extraFields.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+                {extraFields.map(([label, val, icon]) => (
+                  <div key={label} style={{ background: '#1B2B4B', borderRadius: 8, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 11, color: '#4A6080', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4 }}>{icon}{label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{val}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : matchCount ? (
+          <div style={{ marginBottom: 20, padding: '12px 16px', background: '#1B2B3B', border: '1px solid #243050', borderRadius: 10, fontSize: 13, color: '#7A8CA0' }}>
+            No structured requirements specified for this job.
+          </div>
+        ) : null}
+
+        {job.description ? (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 11, color: '#7A8CA0', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+              Job Description
+            </div>
+            <div style={{ fontSize: 13, color: '#A0B4C8', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+              {job.description}
+            </div>
+          </div>
+        ) : null}
 
         <a
           href={job.applyUrl} target="_blank" rel="noreferrer"
@@ -239,7 +447,7 @@ function JobModal({ job, onClose }) {
             fontWeight: 700, fontSize: 16, textDecoration: 'none',
           }}
         >
-          Apply Now →
+          View Full Posting &amp; Apply →
         </a>
       </div>
     </div>
@@ -254,6 +462,19 @@ export default function Jobs() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [hoverId, setHoverId] = useState(null);
+
+  // Pilot profile for match-count badge and incomplete-profile notice
+  const [pilotProfile, setPilotProfile] = useState(null);
+  const [pilotTotals, setPilotTotals] = useState(null);
+
+  useEffect(() => {
+    Promise.all([profileApi.get(), profileApi.getTotals()])
+      .then(([profileRes, totalsRes]) => {
+        setPilotProfile(profileRes.data);
+        setPilotTotals(totalsRes.data);
+      })
+      .catch(() => {}); // non-fatal — badge just won't show
+  }, []);
 
   // Filter panel state
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -272,8 +493,8 @@ export default function Jobs() {
   const [pendingPostedWithin, setPendingPostedWithin] = useState('');
   const [pendingMinSalary, setPendingMinSalary] = useState('');
 
-  // Qualified only toggle
-  const [qualifiedOnly, setQualifiedOnly] = useState(false);
+  // Qualified only toggle — defaults on so the initial view shows jobs the pilot qualifies for
+  const [qualifiedOnly, setQualifiedOnly] = useState(true);
 
   // Sort
   const [sort, setSort] = useState('newest');
@@ -492,76 +713,99 @@ export default function Jobs() {
           <div style={css.emptyText}>Try adjusting your search or filters.<br />New jobs are scraped every 6 hours.</div>
         </div>
       ) : (
-        <div style={css.grid}>
-          {filtered.map((job) => {
-            const match = matchLabel(job.matchScore);
-            const isHover = hoverId === job.id;
-            const isSaved = savedMap[job.id] !== undefined ? savedMap[job.id] : (job.isSaved || false);
-            const ago = postedAgo(job.postedAt);
-            return (
-              <div
-                key={job.id}
-                style={{ ...css.card, ...(isHover ? css.cardHover : {}) }}
-                onMouseEnter={() => setHoverId(job.id)}
-                onMouseLeave={() => setHoverId(null)}
-                onClick={() => setSelected(job)}
-              >
-                {/* Heart save button */}
-                <button
-                  style={css.heartBtn}
-                  onClick={(e) => handleSaveToggle(e, job.id)}
-                  title={isSaved ? 'Unsave job' : 'Save job'}
+        <>
+          {/* Profile-incomplete notice — shown when pilot has no hours, no certs, no ratings */}
+          {pilotProfile && pilotTotals &&
+            (pilotTotals.totalTime ?? 0) === 0 &&
+            (pilotProfile.certificates?.length ?? 0) === 0 &&
+            (pilotProfile.ratings?.length ?? 0) === 0 && (
+            <div style={{ marginBottom: 16, padding: '10px 16px', background: '#1B2B1A', border: '1px solid #2A4A2A', borderRadius: 10, fontSize: 13, color: '#7AB87A', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={14} color="#7AB87A" />
+              Complete your profile to improve job matching →{' '}
+              <a href="/profile" style={{ color: '#2ECC71', fontWeight: 700, textDecoration: 'none' }}>Go to Profile</a>
+            </div>
+          )}
+
+          <div style={css.grid}>
+            {filtered.map((job) => {
+              const match = matchLabel(job.matchScore);
+              const isHover = hoverId === job.id;
+              const isSaved = savedMap[job.id] !== undefined ? savedMap[job.id] : (job.isSaved || false);
+              const ago = postedAgo(job.postedAt);
+              const matchCount = pilotProfile && pilotTotals
+                ? computeMatchCount(job, pilotProfile, pilotTotals)
+                : null;
+              return (
+                <div
+                  key={job.id}
+                  style={{ ...css.card, ...(isHover ? css.cardHover : {}) }}
+                  onMouseEnter={() => setHoverId(job.id)}
+                  onMouseLeave={() => setHoverId(null)}
+                  onClick={() => setSelected(job)}
                 >
-                  <PlaneSave saved={isSaved} size={36} />
-                </button>
+                  {/* Heart save button */}
+                  <button
+                    style={css.heartBtn}
+                    onClick={(e) => handleSaveToggle(e, job.id)}
+                    title={isSaved ? 'Unsave job' : 'Save job'}
+                  >
+                    <PlaneSave saved={isSaved} size={36} />
+                  </button>
 
-                <div style={css.cardTop}>
-                  <div style={css.title}>{job.title}</div>
-                  {job.reqAuthorities?.[0] && (
-                    <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
-                  )}
-                </div>
-
-                <div>
-                  <div style={css.airline}>{job.company}</div>
-                  {ago && <div style={css.postedAgo}>{ago}</div>}
-                </div>
-
-                <div style={css.metaRow}>
-                  <span style={css.meta}><MapPin size={11} /> {job.location}</span>
-                  {job.reqMinTotalHours && (
-                    <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
-                  )}
-                  {job.reqCertificates?.[0] && (
-                    <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
-                  )}
-                </div>
-
-                {job.reqAircraftTypes?.length > 0 && (
-                  <div style={css.reqs}>
-                    {job.reqAircraftTypes.slice(0, 3).map((a) => (
-                      <span key={a} style={css.req}>{a}</span>
-                    ))}
+                  <div style={css.cardTop}>
+                    <div style={css.title}>{job.title}</div>
+                    {job.reqAuthorities?.[0] && (
+                      <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
+                    )}
                   </div>
-                )}
 
-                {match && <div style={css.matchBadge(match)}>✓ {match.text}</div>}
+                  <div>
+                    <div style={css.airline}>{job.company}</div>
+                    {ago && <div style={css.postedAgo}>{ago}</div>}
+                  </div>
 
-                <button
-                  style={{
-                    ...css.viewBtn,
-                    ...(isHover ? { borderColor: '#00B4D8', color: '#00B4D8' } : {}),
-                  }}
-                >
-                  View Details →
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                  <div style={css.metaRow}>
+                    <span style={css.meta}><MapPin size={11} /> {job.location}</span>
+                    {job.reqMinTotalHours && (
+                      <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
+                    )}
+                    {job.reqCertificates?.[0] && (
+                      <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
+                    )}
+                  </div>
+
+                  {job.reqAircraftTypes?.length > 0 && (
+                    <div style={css.reqs}>
+                      {job.reqAircraftTypes.slice(0, 3).map((a) => (
+                        <span key={a} style={css.req}>{a}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {match && <div style={css.matchBadge(match)}>✓ {match.text}</div>}
+                  {matchCount && <MatchCountBadge matched={matchCount.matched} total={matchCount.total} />}
+
+                  <button
+                    style={{
+                      ...css.viewBtn,
+                      ...(isHover ? { borderColor: '#00B4D8', color: '#00B4D8' } : {}),
+                    }}
+                  >
+                    View Details →
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      <JobModal job={selected} onClose={() => setSelected(null)} />
+      <JobModal
+        job={selected}
+        onClose={() => setSelected(null)}
+        pilotProfile={pilotProfile}
+        pilotTotals={pilotTotals}
+      />
     </div>
   );
 }

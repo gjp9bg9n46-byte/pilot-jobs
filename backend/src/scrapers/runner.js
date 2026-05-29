@@ -20,7 +20,7 @@ const { fetchLever }           = require('./sources/lever');
 const { fetchGreenhouse }      = require('./sources/greenhouse');
 const { fetchWorkday }         = require('./sources/workday/index');
 const { fetchSmartRecruiters }     = require('./sources/smartrecruiters');
-const { fetchPilotCareerCentre }   = require('./sources/pilotcareercentre');
+const { fetchPilotCareerCentre, enrichPccBatch } = require('./sources/pilotcareercentre');
 const { normalize }      = require('./normalize');
 const { filterAviationJobs } = require('./filters');
 const { collapseXSourceDuplicates } = require('./dedup');
@@ -38,6 +38,7 @@ async function upsertJob(job) {
     reqCertificates, reqAuthorities, reqAircraftTypes,
     reqMedicalClass, reqMinTotalHours, reqMinPicHours,
     reqMinMultiEngineHours, reqMinTurbineHours, reqMinInstrumentHours,
+    reqMinCrossCountryHours, reqEducation, reqWorkAuthorization, reqEnglishLevel,
     reqWillingToRelocate,
   } = job;
 
@@ -65,6 +66,10 @@ async function upsertJob(job) {
     reqMinMultiEngineHours: reqMinMultiEngineHours || null,
     reqMinTurbineHours: reqMinTurbineHours || null,
     reqMinInstrumentHours: reqMinInstrumentHours || null,
+    reqMinCrossCountryHours: reqMinCrossCountryHours || null,
+    reqEducation: reqEducation || null,
+    reqWorkAuthorization: reqWorkAuthorization || null,
+    reqEnglishLevel: reqEnglishLevel || null,
     reqWillingToRelocate: !!reqWillingToRelocate,
     sourcePlatform,
     externalId,
@@ -90,6 +95,10 @@ async function upsertJob(job) {
       reqMinMultiEngineHours: reqMinMultiEngineHours || null,
       reqMinTurbineHours: reqMinTurbineHours || null,
       reqMinInstrumentHours: reqMinInstrumentHours || null,
+      reqMinCrossCountryHours: reqMinCrossCountryHours || null,
+      reqEducation: reqEducation || null,
+      reqWorkAuthorization: reqWorkAuthorization || null,
+      reqEnglishLevel: reqEnglishLevel || null,
       reqWillingToRelocate: !!reqWillingToRelocate,
       mergedInto: null,
     },
@@ -115,6 +124,10 @@ async function markStaleInactive(sourcePlatform, company, seenExternalIds) {
 // ─── Fetch raw jobs for one employer ─────────────────────────────────────────
 
 async function fetchForEmployer(empConfig) {
+  if (empConfig.disabled) {
+    logger.info({ source: empConfig.source, employer: empConfig.company, msg: 'platform deprecated — skipped' });
+    return [];
+  }
   switch (empConfig.source) {
     case 'LEVER':           return fetchLever(empConfig);
     case 'GREENHOUSE':      return fetchGreenhouse(empConfig);
@@ -168,12 +181,22 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
 
       for (const job of kept) {
         try {
-          const isNew = !(await prisma.job.findUnique({
+          const existing = await prisma.job.findUnique({
             where: { sourcePlatform_externalId: { sourcePlatform: job.sourcePlatform, externalId: job.externalId } },
-            select: { id: true },
-          }));
+            select: { id: true, description: true },
+          });
+          const isNew = !existing;
 
-          const upserted = await upsertJob(job);
+          // For PCC: the list-page always produces a stub description. Don't overwrite
+          // an already-enriched description (one that doesn't match the stub pattern).
+          const jobToUpsert = (
+            !isNew &&
+            job.sourcePlatform === 'PILOTCAREERCENTRE' &&
+            existing.description &&
+            !/ is recruiting /i.test(existing.description)
+          ) ? { ...job, description: existing.description } : job;
+
+          const upserted = await upsertJob(jobToUpsert);
           seenExternalIds.push(job.externalId);
           stats.upserted++;
 
@@ -186,6 +209,55 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
 
       // Expire jobs that weren't in this run's listing
       stats.markedInactive = await markStaleInactive(empConfig.source, empConfig.company, seenExternalIds);
+
+      // PCC post-step: enrich any stub-description jobs with detail-page text + requirements.
+      // char_length < 300 identifies rows whose descriptions are still the synthesized one-liner
+      // (enriched descriptions are always much longer). New jobs upserted above will be picked up
+      // here; already-enriched jobs from prior runs are skipped automatically.
+      if (empConfig.source === 'PILOTCAREERCENTRE') {
+        const toEnrich = await prisma.$queryRaw`
+          SELECT id, "sourceUrl", description
+          FROM "Job"
+          WHERE "sourcePlatform" = 'PILOTCAREERCENTRE'
+            AND description ILIKE '% is recruiting %'
+        `;
+        if (toEnrich.length > 0) {
+          logger.info({ source: 'PILOTCAREERCENTRE', count: toEnrich.length, msg: 'enriching PCC detail pages' });
+          const enriched = await enrichPccBatch(toEnrich);
+          let enrichedCount = 0, failedCount = 0;
+          for (const result of enriched) {
+            if (!result) { failedCount++; continue; }
+            enrichedCount++;
+            try {
+              await prisma.job.update({
+                where: { id: result.id },
+                data: {
+                  description:             result.description,
+                  reqCertificates:         result.reqCertificates         ?? [],
+                  reqAuthorities:          result.reqAuthorities          ?? [],
+                  reqAircraftTypes:        result.reqAircraftTypes        ?? [],
+                  reqMedicalClass:         result.reqMedicalClass         ?? null,
+                  reqMinTotalHours:        result.reqMinTotalHours        ?? null,
+                  reqMinPicHours:          result.reqMinPicHours          ?? null,
+                  reqMinMultiEngineHours:  result.reqMinMultiEngineHours  ?? null,
+                  reqMinTurbineHours:      result.reqMinTurbineHours      ?? null,
+                  reqMinInstrumentHours:   result.reqMinInstrumentHours   ?? null,
+                  reqMinCrossCountryHours: result.reqMinCrossCountryHours ?? null,
+                  reqEducation:            result.reqEducation            ?? null,
+                  reqWorkAuthorization:    result.reqWorkAuthorization    ?? null,
+                  reqEnglishLevel:         result.reqEnglishLevel         ?? null,
+                  reqWillingToRelocate:    result.reqWillingToRelocate    ?? false,
+                },
+              });
+            } catch (err) {
+              failedCount++;
+              enrichedCount--;
+              logger.error({ id: result.id, err: err.message, msg: 'PCC enrichment update failed' });
+            }
+          }
+          logger.info({ source: 'PILOTCAREERCENTRE', enriched: enrichedCount, failed: failedCount, msg: 'PCC enrichment complete' });
+        }
+      }
 
       // Trigger pilot matching for new jobs only
       for (const job of newJobs) {

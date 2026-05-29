@@ -34,38 +34,19 @@ module.exports = [
   // Public API: https://api.smartrecruiters.com/v1/companies/{slug}/postings
   // Used by: Ryanair, Norwegian, easyJet, Wizz Air, flydubai, and others.
 
-  // Ireland — Europe's largest LCC, always hiring First Officers & Captains
-  { source: 'SMARTRECRUITERS', slug: 'ryanair', company: 'Ryanair' },
-
-  // Norway — long-haul & short-haul, Boeing 787 & 737 fleet
-  { source: 'SMARTRECRUITERS', slug: 'norwegianairshuttle', company: 'Norwegian Air Shuttle' },
-
-  // UK — Airbus A319/A320/A321 fleet across European network
-  { source: 'SMARTRECRUITERS', slug: 'easyjet', company: 'easyJet' },
-
-  // Hungary — fast-growing Eastern European LCC, A320 family
-  { source: 'SMARTRECRUITERS', slug: 'wizzair', company: 'Wizz Air' },
-
-  // UAE — Boeing 737 MAX fleet, Middle East / Africa routes
-  { source: 'SMARTRECRUITERS', slug: 'flydubai', company: 'flydubai' },
-
-  // Spain — Vueling Airlines (IAG group), A320 family
-  { source: 'SMARTRECRUITERS', slug: 'vueling', company: 'Vueling Airlines' },
-
-  // Germany / Europe — TUI Group airlines (TUI fly, TUI Airways, TUIfly Nordic)
-  { source: 'SMARTRECRUITERS', slug: 'tuigroup', company: 'TUI Group' },
-
-  // Netherlands / France — Transavia, HOP!, regional ops
-  { source: 'SMARTRECRUITERS', slug: 'airfranceklm', company: 'Air France KLM' },
-
-  // South Africa — Airlink regional carrier
-  { source: 'SMARTRECRUITERS', slug: 'flyairlink', company: 'Airlink' },
-
-  // Malaysia — AirAsia, large LCC network across Asia-Pacific
-  { source: 'SMARTRECRUITERS', slug: 'airasia', company: 'AirAsia' },
-
-  // India — IndiGo (InterGlobe), largest Indian carrier by market share
-  { source: 'SMARTRECRUITERS', slug: 'interglobe', company: 'IndiGo' },
+  // SmartRecruiters public API v1 was shut down 2026-05 — every company returns
+  // HTTP 200 with {"totalFound":0,"content":[]}. Marked disabled; runner skips them.
+  { source: 'SMARTRECRUITERS', slug: 'ryanair',            company: 'Ryanair',            disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'norwegianairshuttle', company: 'Norwegian Air Shuttle', disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'easyjet',            company: 'easyJet',            disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'wizzair',            company: 'Wizz Air',           disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'flydubai',           company: 'flydubai',           disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'vueling',            company: 'Vueling Airlines',   disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'tuigroup',           company: 'TUI Group',          disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'airfranceklm',       company: 'Air France KLM',     disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'flyairlink',         company: 'Airlink',            disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'airasia',            company: 'AirAsia',            disabled: true },
+  { source: 'SMARTRECRUITERS', slug: 'interglobe',         company: 'IndiGo',             disabled: true },
 
   // ── Pilot Career Centre ────────────────────────────────────────────────────
   // Dedicated pilot job board. All listings are aviation roles — skipFilter: true.

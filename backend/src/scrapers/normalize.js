@@ -56,8 +56,27 @@ function extractHours(text, keyword) {
   if (!m) return null;
   const raw = (m[1] || m[2]).replace(/,/g, '');
   const val = parseFloat(raw);
-  // Sanity bounds: ignore implausibly large or small values
-  if (isNaN(val) || val < 10 || val > 50000) return null;
+  // Sanity bounds: senior captain/instructor roles top out ~10–15k hours.
+  // Anything above 20,000 is almost certainly a salary, fleet size, year, or
+  // other non-hours number that leaked into the pattern match.
+  if (isNaN(val) || val < 10 || val > 20000) return null;
+  return val;
+}
+
+/**
+ * Tight fallback for "Minimum of N hours" — only matches when the number
+ * appears directly adjacent to "minimum [of]", preventing the general
+ * extractHours sentence-window from catching distant false positives.
+ *
+ * @param {string} text
+ * @returns {number|null}
+ */
+function extractMinimumOfHours(text) {
+  const re = /minimum\s+(?:of\s+)?(\d[\d,]*)\s*(?:hours?|hrs?)/i;
+  const m = text.match(re);
+  if (!m) return null;
+  const val = parseFloat(m[1].replace(/,/g, ''));
+  if (isNaN(val) || val < 10 || val > 20000) return null;
   return val;
 }
 
@@ -73,7 +92,9 @@ function extractRequirements(text) {
       reqAuthorities: [], reqCertificates: [], reqAircraftTypes: [],
       reqMedicalClass: null, reqMinTotalHours: null, reqMinPicHours: null,
       reqMinMultiEngineHours: null, reqMinTurbineHours: null,
-      reqMinInstrumentHours: null, reqWillingToRelocate: false,
+      reqMinInstrumentHours: null, reqMinCrossCountryHours: null,
+      reqEducation: null, reqWorkAuthorization: null, reqEnglishLevel: null,
+      reqWillingToRelocate: false,
     };
   }
 
@@ -98,24 +119,68 @@ function extractRequirements(text) {
   }
 
   const reqMedicalClass =
-    /class\s*1\s+medical|first[-\s]class\s+medical|class\s+i\s+medical/i.test(text) ? 'CLASS_1' :
-    /class\s*2\s+medical|second[-\s]class\s+medical|class\s+ii\s+medical/i.test(text) ? 'CLASS_2' : null;
+    /class\s*1\s+medical|first[-\s]class\s+medical|class\s+i\s+medical|1st\s+class\s+medical/i.test(text) ? 'CLASS_1' :
+    /class\s*2\s+medical|second[-\s]class\s+medical|class\s+ii\s+medical|2nd\s+class\s+medical/i.test(text) ? 'CLASS_2' : null;
 
   const reqMinTotalHours =
     extractHours(text, 'total') ||
     extractHours(text, 'flight\\s+time') ||
-    extractHours(text, 'flying\\s+time');
+    extractHours(text, 'flying\\s+time') ||
+    extractMinimumOfHours(text); // tight fallback: number must immediately follow "minimum [of]"
 
   const reqMinPicHours =
     extractHours(text, 'PIC') ||
     extractHours(text, 'pilot[-\\s]+in[-\\s]+command') ||
     extractHours(text, 'command');
 
-  const reqMinMultiEngineHours = extractHours(text, 'multi[-\\s]*engine');
-  const reqMinTurbineHours     = extractHours(text, 'turbine');
-  const reqMinInstrumentHours  = extractHours(text, 'instrument');
+  // Multi-engine: "multi-engine", "MEL", "twin-engine", "twin engine"
+  const reqMinMultiEngineHours =
+    extractHours(text, 'multi[-\\s]*engine') ||
+    extractHours(text, '\\bMEL?\\b') ||
+    extractHours(text, 'twin[-\\s]*engine');
 
-  const reqWillingToRelocate   = /reloca/i.test(text);
+  // Turbine: "turbine", "turbojet", "turboprop", "jet time"
+  const reqMinTurbineHours =
+    extractHours(text, 'turbine') ||
+    extractHours(text, 'turbojet') ||
+    extractHours(text, 'turboprop') ||
+    extractHours(text, 'jet\\s+time');
+
+  const reqMinInstrumentHours = extractHours(text, 'instrument');
+
+  // Cross-country: "XC", "cross.country", "cross country"
+  const reqMinCrossCountryHours =
+    extractHours(text, '\\bXC\\b') ||
+    extractHours(text, 'cross[-\\s]*country');
+
+  // Education: bachelor → high_school (most-specific first to avoid shadowing)
+  const reqEducation =
+    /bachelor'?s?\s+degree|university\s+degree|college\s+degree|higher\s+education|degree\s+required/i.test(text) ? 'bachelor' :
+    /high\s+school\s+(?:diploma|graduate|education)|secondary\s+school\s+diploma|\bGED\b/i.test(text) ? 'high_school' :
+    /technical\s+(?:diploma|certificate)|vocational\s+training|trade\s+school/i.test(text) ? 'technical' :
+    null;
+
+  // Work authorization — ordered EU/US/UK first, generic "required" as last resort
+  const reqWorkAuthorization =
+    /right\s+to\s+(?:live\s+and\s+)?work\s+in\s+(?:the\s+)?eu\b|unrestricted\s+right.{0,30}\beu\b|eu\s+work\s+(?:auth|permit)/i.test(text) ? 'EU' :
+    /right\s+to\s+work\s+in\s+(?:the\s+)?(?:united\s+states|u\.?s\.?a?)\b|auth(?:orization)?\s+to\s+work\s+in\s+(?:the\s+)?(?:united\s+states|u\.?s\.?)\b|eligible\s+to\s+work\s+in\s+(?:the\s+)?u\.?s\.?\b|without\s+visa\s+sponsorship/i.test(text) ? 'US' :
+    /right\s+to\s+(?:live\s+and\s+)?work\s+in\s+(?:the\s+)?uk\b|uk\s+work\s+(?:auth|permit)/i.test(text) ? 'UK' :
+    /\bright\s+to\s+work\b|work\s+(?:permit|authoris?ation)\s+required|must\s+(?:be\s+)?(?:authoris?ed|eligible)\s+to\s+work/i.test(text) ? 'required' :
+    null;
+
+  // ICAO English level — "ICAO Level 4", "ICAO Language Proficiency English - Minimum Level 4",
+  // "ICAO Language Proficiency English (at least ICAO level 4)", etc.
+  // Primary: any "ICAO ... level N" within the same line/sentence.
+  // Fallback: "English [Language] Proficiency ... level N" without an explicit ICAO marker.
+  const englishMatch =
+    text.match(/ICAO[^.\n]{0,120}?level\s+(\d)/i) ||
+    text.match(/english\s+(?:language\s+)?proficiency[^.\n]{0,80}?level\s+(\d)/i);
+  const reqEnglishLevel = englishMatch ? (() => {
+    const lvl = parseInt(englishMatch[1]);
+    return (lvl >= 1 && lvl <= 6) ? lvl : null;
+  })() : null;
+
+  const reqWillingToRelocate = /reloca/i.test(text);
 
   return {
     reqAuthorities,
@@ -127,6 +192,10 @@ function extractRequirements(text) {
     reqMinMultiEngineHours,
     reqMinTurbineHours,
     reqMinInstrumentHours,
+    reqMinCrossCountryHours,
+    reqEducation,
+    reqWorkAuthorization,
+    reqEnglishLevel,
     reqWillingToRelocate,
   };
 }

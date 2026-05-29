@@ -872,6 +872,7 @@ export default function Profile() {
         phone: profileData.phone || '',
         country: profileData.country || '',
         city: profileData.city || '',
+        education: profileData.education || '',
         willingToRelocate: profileData.willingToRelocate,
         isExaminer: profileData.isExaminer ?? false,
         isInstructor: profileData.isInstructor ?? false,
@@ -924,6 +925,21 @@ export default function Profile() {
                   />
                 </div>
               ))}
+              <div>
+                <label style={css.label}>Education</label>
+                <select
+                  style={{ ...css.input, cursor: 'pointer' }}
+                  value={personalForm.education || ''}
+                  onChange={(e) => setPersonalForm((f) => ({ ...f, education: e.target.value || null }))}
+                >
+                  <option value="">Not specified</option>
+                  <option value="high_school">High School / GED</option>
+                  <option value="technical">Technical / Vocational</option>
+                  <option value="bachelor">Bachelor's Degree</option>
+                  <option value="masters">Master's Degree</option>
+                  <option value="doctorate">Doctorate</option>
+                </select>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 24 }}>
                 <input
                   type="checkbox" id="relocate"

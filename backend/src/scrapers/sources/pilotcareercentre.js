@@ -20,6 +20,7 @@
 const axios   = require('axios');
 const cheerio = require('cheerio');
 const { fetchHTML, RobotsDisallowedError, AntiBotBlockedError } = require('../http');
+const { extractRequirements } = require('../normalize');
 const logger  = require('../../config/logger');
 
 const BASE_URL = 'https://www.pilotcareercentre.com';
@@ -152,4 +153,94 @@ async function fetchPilotCareerCentre(empConfig) {
   return jobs;
 }
 
-module.exports = { fetchPilotCareerCentre };
+// ─── Detail-page enrichment ───────────────────────────────────────────────────
+
+const DETAIL_HEADERS = {
+  'User-Agent': 'PilotJobsIngest/1.0 (+contact: jobs@cockpithire.com)',
+  'Accept-Language': 'en-US,en;q=0.9',
+};
+
+/**
+ * Fetch a PCC detail page and return the requirements text, or null on failure.
+ * Uses a direct axios.get so we bypass the shared 3-s/host rate limiter.
+ *
+ * @param {string} url  Full PCC detail page URL (stored in Job.sourceUrl)
+ * @returns {Promise<string|null>}
+ */
+async function fetchPccDetailText(url) {
+  const resp = await axios.get(url, {
+    headers: DETAIL_HEADERS,
+    timeout: 8000,
+    validateStatus: (s) => s < 500,
+  });
+  if (resp.status !== 200) return null;
+
+  const $ = cheerio.load(resp.data);
+  // Primary: #RequirementsRow td; fallback: #NotesRow td
+  let text = $('#RequirementsRow td').text().trim();
+  if (!text) text = $('#NotesRow td').text().trim();
+  return text || null;
+}
+
+/**
+ * Enrich a single DB job row with detail-page text and extracted requirements.
+ * Retries up to 3 times (500ms, 1000ms back-off) before giving up.
+ *
+ * @param {{ id: string, sourceUrl: string, existingDescription?: string }} job
+ * @returns {Promise<object|null>}  Enriched field set, or null if all attempts fail.
+ */
+async function enrichOneJob(job) {
+  const MAX_TRIES = 3;
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+    try {
+      const text = await fetchPccDetailText(job.sourceUrl);
+      if (!text) return null;
+
+      // Write guard: if the existing description is more than 2× longer than the fetched
+      // content, the current DB content is richer — skip this write to avoid overwriting
+      // good data with a stub-echo or shorter page snapshot.
+      const existingDesc = job.existingDescription ?? job.description ?? null;
+      if (existingDesc && existingDesc.length > text.length * 2) {
+        logger.info({ id: job.id, existingLen: existingDesc.length, newLen: text.length, msg: 'preserved existing enrichment' });
+        return null;
+      }
+
+      const reqs = extractRequirements(text);
+      return { id: job.id, description: text, ...reqs };
+    } catch (err) {
+      lastErr = err;
+      if (attempt < MAX_TRIES) await new Promise((r) => setTimeout(r, 500 * attempt));
+    }
+  }
+  logger.warn({ id: job.id, url: job.sourceUrl, err: lastErr?.message, msg: 'PCC detail fetch failed after 3 attempts' });
+  return null;
+}
+
+/**
+ * Enrich an array of DB job rows in parallel batches.
+ *
+ * @param {Array<{ id: string, sourceUrl: string }>} jobs
+ * @param {{ onProgress?: (done: number, total: number) => void }} opts
+ * @returns {Promise<Array<object|null>>}  Parallel to input; null entries = failures.
+ */
+async function enrichPccBatch(jobs, { onProgress } = {}) {
+  const BATCH_SIZE = 5;
+  const STAGGER_MS = 200;
+  const results = [];
+
+  for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
+    const batch = jobs.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map((job, idx) =>
+        new Promise((resolve) => setTimeout(resolve, idx * STAGGER_MS)).then(() => enrichOneJob(job)),
+      ),
+    );
+    results.push(...batchResults);
+    if (onProgress) onProgress(Math.min(i + BATCH_SIZE, jobs.length), jobs.length);
+  }
+
+  return results;
+}
+
+module.exports = { fetchPilotCareerCentre, fetchPccDetailText, enrichOneJob, enrichPccBatch };

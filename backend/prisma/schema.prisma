@@ -46,6 +46,14 @@ enum AlertFrequency {
   WEEKLY
 }
 
+enum EducationLevel {
+  high_school
+  technical
+  bachelor
+  masters
+  doctorate
+}
+
 model Pilot {
   id              String    @id @default(uuid())
   email           String    @unique
@@ -63,6 +71,7 @@ model Pilot {
   emergencyContactPhone String?
   profilePhoto    String?
   fcmToken        String?
+  education       EducationLevel?
   willingToRelocate Boolean @default(false)
   isInstructor    Boolean   @default(false)
   isExaminer      Boolean   @default(false)
@@ -290,9 +299,13 @@ model Job {
   reqMedicalClass      String?
   reqMinTotalHours     Float?
   reqMinPicHours       Float?
-  reqMinMultiEngineHours Float?
-  reqMinTurbineHours   Float?
-  reqMinInstrumentHours Float?
+  reqMinMultiEngineHours   Float?
+  reqMinTurbineHours       Float?
+  reqMinInstrumentHours    Float?
+  reqMinCrossCountryHours  Float?
+  reqEducation             String?   // 'bachelor' | 'high_school' | 'technical'
+  reqWorkAuthorization     String?   // 'EU' | 'US' | 'UK' | 'required'
+  reqEnglishLevel          Int?      // ICAO level 1–6
   reqWillingToRelocate Boolean    @default(false)
 
   // Ingestion provenance

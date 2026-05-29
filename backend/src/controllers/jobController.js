@@ -94,9 +94,11 @@ exports.getJobs = async (req, res, next) => {
 
     // Qualified-only: filter by pilot's profile against job requirements
     if (qualifiedOnly === 'true') {
+      // NOTE: matching logic is duplicated in client-side computeMatchCount (Jobs.jsx).
+      // Both must stay in sync. Long-term: compute server-side and return in API response.
       const pilot = await prisma.pilot.findUnique({
         where: { id: req.pilot.id },
-        include: { certificates: true, ratings: true },
+        include: { certificates: true, ratings: true, medicals: true },
       });
       const totals = await getPilotFlightTotals(req.pilot.id);
 
@@ -144,6 +146,21 @@ exports.getJobs = async (req, res, next) => {
           ],
         });
       }
+
+      // Only restrict by medical class if pilot has a medical on file.
+      // Class 1 meets CLASS_1/2/3; Class 2 meets CLASS_2/3; Class 3 meets CLASS_3 only.
+      const bestMedical = pilot.medicals.reduce((best, m) => {
+        const rank = { CLASS_1: 3, CLASS_2: 2, CLASS_3: 1 };
+        return (rank[m.medicalClass] ?? 0) > (rank[best] ?? 0) ? m.medicalClass : best;
+      }, null);
+      if (bestMedical) {
+        const qualifiedMedicals = bestMedical === 'CLASS_1' ? ['CLASS_1', 'CLASS_2', 'CLASS_3']
+          : bestMedical === 'CLASS_2' ? ['CLASS_2', 'CLASS_3']
+          : ['CLASS_3'];
+        andConditions.push({
+          OR: [{ reqMedicalClass: null }, { reqMedicalClass: { in: qualifiedMedicals } }],
+        });
+      }
     }
 
     if (andConditions.length > 0) where.AND = andConditions;
@@ -159,6 +176,9 @@ exports.getJobs = async (req, res, next) => {
         break;
       case 'hours_asc':
         orderBy = [{ reqMinTotalHours: { sort: 'asc', nulls: 'last' } }, { postedAt: 'desc' }];
+        break;
+      case 'deadline':
+        orderBy = [{ expiresAt: { sort: 'asc', nulls: 'last' } }, { postedAt: 'desc' }];
         break;
       case 'oldest':
         orderBy = { postedAt: 'asc' };

@@ -30,7 +30,7 @@ exports.updateProfile = async (req, res, next) => {
       firstName, lastName, phone, country, city, nationality,
       dateOfBirth, passportNumber, passportExpiry,
       emergencyContactName, emergencyContactPhone,
-      willingToRelocate, isInstructor, isExaminer,
+      willingToRelocate, isInstructor, isExaminer, education,
     } = req.body;
     const pilot = await prisma.pilot.update({
       where: { id: req.pilot.id },
@@ -40,6 +40,7 @@ exports.updateProfile = async (req, res, next) => {
         passportNumber, passportExpiry: passportExpiry ? new Date(passportExpiry) : undefined,
         emergencyContactName, emergencyContactPhone,
         willingToRelocate, isInstructor, isExaminer,
+        education: education ?? undefined,
       },
     });
     const { passwordHash, ...profile } = pilot;
