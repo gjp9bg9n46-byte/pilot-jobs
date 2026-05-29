@@ -21,6 +21,7 @@ const { fetchGreenhouse }      = require('./sources/greenhouse');
 const { fetchWorkday }         = require('./sources/workday/index');
 const { fetchSmartRecruiters }     = require('./sources/smartrecruiters');
 const { fetchPilotCareerCentre, enrichPccBatch } = require('./sources/pilotcareercentre');
+const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize }      = require('./normalize');
 const { filterAviationJobs } = require('./filters');
 const { collapseXSourceDuplicates } = require('./dedup');
@@ -111,12 +112,18 @@ async function upsertJob(job) {
 
 async function markStaleInactive(sourcePlatform, company, seenExternalIds) {
   if (!seenExternalIds.length) return 0;
+  const now = new Date();
   const { count } = await prisma.job.updateMany({
     where: {
       sourcePlatform,
       company,
       status: 'ACTIVE',
       externalId: { notIn: seenExternalIds },
+      // Don't expire jobs whose Workday expiresAt is still in the future
+      OR: [
+        { expiresAt: null },
+        { expiresAt: { lte: now } },
+      ],
     },
     data: { status: 'EXPIRED' },
   });
@@ -287,6 +294,43 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
           }
           logger.info({ source: 'PILOTCAREERCENTRE', enriched: enrichedCount, failed: failedCount, msg: 'PCC enrichment complete' });
         }
+      }
+
+      // Workday post-step: enrich any active jobs whose applyUrl is a Workday domain
+      // and haven't been enriched in the last 14 days.
+      const SKIP_DAYS = 14;
+      const wdCutoff = new Date(Date.now() - SKIP_DAYS * 24 * 60 * 60 * 1000);
+      const toWorkdayEnrich = await prisma.$queryRaw`
+        SELECT id, title, company, "applyUrl", description, "contractType",
+               "reqCertificates", "reqAuthorities", "reqAircraftTypes",
+               "reqMedicalClass", "reqMinTotalHours", "reqMinPicHours",
+               "reqMinMultiEngineHours", "reqMinTurbineHours", "reqMinInstrumentHours",
+               "reqMinCrossCountryHours", "reqEducation", "reqWorkAuthorization",
+               "reqEnglishLevel", "reqWillingToRelocate"
+        FROM "Job"
+        WHERE status = 'ACTIVE'
+          AND "applyUrl" ILIKE '%myworkday%'
+          AND ("lastEnrichedFromWorkdayAt" IS NULL OR "lastEnrichedFromWorkdayAt" < ${wdCutoff})
+        ORDER BY "lastEnrichedFromWorkdayAt" ASC NULLS FIRST
+        LIMIT 50
+      `;
+      if (toWorkdayEnrich.length > 0) {
+        logger.info({ count: toWorkdayEnrich.length, msg: 'Workday enrichment post-step' });
+        const wdResults = await enrichWorkdayBatch(toWorkdayEnrich);
+        let wdEnriched = 0, wdNoJsonLd = 0, wdErrors = 0;
+        for (const result of wdResults) {
+          if (result.error) { wdErrors++; continue; }
+          if (result.noJsonLd) {
+            wdNoJsonLd++;
+            await prisma.job.update({ where: { id: result.id }, data: { lastEnrichedFromWorkdayAt: new Date() } }).catch(() => {});
+            continue;
+          }
+          wdEnriched++;
+          await prisma.job.update({ where: { id: result.id }, data: result.updates }).catch((err) =>
+            logger.error({ id: result.id, err: err.message, msg: 'Workday enrichment update failed' }),
+          );
+        }
+        logger.info({ enriched: wdEnriched, noJsonLd: wdNoJsonLd, errors: wdErrors, msg: 'Workday enrichment complete' });
       }
 
       // Trigger pilot matching for new jobs only

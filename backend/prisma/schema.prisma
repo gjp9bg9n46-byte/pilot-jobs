@@ -314,6 +314,8 @@ model Job {
   externalId           String?    // stable posting ID from source — used for upsert dedup
   mergedInto           String?    // self-ref to canonical Job.id when cross-source dedup collapses this row
 
+  lastEnrichedFromWorkdayAt DateTime?
+
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 

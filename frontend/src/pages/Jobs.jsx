@@ -199,6 +199,23 @@ function postedAgo(postedAt) {
   return `Posted ${days} days ago`;
 }
 
+function formatSalary(job, compact = false) {
+  const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
+  if (salaryMin == null && salaryMax == null) return null;
+  const currency = salaryCurrency || '';
+  const period = salaryPeriod ? ` / ${salaryPeriod}` : '';
+  if (compact) {
+    const fmt = (n) => n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n));
+    if (salaryMin != null && salaryMax != null && salaryMin !== salaryMax)
+      return `${currency} ${fmt(salaryMin)}–${fmt(salaryMax)}${period}`.trim();
+    return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`.trim();
+  }
+  const fmt = (n) => n.toLocaleString();
+  if (salaryMin != null && salaryMax != null && salaryMin !== salaryMax)
+    return `${currency} ${fmt(salaryMin)} – ${fmt(salaryMax)}${period}`.trim();
+  return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`.trim();
+}
+
 const css = {
   page: {},
   topBar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
@@ -385,7 +402,19 @@ function JobModal({ job, onClose, pilotProfile, pilotTotals }) {
         <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#7A8CA0', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
         <div style={{ fontSize: 11, color: '#00B4D8', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>JOB DETAILS</div>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>{job.title}</div>
-        <div style={{ fontSize: 15, color: '#00B4D8', fontWeight: 600, marginBottom: matchCount ? 10 : 20 }}>{job.company}</div>
+        <div style={{ fontSize: 15, color: '#00B4D8', fontWeight: 600, marginBottom: formatSalary(job) ? 6 : (matchCount ? 10 : 20) }}>{job.company}</div>
+        {formatSalary(job) && (
+          <div style={{ marginBottom: matchCount ? 10 : 18 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: '#1C1500', border: '1px solid #3D2C00',
+              borderRadius: 8, padding: '5px 12px',
+              fontSize: 13, fontWeight: 700, color: '#F59E0B',
+            }}>
+              $ {formatSalary(job)}
+            </span>
+          </div>
+        )}
         {matchCount && (
           <div style={{ marginBottom: 16 }}>
             <MatchCountBadge matched={matchCount.matched} total={matchCount.total} hideIfEmpty={false} />
@@ -790,6 +819,19 @@ export default function Jobs() {
                       {job.reqAircraftTypes.slice(0, 3).map((a) => (
                         <span key={a} style={css.req}>{a}</span>
                       ))}
+                    </div>
+                  )}
+
+                  {formatSalary(job, true) && (
+                    <div>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        background: '#1C1500', border: '1px solid #3D2C00',
+                        borderRadius: 6, padding: '4px 10px',
+                        fontSize: 11, fontWeight: 700, color: '#F59E0B',
+                      }}>
+                        $ {formatSalary(job, true)}
+                      </span>
                     </div>
                   )}
 
