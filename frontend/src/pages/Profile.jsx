@@ -227,7 +227,6 @@ function LicencesCard({ profile, setProfile }) {
     certificateNumber: '',
     issueDate: '',
     expiryDate: '',
-    englishProficiency: '',
   });
   const { saving, savedAt, error, run } = useSave();
 
@@ -238,12 +237,11 @@ function LicencesCard({ profile, setProfile }) {
       ...(form.certificateNumber && { certificateNumber: form.certificateNumber }),
       ...(form.issueDate && { issueDate: new Date(form.issueDate).toISOString() }),
       ...(form.expiryDate && { expiryDate: new Date(form.expiryDate).toISOString() }),
-      ...(form.englishProficiency && { englishLevel: form.englishProficiency }),
     };
     const { data } = await profileApi.addCertificate(payload);
     setProfile((p) => ({ ...p, certificates: [...(p.certificates || []), data] }));
     setShowForm(false);
-    setForm({ type: 'ATPL', authority: 'FAA', certificateNumber: '', issueDate: '', expiryDate: '', englishProficiency: '' });
+    setForm({ type: 'ATPL', authority: 'FAA', certificateNumber: '', issueDate: '', expiryDate: '' });
   });
 
   return (
@@ -270,7 +268,6 @@ function LicencesCard({ profile, setProfile }) {
               <div style={css.itemSub}>
                 {auth?.label || cert.issuingAuthority}
                 {cert.certificateNumber && <span> · #{cert.certificateNumber}</span>}
-                {cert.englishLevel && <span> · ELP {cert.englishLevel}</span>}
                 {cert.expiryDate && (
                   <span style={{ color: expiryColor || '#7A8CA0' }}>
                     {' · Exp '}{new Date(cert.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -313,13 +310,6 @@ function LicencesCard({ profile, setProfile }) {
               <div>
                 <label style={css.label}>Certificate Number</label>
                 <input style={css.input} value={form.certificateNumber} onChange={(e) => setForm((f) => ({ ...f, certificateNumber: e.target.value }))} placeholder="Optional" />
-              </div>
-              <div>
-                <label style={css.label}>English Proficiency Level</label>
-                <select style={css.select} value={form.englishProficiency} onChange={(e) => setForm((f) => ({ ...f, englishProficiency: e.target.value }))}>
-                  <option value="">— Not specified —</option>
-                  <SelectOptions options={ENGLISH_LEVELS} />
-                </select>
               </div>
               <div>
                 <label style={css.label}>Issue Date</label>
