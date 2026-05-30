@@ -132,7 +132,7 @@ function Section({ title, children, accent }) {
 // ─── Document ─────────────────────────────────────────────────────────────────
 export default function TemplateFinal({ data }) {
   const { pilot, certificates = [], ratings = [], medicals = [], training = [],
-          totals = {}, recency = {}, aircraftTypes = [], cv = {} } = data;
+          rtw = [], totals = {}, recency = {}, aircraftTypes = [], cv = {} } = data;
   const { education = [], languages = [], skills = [], other = [], photoUrl } = cv;
 
   const accent      = cv.accentColor || DEFAULT_ACCENT;
@@ -146,24 +146,15 @@ export default function TemplateFinal({ data }) {
   const cert = topCert(certificates);
   const elpCert = certificates.find(c => c.type === 'ELP');
 
-  // Override logic
-  const licencesSource  = cv.licenses?.length > 0  ? 'cv' : 'profile';
-  const medicalSource   = cv.medical               ? 'cv' : 'profile';
-  const ratingsSource   = cv.typeRatings?.length > 0 ? 'cv' : 'profile';
-
-  // Languages
-  let displayLanguages;
-  if (cv.icaoEnglish) {
-    displayLanguages = [
-      { language: 'English', level: `ICAO Level ${cv.icaoEnglish.level}`, expiry: cv.icaoEnglish.expiryDate },
-      ...(cv.icaoEnglish.otherLanguages ?? []).map(l => ({ language: l.language, level: l.proficiency })),
-    ];
-  } else {
-    displayLanguages = [...languages];
-    if (elpCert && !displayLanguages.some(l => l.language?.toLowerCase() === 'english')) {
-      displayLanguages.unshift({ language: 'English', level: `ICAO Level ${elpCert.englishLevel || '6'}` });
-    }
+  // Languages: ELP cert from profile, supplemented by cv.languages
+  const displayLanguages = [...languages];
+  if (elpCert && !displayLanguages.some(l => l.language?.toLowerCase() === 'english')) {
+    displayLanguages.unshift({ language: 'English', level: `ICAO Level ${elpCert.englishLevel || '6'}` });
   }
+
+  // Always render from profile
+  const shownRatings = ratings;
+  const profileLicences = certificates.filter(c => c.type !== 'ELP');
 
   // Hours two-column pairs
   const hasActualSim = (totals.instrumentActualTime ?? 0) > 0 || (totals.instrumentSimTime ?? 0) > 0;
@@ -181,11 +172,7 @@ export default function TemplateFinal({ data }) {
       : ['Jet',       fmt(totals.jetTime)           + 'h', null,        null],
   ].filter(([, lv, , rv]) => lv !== '0h' || (rv && rv !== '0h'));
 
-  // Type ratings for PDF: cv overrides profile
-  const shownRatings = ratingsSource === 'cv' ? cv.typeRatings : ratings;
   // Aircraft Experience always shows all logbook aircraft (separate section from formal ratings)
-
-  const profileLicences = certificates.filter(c => c.type !== 'ELP');
 
   return (
     <Document>
@@ -312,70 +299,59 @@ export default function TemplateFinal({ data }) {
             </Section>
           )}
 
-          {/* Licences & Medical — cv fields override profile */}
-          {(licencesSource === 'cv' ? cv.licenses.length > 0 : profileLicences.length > 0) || (medicalSource === 'cv' ? !!cv.medical : !!medicals[0]) ? (
+          {/* Licences & Medical — from profile */}
+          {(profileLicences.length > 0 || !!medicals[0]) ? (
             <Section title="Licences & Medical" accent={accent}>
               <View style={s.twoCol}>
-                {(licencesSource === 'cv' ? cv.licenses.length > 0 : profileLicences.length > 0) && (
+                {profileLicences.length > 0 && (
                   <View style={s.col}>
-                    {licencesSource === 'cv'
-                      ? cv.licenses.map((l, i) => (
-                          <View key={i} style={s.certBadge}>
-                            <Text style={[s.certType, T.accentColor]}>{l.type}</Text>
-                            <Text style={s.certAuth}>{l.authority}{l.number ? ` · #${l.number}` : ''}</Text>
-                            {l.issueDate && <Text style={s.certExp}>{fmtDate(l.issueDate)}</Text>}
-                          </View>
-                        ))
-                      : profileLicences.map((c, i) => (
-                          <View key={i} style={s.certBadge}>
-                            <Text style={[s.certType, T.accentColor]}>{c.type}</Text>
-                            <Text style={s.certAuth}>{c.issuingAuthority}{c.certificateNumber ? ` · #${c.certificateNumber}` : ''}</Text>
-                            {c.expiryDate && <Text style={s.certExp}>Exp {fmtDate(c.expiryDate)}</Text>}
-                          </View>
-                        ))
-                    }
+                    {profileLicences.map((c, i) => (
+                      <View key={i} style={s.certBadge}>
+                        <Text style={[s.certType, T.accentColor]}>{c.type}</Text>
+                        <Text style={s.certAuth}>{c.issuingAuthority}{c.certificateNumber ? ` · #${c.certificateNumber}` : ''}</Text>
+                        {c.expiryDate && <Text style={s.certExp}>Exp {fmtDate(c.expiryDate)}</Text>}
+                      </View>
+                    ))}
                   </View>
                 )}
-                {(medicalSource === 'cv' ? !!cv.medical : !!medicals[0]) && (
+                {medicals[0] && (
                   <View style={s.col}>
-                    {medicalSource === 'cv' ? (
-                      <View style={s.medBadge}>
-                        <Text style={s.medClass}>Class {cv.medical.class} Medical</Text>
-                        <Text style={[s.medMeta, { color: C.textMid }]}>{cv.medical.country}</Text>
-                        {cv.medical.expiryDate && <Text style={s.medMeta}>Valid to {fmtDate(cv.medical.expiryDate)}</Text>}
-                      </View>
-                    ) : (
-                      <View style={s.medBadge}>
-                        <Text style={s.medClass}>{medicals[0].medicalClass.replace('_', ' ')} Medical</Text>
-                        <Text style={[s.medMeta, { color: C.textMid }]}>{medicals[0].issuingAuthority}</Text>
-                        <Text style={s.medMeta}>Valid to {fmtDate(medicals[0].expiryDate)}</Text>
-                      </View>
-                    )}
+                    <View style={s.medBadge}>
+                      <Text style={s.medClass}>{medicals[0].medicalClass.replace('_', ' ')} Medical</Text>
+                      <Text style={[s.medMeta, { color: C.textMid }]}>{medicals[0].issuingAuthority}</Text>
+                      <Text style={s.medMeta}>Valid to {fmtDate(medicals[0].expiryDate)}</Text>
+                    </View>
                   </View>
                 )}
               </View>
             </Section>
           ) : null}
 
-          {/* Type Ratings — cv.typeRatings overrides profile ratings */}
+          {/* Right to Work — from profile */}
+          {rtw.length > 0 && (
+            <Section title="Right to Work" accent={accent}>
+              <View style={s.twoCol}>
+                {rtw.map((r, i) => (
+                  <View key={i} style={s.certBadge}>
+                    <Text style={[s.certType, T.accentColor]}>{r.country}</Text>
+                    <Text style={s.certAuth}>{r.documentType}{r.documentNumber ? ` · #${r.documentNumber}` : ''}</Text>
+                    {r.expiresAt && <Text style={s.certExp}>Valid to {fmtDate(r.expiresAt)}</Text>}
+                  </View>
+                ))}
+              </View>
+            </Section>
+          )}
+
+          {/* Type Ratings — from profile */}
           {shownRatings.length > 0 && (
             <Section title="Type Ratings" accent={accent}>
-              {ratingsSource === 'cv'
-                ? cv.typeRatings.map((r, i) => (
-                    <View key={i} style={s.ratingCard}>
-                      <Text style={[s.ratingType, T.accentColor]}>{r.aircraftType} ({r.capacity})</Text>
-                      {r.dateIssued && <Text style={s.ratingMeta}>{fmtDate(r.dateIssued)}</Text>}
-                      {r.expiryDate && <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text>}
-                    </View>
-                  ))
-                : ratings.map((r, i) => (
-                    <View key={i} style={s.ratingCard}>
-                      <Text style={[s.ratingType, T.accentColor]}>{r.aircraftType} ({r.capacity || r.category})</Text>
-                      {r.hoursOnType ? <Text style={s.ratingMeta}>{fmt(r.hoursOnType)}h on type</Text> : null}
-                      {r.expiryDate  ? <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text> : null}
-                    </View>
-                  ))
-              }
+              {ratings.map((r, i) => (
+                <View key={i} style={s.ratingCard}>
+                  <Text style={[s.ratingType, T.accentColor]}>{r.aircraftType} ({r.capacity || r.category})</Text>
+                  {r.hoursOnType ? <Text style={s.ratingMeta}>{fmt(r.hoursOnType)}h on type</Text> : null}
+                  {r.expiryDate  ? <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text> : null}
+                </View>
+              ))}
             </Section>
           )}
 

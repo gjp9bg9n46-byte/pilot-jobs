@@ -119,7 +119,7 @@ function MSection({ title, children, accent }) {
 // ─── Document ─────────────────────────────────────────────────────────────────
 export default function TemplateApproach({ data }) {
   const { pilot, certificates = [], ratings = [], medicals = [], training = [],
-          totals = {}, recency = {}, aircraftTypes = [], cv = {} } = data;
+          rtw = [], totals = {}, recency = {}, aircraftTypes = [], cv = {} } = data;
   const { education = [], languages = [], skills = [], other = [], photoUrl } = cv;
 
   const accent      = cv.accentColor || DEFAULT_ACCENT;
@@ -135,24 +135,14 @@ export default function TemplateApproach({ data }) {
   const cert = topCert(certificates);
   const elpCert = certificates.find(c => c.type === 'ELP');
 
-  // Override logic: cv fields take precedence over profile data
-  const licencesToShow = cv.licenses?.length > 0 ? 'cv' : 'profile';
-  const medicalToShow  = cv.medical             ? 'cv' : 'profile';
-  const ratingsSource  = cv.typeRatings?.length > 0 ? 'cv' : 'profile';
-
-  // Languages: cv.icaoEnglish overrides ELP cert + manual languages
-  let displayLanguages;
-  if (cv.icaoEnglish) {
-    displayLanguages = [
-      { language: 'English', level: `ICAO Level ${cv.icaoEnglish.level}`, expiry: cv.icaoEnglish.expiryDate },
-      ...(cv.icaoEnglish.otherLanguages ?? []).map(l => ({ language: l.language, level: l.proficiency })),
-    ];
-  } else {
-    displayLanguages = [...languages];
-    if (elpCert && !displayLanguages.some(l => l.language?.toLowerCase() === 'english')) {
-      displayLanguages.unshift({ language: 'English', level: `ICAO Level ${elpCert.englishLevel || '6'}` });
-    }
+  // Languages: ELP cert from profile, supplemented by cv.languages
+  const displayLanguages = [...languages];
+  if (elpCert && !displayLanguages.some(l => l.language?.toLowerCase() === 'english')) {
+    displayLanguages.unshift({ language: 'English', level: `ICAO Level ${elpCert.englishLevel || '6'}` });
   }
+
+  // Always render from profile
+  const shownRatings = ratings;
 
   // Hours: two-column paired table
   const hasActualSim = (totals.instrumentActualTime ?? 0) > 0 || (totals.instrumentSimTime ?? 0) > 0;
@@ -170,8 +160,6 @@ export default function TemplateApproach({ data }) {
       : ['Jet',   fmt(totals.jetTime)            + 'h', null,      null],
   ].filter(([, lv, , rv]) => lv !== '0h' || (rv && rv !== '0h'));
 
-  // Type ratings for PDF: cv overrides profile
-  const shownRatings = ratingsSource === 'cv' ? cv.typeRatings : ratings;
   // Aircraft Experience always shows all logbook aircraft with hours (separate from formal ratings)
 
   return (
@@ -224,53 +212,33 @@ export default function TemplateApproach({ data }) {
 
           <View style={s.sDivider} />
 
-          {/* Licences — cv.licenses overrides profile certs */}
-          {(licencesToShow === 'cv'
-            ? cv.licenses.length > 0
-            : certificates.filter(c => c.type !== 'ELP').length > 0
-          ) && (
+          {/* Licences — from profile */}
+          {certificates.filter(c => c.type !== 'ELP').length > 0 && (
             <SSection title="Licences">
-              {licencesToShow === 'cv'
-                ? cv.licenses.map((l, i) => (
-                    <View key={i} style={[s.sBadge, T.accentLightBg, { marginBottom: 4 }]}>
-                      <Text style={s.sBadgeTxt}>{l.type} — {l.authority}</Text>
-                      {l.number && <Text style={s.sBadgeSub}>#{l.number}</Text>}
-                      {l.issueDate && <Text style={s.sBadgeSub}>{fmtDate(l.issueDate)}</Text>}
-                    </View>
-                  ))
-                : certificates.filter(c => c.type !== 'ELP').map((c, i) => (
-                    <View key={i} style={[s.sBadge, T.accentLightBg, { marginBottom: 4 }]}>
-                      <Text style={s.sBadgeTxt}>{c.type} — {c.issuingAuthority}</Text>
-                      {c.certificateNumber && <Text style={s.sBadgeSub}>#{c.certificateNumber}</Text>}
-                      {c.expiryDate && <Text style={[s.sBadgeSub, { color: C.amber }]}>Exp {fmtDate(c.expiryDate)}</Text>}
-                    </View>
-                  ))
-              }
+              {certificates.filter(c => c.type !== 'ELP').map((c, i) => (
+                <View key={i} style={[s.sBadge, T.accentLightBg, { marginBottom: 4 }]}>
+                  <Text style={s.sBadgeTxt}>{c.type} — {c.issuingAuthority}</Text>
+                  {c.certificateNumber && <Text style={s.sBadgeSub}>#{c.certificateNumber}</Text>}
+                  {c.expiryDate && <Text style={[s.sBadgeSub, { color: C.amber }]}>Exp {fmtDate(c.expiryDate)}</Text>}
+                </View>
+              ))}
             </SSection>
           )}
 
-          {/* Medical — cv.medical overrides profile medicals */}
-          {(medicalToShow === 'cv' ? !!cv.medical : !!medicals[0]) && (
+          {/* Medical — from profile */}
+          {medicals[0] && (
             <>
               <View style={[s.sDivider, T.accentLightBg]} />
               <SSection title="Medical">
-                {medicalToShow === 'cv' ? (
-                  <View style={[s.sBadge, T.accentLightBg]}>
-                    <Text style={s.sBadgeTxt}>Class {cv.medical.class} — {cv.medical.country}</Text>
-                    {cv.medical.expiryDate && <Text style={[s.sBadgeSub, { color: C.green }]}>Valid to {fmtDate(cv.medical.expiryDate)}</Text>}
-                    {cv.medical.issueDate  && <Text style={s.sBadgeSub}>Issued {fmtDate(cv.medical.issueDate)}</Text>}
-                  </View>
-                ) : (
-                  <View style={[s.sBadge, T.accentLightBg]}>
-                    <Text style={s.sBadgeTxt}>{medicals[0].medicalClass.replace('_', ' ')} — {medicals[0].issuingAuthority}</Text>
-                    <Text style={[s.sBadgeSub, { color: C.green }]}>Valid to {fmtDate(medicals[0].expiryDate)}</Text>
-                  </View>
-                )}
+                <View style={[s.sBadge, T.accentLightBg]}>
+                  <Text style={s.sBadgeTxt}>{medicals[0].medicalClass.replace('_', ' ')} — {medicals[0].issuingAuthority}</Text>
+                  <Text style={[s.sBadgeSub, { color: C.green }]}>Valid to {fmtDate(medicals[0].expiryDate)}</Text>
+                </View>
               </SSection>
             </>
           )}
 
-          {/* Languages — cv.icaoEnglish overrides ELP cert + manual languages */}
+          {/* Languages — ELP cert from profile + cv.languages */}
           {displayLanguages.length > 0 && (
             <>
               <View style={[s.sDivider, T.accentLightBg]} />
@@ -287,6 +255,22 @@ export default function TemplateApproach({ data }) {
                         <Text style={[s.sValue, { fontSize: 6.5, color: C.amber }]}>Exp {fmtDate(l.expiry)}</Text>
                       </View>
                     )}
+                  </View>
+                ))}
+              </SSection>
+            </>
+          )}
+
+          {/* Right to Work — from profile */}
+          {rtw.length > 0 && (
+            <>
+              <View style={[s.sDivider, T.accentLightBg]} />
+              <SSection title="Right to Work">
+                {rtw.map((r, i) => (
+                  <View key={i} style={[s.sBadge, T.accentLightBg, { marginBottom: 4 }]}>
+                    <Text style={s.sBadgeTxt}>{r.country}</Text>
+                    <Text style={s.sBadgeSub}>{r.documentType}{r.documentNumber ? ` · #${r.documentNumber}` : ''}</Text>
+                    {r.expiresAt && <Text style={[s.sBadgeSub, { color: C.green }]}>Valid to {fmtDate(r.expiresAt)}</Text>}
                   </View>
                 ))}
               </SSection>
@@ -341,24 +325,16 @@ export default function TemplateApproach({ data }) {
             )}
           </MSection>
 
-          {/* Type Ratings — cv.typeRatings overrides profile ratings */}
-          {(shownRatings.length > 0) && (
+          {/* Type Ratings — from profile */}
+          {shownRatings.length > 0 && (
             <MSection title="Type Ratings" accent={accent}>
-              {ratingsSource === 'cv'
-                ? cv.typeRatings.map((r, i) => (
-                    <View key={i} style={s.ratingRow}>
-                      <Text style={[s.ratingType, T.accentColor]}>{r.aircraftType} ({r.capacity})</Text>
-                      {r.expiryDate && <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text>}
-                    </View>
-                  ))
-                : ratings.map((r, i) => (
-                    <View key={i} style={s.ratingRow}>
-                      <Text style={[s.ratingType, T.accentColor]}>{r.aircraftType} ({r.capacity || r.category})</Text>
-                      {r.hoursOnType ? <Text style={s.ratingHrs}>{fmt(r.hoursOnType)}h</Text> : null}
-                      {r.expiryDate  ? <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text> : null}
-                    </View>
-                  ))
-              }
+              {ratings.map((r, i) => (
+                <View key={i} style={s.ratingRow}>
+                  <Text style={[s.ratingType, T.accentColor]}>{r.aircraftType} ({r.capacity || r.category})</Text>
+                  {r.hoursOnType ? <Text style={s.ratingHrs}>{fmt(r.hoursOnType)}h</Text> : null}
+                  {r.expiryDate  ? <Text style={s.ratingExp}>Exp {fmtDate(r.expiryDate)}</Text> : null}
+                </View>
+              ))}
             </MSection>
           )}
 

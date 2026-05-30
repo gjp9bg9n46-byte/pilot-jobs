@@ -252,40 +252,6 @@ function Field({ label, value, onChange, placeholder, type = 'text' }) {
   );
 }
 
-// ─── Auto-fill source: 'from-profile' | 'custom' | null ──────────────────────
-// Returns 'from-profile' if cv field is empty and profile has data.
-// Returns 'custom' if cv field has data and profile also has data (user overrode).
-// Returns null if no profile data exists (no badge needed).
-function autoFillSource(cvValue, profileValue) {
-  const hasProfile = profileValue != null &&
-    (Array.isArray(profileValue) ? profileValue.length > 0 : true);
-  if (!hasProfile) return null;
-  const hasCv = cvValue != null &&
-    (Array.isArray(cvValue) ? cvValue.length > 0 : true);
-  return hasCv ? 'custom' : 'from-profile';
-}
-
-// ─── Profile badge component ──────────────────────────────────────────────────
-function ProfileBadge({ source, onReset }) {
-  if (source === 'from-profile') {
-    return <span style={css.badgeFromProfile}>From profile</span>;
-  }
-  if (source === 'custom') {
-    return (
-      <span style={css.badgeCustom} onClick={e => e.stopPropagation()}>
-        Custom ·{' '}
-        <button
-          style={css.badgeResetBtn}
-          onClick={e => { e.stopPropagation(); onReset(); }}
-        >
-          Reset
-        </button>
-      </span>
-    );
-  }
-  return null;
-}
-
 // ─── PDF preview iframe ───────────────────────────────────────────────────────
 // Uses usePDF directly instead of PDFViewer so we can:
 //   (a) keep the old PDF visible during regeneration — usePDF preserves url in
@@ -327,10 +293,6 @@ export default function CVBuilder() {
   const [skills, setSkills]             = useState([]);
   const [other, setOther]               = useState([]);
   const [template, setTemplate]         = useState('approach');
-  const [typeRatings, setTypeRatings]   = useState([]);
-  const [licenses, setLicenses]         = useState([]);
-  const [medical, setMedical]           = useState(null);
-  const [icaoEnglish, setIcaoEnglish]   = useState(null);
   const [saveStatus, setSaveStatus]     = useState('');
   const [skillInput, setSkillInput]     = useState('');
   const [photoUrl, setPhotoUrl]         = useState(null);
@@ -378,10 +340,6 @@ export default function CVBuilder() {
         setLanguages(data.cv?.languages ?? []);
         setSkills(data.cv?.skills ?? []);
         setOther(data.cv?.other ?? []);
-        setTypeRatings(data.cv?.typeRatings ?? []);
-        setLicenses(data.cv?.licenses ?? []);
-        setMedical(data.cv?.medical ?? null);
-        setIcaoEnglish(data.cv?.icaoEnglish ?? null);
         setPhotoUrl(data.cv?.photoUrl ?? null);
         setAccentColor(data.cv?.accentColor ?? DEFAULT_ACCENT);
         setSummary(data.cv?.summary ?? '');
@@ -391,12 +349,11 @@ export default function CVBuilder() {
   }, []);
 
   // ── Auto-save editable fields (debounced 1.5s) ─────────────────────────────
-  const scheduleSave = useCallback((edu, lang, sk, oth, tr, lic, med, icao, ac, sum) => {
+  const scheduleSave = useCallback((edu, lang, sk, oth, ac, sum) => {
     clearTimeout(saveTimer.current);
     setSaveStatus('saving');
     saveTimer.current = setTimeout(() => {
       cvApi.update({ education: edu, languages: lang, skills: sk, other: oth,
-                     typeRatings: tr, licenses: lic, medical: med, icaoEnglish: icao,
                      accentColor: ac, summary: sum })
         .then(() => setSaveStatus('saved'))
         .catch(() => setSaveStatus('error'));
@@ -432,18 +389,14 @@ export default function CVBuilder() {
     }
   };
 
-  const ss = (edu, lang, sk, oth, tr, lic, med, icao, ac, sum) =>
-    scheduleSave(edu, lang, sk, oth, tr, lic, med, icao, ac, sum);
+  const ss = (edu, lang, sk, oth, ac, sum) =>
+    scheduleSave(edu, lang, sk, oth, ac, sum);
 
-  const updateEducation   = (v) => { setEducation(v);   ss(v, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary); };
-  const updateLanguages   = (v) => { setLanguages(v);   ss(education, v, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary); };
-  const updateSkills      = (v) => { setSkills(v);      ss(education, languages, v, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary); };
-  const updateOther       = (v) => { setOther(v);       ss(education, languages, skills, v, typeRatings, licenses, medical, icaoEnglish, accentColor, summary); };
-  const updateTypeRatings = (v) => { setTypeRatings(v); ss(education, languages, skills, other, v, licenses, medical, icaoEnglish, accentColor, summary); };
-  const updateLicenses    = (v) => { setLicenses(v);    ss(education, languages, skills, other, typeRatings, v, medical, icaoEnglish, accentColor, summary); };
-  const updateMedical     = (v) => { setMedical(v);     ss(education, languages, skills, other, typeRatings, licenses, v, icaoEnglish, accentColor, summary); };
-  const updateIcaoEnglish = (v) => { setIcaoEnglish(v); ss(education, languages, skills, other, typeRatings, licenses, medical, v, accentColor, summary); };
-  const updateSummary     = (v) => { setSummary(v);     ss(education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, v); };
+  const updateEducation = (v) => { setEducation(v); ss(v, languages, skills, other, accentColor, summary); };
+  const updateLanguages = (v) => { setLanguages(v); ss(education, v, skills, other, accentColor, summary); };
+  const updateSkills    = (v) => { setSkills(v);    ss(education, languages, v, other, accentColor, summary); };
+  const updateOther     = (v) => { setOther(v);     ss(education, languages, skills, v, accentColor, summary); };
+  const updateSummary   = (v) => { setSummary(v);   ss(education, languages, skills, other, accentColor, v); };
 
   const handleAccentChange = (hex) => {
     setAccentColor(hex);
@@ -453,14 +406,14 @@ export default function CVBuilder() {
       setDebouncedPdfData({ ...pdfData, cv: { ...pdfData.cv, accentColor: hex } });
       setPreviewUpdating(false);
     }
-    scheduleSave(education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, hex, summary);
+    scheduleSave(education, languages, skills, other, hex, summary);
   };
 
   // ── Build PDF data bundle (memoised to stabilise the debounce effect) ───────
   const pdfData = useMemo(() => serverData ? {
     ...serverData,
-    cv: { education, languages, skills, other, photoUrl, typeRatings, licenses, medical, icaoEnglish, accentColor, summary },
-  } : null, [serverData, education, languages, skills, other, photoUrl, typeRatings, licenses, medical, icaoEnglish, accentColor, summary]);
+    cv: { education, languages, skills, other, photoUrl, accentColor, summary },
+  } : null, [serverData, education, languages, skills, other, photoUrl, accentColor, summary]);
 
   // ── Debounce pdfData → debouncedPdfData (400ms) ────────────────────────────
   useEffect(() => {
@@ -495,31 +448,8 @@ export default function CVBuilder() {
     <div style={{ textAlign: 'center', paddingTop: 80, color: '#FF6B6B' }}>Could not load CV data. Please refresh.</div>
   );
 
-  const { pilot, certificates, ratings, medicals, training, totals, recency, aircraftTypes } = serverData;
+  const { pilot, certificates, ratings, medicals, training, rtw, totals, recency, aircraftTypes } = serverData;
   const topLicence = ['ATPL','MPL','CPL','PPL'].map(t => certificates?.find(c => c.type === t)).find(Boolean);
-
-  // ── Profile-derived values for auto-fill badges ─────────────────────────────
-  const profileLicenses = (certificates ?? [])
-    .filter(c => ['ATPL', 'MPL', 'CPL', 'PPL'].includes(c.type))
-    .map(c => ({ type: c.type, number: c.certificateNumber || '', authority: c.issuingAuthority || '', issueDate: c.issueDate || '' }));
-
-  const profileTypeRatings = (ratings ?? [])
-    .map(r => ({ aircraftType: r.aircraftType, capacity: r.capacity || 'PIC', dateIssued: '', expiryDate: r.expiryDate || '' }));
-
-  const m0 = medicals?.[0];
-  const profileMedical = m0
-    ? { class: (m0.medicalClass || '').replace('CLASS_', '') || '1', country: m0.issuingAuthority || '', issueDate: m0.issueDate || '', expiryDate: m0.expiryDate || '' }
-    : null;
-
-  const elpCert = (certificates ?? []).find(c => c.type === 'ELP');
-  const profileIcaoEnglish = elpCert
-    ? { level: elpCert.englishLevel || '6', dateIssued: elpCert.issueDate || '', expiryDate: elpCert.expiryDate || '', otherLanguages: [] }
-    : null;
-
-  const licSource = autoFillSource(licenses,    profileLicenses);
-  const trSource  = autoFillSource(typeRatings, profileTypeRatings);
-  const medSource = autoFillSource(medical,     profileMedical);
-  const elpSource = autoFillSource(icaoEnglish, profileIcaoEnglish);
 
   // ── Documents ───────────────────────────────────────────────────────────────
   // PdfDoc: live data for the download button
@@ -843,35 +773,6 @@ export default function CVBuilder() {
         </div>
       </Accordion>
 
-      {/* Licences & ratings (read-only from profile) */}
-      <Accordion title="Licences & Type Ratings (Profile)" badge={(certificates?.length ?? 0) + (ratings?.length ?? 0) || null} defaultOpen={false}>
-        {certificates?.filter(c => c.type !== 'ELP').map((c, i) => (
-          <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{c.type} — {c.issuingAuthority}</div>
-              <div style={{ fontSize: 12, color: '#7A8CA0' }}>
-                {c.certificateNumber ? `#${c.certificateNumber} · ` : ''}
-                {c.expiryDate ? `Expires ${fmtDate(c.expiryDate)}` : 'No expiry'}
-              </div>
-            </div>
-          </div>
-        ))}
-        {ratings?.map((r, i) => (
-          <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{r.aircraftType} ({r.category})</div>
-              <div style={{ fontSize: 12, color: '#7A8CA0' }}>
-                {r.hoursOnType ? `${fmt(r.hoursOnType)}h on type · ` : ''}
-                {r.expiryDate ? `Expires ${fmtDate(r.expiryDate)}` : ''}
-              </div>
-            </div>
-          </div>
-        ))}
-        {(!certificates?.length && !ratings?.length) && (
-          <div style={{ fontSize: 13, color: '#4A6080' }}>No licences or ratings added yet. Add them on the Profile page.</div>
-        )}
-      </Accordion>
-
       {/* Medical (read-only from profile) */}
       <Accordion title="Medical (Profile)" badge={medicals?.length || null} defaultOpen={false}>
         {medicals?.map((m, i) => (
@@ -885,204 +786,66 @@ export default function CVBuilder() {
         {!medicals?.length && <div style={{ fontSize: 13, color: '#4A6080' }}>No medical records added yet.</div>}
       </Accordion>
 
-      {/* ─── Editable: Type Ratings (overrides profile on PDF) ── */}
-      <Accordion
-        title="Type Ratings"
-        badge={typeRatings.length || null}
-        defaultOpen={false}
-        headerExtra={
-          <ProfileBadge
-            source={trSource}
-            onReset={() => updateTypeRatings([])}
-          />
-        }
-      >
-        <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 12 }}>
-          {trSource === 'from-profile'
-            ? 'PDF uses your profile type ratings. Add entries here to override them all (all-or-nothing).'
-            : trSource === 'custom'
-            ? 'PDF uses these custom entries instead of your profile ratings. Remove all to revert to profile.'
-            : 'Manually enter your type ratings. These override any ratings pulled from your profile on the PDF.'}
-        </div>
-        {typeRatings.map((r, i) => (
-          <div key={i} style={css.listItem}>
-            <div style={{ ...css.listItemFields, gridTemplateColumns: '1fr 1fr' }}>
-              <Field label="Aircraft Type" value={r.aircraftType} onChange={v => updateTypeRatings(typeRatings.map((x,j) => j===i ? {...x, aircraftType: v} : x))} placeholder="e.g. B737-800, A320" />
-              <div>
-                <div style={css.inputLabel}>Capacity</div>
-                <select value={r.capacity} onChange={e => updateTypeRatings(typeRatings.map((x,j) => j===i ? {...x, capacity: e.target.value} : x))} style={css.input}>
-                  <option value="PIC">PIC</option>
-                  <option value="SIC">SIC</option>
-                </select>
+      {/* Licences (read-only from profile) */}
+      <Accordion title="Licences (Profile)" badge={certificates?.filter(c => c.type !== 'ELP').length || null} defaultOpen={false}>
+        {certificates?.filter(c => c.type !== 'ELP').map((c, i) => (
+          <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{c.type} — {c.issuingAuthority}</div>
+              <div style={{ fontSize: 12, color: '#7A8CA0' }}>
+                {c.certificateNumber ? `#${c.certificateNumber}` : ''}
+                {c.certificateNumber && c.expiryDate ? ' · ' : ''}
+                {c.expiryDate ? `Expires ${fmtDate(c.expiryDate)}` : 'No expiry'}
               </div>
-              <Field label="Date Issued" value={r.dateIssued || ''} onChange={v => updateTypeRatings(typeRatings.map((x,j) => j===i ? {...x, dateIssued: v} : x))} type="date" />
-              <Field label="Expiry Date (optional)" value={r.expiryDate || ''} onChange={v => updateTypeRatings(typeRatings.map((x,j) => j===i ? {...x, expiryDate: v} : x))} type="date" />
             </div>
-            <button style={css.deleteBtn} onClick={() => updateTypeRatings(typeRatings.filter((_,j) => j!==i))}>
-              <Trash2 size={15} />
-            </button>
           </div>
         ))}
-        <button style={css.addBtn} onClick={() => updateTypeRatings([...typeRatings, { aircraftType: '', capacity: 'PIC', dateIssued: '', expiryDate: '' }])}>
-          <Plus size={14} /> Add Type Rating
-        </button>
-      </Accordion>
-
-      {/* ─── Editable: Licenses (overrides profile on PDF) ── */}
-      <Accordion
-        title="Licences"
-        badge={licenses.length || null}
-        defaultOpen={false}
-        headerExtra={
-          <ProfileBadge
-            source={licSource}
-            onReset={() => updateLicenses([])}
-          />
-        }
-      >
-        <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 12 }}>
-          {licSource === 'from-profile'
-            ? 'PDF uses your profile licences. Add entries here to override them all (all-or-nothing).'
-            : licSource === 'custom'
-            ? 'PDF uses these custom entries instead of your profile licences. Remove all to revert to profile.'
-            : 'Manually enter your pilot licences. These override profile-sourced licences on the PDF.'}
-        </div>
-        {licenses.map((l, i) => (
-          <div key={i} style={css.listItem}>
-            <div style={{ ...css.listItemFields, gridTemplateColumns: '1fr 1fr' }}>
-              <div>
-                <div style={css.inputLabel}>Licence Type</div>
-                <select value={l.type} onChange={e => updateLicenses(licenses.map((x,j) => j===i ? {...x, type: e.target.value} : x))} style={css.input}>
-                  <option value="ATPL">ATPL</option>
-                  <option value="MPL">MPL</option>
-                  <option value="CPL">CPL</option>
-                  <option value="PPL">PPL</option>
-                </select>
-              </div>
-              <Field label="Licence Number" value={l.number || ''} onChange={v => updateLicenses(licenses.map((x,j) => j===i ? {...x, number: v} : x))} placeholder="e.g. 12345678" />
-              <Field label="Issuing Authority / Country" value={l.authority || ''} onChange={v => updateLicenses(licenses.map((x,j) => j===i ? {...x, authority: v} : x))} placeholder="e.g. EASA, UAE-GCAA, FAA" />
-              <Field label="Issue Date" value={l.issueDate || ''} onChange={v => updateLicenses(licenses.map((x,j) => j===i ? {...x, issueDate: v} : x))} type="date" />
-            </div>
-            <button style={css.deleteBtn} onClick={() => updateLicenses(licenses.filter((_,j) => j!==i))}>
-              <Trash2 size={15} />
-            </button>
+        {!certificates?.filter(c => c.type !== 'ELP').length && (
+          <div style={{ fontSize: 13, color: '#4A6080' }}>
+            No licences added yet. Add them on the <a href="/profile" style={{ color: '#00B4D8' }}>Profile page</a>.
           </div>
-        ))}
-        <button style={css.addBtn} onClick={() => updateLicenses([...licenses, { type: 'ATPL', number: '', authority: '', issueDate: '' }])}>
-          <Plus size={14} /> Add Licence
-        </button>
-      </Accordion>
-
-      {/* ─── Editable: Medical (overrides profile on PDF) ── */}
-      <Accordion
-        title="Medical Certificate"
-        badge={medical ? `Class ${medical.class}` : null}
-        defaultOpen={!medical}
-        headerExtra={
-          <ProfileBadge
-            source={medSource}
-            onReset={() => updateMedical(null)}
-          />
-        }
-      >
-        <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 12 }}>
-          {medSource === 'from-profile'
-            ? 'PDF uses your profile medical. Add a record here to override it.'
-            : medSource === 'custom'
-            ? 'PDF uses this custom record instead of your profile medical. Remove it to revert to profile.'
-            : 'Single medical record for your CV. Overrides profile-sourced medical on the PDF.'}
-        </div>
-        {medical ? (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8, marginBottom: 14 }}>
-              <div>
-                <div style={css.inputLabel}>Class</div>
-                <select value={medical.class} onChange={e => updateMedical({...medical, class: e.target.value})} style={css.input}>
-                  <option value="1">Class 1</option>
-                  <option value="2">Class 2</option>
-                </select>
-              </div>
-              <Field label="Country / Authority" value={medical.country || ''} onChange={v => updateMedical({...medical, country: v})} placeholder="e.g. EASA, UAE, FAA" />
-              <Field label="Date Issued" value={medical.issueDate || ''} onChange={v => updateMedical({...medical, issueDate: v})} type="date" />
-              <Field label="Expiry Date" value={medical.expiryDate || ''} onChange={v => updateMedical({...medical, expiryDate: v})} type="date" />
-            </div>
-            <button onClick={() => updateMedical(null)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10, padding: '8px 14px', cursor: 'pointer', color: '#FF6B6B', fontSize: 13, fontWeight: 600 }}>
-              <Trash2 size={13} /> Remove Medical
-            </button>
-          </div>
-        ) : (
-          <button style={css.addBtn} onClick={() => updateMedical({ class: '1', country: '', issueDate: '', expiryDate: '' })}>
-            <Plus size={14} /> Add Medical Certificate
-          </button>
         )}
       </Accordion>
 
-      {/* ─── Editable: ICAO English (overrides profile on PDF) ── */}
-      <Accordion
-        title="ICAO English Proficiency"
-        badge={icaoEnglish ? `Level ${icaoEnglish.level}` : null}
-        defaultOpen={!icaoEnglish}
-        headerExtra={
-          <ProfileBadge
-            source={elpSource}
-            onReset={() => updateIcaoEnglish(null)}
-          />
-        }
-      >
-        <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 12 }}>
-          {elpSource === 'from-profile'
-            ? 'PDF uses your profile ELP certificate. Add a record here to override it.'
-            : elpSource === 'custom'
-            ? 'PDF uses this custom record instead of your profile ELP. Remove it to revert to profile.'
-            : 'Add your ELP certificate here. Other languages added below will appear on the CV instead of the Languages section above.'}
-        </div>
-        {icaoEnglish ? (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8, marginBottom: 16 }}>
-              <div>
-                <div style={css.inputLabel}>ICAO Level</div>
-                <select value={icaoEnglish.level} onChange={e => updateIcaoEnglish({...icaoEnglish, level: e.target.value})} style={css.input}>
-                  <option value="4">Level 4 — Operational</option>
-                  <option value="5">Level 5 — Extended</option>
-                  <option value="6">Level 6 — Expert</option>
-                </select>
+      {/* Type Ratings (read-only from profile) */}
+      <Accordion title="Type Ratings (Profile)" badge={ratings?.length || null} defaultOpen={false}>
+        {ratings?.map((r, i) => (
+          <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{r.aircraftType} — {r.issuingAuthority}</div>
+              <div style={{ fontSize: 12, color: '#7A8CA0' }}>
+                {r.capacity || r.category}
+                {r.hoursOnType ? ` · ${fmt(r.hoursOnType)}h on type` : ''}
+                {r.expiryDate ? ` · Expires ${fmtDate(r.expiryDate)}` : ''}
               </div>
-              <Field label="Date Issued" value={icaoEnglish.dateIssued || ''} onChange={v => updateIcaoEnglish({...icaoEnglish, dateIssued: v})} type="date" />
-              <Field label="Expiry Date (optional)" value={icaoEnglish.expiryDate || ''} onChange={v => updateIcaoEnglish({...icaoEnglish, expiryDate: v})} type="date" />
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#7A8CA0', marginBottom: 8 }}>Other Languages</div>
-            {(icaoEnglish.otherLanguages ?? []).map((l, i) => (
-              <div key={i} style={css.listItem}>
-                <div style={{ ...css.listItemFields, gridTemplateColumns: '1fr 1fr' }}>
-                  <Field label="Language" value={l.language} onChange={v => updateIcaoEnglish({...icaoEnglish, otherLanguages: (icaoEnglish.otherLanguages ?? []).map((x,j) => j===i ? {...x, language: v} : x)})} placeholder="e.g. Arabic" />
-                  <div>
-                    <div style={css.inputLabel}>Proficiency</div>
-                    <select value={l.proficiency} onChange={e => updateIcaoEnglish({...icaoEnglish, otherLanguages: (icaoEnglish.otherLanguages ?? []).map((x,j) => j===i ? {...x, proficiency: e.target.value} : x)})} style={css.input}>
-                      <option value="Basic">Basic</option>
-                      <option value="Conversational">Conversational</option>
-                      <option value="Fluent">Fluent</option>
-                      <option value="Native">Native</option>
-                    </select>
-                  </div>
-                </div>
-                <button style={css.deleteBtn} onClick={() => updateIcaoEnglish({...icaoEnglish, otherLanguages: (icaoEnglish.otherLanguages ?? []).filter((_,j) => j!==i)})}>
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            ))}
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-              <button style={css.addBtn} onClick={() => updateIcaoEnglish({...icaoEnglish, otherLanguages: [...(icaoEnglish.otherLanguages ?? []), { language: '', proficiency: 'Fluent' }]})}>
-                <Plus size={14} /> Add Language
-              </button>
-              <button onClick={() => updateIcaoEnglish(null)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10, padding: '8px 14px', cursor: 'pointer', color: '#FF6B6B', fontSize: 13, fontWeight: 600 }}>
-                <Trash2 size={13} /> Remove ELP Record
-              </button>
             </div>
           </div>
-        ) : (
-          <button style={css.addBtn} onClick={() => updateIcaoEnglish({ level: '6', dateIssued: '', expiryDate: '', otherLanguages: [] })}>
-            <Plus size={14} /> Add ELP Certificate
-          </button>
+        ))}
+        {!ratings?.length && (
+          <div style={{ fontSize: 13, color: '#4A6080' }}>
+            No type ratings added yet. Add them on the <a href="/profile" style={{ color: '#00B4D8' }}>Profile page</a>.
+          </div>
+        )}
+      </Accordion>
+
+      {/* Right to Work (read-only from profile) */}
+      <Accordion title="Right to Work (Profile)" badge={rtw?.length || null} defaultOpen={false}>
+        {rtw?.map((r, i) => (
+          <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{r.country}</div>
+              <div style={{ fontSize: 12, color: '#7A8CA0' }}>
+                {r.documentType}
+                {r.documentNumber ? ` · #${r.documentNumber}` : ''}
+                {r.expiresAt ? ` · Expires ${fmtDate(new Date(r.expiresAt))}` : ' · No expiry'}
+              </div>
+            </div>
+          </div>
+        ))}
+        {!rtw?.length && (
+          <div style={{ fontSize: 13, color: '#4A6080' }}>
+            No right-to-work documents added yet. Add them on the <a href="/profile" style={{ color: '#00B4D8' }}>Profile page</a>.
+          </div>
         )}
       </Accordion>
 
