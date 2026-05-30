@@ -56,6 +56,16 @@ const ENGLISH_LEVELS = [
   { value: 'Level 6', label: 'Level 6' },
 ];
 
+// Returns the most-used issuing authority from the pilot's existing certificates,
+// falling back to FAA when the profile has none yet.
+function defaultAuthority(profile) {
+  const certs = profile?.certificates || [];
+  if (!certs.length) return 'FAA';
+  const freq = {};
+  certs.forEach((c) => { freq[c.issuingAuthority] = (freq[c.issuingAuthority] || 0) + 1; });
+  return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] || 'FAA';
+}
+
 const css = {
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24, alignItems: 'start' },
   card: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 28, marginBottom: 0 },
@@ -193,7 +203,7 @@ function LicencesCard({ profile, setProfile }) {
         ...(form.certificateNumber && { certificateNumber: form.certificateNumber }),
         ...(form.issueDate && { issueDate: new Date(form.issueDate).toISOString() }),
         ...(form.expiryDate && { expiryDate: new Date(form.expiryDate).toISOString() }),
-        ...(form.englishProficiency && { englishProficiency: form.englishProficiency }),
+        ...(form.englishProficiency && { englishLevel: form.englishProficiency }),
       };
       const { data } = await profileApi.addCertificate(payload);
       setProfile((p) => ({ ...p, certificates: [...(p.certificates || []), data] }));
@@ -226,7 +236,7 @@ function LicencesCard({ profile, setProfile }) {
               <div style={css.itemSub}>
                 {auth?.label || cert.issuingAuthority}
                 {cert.certificateNumber && <span> · #{cert.certificateNumber}</span>}
-                {cert.englishProficiency && <span> · ELP {cert.englishProficiency}</span>}
+                {cert.englishLevel && <span> · ELP {cert.englishLevel}</span>}
                 {cert.expiryDate && (
                   <span style={{ color: expiryColor || '#7A8CA0' }}>
                     {' · Exp '}{new Date(cert.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -295,7 +305,12 @@ function LicencesCard({ profile, setProfile }) {
 
 function MedicalCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ medicalClass: 'CLASS_1', issueDate: '', expiryDate: '' });
+  const [form, setForm] = useState(() => ({
+    medicalClass: 'CLASS_1',
+    issuingAuthority: defaultAuthority(profile),
+    issueDate: '',
+    expiryDate: '',
+  }));
   const [saving, setSaving] = useState(false);
 
   const handleAdd = async () => {
@@ -359,6 +374,12 @@ function MedicalCard({ profile, setProfile }) {
                 </select>
               </div>
               <div>
+                <label style={css.label}>Issuing authority</label>
+                <select style={css.select} value={form.issuingAuthority} onChange={(e) => setForm((f) => ({ ...f, issuingAuthority: e.target.value }))}>
+                  <SelectOptions options={AUTHORITIES} />
+                </select>
+              </div>
+              <div>
                 <label style={css.label}>Issue date</label>
                 <input style={css.input} type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
               </div>
@@ -383,6 +404,7 @@ function TypeRatingsCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
   const [aircraftType, setAircraftType] = useState('');
   const [hoursOnType, setHoursOnType] = useState('');
+  const [authority, setAuthority] = useState(() => defaultAuthority(profile));
   const [saving, setSaving] = useState(false);
 
   const handleAdd = async () => {
@@ -393,6 +415,7 @@ function TypeRatingsCard({ profile, setProfile }) {
         aircraftType: aircraftType.toUpperCase(),
         category: 'Multi-Engine',
         hoursOnType: parseFloat(hoursOnType) || 0,
+        issuingAuthority: authority,
       });
       setProfile((p) => ({ ...p, ratings: [...(p.ratings || []), data] }));
       setShowForm(false);
@@ -440,6 +463,12 @@ function TypeRatingsCard({ profile, setProfile }) {
               <div>
                 <label style={css.label}>Aircraft type</label>
                 <input style={css.input} value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} placeholder="e.g. B737, A320, ATR72" />
+              </div>
+              <div>
+                <label style={css.label}>Issuing authority</label>
+                <select style={css.select} value={authority} onChange={(e) => setAuthority(e.target.value)}>
+                  <SelectOptions options={AUTHORITIES} />
+                </select>
               </div>
               <div>
                 <label style={css.label}>Hours on Type</label>

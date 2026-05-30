@@ -1,5 +1,8 @@
 const prisma = require('../config/database');
-const { getPilotFlightTotals, runMatchForPilot, computeAlertScore, computeMatchBreakdown } = require('../services/matchingService');
+const {
+  getPilotFlightTotals, runMatchForPilot, computeAlertScore, computeMatchBreakdown,
+  getQualifiedMedicalClasses,
+} = require('../services/matchingService');
 
 async function enrichJobs(jobs, pilotId) {
   const [saved, applied] = await Promise.all([
@@ -98,7 +101,7 @@ exports.getJobs = async (req, res, next) => {
       // Both must stay in sync. Long-term: compute server-side and return in API response.
       const pilot = await prisma.pilot.findUnique({
         where: { id: req.pilot.id },
-        include: { certificates: true, ratings: true, medicals: true },
+        include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
       });
       const totals = await getPilotFlightTotals(req.pilot.id);
 
@@ -148,15 +151,9 @@ exports.getJobs = async (req, res, next) => {
       }
 
       // Only restrict by medical class if pilot has a medical on file.
-      // Class 1 meets CLASS_1/2/3; Class 2 meets CLASS_2/3; Class 3 meets CLASS_3 only.
-      const bestMedical = pilot.medicals.reduce((best, m) => {
-        const rank = { CLASS_1: 3, CLASS_2: 2, CLASS_3: 1 };
-        return (rank[m.medicalClass] ?? 0) > (rank[best] ?? 0) ? m.medicalClass : best;
-      }, null);
-      if (bestMedical) {
-        const qualifiedMedicals = bestMedical === 'CLASS_1' ? ['CLASS_1', 'CLASS_2', 'CLASS_3']
-          : bestMedical === 'CLASS_2' ? ['CLASS_2', 'CLASS_3']
-          : ['CLASS_3'];
+      // Hierarchy via shared helper: CLASS_1 satisfies CLASS_1/2/3; CLASS_2 satisfies CLASS_2/3.
+      const qualifiedMedicals = getQualifiedMedicalClasses(pilot.medicals);
+      if (qualifiedMedicals) {
         andConditions.push({
           OR: [{ reqMedicalClass: null }, { reqMedicalClass: { in: qualifiedMedicals } }],
         });
