@@ -950,7 +950,7 @@ export default function Profile() {
         phone: profileData.phone || '',
         country: profileData.country || '',
         city: profileData.city || '',
-        education: profileData.education || '',
+        education: profileData.education || null,
         willingToRelocate: profileData.willingToRelocate,
         isExaminer: profileData.isExaminer ?? false,
         isInstructor: profileData.isInstructor ?? false,
