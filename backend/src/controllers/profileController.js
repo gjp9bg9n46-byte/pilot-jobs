@@ -52,6 +52,9 @@ exports.updateProfile = async (req, res, next) => {
 
 exports.addCertificate = async (req, res, next) => {
   try {
+    if (req.body.type === 'ELP') {
+      return res.status(400).json({ error: 'Use the /profile/elp endpoint to add ELP records.' });
+    }
     const cert = await prisma.pilotCertificate.create({
       data: { ...req.body, pilotId: req.pilot.id },
     });
