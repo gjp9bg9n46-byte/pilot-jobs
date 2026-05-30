@@ -89,8 +89,9 @@ exports.addRating = async (req, res, next) => {
       issuingAuthority = atpl?.issuingAuthority ?? cpl?.issuingAuthority ?? licences[0]?.issuingAuthority ?? 'FAA';
     }
 
+    const aircraftType = req.body.aircraftType?.trim().toUpperCase() ?? req.body.aircraftType;
     const rating = await prisma.pilotRating.create({
-      data: { ...req.body, pilotId: req.pilot.id, issuingAuthority },
+      data: { ...req.body, pilotId: req.pilot.id, issuingAuthority, aircraftType },
     });
     res.status(201).json(rating);
   } catch (err) {

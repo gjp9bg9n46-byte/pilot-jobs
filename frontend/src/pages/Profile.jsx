@@ -24,13 +24,22 @@ const LICENCE_DISPLAY_ALIASES = {
 };
 
 const AUTHORITIES = [
-  { value: 'FAA',  label: 'FAA — United States' },
-  { value: 'EASA', label: 'EASA — Europe' },
-  { value: 'CAA',  label: 'UK CAA — United Kingdom' },
-  { value: 'TCCA', label: 'Transport Canada — TCCA' },
-  { value: 'CAAC', label: 'CAAC — China' },
-  { value: 'ICAO', label: 'ICAO — International' },
-  { value: 'FATA', label: 'Rosaviatsiya — Russia/CIS' },
+  { value: 'EASA',  label: 'EASA — Europe' },
+  { value: 'FAA',   label: 'FAA — United States' },
+  { value: 'CAA',   label: 'UK CAA — United Kingdom' },
+  { value: 'TCCA',  label: 'Transport Canada — TCCA' },
+  { value: 'CASA',  label: 'CASA — Australia' },
+  { value: 'JCAB',  label: 'JCAB — Japan' },
+  { value: 'GCAA',  label: 'GCAA — UAE' },
+  { value: 'ANAC',  label: 'ANAC — Brazil' },
+  { value: 'DGCA',  label: 'DGCA — India' },
+  { value: 'CAAC',  label: 'CAAC — China' },
+  { value: 'CAA_NZ', label: 'CAA — New Zealand' },
+  { value: 'CAAS',  label: 'CAAS — Singapore' },
+  { value: 'DGAC',  label: 'DGAC — Mexico' },
+  { value: 'FATA',  label: 'Rosaviatsiya — Russia/CIS' },
+  { value: 'ICAO',  label: 'ICAO — International (not a regulatory authority)' },
+  { value: 'Other', label: 'Other' },
 ];
 
 const MEDICAL_CLASSES = [
@@ -223,7 +232,8 @@ function LicencesCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     type: 'ATPL',
-    authority: 'FAA',
+    authority: 'EASA',
+    authorityOther: '',
     certificateNumber: '',
     issueDate: '',
     expiryDate: '',
@@ -233,7 +243,7 @@ function LicencesCard({ profile, setProfile }) {
   const handleAdd = () => run(async () => {
     const payload = {
       type: form.type,
-      issuingAuthority: form.authority,
+      issuingAuthority: form.authority === 'Other' ? (form.authorityOther.trim() || 'Other') : form.authority,
       ...(form.certificateNumber && { certificateNumber: form.certificateNumber }),
       ...(form.issueDate && { issueDate: new Date(form.issueDate).toISOString() }),
       ...(form.expiryDate && { expiryDate: new Date(form.expiryDate).toISOString() }),
@@ -241,7 +251,7 @@ function LicencesCard({ profile, setProfile }) {
     const { data } = await profileApi.addCertificate(payload);
     setProfile((p) => ({ ...p, certificates: [...(p.certificates || []), data] }));
     setShowForm(false);
-    setForm({ type: 'ATPL', authority: 'FAA', certificateNumber: '', issueDate: '', expiryDate: '' });
+    setForm({ type: 'ATPL', authority: 'EASA', authorityOther: '', certificateNumber: '', issueDate: '', expiryDate: '' });
   });
 
   return (
@@ -274,6 +284,11 @@ function LicencesCard({ profile, setProfile }) {
                     {expiryColor && <ExpiryBadge dateStr={cert.expiryDate} />}
                   </span>
                 )}
+                {cert.issuingAuthority === 'ICAO' && (
+                  <div style={{ marginTop: 5, background: '#2A1F00', border: '1px solid #6B4C00', borderRadius: 6, padding: '5px 10px', color: '#F0A500', fontSize: 12 }}>
+                    ICAO is not a regulatory authority — update to EASA, FAA, or your local authority so this licence is used in job matching.
+                  </div>
+                )}
               </div>
             </div>
             <button style={css.deleteBtn} onClick={async () => {
@@ -303,9 +318,17 @@ function LicencesCard({ profile, setProfile }) {
               </div>
               <div>
                 <label style={css.label}>Issuing authority</label>
-                <select style={css.select} value={form.authority} onChange={(e) => setForm((f) => ({ ...f, authority: e.target.value }))}>
+                <select style={css.select} value={form.authority} onChange={(e) => setForm((f) => ({ ...f, authority: e.target.value, authorityOther: '' }))}>
                   <SelectOptions options={AUTHORITIES} />
                 </select>
+                {form.authority === 'Other' && (
+                  <input
+                    style={{ ...css.input, marginTop: 8 }}
+                    value={form.authorityOther}
+                    onChange={(e) => setForm((f) => ({ ...f, authorityOther: e.target.value }))}
+                    placeholder="Enter authority name"
+                  />
+                )}
               </div>
               <div>
                 <label style={css.label}>Certificate Number</label>

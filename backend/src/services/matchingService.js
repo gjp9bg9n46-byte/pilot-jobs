@@ -565,9 +565,10 @@ async function runMatchForPilot(pilotId) {
         where: { pilotId_jobId: { pilotId, jobId: job.id } },
       });
       if (exists) {
+        const breakdown = computeMatchBreakdown(pilot, totals, job);
         await prisma.jobAlert.update({
           where: { pilotId_jobId: { pilotId, jobId: job.id } },
-          data: { matchScore: score },
+          data: { matchScore: score, breakdown },
         });
         continue;
       }
