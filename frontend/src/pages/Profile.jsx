@@ -256,9 +256,9 @@ function LicencesCard({ profile, setProfile }) {
         </div>
       </div>
 
-      {(!profile?.certificates?.length) && <div style={css.emptyNote}>No licences added yet.</div>}
+      {(!profile?.certificates?.filter((c) => c.type !== 'ELP').length) && <div style={css.emptyNote}>No licences added yet.</div>}
 
-      {profile?.certificates?.map((cert) => {
+      {profile?.certificates?.filter((c) => c.type !== 'ELP').map((cert) => {
         const lic = LICENCE_TYPES.find((l) => l.value === cert.type);
         const auth = AUTHORITIES.find((a) => a.value === cert.issuingAuthority);
         const days = daysUntil(cert.expiryDate);
