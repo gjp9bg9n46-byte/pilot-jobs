@@ -13,7 +13,14 @@ const LICENCE_TYPES = [
   { value: 'PPL',  label: 'PPL — Private Pilot' },
   { value: 'IR',   label: 'IR — Instrument Rating' },
   { value: 'ME',   label: 'ME — Multi-Engine Rating' },
+  { value: 'SE',   label: 'SE — Single-Engine Rating' },
 ];
+
+// Display-only aliases for legacy or alternate type codes not in the add-form dropdown.
+// DB rows are not migrated — only the label shown in the list changes.
+const LICENCE_DISPLAY_ALIASES = {
+  ATP: 'ATPL — Airline Transport Pilot',
+};
 
 const AUTHORITIES = [
   { value: 'FAA',  label: 'FAA — United States' },
@@ -185,7 +192,7 @@ function FlightTotalsCard({ totals }) {
 function LicencesCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    type: 'ATP',
+    type: 'ATPL',
     authority: 'FAA',
     certificateNumber: '',
     issueDate: '',
@@ -208,7 +215,7 @@ function LicencesCard({ profile, setProfile }) {
       const { data } = await profileApi.addCertificate(payload);
       setProfile((p) => ({ ...p, certificates: [...(p.certificates || []), data] }));
       setShowForm(false);
-      setForm({ type: 'ATP', authority: 'FAA', certificateNumber: '', issueDate: '', expiryDate: '', englishProficiency: '' });
+      setForm({ type: 'ATPL', authority: 'FAA', certificateNumber: '', issueDate: '', expiryDate: '', englishProficiency: '' });
     } finally { setSaving(false); }
   };
 
@@ -232,7 +239,7 @@ function LicencesCard({ profile, setProfile }) {
         return (
           <div key={cert.id} style={css.item}>
             <div>
-              <div style={css.itemTitle}>{lic?.label || cert.type}</div>
+              <div style={css.itemTitle}>{lic?.label || LICENCE_DISPLAY_ALIASES[cert.type] || cert.type}</div>
               <div style={css.itemSub}>
                 {auth?.label || cert.issuingAuthority}
                 {cert.certificateNumber && <span> · #{cert.certificateNumber}</span>}
