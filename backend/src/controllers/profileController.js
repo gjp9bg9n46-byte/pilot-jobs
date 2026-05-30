@@ -77,8 +77,20 @@ exports.deleteCertificate = async (req, res, next) => {
 
 exports.addRating = async (req, res, next) => {
   try {
+    let { issuingAuthority } = req.body;
+
+    if (!issuingAuthority) {
+      const licences = await prisma.pilotCertificate.findMany({
+        where: { pilotId: req.pilot.id, type: { not: 'ELP' } },
+        orderBy: { createdAt: 'desc' },
+      });
+      const atpl = licences.find((l) => l.type === 'ATPL' || l.type === 'ATP');
+      const cpl  = licences.find((l) => l.type === 'CPL');
+      issuingAuthority = atpl?.issuingAuthority ?? cpl?.issuingAuthority ?? licences[0]?.issuingAuthority ?? 'FAA';
+    }
+
     const rating = await prisma.pilotRating.create({
-      data: { ...req.body, pilotId: req.pilot.id },
+      data: { ...req.body, pilotId: req.pilot.id, issuingAuthority },
     });
     res.status(201).json(rating);
   } catch (err) {

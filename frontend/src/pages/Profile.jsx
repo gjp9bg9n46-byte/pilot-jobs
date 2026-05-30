@@ -449,7 +449,6 @@ function TypeRatingsCard({ profile, setProfile }) {
   const [showForm, setShowForm] = useState(false);
   const [aircraftType, setAircraftType] = useState('');
   const [hoursOnType, setHoursOnType] = useState('');
-  const [authority, setAuthority] = useState(() => defaultAuthority(profile));
   const { saving, savedAt, error, run } = useSave();
 
   const handleAdd = () => {
@@ -459,7 +458,6 @@ function TypeRatingsCard({ profile, setProfile }) {
         aircraftType: aircraftType.toUpperCase(),
         category: 'Multi-Engine',
         hoursOnType: parseFloat(hoursOnType) || 0,
-        issuingAuthority: authority,
       });
       setProfile((p) => ({ ...p, ratings: [...(p.ratings || []), data] }));
       setShowForm(false);
@@ -483,10 +481,15 @@ function TypeRatingsCard({ profile, setProfile }) {
       {profile?.ratings?.map((r) => (
           <div key={r.id} style={css.item}>
             <div>
-              <div style={css.itemTitle}>{r.aircraftType}</div>
-              {r.hoursOnType > 0 && (
+              <div style={css.itemTitle}>
+                {r.aircraftType}
+                {r.issuingAuthority && <span style={{ color: '#7A8CA0', fontWeight: 400 }}> — {r.issuingAuthority}</span>}
+              </div>
+              {(r.capacity || r.hoursOnType > 0) && (
                 <div style={css.itemSub}>
-                  <span style={{ color: '#00B4D8', fontWeight: 600 }}>{r.hoursOnType.toLocaleString()} hrs on type</span>
+                  {r.capacity && <span>{r.capacity}</span>}
+                  {r.capacity && r.hoursOnType > 0 && <span> · </span>}
+                  {r.hoursOnType > 0 && <span style={{ color: '#00B4D8', fontWeight: 600 }}>{r.hoursOnType.toLocaleString()} hrs on type</span>}
                 </div>
               )}
             </div>
@@ -512,12 +515,6 @@ function TypeRatingsCard({ profile, setProfile }) {
               <div>
                 <label style={css.label}>Aircraft type</label>
                 <AircraftCombobox value={aircraftType} onChange={setAircraftType} />
-              </div>
-              <div>
-                <label style={css.label}>Issuing authority</label>
-                <select style={css.select} value={authority} onChange={(e) => setAuthority(e.target.value)}>
-                  <SelectOptions options={AUTHORITIES} />
-                </select>
               </div>
               <div>
                 <label style={css.label}>Hours on Type</label>
