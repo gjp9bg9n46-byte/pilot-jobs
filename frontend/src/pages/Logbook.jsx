@@ -9,6 +9,7 @@ import { flightLogApi, profileApi } from '../services/api';
 import { setLogs, setTotals, addLog, removeLog } from '../store';
 import AIRPORTS from '../data/airports.json';
 import ImportModal from '../components/ImportModal';
+import AircraftCombobox from '../components/AircraftCombobox';
 
 const css = {
   totalsGrid: {
@@ -396,7 +397,13 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
               <div style={css.formGrid}>
                 <Field value={leg.date} onChange={set('date')} label="Date *" type="date" />
                 <Field value={leg.flightNumber} onChange={set('flightNumber')} label="Flight Number" hint="e.g. QR435, EK201" />
-                <Field value={leg.aircraftType} onChange={set('aircraftType')} label="Aircraft Type *" hint="e.g. B737, A320, C172" />
+                <div>
+                  <label style={css.label}>Aircraft Type *</label>
+                  <AircraftCombobox
+                    value={leg.aircraftType}
+                    onChange={(v) => set('aircraftType')({ target: { value: v } })}
+                  />
+                </div>
                 <div>
                   <label style={css.label}>Tail Number (Registration)</label>
                   <div style={{ display: 'flex', gap: 6 }}>

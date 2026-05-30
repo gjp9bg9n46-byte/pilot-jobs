@@ -5,6 +5,7 @@ import {
   RefreshCw, Globe, User, Trash2,
 } from 'lucide-react';
 import { profileApi } from '../services/api';
+import AircraftCombobox from '../components/AircraftCombobox';
 
 const LICENCE_TYPES = [
   { value: 'ATPL', label: 'ATPL — Airline Transport Pilot' },
@@ -139,6 +140,35 @@ function SelectOptions({ options }) {
   ));
 }
 
+function useSave() {
+  const [status, setStatus] = useState('idle'); // idle | saving | saved | error
+  const [savedAt, setSavedAt] = useState(null);
+
+  const run = async (fn) => {
+    if (status === 'saving') return;
+    setStatus('saving');
+    try {
+      await fn();
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      setSavedAt(time);
+      setStatus('saved');
+      setTimeout(() => setStatus('idle'), 3000);
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  return { saving: status === 'saving', savedAt: status === 'saved' ? savedAt : null, error: status === 'error', run };
+}
+
+function SaveStatus({ saving, savedAt, error }) {
+  if (saving) return <span style={{ color: '#7A8CA0', fontSize: 13 }}>Saving…</span>;
+  if (savedAt) return <span style={{ color: '#2ECC71', fontSize: 13, fontWeight: 600 }}>✓ Saved {savedAt}</span>;
+  if (error) return <span style={{ color: '#FF4757', fontSize: 13, fontWeight: 600 }}>⚠ Save failed — try again</span>;
+  return null;
+}
+
 function FlightTotalsCard({ totals }) {
   const stats = [
     { key: 'totalHours',    label: 'Total Hours' },
@@ -199,25 +229,22 @@ function LicencesCard({ profile, setProfile }) {
     expiryDate: '',
     englishProficiency: '',
   });
-  const [saving, setSaving] = useState(false);
+  const { saving, savedAt, error, run } = useSave();
 
-  const handleAdd = async () => {
-    setSaving(true);
-    try {
-      const payload = {
-        type: form.type,
-        issuingAuthority: form.authority,
-        ...(form.certificateNumber && { certificateNumber: form.certificateNumber }),
-        ...(form.issueDate && { issueDate: new Date(form.issueDate).toISOString() }),
-        ...(form.expiryDate && { expiryDate: new Date(form.expiryDate).toISOString() }),
-        ...(form.englishProficiency && { englishLevel: form.englishProficiency }),
-      };
-      const { data } = await profileApi.addCertificate(payload);
-      setProfile((p) => ({ ...p, certificates: [...(p.certificates || []), data] }));
-      setShowForm(false);
-      setForm({ type: 'ATPL', authority: 'FAA', certificateNumber: '', issueDate: '', expiryDate: '', englishProficiency: '' });
-    } finally { setSaving(false); }
-  };
+  const handleAdd = () => run(async () => {
+    const payload = {
+      type: form.type,
+      issuingAuthority: form.authority,
+      ...(form.certificateNumber && { certificateNumber: form.certificateNumber }),
+      ...(form.issueDate && { issueDate: new Date(form.issueDate).toISOString() }),
+      ...(form.expiryDate && { expiryDate: new Date(form.expiryDate).toISOString() }),
+      ...(form.englishProficiency && { englishLevel: form.englishProficiency }),
+    };
+    const { data } = await profileApi.addCertificate(payload);
+    setProfile((p) => ({ ...p, certificates: [...(p.certificates || []), data] }));
+    setShowForm(false);
+    setForm({ type: 'ATPL', authority: 'FAA', certificateNumber: '', issueDate: '', expiryDate: '', englishProficiency: '' });
+  });
 
   return (
     <div style={css.card}>
@@ -262,7 +289,12 @@ function LicencesCard({ profile, setProfile }) {
       })}
 
       {!showForm
-        ? <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add a licence</button>
+        ? (
+          <>
+            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add a licence</button>
+            <SaveStatus saving={saving} savedAt={savedAt} error={error} />
+          </>
+        )
         : (
           <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
             <div style={css.formRow}>
@@ -298,11 +330,12 @@ function LicencesCard({ profile, setProfile }) {
                 <input style={css.input} type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: 'flex' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
               <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
               </button>
+              <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
@@ -318,12 +351,11 @@ function MedicalCard({ profile, setProfile }) {
     issueDate: '',
     expiryDate: '',
   }));
-  const [saving, setSaving] = useState(false);
+  const { saving, savedAt, error, run } = useSave();
 
-  const handleAdd = async () => {
+  const handleAdd = () => {
     if (!form.issueDate || !form.expiryDate) return alert('Please enter both dates.');
-    setSaving(true);
-    try {
+    run(async () => {
       const { data } = await profileApi.addMedical({
         ...form,
         issueDate: new Date(form.issueDate).toISOString(),
@@ -331,7 +363,7 @@ function MedicalCard({ profile, setProfile }) {
       });
       setProfile((p) => ({ ...p, medicals: [...(p.medicals || []), data] }));
       setShowForm(false);
-    } finally { setSaving(false); }
+    });
   };
 
   return (
@@ -370,7 +402,12 @@ function MedicalCard({ profile, setProfile }) {
       })}
 
       {!showForm
-        ? <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add medical certificate</button>
+        ? (
+          <>
+            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add medical certificate</button>
+            <SaveStatus saving={saving} savedAt={savedAt} error={error} />
+          </>
+        )
         : (
           <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
             <div style={css.formRow}>
@@ -395,11 +432,12 @@ function MedicalCard({ profile, setProfile }) {
                 <input style={css.input} type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: 'flex' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
               <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
               </button>
+              <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
@@ -412,12 +450,11 @@ function TypeRatingsCard({ profile, setProfile }) {
   const [aircraftType, setAircraftType] = useState('');
   const [hoursOnType, setHoursOnType] = useState('');
   const [authority, setAuthority] = useState(() => defaultAuthority(profile));
-  const [saving, setSaving] = useState(false);
+  const { saving, savedAt, error, run } = useSave();
 
-  const handleAdd = async () => {
+  const handleAdd = () => {
     if (!aircraftType.trim()) return alert('Please enter an aircraft type.');
-    setSaving(true);
-    try {
+    run(async () => {
       const { data } = await profileApi.addRating({
         aircraftType: aircraftType.toUpperCase(),
         category: 'Multi-Engine',
@@ -428,7 +465,7 @@ function TypeRatingsCard({ profile, setProfile }) {
       setShowForm(false);
       setAircraftType('');
       setHoursOnType('');
-    } finally { setSaving(false); }
+    });
   };
 
   return (
@@ -463,13 +500,18 @@ function TypeRatingsCard({ profile, setProfile }) {
       )}
 
       {!showForm
-        ? <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add type rating</button>
+        ? (
+          <>
+            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add type rating</button>
+            <SaveStatus saving={saving} savedAt={savedAt} error={error} />
+          </>
+        )
         : (
           <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
             <div style={css.formRow}>
               <div>
                 <label style={css.label}>Aircraft type</label>
-                <input style={css.input} value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} placeholder="e.g. B737, A320, ATR72" />
+                <AircraftCombobox value={aircraftType} onChange={setAircraftType} />
               </div>
               <div>
                 <label style={css.label}>Issuing authority</label>
@@ -482,11 +524,12 @@ function TypeRatingsCard({ profile, setProfile }) {
                 <input style={css.input} type="number" min="0" step="0.1" value={hoursOnType} onChange={(e) => setHoursOnType(e.target.value)} placeholder="0.0" />
               </div>
             </div>
-            <div style={{ display: 'flex' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
               <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
               </button>
+              <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
@@ -498,22 +541,19 @@ function EnglishProficiencyCard() {
   const [items, setItems] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ level: 'Level 4', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
-  const [saving, setSaving] = useState(false);
+  const { saving, savedAt, error, run } = useSave();
 
   useEffect(() => {
     profileApi.getELP?.().then(({ data }) => setItems(data)).catch(() => {});
   }, []);
 
-  const handleAdd = async () => {
-    setSaving(true);
-    try {
-      const payload = { ...form, ...(form.noExpiry ? { expiryDate: null } : {}) };
-      const { data } = await profileApi.addELP(payload);
-      setItems((prev) => [...prev, data]);
-      setShowForm(false);
-      setForm({ level: 'Level 4', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
-    } finally { setSaving(false); }
-  };
+  const handleAdd = () => run(async () => {
+    const payload = { ...form, ...(form.noExpiry ? { expiryDate: null } : {}) };
+    const { data } = await profileApi.addELP(payload);
+    setItems((prev) => [...prev, data]);
+    setShowForm(false);
+    setForm({ level: 'Level 4', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
+  });
 
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this English proficiency record?')) return;
@@ -567,7 +607,10 @@ function EnglishProficiencyCard() {
       })}
 
       {!showForm ? (
-        <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add ELP record</button>
+        <>
+          <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add ELP record</button>
+          <SaveStatus saving={saving} savedAt={savedAt} error={error} />
+        </>
       ) : (
         <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
           <div style={css.formRow}>
@@ -600,11 +643,12 @@ function EnglishProficiencyCard() {
               </>
             )}
           </div>
-          <div style={{ display: 'flex', marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
             <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
             <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
             </button>
+            <SaveStatus saving={saving} savedAt={savedAt} error={error} />
           </div>
         </div>
       )}
@@ -622,16 +666,15 @@ function RecurrentTrainingCard() {
     expiryDate: '',
     remarks: '',
   });
-  const [saving, setSaving] = useState(false);
+  const { saving, savedAt, error, run } = useSave();
 
   useEffect(() => {
     profileApi.getRecurrent().then(({ data }) => setItems(data || [])).catch(() => setItems([]));
   }, []);
 
-  const handleAdd = async () => {
+  const handleAdd = () => {
     if (!form.completionDate) return alert('Please enter a completion date.');
-    setSaving(true);
-    try {
+    run(async () => {
       const payload = {
         trainingType: form.trainingType,
         provider: form.provider,
@@ -643,7 +686,7 @@ function RecurrentTrainingCard() {
       setItems((prev) => [...prev, data]);
       setShowForm(false);
       setForm({ trainingType: 'CRM', provider: '', completionDate: '', expiryDate: '', remarks: '' });
-    } finally { setSaving(false); }
+    });
   };
 
   const handleDelete = async (id) => {
@@ -704,7 +747,12 @@ function RecurrentTrainingCard() {
       })}
 
       {!showForm
-        ? <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add recurrent training</button>
+        ? (
+          <>
+            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add recurrent training</button>
+            <SaveStatus saving={saving} savedAt={savedAt} error={error} />
+          </>
+        )
         : (
           <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
             <div style={css.formRow}>
@@ -731,11 +779,12 @@ function RecurrentTrainingCard() {
               <label style={css.label}>Remarks</label>
               <input style={css.input} value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))} placeholder="Optional notes" />
             </div>
-            <div style={{ display: 'flex' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
               <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
               </button>
+              <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
@@ -753,16 +802,15 @@ function RightToWorkCard() {
     expiryDate: '',
     noExpiry: false,
   });
-  const [saving, setSaving] = useState(false);
+  const { saving, savedAt, error, run } = useSave();
 
   useEffect(() => {
     profileApi.getRTW().then(({ data }) => setItems(data || [])).catch(() => setItems([]));
   }, []);
 
-  const handleAdd = async () => {
+  const handleAdd = () => {
     if (!form.country.trim()) return alert('Please enter a country.');
-    setSaving(true);
-    try {
+    run(async () => {
       const payload = {
         country: form.country,
         documentType: form.documentType,
@@ -774,7 +822,7 @@ function RightToWorkCard() {
       setItems((prev) => [...prev, data]);
       setShowForm(false);
       setForm({ country: '', documentType: 'Passport', documentNumber: '', expiryDate: '', noExpiry: false });
-    } finally { setSaving(false); }
+    });
   };
 
   const handleDelete = async (id) => {
@@ -836,7 +884,12 @@ function RightToWorkCard() {
       })}
 
       {!showForm
-        ? <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add document</button>
+        ? (
+          <>
+            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add document</button>
+            <SaveStatus saving={saving} savedAt={savedAt} error={error} />
+          </>
+        )
         : (
           <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
             <div style={css.formRow}>
@@ -875,11 +928,12 @@ function RightToWorkCard() {
               />
               <label htmlFor="noExpiry" style={{ color: '#C0CDE0', fontSize: 13, cursor: 'pointer' }}>No expiry</label>
             </div>
-            <div style={{ display: 'flex' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
               <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
               </button>
+              <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
@@ -892,8 +946,9 @@ export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [totals, setTotals] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState(false);
   const [personalForm, setPersonalForm] = useState(null);
+  const [savedSnapshot, setSavedSnapshot] = useState(null);
+  const { saving: personalSaving, savedAt: personalSavedAt, error: personalError, run: personalRun } = useSave();
 
   useEffect(() => {
     Promise.all([
@@ -902,7 +957,7 @@ export default function Profile() {
     ]).then(([{ data: profileData }, { data: totalsData }]) => {
       setProfile(profileData);
       setTotals(totalsData);
-      setPersonalForm({
+      const initial = {
         firstName: profileData.firstName,
         lastName: profileData.lastName,
         phone: profileData.phone || '',
@@ -912,17 +967,21 @@ export default function Profile() {
         willingToRelocate: profileData.willingToRelocate,
         isExaminer: profileData.isExaminer ?? false,
         isInstructor: profileData.isInstructor ?? false,
-      });
+      };
+      setPersonalForm(initial);
+      setSavedSnapshot(initial);
       setLoading(false);
     });
   }, []);
 
-  const savePersonal = async () => {
+  const isDirty = savedSnapshot && personalForm
+    && JSON.stringify(personalForm) !== JSON.stringify(savedSnapshot);
+
+  const savePersonal = () => personalRun(async () => {
     await profileApi.update(personalForm);
     setProfile((p) => ({ ...p, ...personalForm }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
+    setSavedSnapshot({ ...personalForm });
+  });
 
   if (loading) return <div style={{ color: '#7A8CA0', textAlign: 'center', padding: 80 }}>Loading your profile...</div>;
 
@@ -1011,9 +1070,18 @@ export default function Profile() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <button style={css.saveBtn} onClick={savePersonal}>Save Changes</button>
-              {saved && <span style={{ color: '#2ECC71', fontSize: 13, fontWeight: 600 }}>✓ Saved!</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <button
+                style={{ ...css.saveBtn, opacity: personalSaving ? 0.6 : 1 }}
+                onClick={savePersonal}
+                disabled={personalSaving}
+              >
+                {personalSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+              {isDirty && !personalSaving && (
+                <span style={{ color: '#F0A500', fontSize: 13, fontWeight: 600 }}>● Unsaved changes</span>
+              )}
+              <SaveStatus saving={personalSaving} savedAt={personalSavedAt} error={personalError} />
             </div>
           </>
         )}
