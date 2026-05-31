@@ -3,6 +3,15 @@ const {
   getPilotFlightTotals, runMatchForPilot, computeAlertScore, computeMatchBreakdown,
   getQualifiedMedicalClasses,
 } = require('../services/matchingService');
+const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
+
+const EU_COUNTRIES_RTW = new Set([
+  'austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic',
+  'denmark', 'estonia', 'finland', 'france', 'germany', 'greece',
+  'hungary', 'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg',
+  'malta', 'netherlands', 'poland', 'portugal', 'romania', 'slovakia',
+  'slovenia', 'spain', 'sweden',
+]);
 
 async function enrichJobs(jobs, pilotId) {
   const [saved, applied] = await Promise.all([
@@ -157,6 +166,75 @@ exports.getJobs = async (req, res, next) => {
         andConditions.push({
           OR: [{ reqMedicalClass: null }, { reqMedicalClass: { in: qualifiedMedicals } }],
         });
+      }
+
+      // Multi-engine hours
+      if (totals.multiEngineTime > 0) {
+        andConditions.push({
+          OR: [{ reqMinMultiEngineHours: null }, { reqMinMultiEngineHours: { lte: totals.multiEngineTime } }],
+        });
+      }
+
+      // Turbine hours
+      if (totals.turbineTime > 0) {
+        andConditions.push({
+          OR: [{ reqMinTurbineHours: null }, { reqMinTurbineHours: { lte: totals.turbineTime } }],
+        });
+      }
+
+      // Instrument hours
+      if (totals.instrumentTime > 0) {
+        andConditions.push({
+          OR: [{ reqMinInstrumentHours: null }, { reqMinInstrumentHours: { lte: totals.instrumentTime } }],
+        });
+      }
+
+      // Cross-country hours
+      if (totals.crossCountryTime > 0) {
+        andConditions.push({
+          OR: [{ reqMinCrossCountryHours: null }, { reqMinCrossCountryHours: { lte: totals.crossCountryTime } }],
+        });
+      }
+
+      // Education (charitable-null: only restrict when pilot has education on file)
+      if (pilot.education != null) {
+        const pilotEduRank = EDU_RANK[pilot.education] ?? 0;
+        const validEdus = Object.entries(EDU_RANK)
+          .filter(([, rank]) => rank <= pilotEduRank)
+          .map(([edu]) => edu);
+        andConditions.push({
+          OR: [{ reqEducation: null }, { reqEducation: { in: validEdus } }],
+        });
+      }
+
+      // English level (ELP) — only restrict when pilot has a parseable ELP cert
+      const elpCert = pilot.certificates.find((c) => c.type === 'ELP');
+      const pilotElpLevel = parseElpLevel(elpCert?.englishLevel);
+      if (pilotElpLevel != null) {
+        andConditions.push({
+          OR: [{ reqEnglishLevel: null }, { reqEnglishLevel: { lte: pilotElpLevel } }],
+        });
+      }
+
+      // Willing to relocate — if pilot is NOT willing, exclude jobs that require it
+      if (!pilot.willingToRelocate) {
+        andConditions.push({ reqWillingToRelocate: { not: true } });
+      }
+
+      // Work authorisation
+      if (pilot.rightToWork.length === 0) {
+        // No RTW on file: only show jobs with no requirement
+        andConditions.push({ reqWorkAuthorization: null });
+      } else {
+        const rtwCountries = pilot.rightToWork.map((r) => r.country.toLowerCase().trim());
+        const rtwOptions = [
+          { reqWorkAuthorization: null },
+          { reqWorkAuthorization: 'required' },
+        ];
+        if (rtwCountries.some((c) => EU_COUNTRIES_RTW.has(c)))                          rtwOptions.push({ reqWorkAuthorization: 'EU' });
+        if (rtwCountries.some((c) => ['united states', 'usa', 'us'].includes(c)))       rtwOptions.push({ reqWorkAuthorization: 'US' });
+        if (rtwCountries.some((c) => ['united kingdom', 'uk', 'great britain'].includes(c))) rtwOptions.push({ reqWorkAuthorization: 'UK' });
+        andConditions.push({ OR: rtwOptions });
       }
     }
 

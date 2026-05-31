@@ -3,6 +3,7 @@
 const prisma = require('../config/database');
 const notificationService = require('./notificationService');
 const logger = require('../config/logger');
+const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
 
 // ─── Medical hierarchy ────────────────────────────────────────────────────────
 
@@ -59,23 +60,6 @@ function rtwSatisfies(rightToWork, req) {
     return country === req.toLowerCase();
   });
 }
-
-// ─── ELP / education helpers ──────────────────────────────────────────────────
-
-/**
- * Parses an ICAO ELP level string to an integer (4, 5, or 6).
- * Handles: '4', 'Level 4', 'LEVEL_4', 'ICAO Level 6', etc.
- * Returns null when unparseable.
- */
-function parseElpLevel(str) {
-  if (str == null) return null;
-  const m = String(str).match(/\d+/);
-  if (!m) return null;
-  const n = parseInt(m[0], 10);
-  return n >= 1 && n <= 6 ? n : null;
-}
-
-const EDU_RANK = { high_school: 1, technical: 2, bachelor: 3, masters: 4, doctorate: 5 };
 
 // ─── Cert normalisation (shared across all three scoring fns) ─────────────────
 
@@ -356,6 +340,17 @@ function computeMatchBreakdown(pilot, pilotTotals, job) {
   const missing  = [];
   const marginal = [];
 
+  // structured: O(1) lookup for the card pill renderer (card uses this; detail uses the arrays)
+  const structured = {
+    certificate: 'unchecked', authority: 'unchecked',
+    totalHours: 'unchecked', picHours: 'unchecked',
+    multiEngineHours: 'unchecked', turbineHours: 'unchecked',
+    instrumentHours: 'unchecked', crossCountryHours: 'unchecked',
+    aircraftType: 'unchecked', medical: 'unchecked',
+    workAuthorization: 'unchecked', englishLevel: 'unchecked',
+    education: 'unchecked', willingToRelocate: 'unchecked',
+  };
+
   // ELP filter + ATP/ATPL normalisation — consistent with computeMatchScore
   const certTypes = [...new Set(
     pilot.certificates.filter((c) => c.type !== 'ELP').flatMap((c) => normaliseCert(c.type))
@@ -370,25 +365,25 @@ function computeMatchBreakdown(pilot, pilotTotals, job) {
   // Certificates
   if (job.reqCertificates.length > 0) {
     const met = job.reqCertificates.filter((rc) => certTypes.includes(rc));
-    if (met.length) matched.push(`${met.join(', ')} certificate`);
-    else missing.push(`${job.reqCertificates.join(' or ')} certificate required`);
+    if (met.length) { matched.push(`${met.join(', ')} certificate`); structured.certificate = 'matched'; }
+    else            { missing.push(`${job.reqCertificates.join(' or ')} certificate required`); structured.certificate = 'missing'; }
   }
 
   // Authorities
   if (job.reqAuthorities.length > 0) {
     const met = job.reqAuthorities.filter((a) => certAuthorities.includes(a));
-    if (met.length) matched.push(`${met.join(', ')} authority`);
-    else missing.push(`${job.reqAuthorities.join(' or ')} authority required`);
+    if (met.length) { matched.push(`${met.join(', ')} authority`); structured.authority = 'matched'; }
+    else            { missing.push(`${job.reqAuthorities.join(' or ')} authority required`); structured.authority = 'missing'; }
   }
 
   // Total hours
   if (job.reqMinTotalHours) {
     if (pilotTotals.totalTime >= job.reqMinTotalHours) {
-      matched.push(`${fmt(pilotTotals.totalTime)} total hrs · req. ${fmt(job.reqMinTotalHours)}`);
+      matched.push(`${fmt(pilotTotals.totalTime)} total hrs · req. ${fmt(job.reqMinTotalHours)}`); structured.totalHours = 'matched';
     } else if (pilotTotals.totalTime >= job.reqMinTotalHours * 0.9) {
-      marginal.push(`Total hrs: ${fmt(pilotTotals.totalTime)} of ${fmt(job.reqMinTotalHours)}`);
+      marginal.push(`Total hrs: ${fmt(pilotTotals.totalTime)} of ${fmt(job.reqMinTotalHours)}`); structured.totalHours = 'marginal';
     } else {
-      missing.push(`Total hrs: ${fmt(pilotTotals.totalTime)} of ${fmt(job.reqMinTotalHours)} req.`);
+      missing.push(`Total hrs: ${fmt(pilotTotals.totalTime)} of ${fmt(job.reqMinTotalHours)} req.`); structured.totalHours = 'missing';
     }
   } else if (pilotTotals.totalTime > 0) {
     matched.push(`${fmt(pilotTotals.totalTime)} total hrs`);
@@ -397,68 +392,68 @@ function computeMatchBreakdown(pilot, pilotTotals, job) {
   // PIC hours
   if (job.reqMinPicHours) {
     if (pilotTotals.picTime >= job.reqMinPicHours) {
-      matched.push(`${fmt(pilotTotals.picTime)} PIC hrs · req. ${fmt(job.reqMinPicHours)}`);
+      matched.push(`${fmt(pilotTotals.picTime)} PIC hrs · req. ${fmt(job.reqMinPicHours)}`); structured.picHours = 'matched';
     } else if (pilotTotals.picTime >= job.reqMinPicHours * 0.9) {
-      marginal.push(`PIC hrs: ${fmt(pilotTotals.picTime)} of ${fmt(job.reqMinPicHours)}`);
+      marginal.push(`PIC hrs: ${fmt(pilotTotals.picTime)} of ${fmt(job.reqMinPicHours)}`); structured.picHours = 'marginal';
     } else {
-      missing.push(`PIC hrs: ${fmt(pilotTotals.picTime)} of ${fmt(job.reqMinPicHours)} req.`);
+      missing.push(`PIC hrs: ${fmt(pilotTotals.picTime)} of ${fmt(job.reqMinPicHours)} req.`); structured.picHours = 'missing';
     }
   }
 
   // Multi-engine
   if (job.reqMinMultiEngineHours) {
     const ratio = pilotTotals.multiEngineTime / job.reqMinMultiEngineHours;
-    if (ratio >= 1)   matched.push(`${fmt(pilotTotals.multiEngineTime)} multi-engine hrs`);
-    else if (ratio >= 0.8) marginal.push(`Multi-engine hrs: ${fmt(pilotTotals.multiEngineTime)} of ${fmt(job.reqMinMultiEngineHours)}`);
-    else missing.push(`Multi-engine hrs: ${fmt(pilotTotals.multiEngineTime)} of ${fmt(job.reqMinMultiEngineHours)} req.`);
+    if (ratio >= 1)        { matched.push(`${fmt(pilotTotals.multiEngineTime)} multi-engine hrs`); structured.multiEngineHours = 'matched'; }
+    else if (ratio >= 0.8) { marginal.push(`Multi-engine hrs: ${fmt(pilotTotals.multiEngineTime)} of ${fmt(job.reqMinMultiEngineHours)}`); structured.multiEngineHours = 'marginal'; }
+    else                   { missing.push(`Multi-engine hrs: ${fmt(pilotTotals.multiEngineTime)} of ${fmt(job.reqMinMultiEngineHours)} req.`); structured.multiEngineHours = 'missing'; }
   }
 
   // Turbine
   if (job.reqMinTurbineHours) {
     const ratio = pilotTotals.turbineTime / job.reqMinTurbineHours;
-    if (ratio >= 1)   matched.push(`${fmt(pilotTotals.turbineTime)} turbine hrs`);
-    else if (ratio >= 0.8) marginal.push(`Turbine hrs: ${fmt(pilotTotals.turbineTime)} of ${fmt(job.reqMinTurbineHours)}`);
-    else missing.push(`Turbine hrs: ${fmt(pilotTotals.turbineTime)} of ${fmt(job.reqMinTurbineHours)} req.`);
+    if (ratio >= 1)        { matched.push(`${fmt(pilotTotals.turbineTime)} turbine hrs`); structured.turbineHours = 'matched'; }
+    else if (ratio >= 0.8) { marginal.push(`Turbine hrs: ${fmt(pilotTotals.turbineTime)} of ${fmt(job.reqMinTurbineHours)}`); structured.turbineHours = 'marginal'; }
+    else                   { missing.push(`Turbine hrs: ${fmt(pilotTotals.turbineTime)} of ${fmt(job.reqMinTurbineHours)} req.`); structured.turbineHours = 'missing'; }
   }
 
   // Instrument hours
   if (job.reqMinInstrumentHours) {
     const ratio = pilotTotals.instrumentTime / job.reqMinInstrumentHours;
-    if (ratio >= 1)   matched.push(`${fmt(pilotTotals.instrumentTime)} instrument hrs`);
-    else if (ratio >= 0.8) marginal.push(`Instrument hrs: ${fmt(pilotTotals.instrumentTime)} of ${fmt(job.reqMinInstrumentHours)}`);
-    else missing.push(`Instrument hrs: ${fmt(pilotTotals.instrumentTime)} of ${fmt(job.reqMinInstrumentHours)} req.`);
+    if (ratio >= 1)        { matched.push(`${fmt(pilotTotals.instrumentTime)} instrument hrs`); structured.instrumentHours = 'matched'; }
+    else if (ratio >= 0.8) { marginal.push(`Instrument hrs: ${fmt(pilotTotals.instrumentTime)} of ${fmt(job.reqMinInstrumentHours)}`); structured.instrumentHours = 'marginal'; }
+    else                   { missing.push(`Instrument hrs: ${fmt(pilotTotals.instrumentTime)} of ${fmt(job.reqMinInstrumentHours)} req.`); structured.instrumentHours = 'missing'; }
   }
 
   // Cross-country hours
   if (job.reqMinCrossCountryHours) {
     const ratio = pilotTotals.crossCountryTime / job.reqMinCrossCountryHours;
-    if (ratio >= 1)   matched.push(`${fmt(pilotTotals.crossCountryTime)} cross-country hrs`);
-    else if (ratio >= 0.8) marginal.push(`Cross-country hrs: ${fmt(pilotTotals.crossCountryTime)} of ${fmt(job.reqMinCrossCountryHours)}`);
-    else missing.push(`Cross-country hrs: ${fmt(pilotTotals.crossCountryTime)} of ${fmt(job.reqMinCrossCountryHours)} req.`);
+    if (ratio >= 1)        { matched.push(`${fmt(pilotTotals.crossCountryTime)} cross-country hrs`); structured.crossCountryHours = 'matched'; }
+    else if (ratio >= 0.8) { marginal.push(`Cross-country hrs: ${fmt(pilotTotals.crossCountryTime)} of ${fmt(job.reqMinCrossCountryHours)}`); structured.crossCountryHours = 'marginal'; }
+    else                   { missing.push(`Cross-country hrs: ${fmt(pilotTotals.crossCountryTime)} of ${fmt(job.reqMinCrossCountryHours)} req.`); structured.crossCountryHours = 'missing'; }
   }
 
   // Aircraft type rating
   if (job.reqAircraftTypes.length > 0) {
     const met = job.reqAircraftTypes.filter((a) => ratingAircraft.includes(a.toLowerCase()));
-    if (met.length) matched.push(`${met.join(', ')} type rating`);
-    else marginal.push(`No ${job.reqAircraftTypes.join(' or ')} type rating`);
+    if (met.length) { matched.push(`${met.join(', ')} type rating`); structured.aircraftType = 'matched'; }
+    else            { marginal.push(`No ${job.reqAircraftTypes.join(' or ')} type rating`); structured.aircraftType = 'marginal'; }
   }
 
   // Medical (hierarchy)
   if (job.reqMedicalClass) {
     if (medicalSatisfies(medicalClasses, job.reqMedicalClass)) {
-      matched.push(`${job.reqMedicalClass.replace('_', ' ')} medical`);
+      matched.push(`${job.reqMedicalClass.replace('_', ' ')} medical`); structured.medical = 'matched';
     } else {
-      missing.push(`${job.reqMedicalClass.replace('_', ' ')} medical required`);
+      missing.push(`${job.reqMedicalClass.replace('_', ' ')} medical required`); structured.medical = 'missing';
     }
   }
 
   // Work authorisation
   if (job.reqWorkAuthorization) {
     if (rtwSatisfies(pilot.rightToWork, job.reqWorkAuthorization)) {
-      matched.push(`Right to work: ${job.reqWorkAuthorization}`);
+      matched.push(`Right to work: ${job.reqWorkAuthorization}`); structured.workAuthorization = 'matched';
     } else {
-      missing.push(`Right to work (${job.reqWorkAuthorization}) required`);
+      missing.push(`Right to work (${job.reqWorkAuthorization}) required`); structured.workAuthorization = 'missing';
     }
   }
 
@@ -467,9 +462,9 @@ function computeMatchBreakdown(pilot, pilotTotals, job) {
     const elpCert = pilot.certificates.find((c) => c.type === 'ELP');
     const pilotLevel = parseElpLevel(elpCert?.englishLevel);
     if (pilotLevel != null && pilotLevel >= job.reqEnglishLevel) {
-      matched.push(`ICAO Level ${pilotLevel} English`);
+      matched.push(`ICAO Level ${pilotLevel} English`); structured.englishLevel = 'matched';
     } else {
-      missing.push(`ICAO Level ${job.reqEnglishLevel} English required`);
+      missing.push(`ICAO Level ${job.reqEnglishLevel} English required`); structured.englishLevel = 'missing';
     }
   }
 
@@ -478,19 +473,19 @@ function computeMatchBreakdown(pilot, pilotTotals, job) {
     const pilotRank = EDU_RANK[pilot.education] ?? 0;
     const reqRank   = EDU_RANK[job.reqEducation] ?? 0;
     if (pilotRank >= reqRank) {
-      matched.push(`${pilot.education?.replace('_', ' ')} education`);
+      matched.push(`${pilot.education?.replace('_', ' ')} education`); structured.education = 'matched';
     } else {
-      missing.push(`${job.reqEducation.replace('_', ' ')} education required`);
+      missing.push(`${job.reqEducation.replace('_', ' ')} education required`); structured.education = 'missing';
     }
   }
 
   // Willing to relocate
   if (job.reqWillingToRelocate) {
-    if (pilot.willingToRelocate) matched.push('Willing to relocate');
-    else marginal.push('Job prefers willing to relocate');
+    if (pilot.willingToRelocate) { matched.push('Willing to relocate'); structured.willingToRelocate = 'matched'; }
+    else                         { marginal.push('Job prefers willing to relocate'); structured.willingToRelocate = 'marginal'; }
   }
 
-  return { matched, missing, marginal };
+  return { matched, missing, marginal, structured };
 }
 
 // ─── Match runners ────────────────────────────────────────────────────────────

@@ -16,6 +16,14 @@ function PlaneSave({ saved, size = 18 }) {
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+function pillColor(key, structured) {
+  const s = structured?.[key];
+  if (s === 'matched')  return { color: '#2ECC71', bg: 'rgba(46,204,113,0.1)' };
+  if (s === 'missing')  return { color: '#E74C3C', bg: 'rgba(231,76,60,0.1)' };
+  if (s === 'marginal') return { color: '#F39C12', bg: 'rgba(243,156,18,0.1)' };
+  return { color: '#7A8CA0', bg: '#1B2B4B' };
+}
+
 function matchStyle(score) {
   if (score >= 90) return { label: 'Excellent Match', color: '#2ECC71', bg: '#0D2B1A', border: '#1A4A2A' };
   if (score >= 75) return { label: 'Great Match',     color: '#00B4D8', bg: '#0A2540', border: '#1A3A5A' };
@@ -306,6 +314,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 {(() => {
                   const job = alert.job;
                   if (!job) return null;
+                  const st = alert.breakdown?.structured;
                   const pills = [];
                   if (job.role) {
                     const roleLabels = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', FLIGHT_ENGINEER: 'Flight Engineer', INSTRUCTOR: 'Instructor' };
@@ -315,13 +324,13 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                     const ctLabels = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', acmi: 'ACMI', permanent: 'Permanent' };
                     pills.push({ key: 'ct', text: ctLabels[job.contractType] || job.contractType, color: '#7A8CA0', bg: '#1B2B4B' });
                   }
-                  (job.reqAircraftTypes || []).forEach((a) => pills.push({ key: `ac-${a}`, text: a, color: '#7A8CA0', bg: '#1B2B4B' }));
-                  (job.reqCertificates || []).forEach((c) => pills.push({ key: `cert-${c}`, text: c, color: '#F39C12', bg: 'rgba(243,156,18,0.1)' }));
-                  if (job.reqMinTotalHours) pills.push({ key: 'th', text: `${job.reqMinTotalHours.toLocaleString()} hrs total`, color: '#7A8CA0', bg: '#1B2B4B' });
-                  if (job.reqMinPicHours) pills.push({ key: 'pic', text: `${job.reqMinPicHours.toLocaleString()} PIC`, color: '#7A8CA0', bg: '#1B2B4B' });
-                  if (job.reqMinMultiEngineHours) pills.push({ key: 'me', text: `${job.reqMinMultiEngineHours.toLocaleString()} multi-eng`, color: '#7A8CA0', bg: '#1B2B4B' });
-                  if (job.reqMinTurbineHours) pills.push({ key: 'turb', text: `${job.reqMinTurbineHours.toLocaleString()} turbine`, color: '#7A8CA0', bg: '#1B2B4B' });
-                  if (job.reqMedicalClass) pills.push({ key: 'med', text: job.reqMedicalClass.replace('CLASS_', 'Class '), color: '#7A8CA0', bg: '#1B2B4B' });
+                  (job.reqAircraftTypes || []).forEach((a) => pills.push({ key: `ac-${a}`, text: a, ...pillColor('aircraftType', st) }));
+                  (job.reqCertificates || []).forEach((c) => pills.push({ key: `cert-${c}`, text: c, ...pillColor('certificate', st) }));
+                  if (job.reqMinTotalHours) pills.push({ key: 'th', text: `${job.reqMinTotalHours.toLocaleString()} hrs total`, ...pillColor('totalHours', st) });
+                  if (job.reqMinPicHours) pills.push({ key: 'pic', text: `${job.reqMinPicHours.toLocaleString()} PIC`, ...pillColor('picHours', st) });
+                  if (job.reqMinMultiEngineHours) pills.push({ key: 'me', text: `${job.reqMinMultiEngineHours.toLocaleString()} multi-eng`, ...pillColor('multiEngineHours', st) });
+                  if (job.reqMinTurbineHours) pills.push({ key: 'turb', text: `${job.reqMinTurbineHours.toLocaleString()} turbine`, ...pillColor('turbineHours', st) });
+                  if (job.reqMedicalClass) pills.push({ key: 'med', text: job.reqMedicalClass.replace('CLASS_', 'Class '), ...pillColor('medical', st) });
                   if (job.salaryMin && job.salaryMax) {
                     pills.push({ key: 'sal', text: `${job.salaryCurrency || 'USD'} ${job.salaryMin.toLocaleString()}–${job.salaryMax.toLocaleString()}`, color: '#2ECC71', bg: 'rgba(46,204,113,0.1)' });
                   } else if (job.salaryMin) {
