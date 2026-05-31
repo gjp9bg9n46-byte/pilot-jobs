@@ -284,11 +284,7 @@ function LicencesCard({ profile, setProfile }) {
                     {expiryColor && <ExpiryBadge dateStr={cert.expiryDate} />}
                   </span>
                 )}
-                {cert.issuingAuthority === 'ICAO' && (
-                  <div style={{ marginTop: 5, background: '#2A1F00', border: '1px solid #6B4C00', borderRadius: 6, padding: '5px 10px', color: '#F0A500', fontSize: 12 }}>
-                    ICAO is not a regulatory authority — update to EASA, FAA, or your local authority so this licence is used in job matching.
-                  </div>
-                )}
+
               </div>
             </div>
             <button style={css.deleteBtn} onClick={async () => {
