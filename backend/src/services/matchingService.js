@@ -160,6 +160,11 @@ function computeAlertScore(pilot, pilotTotals, job) {
     score += pilot.willingToRelocate ? 5 : 0;
   }
 
+  // Role match (0 or 5)
+  if (job.role) {
+    score += (pilot.role && pilot.role === job.role) ? 5 : 0;
+  }
+
   return Math.round(score);
 }
 
@@ -285,6 +290,12 @@ function computeMatchScore(pilot, pilotTotals, job) {
     score += pilot.willingToRelocate ? 5 : 0;
   }
 
+  // Role match (0 or 5, soft — not a hard disqualifier)
+  if (job.role) {
+    maxScore += 5;
+    score += (pilot.role && pilot.role === job.role) ? 5 : 0;
+  }
+
   return Math.min(Math.round((score / maxScore) * 100), 100);
 }
 
@@ -349,6 +360,7 @@ function computeMatchBreakdown(pilot, pilotTotals, job) {
     aircraftType: 'unchecked', medical: 'unchecked',
     workAuthorization: 'unchecked', englishLevel: 'unchecked',
     education: 'unchecked', willingToRelocate: 'unchecked',
+    role: 'unchecked',
   };
 
   // ELP filter + ATP/ATPL normalisation — consistent with computeMatchScore
@@ -483,6 +495,19 @@ function computeMatchBreakdown(pilot, pilotTotals, job) {
   if (job.reqWillingToRelocate) {
     if (pilot.willingToRelocate) { matched.push('Willing to relocate'); structured.willingToRelocate = 'matched'; }
     else                         { marginal.push('Job prefers willing to relocate'); structured.willingToRelocate = 'marginal'; }
+  }
+
+  // Role
+  if (job.role) {
+    const roleLabel = job.role === 'CAPTAIN' ? 'Captain' : job.role === 'FIRST_OFFICER' ? 'First Officer' : job.role;
+    if (!pilot.role) {
+      marginal.push(`Role: ${roleLabel} preferred`); structured.role = 'marginal';
+    } else if (pilot.role === job.role) {
+      matched.push(`${roleLabel} role`); structured.role = 'matched';
+    } else {
+      const pilotLabel = pilot.role === 'CAPTAIN' ? 'Captain' : 'First Officer';
+      missing.push(`${roleLabel} required (you are: ${pilotLabel})`); structured.role = 'missing';
+    }
   }
 
   return { matched, missing, marginal, structured };

@@ -106,6 +106,13 @@ function computeMatchCount(job, profile, totals) {
     req('English Level', `ICAO Level ${job.reqEnglishLevel}`, 'Languages',
       maxLevel >= job.reqEnglishLevel, maxLevel > 0 ? `Level ${maxLevel}` : null);
   }
+  if (job.role) {
+    const roleLabel = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor' }[job.role] || job.role;
+    const pilotRole = profile.role;
+    const isMatch = pilotRole === job.role;
+    const pilotLabel = pilotRole ? ({ CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer' }[pilotRole] || pilotRole) : null;
+    req('Role', roleLabel, 'Plane', isMatch, pilotLabel);
+  }
 
   const matched = requirements.filter((r) => r.matched).length;
   return { matched, total: requirements.length, requirements };
@@ -794,6 +801,11 @@ export default function Jobs() {
 
                   <div style={css.cardTop}>
                     <div style={css.title}>{job.title}</div>
+                    {job.role && (
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#00B4D8', background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.25)', borderRadius: 5, padding: '2px 7px', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
+                        {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
+                      </div>
+                    )}
                     {job.reqAuthorities?.[0] && (
                       <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
                     )}

@@ -54,6 +54,11 @@ enum EducationLevel {
   doctorate
 }
 
+enum PilotRole {
+  FIRST_OFFICER
+  CAPTAIN
+}
+
 model Pilot {
   id              String    @id @default(uuid())
   email           String    @unique
@@ -72,7 +77,8 @@ model Pilot {
   profilePhoto    String?
   fcmToken        String?
   education       EducationLevel?
-  willingToRelocate Boolean @default(false)
+  role            PilotRole?
+  willingToRelocate Boolean @default(true)
   isInstructor    Boolean   @default(false)
   isExaminer      Boolean   @default(false)
   // Privacy flags

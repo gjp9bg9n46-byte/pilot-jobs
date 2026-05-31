@@ -30,8 +30,14 @@ exports.updateProfile = async (req, res, next) => {
       firstName, lastName, phone, country, city, nationality,
       dateOfBirth, passportNumber, passportExpiry,
       emergencyContactName, emergencyContactPhone,
-      willingToRelocate, isInstructor, isExaminer, education,
+      willingToRelocate, isInstructor, isExaminer, education, role,
     } = req.body;
+
+    const VALID_ROLES = ['FIRST_OFFICER', 'CAPTAIN'];
+    if (role && !VALID_ROLES.includes(role)) {
+      return res.status(422).json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` });
+    }
+
     const pilot = await prisma.pilot.update({
       where: { id: req.pilot.id },
       data: {
@@ -41,6 +47,7 @@ exports.updateProfile = async (req, res, next) => {
         emergencyContactName, emergencyContactPhone,
         willingToRelocate, isInstructor, isExaminer,
         education: education || undefined,
+        role: role || null,
       },
     });
     const { passwordHash, ...profile } = pilot;

@@ -221,6 +221,11 @@ exports.getJobs = async (req, res, next) => {
         andConditions.push({ reqWillingToRelocate: { not: true } });
       }
 
+      // Role — if pilot has declared a role, restrict to matching or unspecified job roles
+      if (pilot.role) {
+        andConditions.push({ OR: [{ role: null }, { role: pilot.role }] });
+      }
+
       // Work authorisation
       if (pilot.rightToWork.length === 0) {
         // No RTW on file: only show jobs with no requirement

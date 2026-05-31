@@ -970,9 +970,7 @@ export default function Profile() {
         country: profileData.country || '',
         city: profileData.city || '',
         education: profileData.education || null,
-        willingToRelocate: profileData.willingToRelocate,
-        isExaminer: profileData.isExaminer ?? false,
-        isInstructor: profileData.isInstructor ?? false,
+        role: profileData.role || '',
       };
       setPersonalForm(initial);
       setSavedSnapshot(initial);
@@ -1041,38 +1039,17 @@ export default function Profile() {
                   <option value="doctorate">Doctorate</option>
                 </select>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 24 }}>
-                <input
-                  type="checkbox" id="relocate"
-                  checked={personalForm.willingToRelocate}
-                  onChange={(e) => setPersonalForm((f) => ({ ...f, willingToRelocate: e.target.checked }))}
-                  style={{ width: 18, height: 18, cursor: 'pointer' }}
-                />
-                <label htmlFor="relocate" style={{ color: '#C0CDE0', fontSize: 14, cursor: 'pointer' }}>
-                  Willing to relocate
-                </label>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 24 }}>
-                <input
-                  type="checkbox" id="isInstructor"
-                  checked={personalForm.isInstructor}
-                  onChange={(e) => setPersonalForm((f) => ({ ...f, isInstructor: e.target.checked }))}
-                  style={{ width: 18, height: 18, cursor: 'pointer' }}
-                />
-                <label htmlFor="isInstructor" style={{ color: '#C0CDE0', fontSize: 14, cursor: 'pointer' }}>
-                  Flight instructor
-                </label>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 24 }}>
-                <input
-                  type="checkbox" id="isExaminer"
-                  checked={personalForm.isExaminer}
-                  onChange={(e) => setPersonalForm((f) => ({ ...f, isExaminer: e.target.checked }))}
-                  style={{ width: 18, height: 18, cursor: 'pointer' }}
-                />
-                <label htmlFor="isExaminer" style={{ color: '#C0CDE0', fontSize: 14, cursor: 'pointer' }}>
-                  Examiner
-                </label>
+              <div>
+                <label style={css.label}>Role</label>
+                <select
+                  style={{ ...css.input, cursor: 'pointer' }}
+                  value={personalForm.role || ''}
+                  onChange={(e) => setPersonalForm((f) => ({ ...f, role: e.target.value || '' }))}
+                >
+                  <option value="">Not specified</option>
+                  <option value="FIRST_OFFICER">First Officer</option>
+                  <option value="CAPTAIN">Captain</option>
+                </select>
               </div>
             </div>
 
