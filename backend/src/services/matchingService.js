@@ -77,6 +77,9 @@ const normaliseAuth = (a) =>
  * Hours and ratings are proportional soft scores.
  */
 function computeAlertScore(pilot, pilotTotals, job) {
+  // Hard role filter: if both sides specify a role and they disagree, skip this job entirely.
+  if (pilot.role && job.role && pilot.role !== job.role) return null;
+
   const certTypes = [...new Set(
     pilot.certificates.filter((c) => c.type !== 'ELP').flatMap((c) => normaliseCert(c.type))
   )];
@@ -176,6 +179,9 @@ function computeAlertScore(pilot, pilotTotals, job) {
  * maxScore is dynamic: starts at 100, increases only when the job carries a new criterion.
  */
 function computeMatchScore(pilot, pilotTotals, job) {
+  // Hard role filter: if both sides specify a role and they disagree, disqualify.
+  if (pilot.role && job.role && pilot.role !== job.role) return null;
+
   let score = 0;
   let maxScore = 100;
 

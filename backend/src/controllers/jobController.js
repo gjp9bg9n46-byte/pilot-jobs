@@ -122,81 +122,63 @@ exports.getJobs = async (req, res, next) => {
       const certAuthorities = [...new Set(flightCerts.flatMap((c) => normaliseAuth(c.issuingAuthority)))];
       const ratingTypes = pilot.ratings.map((r) => r.aircraftType.toUpperCase());
 
-      // Only restrict by certs if pilot has certs on file
-      if (certTypes.length > 0) {
-        andConditions.push({
-          OR: [{ reqCertificates: { isEmpty: true } }, { reqCertificates: { hasSome: certTypes } }],
-        });
-      }
+      // Certs — strict: pilot must have a matching cert, or job has no cert requirement.
+      // Principle: charitable null on the JOB side only; missing pilot data = fail.
+      andConditions.push(certTypes.length > 0
+        ? { OR: [{ reqCertificates: { isEmpty: true } }, { reqCertificates: { hasSome: certTypes } }] }
+        : { reqCertificates: { isEmpty: true } }
+      );
 
-      // Only restrict by authority if pilot has cert authorities on file
-      if (certAuthorities.length > 0) {
-        andConditions.push({
-          OR: [{ reqAuthorities: { isEmpty: true } }, { reqAuthorities: { hasSome: certAuthorities } }],
-        });
-      }
+      // Authority — strict
+      andConditions.push(certAuthorities.length > 0
+        ? { OR: [{ reqAuthorities: { isEmpty: true } }, { reqAuthorities: { hasSome: certAuthorities } }] }
+        : { reqAuthorities: { isEmpty: true } }
+      );
 
-      // Only restrict by hours if pilot has actually logged hours
-      if (totals.totalTime > 0) {
-        andConditions.push({
-          OR: [{ reqMinTotalHours: null }, { reqMinTotalHours: { lte: totals.totalTime } }],
-        });
-      }
+      // Total hours — strict: always compare; 0 pilot hours fails any positive job requirement
+      andConditions.push({
+        OR: [{ reqMinTotalHours: null }, { reqMinTotalHours: { lte: totals.totalTime ?? 0 } }],
+      });
 
-      if (totals.picTime > 0) {
-        andConditions.push({
-          OR: [{ reqMinPicHours: null }, { reqMinPicHours: { lte: totals.picTime } }],
-        });
-      }
+      // PIC hours — strict
+      andConditions.push({
+        OR: [{ reqMinPicHours: null }, { reqMinPicHours: { lte: totals.picTime ?? 0 } }],
+      });
 
-      // Only restrict by aircraft type if pilot has type ratings
-      if (ratingTypes.length > 0) {
-        andConditions.push({
-          OR: [
-            { reqAircraftTypes: { isEmpty: true } },
-            { reqAircraftTypes: { hasSome: ratingTypes } },
-          ],
-        });
-      }
+      // Aircraft type ratings — strict
+      andConditions.push(ratingTypes.length > 0
+        ? { OR: [{ reqAircraftTypes: { isEmpty: true } }, { reqAircraftTypes: { hasSome: ratingTypes } }] }
+        : { reqAircraftTypes: { isEmpty: true } }
+      );
 
-      // Only restrict by medical class if pilot has a medical on file.
-      // Hierarchy via shared helper: CLASS_1 satisfies CLASS_1/2/3; CLASS_2 satisfies CLASS_2/3.
+      // Medical class — strict: no medical on file → only jobs with no medical requirement
       const qualifiedMedicals = getQualifiedMedicalClasses(pilot.medicals);
-      if (qualifiedMedicals) {
-        andConditions.push({
-          OR: [{ reqMedicalClass: null }, { reqMedicalClass: { in: qualifiedMedicals } }],
-        });
-      }
+      andConditions.push(qualifiedMedicals
+        ? { OR: [{ reqMedicalClass: null }, { reqMedicalClass: { in: qualifiedMedicals } }] }
+        : { reqMedicalClass: null }
+      );
 
-      // Multi-engine hours
-      if (totals.multiEngineTime > 0) {
-        andConditions.push({
-          OR: [{ reqMinMultiEngineHours: null }, { reqMinMultiEngineHours: { lte: totals.multiEngineTime } }],
-        });
-      }
+      // Multi-engine hours — strict
+      andConditions.push({
+        OR: [{ reqMinMultiEngineHours: null }, { reqMinMultiEngineHours: { lte: totals.multiEngineTime ?? 0 } }],
+      });
 
-      // Turbine hours
-      if (totals.turbineTime > 0) {
-        andConditions.push({
-          OR: [{ reqMinTurbineHours: null }, { reqMinTurbineHours: { lte: totals.turbineTime } }],
-        });
-      }
+      // Turbine hours — strict
+      andConditions.push({
+        OR: [{ reqMinTurbineHours: null }, { reqMinTurbineHours: { lte: totals.turbineTime ?? 0 } }],
+      });
 
-      // Instrument hours
-      if (totals.instrumentTime > 0) {
-        andConditions.push({
-          OR: [{ reqMinInstrumentHours: null }, { reqMinInstrumentHours: { lte: totals.instrumentTime } }],
-        });
-      }
+      // Instrument hours — strict
+      andConditions.push({
+        OR: [{ reqMinInstrumentHours: null }, { reqMinInstrumentHours: { lte: totals.instrumentTime ?? 0 } }],
+      });
 
-      // Cross-country hours
-      if (totals.crossCountryTime > 0) {
-        andConditions.push({
-          OR: [{ reqMinCrossCountryHours: null }, { reqMinCrossCountryHours: { lte: totals.crossCountryTime } }],
-        });
-      }
+      // Cross-country hours — strict
+      andConditions.push({
+        OR: [{ reqMinCrossCountryHours: null }, { reqMinCrossCountryHours: { lte: totals.crossCountryTime ?? 0 } }],
+      });
 
-      // Education (charitable-null: only restrict when pilot has education on file)
+      // Education — strict: no education on file → only jobs with no education requirement
       if (pilot.education != null) {
         const pilotEduRank = EDU_RANK[pilot.education] ?? 0;
         const validEdus = Object.entries(EDU_RANK)
@@ -205,16 +187,17 @@ exports.getJobs = async (req, res, next) => {
         andConditions.push({
           OR: [{ reqEducation: null }, { reqEducation: { in: validEdus } }],
         });
+      } else {
+        andConditions.push({ reqEducation: null });
       }
 
-      // English level (ELP) — only restrict when pilot has a parseable ELP cert
+      // English level (ELP) — strict: no parseable ELP cert → only jobs with no ELP requirement
       const elpCert = pilot.certificates.find((c) => c.type === 'ELP');
       const pilotElpLevel = parseElpLevel(elpCert?.englishLevel);
-      if (pilotElpLevel != null) {
-        andConditions.push({
-          OR: [{ reqEnglishLevel: null }, { reqEnglishLevel: { lte: pilotElpLevel } }],
-        });
-      }
+      andConditions.push(pilotElpLevel != null
+        ? { OR: [{ reqEnglishLevel: null }, { reqEnglishLevel: { lte: pilotElpLevel } }] }
+        : { reqEnglishLevel: null }
+      );
 
       // Willing to relocate — if pilot is NOT willing, exclude jobs that require it
       if (!pilot.willingToRelocate) {
