@@ -157,12 +157,14 @@ export default function AirlineDetail() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
             <span style={S.badge(badge.color, badge.bg)}>{badge.label}</span>
-            <button style={S.editBtn} disabled>
+            <button
+              style={{ ...S.editBtn, cursor: 'pointer', color: '#00B4D8', border: '1px solid rgba(0,180,216,0.3)' }}
+              onClick={() => navigate(`/airlines/${airline.id}/contribute`)}
+            >
               <svg width="13" height="13" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M13 2l3 3-9 9H4v-3L13 2z"/>
               </svg>
               Suggest an edit
-              <span style={{ fontSize: 10, color: '#2A3C55', marginLeft: 4 }}>(coming soon)</span>
             </button>
           </div>
         </div>

@@ -10,6 +10,7 @@ import Register from './pages/auth/Register';
 import Jobs from './pages/Jobs';
 import Airlines from './pages/Airlines';
 import AirlineDetail from './pages/AirlineDetail';
+import AirlineContribute from './pages/AirlineContribute';
 import Alerts from './pages/Alerts';
 import Logbook from './pages/Logbook';
 import Profile from './pages/Profile';
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="jobs" element={<Jobs />} />
           <Route path="airlines" element={<Airlines />} />
           <Route path="airlines/:id" element={<AirlineDetail />} />
+          <Route path="airlines/:id/contribute" element={<AirlineContribute />} />
           <Route path="alerts" element={<Alerts />} />
           <Route path="logbook" element={<Logbook />} />
           <Route path="profile" element={<Profile />} />

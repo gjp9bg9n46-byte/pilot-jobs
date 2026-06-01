@@ -88,6 +88,8 @@ export const airlineApi = {
   list: (params) => api.get('/airlines', { params }),
   get: (id) => api.get(`/airlines/${id}`),
   getJobCount: (id) => api.get(`/airlines/${id}/job-count`),
+  contribute: (id, proposedChanges) => api.post(`/airlines/${id}/contributions`, { proposedChanges }),
+  getMine: (id) => api.get(`/airlines/${id}/contributions/mine`),
 };
 
 export const cvApi = {
