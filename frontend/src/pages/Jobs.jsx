@@ -1,12 +1,30 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
   Shield, Search, SlidersHorizontal, AlertTriangle, X,
   CheckCircle, XCircle, Minus, GraduationCap, Globe, Languages,
 } from 'lucide-react';
-import { jobApi, profileApi } from '../services/api';
+import { jobApi, profileApi, airlineApi } from '../services/api';
 import { setJobs } from '../store';
+
+// ─── Airline cache — fetched once per session, Map keyed by lowercase name ────
+let _airlineCache = null;
+
+async function fetchAirlineMap() {
+  if (_airlineCache) return _airlineCache;
+  const map = new Map();
+  let page = 1, totalPages = 1;
+  do {
+    const { data } = await airlineApi.list({ limit: 100, page });
+    data.items.forEach((a) => map.set(a.name.toLowerCase().trim(), { id: a.id, name: a.name }));
+    totalPages = data.totalPages;
+    page++;
+  } while (page <= totalPages);
+  _airlineCache = map;
+  return map;
+}
 
 // ─── Match-count computation (client-side) ────────────────────────────────────
 // NOTE: matching logic is duplicated in the server-side qualifiedOnly filter
@@ -386,8 +404,10 @@ function ReqRow({ req }) {
   );
 }
 
-function JobModal({ job, onClose, pilotProfile, pilotTotals }) {
+function JobModal({ job, onClose, pilotProfile, pilotTotals, airlineMap }) {
+  const navigate = useNavigate();
   if (!job) return null;
+  const airlineMatch = airlineMap?.get(job.company?.toLowerCase().trim());
 
   const matchCount = pilotProfile && pilotTotals
     ? computeMatchCount(job, pilotProfile, pilotTotals)
@@ -409,7 +429,17 @@ function JobModal({ job, onClose, pilotProfile, pilotTotals }) {
         <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#7A8CA0', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
         <div style={{ fontSize: 11, color: '#00B4D8', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>JOB DETAILS</div>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>{job.title}</div>
-        <div style={{ fontSize: 15, color: '#00B4D8', fontWeight: 600, marginBottom: formatSalary(job) ? 6 : (matchCount ? 10 : 20) }}>{job.company}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: formatSalary(job) ? 6 : (matchCount ? 10 : 20) }}>
+          <span style={{ fontSize: 15, color: '#00B4D8', fontWeight: 600 }}>{job.company}</span>
+          {airlineMatch && (
+            <button
+              onClick={() => { onClose(); navigate(`/airlines/${airlineMatch.id}`); }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: '#00B4D8', fontWeight: 600, opacity: 0.8, whiteSpace: 'nowrap', textDecoration: 'underline', textUnderlineOffset: 3 }}
+            >
+              View factfile →
+            </button>
+          )}
+        </div>
         {formatSalary(job) && (
           <div style={{ marginBottom: matchCount ? 10 : 18 }}>
             <span style={{
@@ -502,6 +532,7 @@ function JobModal({ job, onClose, pilotProfile, pilotTotals }) {
 }
 
 export default function Jobs() {
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { list: jobs, total } = useSelector((s) => s.jobs);
   const [loading, setLoading] = useState(false);
@@ -521,6 +552,13 @@ export default function Jobs() {
         setPilotTotals(totalsRes.data);
       })
       .catch(() => {}); // non-fatal — badge just won't show
+  }, []);
+
+  // Airline map — fetched once per session, cached at module level
+  const [airlineMap, setAirlineMap] = useState(() => _airlineCache);
+  useEffect(() => {
+    if (_airlineCache) return; // already cached
+    fetchAirlineMap().then(setAirlineMap).catch(() => {}); // non-fatal
   }, []);
 
   // Filter panel state
@@ -782,6 +820,7 @@ export default function Jobs() {
               const matchCount = pilotProfile && pilotTotals
                 ? computeMatchCount(job, pilotProfile, pilotTotals)
                 : null;
+              const airlineMatch = airlineMap?.get(job.company?.toLowerCase().trim());
               return (
                 <div
                   key={job.id}
@@ -850,6 +889,15 @@ export default function Jobs() {
                   {match && <div style={css.matchBadge(match)}>✓ {match.text}</div>}
                   {matchCount && <MatchCountBadge matched={matchCount.matched} total={matchCount.total} />}
 
+                  {airlineMatch && (
+                    <div
+                      onClick={(e) => { e.stopPropagation(); navigate(`/airlines/${airlineMatch.id}`); }}
+                      style={{ fontSize: 12, color: '#00B4D8', cursor: 'pointer', fontWeight: 600, opacity: 0.85, marginTop: 2 }}
+                    >
+                      View {airlineMatch.name} factfile →
+                    </div>
+                  )}
+
                   <button
                     style={{
                       ...css.viewBtn,
@@ -870,6 +918,7 @@ export default function Jobs() {
         onClose={() => setSelected(null)}
         pilotProfile={pilotProfile}
         pilotTotals={pilotTotals}
+        airlineMap={airlineMap}
       />
     </div>
   );
