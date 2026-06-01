@@ -833,7 +833,7 @@ export default function Logbook() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#7A8CA0' }}>Loading your logbook...</div>
       ) : (
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%' }}>
           <table style={{ ...css.table, minWidth: 700 }}>
             <thead>
               <tr>

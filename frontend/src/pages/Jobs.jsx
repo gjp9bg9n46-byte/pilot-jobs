@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
   Shield, Search, SlidersHorizontal, AlertTriangle, X,
@@ -384,20 +385,20 @@ function ReqRow({ req }) {
   const isMatch = req.matched;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #1B2B3B' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #1B2B3B', flexWrap: 'wrap' }}>
       <div style={{ flexShrink: 0 }}>
         {isMatch
           ? <CheckCircle size={16} color="#2ECC71" />
           : <XCircle    size={16} color="#E74C3C" />}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 110, color: '#7A8CA0', fontSize: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 80, color: '#7A8CA0', fontSize: 12, flexShrink: 0 }}>
         {icon}
         <span>{req.label}</span>
       </div>
-      <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: isMatch ? '#fff' : '#C0402A' }}>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: isMatch ? '#fff' : '#C0402A', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
         {req.reqValue}
       </div>
-      <div style={{ fontSize: 12, color: isMatch ? '#2ECC71' : '#7A8CA0', textAlign: 'right', minWidth: 80 }}>
+      <div style={{ fontSize: 12, color: isMatch ? '#2ECC71' : '#7A8CA0', textAlign: 'right', minWidth: 0, flexShrink: 1, overflowWrap: 'break-word' }}>
         {req.pilotValue ?? 'Not on profile'}
       </div>
     </div>
@@ -406,6 +407,7 @@ function ReqRow({ req }) {
 
 function JobModal({ job, onClose, pilotProfile, pilotTotals, airlineMap }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   if (!job) return null;
   const airlineMatch = airlineMap?.get(job.company?.toLowerCase().trim());
 
@@ -424,8 +426,8 @@ function JobModal({ job, onClose, pilotProfile, pilotTotals, airlineMap }) {
   ].filter(Boolean);
 
   return (
-    <div style={css.modal} onClick={onClose}>
-      <div style={css.modalCard} onClick={(e) => e.stopPropagation()}>
+    <div style={{ ...css.modal, padding: isMobile ? 8 : 24 }} onClick={onClose}>
+      <div style={{ ...css.modalCard, padding: isMobile ? '20px 16px' : 36 }} onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#7A8CA0', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
         <div style={{ fontSize: 11, color: '#00B4D8', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>JOB DETAILS</div>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>{job.title}</div>
