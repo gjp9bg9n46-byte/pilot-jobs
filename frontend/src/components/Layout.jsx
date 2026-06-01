@@ -45,7 +45,12 @@ const PAGE_TITLES = {
   '/jobs': 'Job Openings', '/airlines': 'Airline Factfile', '/alerts': 'My Alerts',
   '/logbook': 'Flight Logbook', '/profile': 'My Profile',
   '/cv': 'CV Builder', '/support': 'Support', '/settings': 'Settings',
+  '/admin/moderation': 'Moderation Queue',
 };
+
+const MODERATION_ICON = (
+  <Ico extra={<><path d="M9 1.5L2 5v5c0 4 3 7 7 7s7-3 7-7V5L9 1.5z"/><polyline points="6 9 8 11 12 7"/></>} />
+);
 
 export default function Layout() {
   const dispatch  = useDispatch();
@@ -181,6 +186,20 @@ export default function Layout() {
               )}
             </NavLink>
           ))}
+
+          {pilot?.isAdmin && (
+            <NavLink to="/admin/moderation" style={({ isActive }) => ({
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '11px 14px', borderRadius: 10, textDecoration: 'none',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+              marginTop: 4,
+              background: isActive ? '#1B2B4B' : 'transparent',
+              color: isActive ? '#00B4D8' : '#7A8CA0',
+            })}>
+              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
+              Moderation
+            </NavLink>
+          )}
         </nav>
 
         <button
