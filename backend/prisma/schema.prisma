@@ -59,6 +59,34 @@ enum PilotRole {
   CAPTAIN
 }
 
+enum HiringStatus {
+  ACTIVELY_HIRING
+  OCCASIONAL
+  PAUSED
+  UNKNOWN
+}
+
+enum HiringFrequency {
+  CONTINUOUS
+  PERIODIC
+  RARE
+  UNKNOWN
+}
+
+enum AirlineContractType {
+  PERMANENT
+  FIXED_TERM
+  AGENCY
+  PAY_TO_FLY
+  MIXED
+}
+
+enum ContributionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Pilot {
   id              String    @id @default(uuid())
   email           String    @unique
@@ -81,6 +109,7 @@ model Pilot {
   willingToRelocate Boolean @default(true)
   isInstructor    Boolean   @default(false)
   isExaminer      Boolean   @default(false)
+  isAdmin         Boolean   @default(false)
   // Privacy flags
   profileVisible     Boolean  @default(true)
   anonymousBrowsing  Boolean  @default(false)
@@ -105,8 +134,10 @@ model Pilot {
   savedJobs       SavedJob[]
   applications    Application[]
   jobReports      JobReport[]
-  savedSearches   SavedSearch[]
-  cvData          CvData?
+  savedSearches         SavedSearch[]
+  cvData                CvData?
+  contributions         AirlineFactContribution[] @relation("ContributorContributions")
+  reviewedContributions AirlineFactContribution[] @relation("ReviewerReviews")
 }
 
 model PilotCertificate {
@@ -418,4 +449,52 @@ model CvData {
   updatedAt DateTime @updatedAt
 
   pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+// ─── Airline Factfile ─────────────────────────────────────────────────────────
+
+model Airline {
+  id                   String               @id @default(uuid())
+  name                 String
+  iataCode             String?              @unique
+  icaoCode             String?              @unique
+  country              String
+  region               String               // validated: 'Europe' | 'Americas' | 'Asia-Pacific' | 'Middle East' | 'Africa'
+  headquarters         String?
+  description          String?
+  bases                String[]
+  fleet                String[]
+  hiringStatus         HiringStatus         @default(UNKNOWN)
+  hiringFrequency      HiringFrequency      @default(UNKNOWN)
+  payRanges            Json?
+  rosterPattern        String?
+  contractType         AirlineContractType?
+  workAuthRequired     String[]
+  avgResponseDays      Int?
+  interviewStages      String[]
+  simType              String?
+  upgradeTimeMinYears  Float?
+  upgradeTimeMaxYears  Float?
+  notes                String?
+  verifiedContributors Int                  @default(0)
+  lastUpdatedAt        DateTime             @default(now()) @updatedAt
+  createdAt            DateTime             @default(now())
+
+  contributions        AirlineFactContribution[]
+}
+
+model AirlineFactContribution {
+  id              String             @id @default(uuid())
+  airlineId       String
+  contributorId   String
+  proposedChanges Json               // flat { fieldName: newValue } — null = explicit clear
+  status          ContributionStatus @default(PENDING)
+  reviewerId      String?
+  reviewedAt      DateTime?
+  reviewNote      String?
+  createdAt       DateTime           @default(now())
+
+  airline      Airline @relation(fields: [airlineId], references: [id], onDelete: Cascade)
+  contributor  Pilot   @relation("ContributorContributions", fields: [contributorId], references: [id])
+  reviewer     Pilot?  @relation("ReviewerReviews",          fields: [reviewerId],    references: [id])
 }

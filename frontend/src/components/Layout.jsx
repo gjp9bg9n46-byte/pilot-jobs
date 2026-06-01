@@ -12,33 +12,37 @@ const Ico = ({ d, extra, size = 18 }) => (
   </svg>
 );
 
+const AIRLINES_ICON = <Ico extra={<><path d="M2 9h14M9 3l6 6-6 6"/><circle cx="5" cy="9" r="1.5"/></>} />;
+
 const NAV = [
-  { to: '/jobs',    label: 'Jobs',
+  { to: '/jobs',     label: 'Jobs',
     icon: <Ico extra={<><rect x="2" y="6" width="14" height="10" rx="1.5"/><path d="M6 6V4.5A1.5 1.5 0 017.5 3h3A1.5 1.5 0 0112 4.5V6"/><line x1="2" y1="11" x2="16" y2="11"/></>} /> },
-  { to: '/alerts',  label: 'Alerts',
+  { to: '/airlines', label: 'Airlines', icon: AIRLINES_ICON },
+  { to: '/alerts',   label: 'Alerts',
     icon: <Ico extra={<><path d="M9 2.5a4.5 4.5 0 00-4.5 4.5v2.5L3 12h12l-1.5-2.5V7A4.5 4.5 0 009 2.5z"/><path d="M7.5 14.5a1.5 1.5 0 003 0"/></>} /> },
-  { to: '/logbook', label: 'Logbook',
+  { to: '/logbook',  label: 'Logbook',
     icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="6.5" x2="12" y2="6.5"/><line x1="6" y1="9" x2="12" y2="9"/><line x1="6" y1="11.5" x2="10" y2="11.5"/></>} /> },
-  { to: '/profile', label: 'Profile',
+  { to: '/profile',  label: 'Profile',
     icon: <Ico extra={<><circle cx="9" cy="6.5" r="2.5"/><path d="M3 16a6 6 0 0112 0"/></>} /> },
   { to: '/settings', label: 'Settings',
     icon: <Ico extra={<><circle cx="9" cy="9" r="2.5"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.6 3.6l1.4 1.4M13 13l1.4 1.4M3.6 14.4l1.4-1.4M13 5l1.4-1.4"/></>} /> },
 ];
 
 const SIDEBAR_NAV = [
-  { to: '/jobs',    label: 'Jobs',    icon: NAV[0].icon },
-  { to: '/alerts',  label: 'Alerts',  icon: NAV[1].icon },
-  { to: '/logbook', label: 'Logbook', icon: NAV[2].icon },
-  { to: '/profile', label: 'Profile', icon: NAV[3].icon },
+  { to: '/jobs',      label: 'Jobs',      icon: NAV[0].icon },
+  { to: '/airlines',  label: 'Airlines',  icon: NAV[1].icon },
+  { to: '/alerts',    label: 'Alerts',    icon: NAV[2].icon },
+  { to: '/logbook',   label: 'Logbook',   icon: NAV[3].icon },
+  { to: '/profile',   label: 'Profile',   icon: NAV[4].icon },
   { to: '/cv',      label: 'CV Builder',
     icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="5.5" x2="12" y2="5.5"/><line x1="6" y1="8" x2="12" y2="8"/><line x1="6" y1="10.5" x2="9" y2="10.5"/><circle cx="11.5" cy="12" r="2"/><path d="M13 13.5l1.5 1.5"/></>} /> },
-  { to: '/settings', label: 'Settings', icon: NAV[4].icon },
+  { to: '/settings', label: 'Settings', icon: NAV[5].icon },
   { to: '/support', label: 'Support',
     icon: <Ico extra={<><path d="M2.5 3h13a1 1 0 011 1v7.5a1 1 0 01-1 1H5.5l-3 3V4a1 1 0 011-1z"/></>} /> },
 ];
 
 const PAGE_TITLES = {
-  '/jobs': 'Job Openings', '/alerts': 'My Alerts',
+  '/jobs': 'Job Openings', '/airlines': 'Airline Factfile', '/alerts': 'My Alerts',
   '/logbook': 'Flight Logbook', '/profile': 'My Profile',
   '/cv': 'CV Builder', '/support': 'Support', '/settings': 'Settings',
 };

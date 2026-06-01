@@ -84,6 +84,12 @@ export const jobApi = {
   triggerMatch: () => api.post('/jobs/alerts/run-match'),
 };
 
+export const airlineApi = {
+  list: (params) => api.get('/airlines', { params }),
+  get: (id) => api.get(`/airlines/${id}`),
+  getJobCount: (id) => api.get(`/airlines/${id}/job-count`),
+};
+
 export const cvApi = {
   getData:      ()         => api.get('/cv'),
   update:       (data)     => api.put('/cv', data),

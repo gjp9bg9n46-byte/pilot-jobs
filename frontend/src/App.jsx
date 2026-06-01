@@ -8,6 +8,8 @@ import Layout from './components/Layout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Jobs from './pages/Jobs';
+import Airlines from './pages/Airlines';
+import AirlineDetail from './pages/AirlineDetail';
 import Alerts from './pages/Alerts';
 import Logbook from './pages/Logbook';
 import Profile from './pages/Profile';
@@ -40,6 +42,8 @@ export default function App() {
         <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
           <Route index element={<Navigate to="/jobs" replace />} />
           <Route path="jobs" element={<Jobs />} />
+          <Route path="airlines" element={<Airlines />} />
+          <Route path="airlines/:id" element={<AirlineDetail />} />
           <Route path="alerts" element={<Alerts />} />
           <Route path="logbook" element={<Logbook />} />
           <Route path="profile" element={<Profile />} />
