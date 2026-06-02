@@ -35,6 +35,15 @@ const EDU_RANK  = { high_school: 1, technical: 2, bachelor: 3, masters: 4, docto
 const EDU_LABEL = { high_school: 'High School', technical: 'Technical / Vocational', bachelor: "Bachelor's Degree", masters: "Master's Degree", doctorate: 'Doctorate' };
 const WA_LABEL  = { EU: 'EU Work Authorization', US: 'US Work Authorization', UK: 'UK Work Authorization', required: 'Work Authorization Required' };
 
+// Mirrors server-side parseElpLevel — must use regex, NOT parseInt, because values are "Level 5" strings
+function parseElp(str) {
+  if (str == null) return null;
+  const m = String(str).match(/\d+/);
+  if (!m) return null;
+  const n = parseInt(m[0], 10);
+  return (n >= 1 && n <= 6) ? n : null;
+}
+
 // Pilot RTW country field is free text. Check if an entry matches a required region.
 function rtwMatchesRegion(country, region) {
   const c = country.toLowerCase();
@@ -120,10 +129,37 @@ function computeMatchCount(job, profile, totals) {
       matchingRtw ? matchingRtw.country : (rtw.length > 0 && job.reqWorkAuthorization === 'required' ? rtw[0].country : null));
   }
   if (job.reqEnglishLevel != null) {
-    const elpCerts  = (profile.certificates || []).filter((c) => c.type === 'ELP');
-    const maxLevel  = elpCerts.reduce((m, c) => Math.max(m, parseInt(c.englishLevel) || 0), 0);
+    const elpCerts = (profile.certificates || []).filter((c) => c.type === 'ELP');
+    const maxLevel = elpCerts.reduce((m, c) => {
+      const lvl = parseElp(c.englishLevel);
+      return lvl !== null ? Math.max(m, lvl) : m;
+    }, 0);
     req('English Level', `ICAO Level ${job.reqEnglishLevel}`, 'Languages',
       maxLevel >= job.reqEnglishLevel, maxLevel > 0 ? `Level ${maxLevel}` : null);
+  }
+  if (job.reqMinMultiEngineHours != null) {
+    const multi = totals?.multiEngineTime ?? 0;
+    req('Multi-Engine', `${job.reqMinMultiEngineHours.toLocaleString()} hrs min`, 'Wrench',
+      multi >= job.reqMinMultiEngineHours, `${Math.round(multi).toLocaleString()} hrs`);
+  }
+  if (job.reqMinTurbineHours != null) {
+    const turb = totals?.turbineTime ?? 0;
+    req('Turbine Time', `${job.reqMinTurbineHours.toLocaleString()} hrs min`, 'Wrench',
+      turb >= job.reqMinTurbineHours, `${Math.round(turb).toLocaleString()} hrs`);
+  }
+  if (job.reqMinInstrumentHours != null) {
+    const inst = totals?.instrumentTime ?? 0;
+    req('Instrument', `${job.reqMinInstrumentHours.toLocaleString()} hrs min`, 'Wrench',
+      inst >= job.reqMinInstrumentHours, `${Math.round(inst).toLocaleString()} hrs`);
+  }
+  if (job.reqMinCrossCountryHours != null) {
+    const cc = totals?.crossCountryTime ?? 0;
+    req('Cross-Country', `${job.reqMinCrossCountryHours.toLocaleString()} hrs min`, 'MapPin',
+      cc >= job.reqMinCrossCountryHours, `${Math.round(cc).toLocaleString()} hrs`);
+  }
+  if (job.reqWillingToRelocate) {
+    const willing = profile.willingToRelocate ?? true;
+    req('Willing to Relocate', 'Required', 'MapPin', willing, willing ? 'Yes' : 'No');
   }
   if (job.role) {
     const roleLabel = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor' }[job.role] || job.role;
@@ -375,9 +411,11 @@ const REQ_ICON_MAP = {
   Target:    <Target    size={12} />,
   Shield:    <Shield    size={12} />,
   Plane:     <Plane     size={12} />,
+  Wrench:    <Wrench    size={12} />,
   GraduationCap: <GraduationCap size={12} />,
   Globe:     <Globe     size={12} />,
   Languages: <Languages size={12} />,
+  MapPin:    <MapPin    size={12} />,
 };
 
 function ReqRow({ req }) {
@@ -418,11 +456,9 @@ function JobModal({ job, onClose, pilotProfile, pilotTotals, airlineMap }) {
   const missing = matchCount?.requirements.filter((r) => !r.matched) ?? [];
   const hasReqs = matchCount && matchCount.total > 0;
 
-  // Extra non-matched fields for display only (not counted in match score)
+  // Extra non-matched fields shown in info grid (location only — hours are now in requirements)
   const extraFields = [
     job.location && ['Location', job.location, <MapPin size={11} />],
-    job.reqMinMultiEngineHours && ['Multi-Engine', `${job.reqMinMultiEngineHours.toLocaleString()} hrs`, <Wrench size={11} />],
-    job.reqMinTurbineHours     && ['Turbine Time', `${job.reqMinTurbineHours.toLocaleString()} hrs`, <Wrench size={11} />],
   ].filter(Boolean);
 
   return (
