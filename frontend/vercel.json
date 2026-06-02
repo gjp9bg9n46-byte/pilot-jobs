@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://cockpithire.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://pilotjobs-production.up.railway.app/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
