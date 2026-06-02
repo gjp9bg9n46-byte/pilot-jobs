@@ -1,4 +1,12 @@
 'use strict';
+/**
+ * ⚠ DATABASE SAFETY
+ * DO NOT use --force-reset. Use prisma migrate dev for development
+ * and prisma migrate deploy for production.
+ * Force-reset wipes ALL data with no recovery path.
+ * Run scripts/backup-db.js before any destructive schema operation.
+ */
+
 
 /**
  * Seeds 29 skeleton airline rows for the Airline Factfile feature.
