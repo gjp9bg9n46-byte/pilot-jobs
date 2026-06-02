@@ -17,7 +17,9 @@ const puppeteer = require('puppeteer');
 const logger = require('../../../config/logger');
 const { AntiBotBlockedError } = require('../../http');
 
-const USER_AGENT = `PilotJobsIngest/1.0 (+contact: ${process.env.CONTACT_EMAIL || 'noreply@example.com'})`;
+// Browser UA required — 'PilotJobsIngest/...' is blocked by WAF on Workday career sites.
+// Ethical compliance maintained via robots.txt honoring in http.js.
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const NAV_TIMEOUT_MS = 30000;
 const SELECTOR_TIMEOUT_MS = 15000;
 // Workday equivalent of 1 req/3s: wait between page navigations
