@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store';
@@ -13,8 +13,11 @@ const Ico = ({ d, extra, size = 18 }) => (
 );
 
 const AIRLINES_ICON = <Ico extra={<><path d="M2 9h14M9 3l6 6-6 6"/><circle cx="5" cy="9" r="1.5"/></>} />;
+const MODERATION_ICON = (
+  <Ico extra={<><path d="M9 1.5L2 5v5c0 4 3 7 7 7s7-3 7-7V5L9 1.5z"/><polyline points="6 9 8 11 12 7"/></>} />
+);
 
-const NAV = [
+const NAV_ITEMS = [
   { to: '/jobs',     label: 'Jobs',
     icon: <Ico extra={<><rect x="2" y="6" width="14" height="10" rx="1.5"/><path d="M6 6V4.5A1.5 1.5 0 017.5 3h3A1.5 1.5 0 0112 4.5V6"/><line x1="2" y1="11" x2="16" y2="11"/></>} /> },
   { to: '/airlines', label: 'Airlines', icon: AIRLINES_ICON },
@@ -22,23 +25,22 @@ const NAV = [
     icon: <Ico extra={<><path d="M9 2.5a4.5 4.5 0 00-4.5 4.5v2.5L3 12h12l-1.5-2.5V7A4.5 4.5 0 009 2.5z"/><path d="M7.5 14.5a1.5 1.5 0 003 0"/></>} /> },
   { to: '/logbook',  label: 'Logbook',
     icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="6.5" x2="12" y2="6.5"/><line x1="6" y1="9" x2="12" y2="9"/><line x1="6" y1="11.5" x2="10" y2="11.5"/></>} /> },
+  { to: '/cv',       label: 'CV Builder',
+    icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="5.5" x2="12" y2="5.5"/><line x1="6" y1="8" x2="12" y2="8"/><line x1="6" y1="10.5" x2="9" y2="10.5"/><circle cx="11.5" cy="12" r="2"/><path d="M13 13.5l1.5 1.5"/></>} /> },
   { to: '/profile',  label: 'Profile',
     icon: <Ico extra={<><circle cx="9" cy="6.5" r="2.5"/><path d="M3 16a6 6 0 0112 0"/></>} /> },
+];
+
+const BOTTOM_NAV_ITEMS = [
   { to: '/settings', label: 'Settings',
     icon: <Ico extra={<><circle cx="9" cy="9" r="2.5"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.6 3.6l1.4 1.4M13 13l1.4 1.4M3.6 14.4l1.4-1.4M13 5l1.4-1.4"/></>} /> },
+  { to: '/support',  label: 'Support',
+    icon: <Ico extra={<><path d="M2.5 3h13a1 1 0 011 1v7.5a1 1 0 01-1 1H5.5l-3 3V4a1 1 0 011-1z"/></>} /> },
 ];
 
 const SIDEBAR_NAV = [
-  { to: '/jobs',      label: 'Jobs',      icon: NAV[0].icon },
-  { to: '/airlines',  label: 'Airlines',  icon: NAV[1].icon },
-  { to: '/alerts',    label: 'Alerts',    icon: NAV[2].icon },
-  { to: '/logbook',   label: 'Logbook',   icon: NAV[3].icon },
-  { to: '/profile',   label: 'Profile',   icon: NAV[4].icon },
-  { to: '/cv',      label: 'CV Builder',
-    icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="5.5" x2="12" y2="5.5"/><line x1="6" y1="8" x2="12" y2="8"/><line x1="6" y1="10.5" x2="9" y2="10.5"/><circle cx="11.5" cy="12" r="2"/><path d="M13 13.5l1.5 1.5"/></>} /> },
-  { to: '/settings', label: 'Settings', icon: NAV[5].icon },
-  { to: '/support', label: 'Support',
-    icon: <Ico extra={<><path d="M2.5 3h13a1 1 0 011 1v7.5a1 1 0 01-1 1H5.5l-3 3V4a1 1 0 011-1z"/></>} /> },
+  ...NAV_ITEMS,
+  ...BOTTOM_NAV_ITEMS,
 ];
 
 const PAGE_TITLES = {
@@ -48,99 +50,242 @@ const PAGE_TITLES = {
   '/admin/moderation': 'Moderation Queue',
 };
 
-const MODERATION_ICON = (
-  <Ico extra={<><path d="M9 1.5L2 5v5c0 4 3 7 7 7s7-3 7-7V5L9 1.5z"/><polyline points="6 9 8 11 12 7"/></>} />
-);
+const SIGN_OUT_ICON = <Ico size={18} extra={<><path d="M7 3H3a1 1 0 00-1 1v10a1 1 0 001 1h4"/><polyline points="12 5 16 9 12 13"/><line x1="16" y1="9" x2="6" y2="9"/></>} />;
+
+// ─── Drawer nav link style (mirrors desktop sidebar active state) ─────────────
+function drawerLinkStyle(isActive) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 14,
+    padding: '13px 20px', textDecoration: 'none',
+    fontSize: 15, fontWeight: 600,
+    background: isActive ? '#1B2B4B' : 'transparent',
+    color: isActive ? '#00B4D8' : '#C8D8E8',
+    transition: 'background 0.1s, color 0.1s',
+  };
+}
 
 export default function Layout() {
-  const dispatch  = useDispatch();
-  const navigate  = useNavigate();
-  const pilot     = useSelector((s) => s.auth.pilot);
-  const alerts    = useSelector((s) => s.jobs.alerts);
-  const unread    = alerts.filter((a) => !a.readAt).length;
-  const isMobile  = useIsMobile();
-  const path      = window.location.pathname;
+  const dispatch   = useDispatch();
+  const navigate   = useNavigate();
+  const pilot      = useSelector((s) => s.auth.pilot);
+  const alerts     = useSelector((s) => s.jobs.alerts);
+  const unread     = alerts.filter((a) => !a.readAt).length;
+  const isMobile   = useIsMobile();
+  const path       = window.location.pathname;
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Close drawer on Escape
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const handler = (e) => { if (e.key === 'Escape') setDrawerOpen(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [drawerOpen]);
+
+  // Prevent body scroll while drawer is open
+  useEffect(() => {
+    if (!isMobile) return;
+    document.body.style.overflow = drawerOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [drawerOpen, isMobile]);
 
   const handleLogout = () => { dispatch(logout()); navigate('/login'); };
+  const closeDrawer  = () => setDrawerOpen(false);
 
   const initials = pilot
     ? `${pilot.firstName?.[0] ?? ''}${pilot.lastName?.[0] ?? ''}`.toUpperCase()
     : '?';
 
+  // ─── Mobile layout ────────────────────────────────────────────────────────────
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0A1628', overflow: 'hidden' }}>
-        {/* Mobile top bar */}
+
+        {/* ── Backdrop ───────────────────────────────────────────────────────── */}
+        <div
+          aria-hidden="true"
+          onClick={closeDrawer}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.5)',
+            opacity: drawerOpen ? 1 : 0,
+            pointerEvents: drawerOpen ? 'auto' : 'none',
+            transition: 'opacity 250ms ease',
+          }}
+        />
+
+        {/* ── Slide-out drawer ───────────────────────────────────────────────── */}
+        <nav
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+          style={{
+            position: 'fixed', top: 0, left: 0, height: '100%',
+            width: '80vw', maxWidth: 320,
+            background: '#0D1E35', borderRight: '1px solid #1E3050',
+            display: 'flex', flexDirection: 'column',
+            zIndex: 1001,
+            transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 250ms ease',
+            willChange: 'transform',
+          }}
+        >
+          {/* Drawer header — fixed at top */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '18px 16px', borderBottom: '1px solid #1E3050', flexShrink: 0,
+          }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#00B4D8', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#00B4D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
+              </svg>
+              CockpitHire
+            </div>
+            <button
+              onClick={closeDrawer}
+              aria-label="Close menu"
+              style={{
+                width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'none', border: 'none', cursor: 'pointer', color: '#7A8CA0',
+                borderRadius: 8, flexShrink: 0,
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="3" x2="15" y2="15"/><line x1="15" y1="3" x2="3" y2="15"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Drawer body — scrollable */}
+          <div style={{ flex: 1, overflowY: 'auto', paddingTop: 8, paddingBottom: 8 }}>
+            {/* Main nav */}
+            {NAV_ITEMS.map(({ to, icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={closeDrawer}
+                style={({ isActive }) => drawerLinkStyle(isActive)}
+              >
+                <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+                <span style={{ flex: 1 }}>{label}</span>
+                {to === '/alerts' && unread > 0 && (
+                  <span style={{
+                    background: '#00B4D8', color: '#0A1628',
+                    borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px',
+                  }}>
+                    {unread}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+
+            {/* Admin-only moderation link */}
+            {pilot?.isAdmin && (
+              <NavLink
+                to="/admin/moderation"
+                onClick={closeDrawer}
+                style={({ isActive }) => drawerLinkStyle(isActive)}
+              >
+                <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
+                <span>Moderation</span>
+              </NavLink>
+            )}
+
+            {/* Divider */}
+            <div style={{ height: 1, background: '#1E3050', margin: '8px 20px' }} />
+
+            {/* Bottom nav items */}
+            {BOTTOM_NAV_ITEMS.map(({ to, icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={closeDrawer}
+                style={({ isActive }) => drawerLinkStyle(isActive)}
+              >
+                <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+                <span>{label}</span>
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Sign out — pinned at bottom of drawer */}
+          <div style={{ borderTop: '1px solid #1E3050', padding: '8px 0', flexShrink: 0 }}>
+            <button
+              onClick={() => { closeDrawer(); handleLogout(); }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                padding: '13px 20px', background: 'none', border: 'none',
+                cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#7A8CA0',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{SIGN_OUT_ICON}</span>
+              Sign Out
+            </button>
+          </div>
+        </nav>
+
+        {/* ── Mobile top bar ─────────────────────────────────────────────────── */}
         <header style={{
-          padding: '14px 16px',
+          padding: '0 16px',
+          height: 52,
           background: '#0D1E35',
           borderBottom: '1px solid #1E3050',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexShrink: 0,
         }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#00B4D8', letterSpacing: '-0.5px' }}>
-            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#00B4D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 6 }}>
+          {/* Hamburger */}
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open navigation menu"
+            aria-expanded={drawerOpen}
+            style={{
+              width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'none', border: 'none', cursor: 'pointer', color: '#C8D8E8',
+              borderRadius: 8, flexShrink: 0, marginLeft: -8,
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <line x1="3" y1="5"  x2="17" y2="5"/>
+              <line x1="3" y1="10" x2="17" y2="10"/>
+              <line x1="3" y1="15" x2="17" y2="15"/>
+            </svg>
+          </button>
+
+          {/* Logo */}
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#00B4D8', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="#00B4D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
             </svg>
             CockpitHire
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 12, color: '#7A8CA0' }}>{pilot?.firstName}</span>
+
+          {/* Avatar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {unread > 0 && (
+              <span style={{
+                background: '#00B4D8', color: '#0A1628',
+                borderRadius: 10, fontSize: 10, fontWeight: 800, padding: '2px 6px',
+              }}>
+                {unread}
+              </span>
+            )}
             <div style={{
-              width: 30, height: 30, borderRadius: '50%',
+              width: 32, height: 32, borderRadius: '50%',
               background: 'linear-gradient(135deg, #00B4D8, #0077A8)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, fontSize: 12, color: '#fff',
+              fontWeight: 800, fontSize: 12, color: '#fff', flexShrink: 0,
             }}>
               {initials}
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 0' }}>
+        {/* ── Page content ───────────────────────────────────────────────────── */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 24px' }}>
           <Outlet />
         </div>
 
-        {/* Bottom navigation bar */}
-        <nav style={{
-          display: 'flex', background: '#0D1E35',
-          borderTop: '1px solid #1E3050',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          flexShrink: 0,
-        }}>
-          {NAV.map(({ to, icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              style={({ isActive }) => ({
-                flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                padding: '10px 4px 8px',
-                textDecoration: 'none',
-                color: isActive ? '#00B4D8' : '#4A6080',
-                position: 'relative',
-              })}
-            >
-              {({ isActive }) => (
-                <>
-                  {to === '/alerts' && unread > 0 && (
-                    <span style={{
-                      position: 'absolute', top: 6, right: '50%', transform: 'translateX(8px)',
-                      background: '#00B4D8', color: '#0A1628',
-                      borderRadius: 10, fontSize: 9, fontWeight: 800,
-                      padding: '1px 5px', lineHeight: '14px',
-                    }}>
-                      {unread}
-                    </span>
-                  )}
-                  <span style={{ color: isActive ? '#00B4D8' : '#4A6080' }}>{icon}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, marginTop: 4, letterSpacing: 0.2 }}>{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
       </div>
     );
   }
@@ -166,25 +311,29 @@ export default function Layout() {
         </div>
 
         <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {SIDEBAR_NAV.map(({ to, icon, label }) => (
-            <NavLink key={to} to={to} style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '11px 14px', borderRadius: 10, textDecoration: 'none',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-              background: isActive ? '#1B2B4B' : 'transparent',
-              color: isActive ? '#00B4D8' : '#7A8CA0',
-            })}>
-              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{icon}</span>
-              {label}
-              {to === '/alerts' && unread > 0 && (
-                <span style={{
-                  marginLeft: 'auto', background: '#00B4D8', color: '#0A1628',
-                  borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px',
-                }}>
-                  {unread}
-                </span>
-              )}
-            </NavLink>
+          {SIDEBAR_NAV.map(({ to, icon, label }, i) => (
+            <React.Fragment key={to}>
+              {/* Divider before Settings (index 6 = after CV Builder and Profile) */}
+              {i === 6 && <div style={{ height: 1, background: '#1E3050', margin: '4px 2px 8px' }} />}
+              <NavLink to={to} style={({ isActive }) => ({
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '11px 14px', borderRadius: 10, textDecoration: 'none',
+                fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                background: isActive ? '#1B2B4B' : 'transparent',
+                color: isActive ? '#00B4D8' : '#7A8CA0',
+              })}>
+                <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{icon}</span>
+                {label}
+                {to === '/alerts' && unread > 0 && (
+                  <span style={{
+                    marginLeft: 'auto', background: '#00B4D8', color: '#0A1628',
+                    borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px',
+                  }}>
+                    {unread}
+                  </span>
+                )}
+              </NavLink>
+            </React.Fragment>
           ))}
 
           {pilot?.isAdmin && (
@@ -212,7 +361,7 @@ export default function Layout() {
           }}
         >
           <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>
-            <Ico size={18} extra={<><path d="M7 3H3a1 1 0 00-1 1v10a1 1 0 001 1h4"/><polyline points="12 5 16 9 12 13"/><line x1="16" y1="9" x2="6" y2="9"/></>} />
+            {SIGN_OUT_ICON}
           </span>
           Sign Out
         </button>
