@@ -152,22 +152,46 @@ module.exports = [
   // Uses direct JSON API endpoint — faster, full detail extraction, no Puppeteer.
   // Fetches listing page + detail pages for requirements + salary extraction.
 
-  // Verified 2026-06-02: swa.wd1.myworkdayjobs.com/wday/cxs/swa/external/jobs (3 pilots)
+  // Verified 2026-06-02: swa.wd1.myworkdayjobs.com/wday/cxs/swa/external/jobs (1 pilot)
   {
     source: 'WORKDAY_REST',
     config: 'southwest-rest',
     company: 'Southwest Airlines',
   },
 
-  // NOT verified on Workday (checked 2026-06-02):
-  //   JetBlue → SAP SuccessFactors (not supported)
-  //   Spirit Airlines → iCIMS (not supported)
-  //   Emirates → Taleo (not supported)
-  //   Air Canada → ATS undetected (custom or Oracle HCM)
-  //   Cathay Pacific → ATS undetected
-  //   British Airways → careers.ba.com returned 404 on listing page
-  //   Lufthansa → connection refused on lhcareers.com
-  //   Hawaiian Airlines → domain not resolving
-  //   Delta → Workday API probes failed (likely behind WAF)
-  //   American Airlines → Workday API probes failed
+  // Verified 2026-06-02: Public Workday cadet/training programs
+  // uaa.wd12.myworkdayjobs.com/wday/cxs/uaa/EXT/jobs (1 job)
+  {
+    source: 'WORKDAY_REST',
+    config: 'uaa-rest',
+    company: 'United Aviate Academy',
+  },
+
+  // rjet.wd108.myworkdayjobs.com/wday/cxs/rjet/External_Career_Site/jobs (39 jobs)
+  {
+    source: 'WORKDAY_REST',
+    config: 'rjet-rest',
+    company: 'Republic Airways (RJet)',
+  },
+
+  // API returned 422 — needs investigation. Site code may be incorrect.
+  // Disabled pending further research.
+  {
+    source: 'WORKDAY_REST',
+    config: 'aaregional-rest',
+    company: 'American Eagle (AAregional)',
+    disabled: true,
+  },
+
+  // ── Permanently Disabled — Non-Public Workday or Alternative ATS ──────────
+  // These major carriers do NOT use public Workday for pilot hiring.
+  // Checked 2026-06-02:
+  //   Delta Mainline → Custom/proprietary pilot portal (not Workday)
+  //   American Mainline → Custom/proprietary pilot portal (not Workday)
+  //   United Mainline → Behind WAF; API probes failed
+  //   JetBlue → SAP SuccessFactors (not Workday)
+  //   Spirit Airlines → iCIMS (not Workday)
+  //   Frontier Airlines → Unknown ATS (not publicly accessible)
+  //   Air Canada → Custom or Oracle HCM (not Workday)
+  //   Other: Emirates (Taleo), British Airways (404), Hawaiian (unreachable), Cathay Pacific (undetected)
 ];
