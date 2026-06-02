@@ -971,6 +971,10 @@ export default function Profile() {
         city: profileData.city || '',
         education: profileData.education || null,
         role: profileData.role || '',
+        passportNumber: profileData.passportNumber || '',
+        passportExpiry: profileData.passportExpiry
+          ? new Date(profileData.passportExpiry).toISOString().split('T')[0]
+          : '',
       };
       setPersonalForm(initial);
       setSavedSnapshot(initial);
@@ -1050,6 +1054,36 @@ export default function Profile() {
                   <option value="FIRST_OFFICER">First Officer</option>
                   <option value="CAPTAIN">Captain</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Passport */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#4A6080', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 }}>
+                Passport
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
+                <div>
+                  <label style={css.label}>Passport Number</label>
+                  <input
+                    style={css.input}
+                    value={personalForm.passportNumber || ''}
+                    onChange={(e) => setPersonalForm((f) => ({ ...f, passportNumber: e.target.value }))}
+                    placeholder="e.g. A12345678"
+                  />
+                </div>
+                <div>
+                  <label style={css.label}>Passport Expiry</label>
+                  <input
+                    type="date"
+                    style={css.input}
+                    value={personalForm.passportExpiry || ''}
+                    onChange={(e) => setPersonalForm((f) => ({ ...f, passportExpiry: e.target.value }))}
+                  />
+                  <div style={{ fontSize: 11, color: '#4A6080', marginTop: 4 }}>
+                    Used for expiry alerts
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -110,6 +110,7 @@ model Pilot {
   isInstructor    Boolean   @default(false)
   isExaminer      Boolean   @default(false)
   isAdmin         Boolean   @default(false)
+  notificationPreferences Json @default("{}")
   // Privacy flags
   profileVisible     Boolean  @default(true)
   anonymousBrowsing  Boolean  @default(false)
@@ -138,6 +139,7 @@ model Pilot {
   cvData                CvData?
   contributions         AirlineFactContribution[] @relation("ContributorContributions")
   reviewedContributions AirlineFactContribution[] @relation("ReviewerReviews")
+  notifications         NotificationLog[]
 }
 
 model PilotCertificate {
@@ -497,4 +499,36 @@ model AirlineFactContribution {
   airline      Airline @relation(fields: [airlineId], references: [id], onDelete: Cascade)
   contributor  Pilot   @relation("ContributorContributions", fields: [contributorId], references: [id])
   reviewer     Pilot?  @relation("ReviewerReviews",          fields: [reviewerId],    references: [id])
+}
+
+// ─── Document Expiry Notifications ───────────────────────────────────────────
+
+enum NotificationKind {
+  MEDICAL_EXPIRY
+  LICENCE_EXPIRY
+  TYPE_RATING_EXPIRY
+  ELP_EXPIRY
+  TRAINING_EXPIRY
+  PASSPORT_EXPIRY
+  RTW_EXPIRY
+}
+
+enum NotificationChannel {
+  EMAIL
+}
+
+model NotificationLog {
+  id               String              @id @default(uuid())
+  pilotId          String
+  kind             NotificationKind
+  // ID of the underlying document record. For PASSPORT_EXPIRY (field on Pilot, no sub-table)
+  // this is set to the pilotId itself as a stable synthetic key.
+  documentId       String
+  daysBeforeExpiry Int
+  sentAt           DateTime            @default(now())
+  channel          NotificationChannel @default(EMAIL)
+
+  pilot            Pilot               @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@unique([pilotId, kind, documentId, daysBeforeExpiry, channel])
 }
