@@ -43,6 +43,18 @@ module.exports = [
   { source: 'SMARTRECRUITERS', slug: 'airasia',             company: 'AirAsia',               disabled: true },
   { source: 'SMARTRECRUITERS', slug: 'interglobe',          company: 'IndiGo',                disabled: true },
 
+  // ── USAJobs.gov ───────────────────────────────────────────────────────────────
+  // Free public REST API. Requires USAJOBS_API_KEY + USAJOBS_USER_AGENT env vars.
+  // Register: https://developer.usajobs.gov/
+  // Queries Job Series 2181 (Aircraft Operation) + 2185 (Aircraft Aerial Work).
+  // skipFilter: true — series codes 2181/2185 are exclusively aviation operational roles
+  // (Aircraft Commander, Fixed Wing Pilot, etc.) — the API does the filtering.
+  {
+    source: 'USAJOBS',
+    company: 'USAJobs.gov',
+    skipFilter: true,
+  },
+
   // ── Pilot Career Centre (blocked — robots.txt Disallow: / for PilotJobsIngest) ──
   // Do NOT attempt to bypass this block. Contact PCC for API access.
   {
@@ -116,16 +128,9 @@ module.exports = [
   { source: 'GREENHOUSE', slug: 'jobyaviation', company: 'Joby Aviation', disabled: true },
   { source: 'GREENHOUSE', slug: 'wisk-aero-inc', company: 'Wisk Aero',   disabled: true },
 
-  // ── Workday ───────────────────────────────────────────────────────────────
+  // ── Workday (Puppeteer) ───────────────────────────────────────────────────
   // Uses Puppeteer (headless Chrome) — slow but handles Workday SPAs.
-  // REST API verified via: POST /wday/cxs/{tenant}/{site}/jobs
-
-  // Verified 2026-06-02: swa.wd1.myworkdayjobs.com/external (3 pilot results found)
-  {
-    source: 'WORKDAY',
-    config: 'southwest',
-    company: 'Southwest Airlines',
-  },
+  // Note: Puppeteer approach for Southwest returns 0 jobs. Use WORKDAY_REST instead.
 
   // Placeholder — tenant/startUrl not yet verified accessible without auth
   // (United uses Workday but the specific tenant path and WAF status unknown)
@@ -133,6 +138,17 @@ module.exports = [
     source: 'WORKDAY',
     config: 'united',
     company: 'United Airlines',
+  },
+
+  // ── Workday (REST API) ─────────────────────────────────────────────────────
+  // Uses direct JSON API endpoint — faster, full detail extraction, no Puppeteer.
+  // Fetches listing page + detail pages for requirements + salary extraction.
+
+  // Verified 2026-06-02: swa.wd1.myworkdayjobs.com/wday/cxs/swa/external/jobs (3 pilots)
+  {
+    source: 'WORKDAY_REST',
+    config: 'southwest-rest',
+    company: 'Southwest Airlines',
   },
 
   // NOT verified on Workday (checked 2026-06-02):

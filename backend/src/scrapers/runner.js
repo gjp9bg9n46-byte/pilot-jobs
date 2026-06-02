@@ -19,8 +19,10 @@ const logger = require('../config/logger');
 const { fetchLever }           = require('./sources/lever');
 const { fetchGreenhouse }      = require('./sources/greenhouse');
 const { fetchWorkday }         = require('./sources/workday/index');
+const { fetchWorkdayRest }     = require('./sources/workday-rest');
 const { fetchSmartRecruiters }     = require('./sources/smartrecruiters');
 const { fetchPilotCareerCentre, enrichPccBatch } = require('./sources/pilotcareercentre');
+const { fetchUSAJobs } = require('./sources/usajobs');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize }      = require('./normalize');
 const { filterAviationJobs } = require('./filters');
@@ -141,8 +143,10 @@ async function fetchForEmployer(empConfig) {
     case 'LEVER':           return fetchLever(empConfig);
     case 'GREENHOUSE':      return fetchGreenhouse(empConfig);
     case 'WORKDAY':         return fetchWorkday(empConfig);
+    case 'WORKDAY_REST':    return fetchWorkdayRest(empConfig);
     case 'SMARTRECRUITERS':   return fetchSmartRecruiters(empConfig);
     case 'PILOTCAREERCENTRE': return fetchPilotCareerCentre(empConfig);
+    case 'USAJOBS':           return fetchUSAJobs(empConfig);
     default:
       logger.warn({ msg: `unknown source: ${empConfig.source}` });
       return [];

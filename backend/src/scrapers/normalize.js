@@ -559,8 +559,11 @@ function normalize(raw, empConfig) {
       case 'LEVER':            return normalizeLever(raw, empConfig);
       case 'GREENHOUSE':       return normalizeGreenhouse(raw, empConfig);
       case 'WORKDAY':          return normalizeWorkday(raw, empConfig);
+      case 'WORKDAY_REST':     return raw;  // workday-rest.js pre-normalizes
       case 'SMARTRECRUITERS':    return normalizeSmartRecruiters(raw, empConfig);
       case 'PILOTCAREERCENTRE':  return normalizePCC(raw, empConfig);
+      // USAJobs source pre-normalizes inside fetchUSAJobs() — pass through as-is
+      case 'USAJOBS': return raw;
       default: return null;
     }
   } catch (err) {
