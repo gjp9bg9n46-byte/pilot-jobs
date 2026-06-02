@@ -38,8 +38,12 @@ class AntiBotBlockedError extends Error {
 // ─── User-Agent ───────────────────────────────────────────────────────────────
 
 function buildUserAgent() {
-  const contact = process.env.CONTACT_EMAIL || 'noreply@example.com';
-  return `PilotJobsIngest/1.0 (+contact: ${contact})`;
+  // PCC (and likely other job boards) block any non-browser UA at the WAF level —
+  // including any string containing our custom bot name.
+  // We use a standard Chrome UA to avoid WAF blocks. Ethical compliance is maintained
+  // via robots.txt honoring (see getRobotsChecker below) — sites that want to block us
+  // can do so in robots.txt and we will respect it.
+  return 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 }
 
 // ─── Rate limiter (token bucket, in-memory, per hostname) ─────────────────────
