@@ -560,6 +560,7 @@ function normalize(raw, empConfig) {
       case 'GREENHOUSE':       return normalizeGreenhouse(raw, empConfig);
       case 'WORKDAY':          return normalizeWorkday(raw, empConfig);
       case 'WORKDAY_REST':     return raw;  // workday-rest.js pre-normalizes
+      case 'MAGELLAN':         return raw;  // magellan.js pre-normalizes
       case 'SMARTRECRUITERS':    return normalizeSmartRecruiters(raw, empConfig);
       case 'PILOTCAREERCENTRE':  return normalizePCC(raw, empConfig);
       // USAJobs source pre-normalizes inside fetchUSAJobs() — pass through as-is

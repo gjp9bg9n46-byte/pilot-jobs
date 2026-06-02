@@ -20,6 +20,7 @@ const { fetchLever }           = require('./sources/lever');
 const { fetchGreenhouse }      = require('./sources/greenhouse');
 const { fetchWorkday }         = require('./sources/workday/index');
 const { fetchWorkdayRest }     = require('./sources/workday-rest');
+const { fetchMagellan }        = require('./sources/magellan');
 const { fetchSmartRecruiters }     = require('./sources/smartrecruiters');
 const { fetchPilotCareerCentre, enrichPccBatch } = require('./sources/pilotcareercentre');
 const { fetchUSAJobs } = require('./sources/usajobs');
@@ -144,6 +145,7 @@ async function fetchForEmployer(empConfig) {
     case 'GREENHOUSE':      return fetchGreenhouse(empConfig);
     case 'WORKDAY':         return fetchWorkday(empConfig);
     case 'WORKDAY_REST':    return fetchWorkdayRest(empConfig);
+    case 'MAGELLAN':        return fetchMagellan(empConfig);
     case 'SMARTRECRUITERS':   return fetchSmartRecruiters(empConfig);
     case 'PILOTCAREERCENTRE': return fetchPilotCareerCentre(empConfig);
     case 'USAJOBS':           return fetchUSAJobs(empConfig);

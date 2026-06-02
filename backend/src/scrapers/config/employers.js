@@ -128,6 +128,14 @@ module.exports = [
   { source: 'GREENHOUSE', slug: 'jobyaviation', company: 'Joby Aviation', disabled: true },
   { source: 'GREENHOUSE', slug: 'wisk-aero-inc', company: 'Wisk Aero',   disabled: true },
 
+  // ── Magellan Aviation Services ──────────────────────────────────────────────
+  // WordPress careers page with Visual Composer accordion job listings.
+  // Verified 2026-06-02: 8 jobs (mix of pilots/instructors + aircraft maintenance)
+  {
+    source: 'MAGELLAN',
+    company: 'Magellan Aviation Services',
+  },
+
   // ── Workday (Puppeteer) ───────────────────────────────────────────────────
   // Uses Puppeteer (headless Chrome) — slow but handles Workday SPAs.
   // Note: Puppeteer approach for Southwest returns 0 jobs. Use WORKDAY_REST instead.
