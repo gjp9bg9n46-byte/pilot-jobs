@@ -30,6 +30,7 @@ enum JobStatus {
   ACTIVE
   EXPIRED
   FILLED
+  PENDING_REVIEW
 }
 
 enum LogSource {
@@ -85,6 +86,24 @@ enum ContributionStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum EmployerType {
+  AIRLINE
+  CHARTER
+  CARGO
+  EMS
+  FLIGHT_SCHOOL
+  CORPORATE
+  RECRUITER
+  OTHER
+}
+
+enum EmployerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
 }
 
 model Pilot {
@@ -349,9 +368,14 @@ model Job {
   reqWillingToRelocate Boolean    @default(false)
 
   // Ingestion provenance
-  sourcePlatform       String?    // 'LEVER' | 'GREENHOUSE' | 'WORKDAY' | null (manual / legacy)
+  sourcePlatform       String?    // 'LEVER' | 'GREENHOUSE' | 'WORKDAY' | 'EMPLOYER_DIRECT' | null (manual / legacy)
   externalId           String?    // stable posting ID from source — used for upsert dedup
   mergedInto           String?    // self-ref to canonical Job.id when cross-source dedup collapses this row
+
+  // Employer-posted jobs (first-party). Null for scraped jobs.
+  postedByEmployerId   String?
+  postedByEmployer     Employer?  @relation("EmployerPostedJobs", fields: [postedByEmployerId], references: [id])
+  moderationStatus     String?    @default("APPROVED")  // 'APPROVED' | 'PENDING' — visibility gated by `status`, this is descriptive metadata
 
   lastEnrichedFromWorkdayAt DateTime?
 
@@ -483,6 +507,7 @@ model Airline {
   createdAt            DateTime             @default(now())
 
   contributions        AirlineFactContribution[]
+  employers            Employer[]
 }
 
 model AirlineFactContribution {
@@ -499,6 +524,42 @@ model AirlineFactContribution {
   airline      Airline @relation(fields: [airlineId], references: [id], onDelete: Cascade)
   contributor  Pilot   @relation("ContributorContributions", fields: [contributorId], references: [id])
   reviewer     Pilot?  @relation("ReviewerReviews",          fields: [reviewerId],    references: [id])
+}
+
+// ─── Employer Portal ─────────────────────────────────────────────────────────
+
+model Employer {
+  id               String         @id @default(uuid())
+  companyName      String
+  companyType      EmployerType
+  country          String
+  headquartersCity String?
+  website          String?
+  description      String?
+  logoUrl          String?
+  iataCode         String?
+  icaoCode         String?
+
+  // Auth
+  contactEmail     String         @unique
+  passwordHash     String
+  contactName      String
+  contactPhone     String?
+
+  // Lifecycle
+  status           EmployerStatus @default(PENDING)
+  approvedAt       DateTime?
+  approvedBy       String?        // admin Pilot.id (loose ref — no FK, keeps Pilot model untouched)
+  lastActiveAt     DateTime?
+
+  // Optional factfile link — internal admin metadata only (Jobs-page link is by company name)
+  airlineId        String?
+  airline          Airline?       @relation(fields: [airlineId], references: [id])
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  postedJobs       Job[]          @relation("EmployerPostedJobs")
 }
 
 // ─── Document Expiry Notifications ───────────────────────────────────────────
