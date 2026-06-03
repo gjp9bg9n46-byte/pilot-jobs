@@ -3,7 +3,9 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const requireEmployerAuth = require('../middleware/requireEmployerAuth');
+const requireApprovedEmployer = require('../middleware/requireApprovedEmployer');
 const c = require('../controllers/employerAuthController');
+const jc = require('../controllers/employerJobController');
 
 // Public
 router.post(
@@ -24,5 +26,13 @@ router.post('/login', c.login);
 // Authenticated (employer)
 router.get('/me', requireEmployerAuth, c.me);
 router.put('/me', requireEmployerAuth, c.updateMe);
+
+// Job CRUD. Create/update/repost require an APPROVED employer; list/delete
+// only require authentication (a suspended employer can still see/retire jobs).
+router.post('/jobs', requireEmployerAuth, requireApprovedEmployer, jc.createJob);
+router.get('/jobs', requireEmployerAuth, jc.listMyJobs);
+router.put('/jobs/:id', requireEmployerAuth, requireApprovedEmployer, jc.updateJob);
+router.delete('/jobs/:id', requireEmployerAuth, jc.deleteJob);
+router.post('/jobs/:id/repost', requireEmployerAuth, requireApprovedEmployer, jc.repostJob);
 
 module.exports = router;
