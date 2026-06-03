@@ -550,6 +550,7 @@ model Employer {
   status           EmployerStatus @default(PENDING)
   approvedAt       DateTime?
   approvedBy       String?        // admin Pilot.id (loose ref — no FK, keeps Pilot model untouched)
+  rejectionReason  String?        // set on REJECT or SUSPEND (mutually exclusive states)
   lastActiveAt     DateTime?
 
   // Optional factfile link — internal admin metadata only (Jobs-page link is by company name)

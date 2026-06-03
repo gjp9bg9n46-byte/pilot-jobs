@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { EmployerType } = require('@prisma/client');
 const prisma = require('../config/database');
+const { notifyAdminNewSignup } = require('../services/employerEmails');
 
 // Employer tokens are namespaced with type:'employer' so they can never be
 // interchanged with pilot tokens (which carry { id } and no type). Same
@@ -89,6 +90,7 @@ exports.register = async (req, res, next) => {
       },
     });
 
+    notifyAdminNewSignup(created);
     const token = signToken(created.id);
     res.status(201).json({ token, employer: stripSensitive(created) });
   } catch (err) {
