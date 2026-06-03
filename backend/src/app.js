@@ -42,6 +42,7 @@ app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/cv',   require('./routes/cv'));
 app.use('/api/airlines', require('./routes/airlines'));
 app.use('/api/admin',   require('./routes/admin'));
+app.use('/api/employers', require('./routes/employers'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
