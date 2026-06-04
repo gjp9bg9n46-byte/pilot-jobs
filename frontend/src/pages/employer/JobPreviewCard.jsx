@@ -11,7 +11,8 @@ const css = {
   title: { fontSize: 17, fontWeight: 700, color: '#fff', flex: 1, lineHeight: 1.3 },
   roleBadge: { fontSize: 10, fontWeight: 700, color: '#00B4D8', background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.25)', borderRadius: 5, padding: '2px 7px', letterSpacing: 0.3, whiteSpace: 'nowrap' },
   authBadge: { fontSize: 10, fontWeight: 700, color: '#A8B6CC', background: '#16263F', border: '1px solid #243050', borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap' },
-  employerBadge: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: '#34D399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 5, padding: '3px 8px', letterSpacing: 0.3, alignSelf: 'flex-start' },
+  // Identical to css.employerBadge in Jobs.jsx so the preview matches the real card.
+  employerBadge: { display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', fontSize: 10.5, fontWeight: 600, color: '#9FB0C4', background: '#16263F', border: '1px solid #2A3A55', borderRadius: 5, padding: '3px 8px', letterSpacing: 0.2, whiteSpace: 'nowrap' },
   airline: { fontSize: 14, color: '#00B4D8', fontWeight: 600 },
   metaRow: { display: 'flex', flexWrap: 'wrap', gap: 12, color: '#7A8CA0', fontSize: 12 },
   reqs: { display: 'flex', flexWrap: 'wrap', gap: 6 },
@@ -33,7 +34,7 @@ export default function JobPreviewCard({ job, company }) {
   const salary = fmtSalary(job);
   return (
     <div style={css.card}>
-      <span style={css.employerBadge}>● Posted directly by employer</span>
+      <span style={css.employerBadge}>Posted directly by employer</span>
       <div style={css.top}>
         <div style={css.title}>{job.title?.trim() || 'Job title'}</div>
         {job.role && <div style={css.roleBadge}>{ROLE_LABEL[job.role] || job.role}</div>}

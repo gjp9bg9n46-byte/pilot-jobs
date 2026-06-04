@@ -216,15 +216,13 @@ const AUTHORITIES = [
   { value: 'FATA', label: 'Russia / CIS' },
 ];
 
-// TODO (step h): these filter values are lowercase ('captain'), but employer-posted
-// jobs store uppercase Job.role ('CAPTAIN'/'FIRST_OFFICER'/'INSTRUCTOR'). The role
-// filter (params.role -> exact match in jobController.getJobs) therefore silently
-// skips employer-posted jobs. Reconcile casing when step h touches this file.
+// Values are UPPERCASE to match how Job.role is stored (employer-posted jobs use
+// 'CAPTAIN'/'FIRST_OFFICER'/'INSTRUCTOR'); jobController.getJobs does an exact match.
 const ROLES = [
   { value: '', label: 'Any Role' },
-  { value: 'captain', label: 'Captain' },
-  { value: 'first_officer', label: 'First Officer' },
-  { value: 'flight_engineer', label: 'Flight Engineer' },
+  { value: 'CAPTAIN', label: 'Captain' },
+  { value: 'FIRST_OFFICER', label: 'First Officer' },
+  { value: 'INSTRUCTOR', label: 'Instructor' },
 ];
 
 const CONTRACT_TYPES = [
@@ -366,6 +364,14 @@ const css = {
   title: { fontSize: 16, fontWeight: 700, color: '#fff', lineHeight: 1.4 },
   airline: { fontSize: 14, color: '#00B4D8', fontWeight: 600 },
   postedAgo: { fontSize: 12, color: '#7A8CA0', marginTop: 2 },
+  // Understated neutral badge — kept visually identical to JobPreviewCard so the
+  // employer's live preview matches the real card. Only for sourcePlatform EMPLOYER_DIRECT.
+  employerBadge: {
+    display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start',
+    fontSize: 10.5, fontWeight: 600, color: '#9FB0C4',
+    background: '#16263F', border: '1px solid #2A3A55', borderRadius: 5,
+    padding: '3px 8px', letterSpacing: 0.2, whiteSpace: 'nowrap', marginTop: 4,
+  },
   authorityBadge: {
     background: '#0A2040', border: '1px solid #1E3050', borderRadius: 6,
     padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#00B4D8', whiteSpace: 'nowrap',
@@ -482,6 +488,9 @@ function JobModal({ job, onClose, pilotProfile, pilotTotals, airlineMap }) {
             </button>
           )}
         </div>
+        {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
+          <div style={{ ...css.employerBadge, fontSize: 12, padding: '4px 10px', marginTop: 0, marginBottom: 16 }}>Posted directly by employer</div>
+        )}
         {formatSalary(job) && (
           <div style={{ marginBottom: matchCount ? 10 : 18 }}>
             <span style={{
@@ -895,6 +904,9 @@ export default function Jobs() {
                   <div>
                     <div style={css.airline}>{job.company}</div>
                     {ago && <div style={css.postedAgo}>{ago}</div>}
+                    {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
+                      <div style={css.employerBadge}>Posted directly by employer</div>
+                    )}
                   </div>
 
                   <div style={css.metaRow}>
