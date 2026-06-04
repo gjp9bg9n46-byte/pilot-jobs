@@ -26,6 +26,12 @@ export const employerApi = {
   login: (email, password) => client.post('/employers/login', { contactEmail: email, password }),
   getMe: () => client.get('/employers/me'),
   updateMe: (payload) => client.put('/employers/me', payload),
+  // Jobs (employer-owned)
+  listJobs: () => client.get('/employers/jobs'),
+  createJob: (payload) => client.post('/employers/jobs', payload),
+  updateJob: (id, payload) => client.put(`/employers/jobs/${id}`, payload),
+  deleteJob: (id) => client.delete(`/employers/jobs/${id}`),
+  repostJob: (id) => client.post(`/employers/jobs/${id}/repost`),
 };
 
 export default client;

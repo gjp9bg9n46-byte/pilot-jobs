@@ -7,10 +7,14 @@ import { setPilot, logout } from './store';
 // Employer portal (separate auth — React Context, not the pilot Redux store)
 import { EmployerAuthProvider } from './context/EmployerAuthContext';
 import RequireEmployerAuth from './components/employer/RequireEmployerAuth';
+import RequireEmployerStatus from './components/employer/RequireEmployerStatus';
 import EmployerRegister from './pages/employer/EmployerRegister';
 import EmployerLogin from './pages/employer/EmployerLogin';
 import EmployerPendingApproval from './pages/employer/EmployerPendingApproval';
 import EmployerStatusNotice from './pages/employer/EmployerStatusNotice';
+import EmployerDashboard from './pages/employer/EmployerDashboard';
+import EmployerProfile from './pages/employer/EmployerProfile';
+import EmployerJobForm from './pages/employer/EmployerJobForm';
 
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
@@ -31,20 +35,6 @@ const CVBuilder = lazy(() => import('./pages/CVBuilder'));
 function RequireAuth({ children }) {
   const token = useSelector((s) => s.auth.token);
   return token ? children : <Navigate to="/login" replace />;
-}
-
-// Placeholder for the approved-employer landing target. Replaced by the real
-// dashboard in step (f); exists now so login redirects resolve cleanly.
-function EmployerDashboardStub() {
-  return (
-    <div style={{ minHeight: '100vh', background: '#0A1628', color: '#C0CDE0',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24, fontSize: 16 }}>
-      <div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: '#00B4D8', marginBottom: 10 }}>✈ Employer Dashboard</div>
-        Your account is approved. The dashboard is coming soon.
-      </div>
-    </div>
-  );
 }
 
 export default function App() {
@@ -85,8 +75,10 @@ export default function App() {
           <Route path="pending-approval" element={<RequireEmployerAuth><EmployerPendingApproval /></RequireEmployerAuth>} />
           <Route path="rejected" element={<RequireEmployerAuth><EmployerStatusNotice kind="rejected" /></RequireEmployerAuth>} />
           <Route path="suspended" element={<RequireEmployerAuth><EmployerStatusNotice kind="suspended" /></RequireEmployerAuth>} />
-          {/* Minimal stub so approved-login lands cleanly — full dashboard is step (f) */}
-          <Route path="dashboard" element={<RequireEmployerAuth><EmployerDashboardStub /></RequireEmployerAuth>} />
+          <Route path="dashboard" element={<RequireEmployerAuth><EmployerDashboard /></RequireEmployerAuth>} />
+          <Route path="profile" element={<RequireEmployerAuth><EmployerProfile /></RequireEmployerAuth>} />
+          <Route path="jobs/new" element={<RequireEmployerStatus status="APPROVED"><EmployerJobForm /></RequireEmployerStatus>} />
+          <Route path="jobs/:id/edit" element={<RequireEmployerStatus status="APPROVED"><EmployerJobForm /></RequireEmployerStatus>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/jobs" replace />} />

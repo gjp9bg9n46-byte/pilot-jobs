@@ -216,6 +216,10 @@ const AUTHORITIES = [
   { value: 'FATA', label: 'Russia / CIS' },
 ];
 
+// TODO (step h): these filter values are lowercase ('captain'), but employer-posted
+// jobs store uppercase Job.role ('CAPTAIN'/'FIRST_OFFICER'/'INSTRUCTOR'). The role
+// filter (params.role -> exact match in jobController.getJobs) therefore silently
+// skips employer-posted jobs. Reconcile casing when step h touches this file.
 const ROLES = [
   { value: '', label: 'Any Role' },
   { value: 'captain', label: 'Captain' },

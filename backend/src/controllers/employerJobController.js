@@ -1,11 +1,10 @@
 'use strict';
 
-const { PilotRole } = require('@prisma/client');
 const prisma = require('../config/database');
 
-// Roles map to the existing PilotRole enum; contract types to the values the
-// scraper/normalizer already produces. role/contractType may also be null.
-const VALID_ROLES = Object.values(PilotRole); // ['FIRST_OFFICER', 'CAPTAIN']
+// Decoupled from PilotRole — Job.role is a String? supporting CAPTAIN/FIRST_OFFICER/INSTRUCTOR. See investigation 2026-06-03.
+const VALID_ROLES = ['CAPTAIN', 'FIRST_OFFICER', 'INSTRUCTOR'];
+// Contract types match the values the scraper/normalizer already produces. role/contractType may also be null.
 const VALID_CONTRACT_TYPES = ['PERMANENT', 'CONTRACT', 'FREELANCE', 'PART_TIME'];
 
 const SALARY_CAP = 10_000_000; // no $50M pilot salaries
