@@ -24,6 +24,7 @@ import Airlines from './pages/Airlines';
 import AirlineDetail from './pages/AirlineDetail';
 import AirlineContribute from './pages/AirlineContribute';
 import AdminModeration from './pages/AdminModeration';
+import AdminEmployers from './pages/AdminEmployers';
 import Alerts from './pages/Alerts';
 import Logbook from './pages/Logbook';
 import Profile from './pages/Profile';
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="airlines/:id" element={<AirlineDetail />} />
           <Route path="airlines/:id/contribute" element={<AirlineContribute />} />
           <Route path="admin/moderation" element={<AdminModeration />} />
+          <Route path="admin/employers" element={<AdminEmployers />} />
           <Route path="alerts" element={<Alerts />} />
           <Route path="logbook" element={<Logbook />} />
           <Route path="profile" element={<Profile />} />

@@ -14,6 +14,7 @@ router.post('/contributions/:id/approve', c.approve);
 router.post('/contributions/:id/reject',  c.reject);
 
 // Employer portal moderation
+router.get('/employers',                ec.listEmployers);
 router.get('/employers/pending',        ec.listPendingEmployers);
 router.post('/employers/:id/approve',   ec.approveEmployer);
 router.post('/employers/:id/reject',    ec.rejectEmployer);

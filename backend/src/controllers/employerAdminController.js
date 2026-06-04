@@ -42,6 +42,20 @@ exports.listPendingEmployers = async (req, res, next) => {
   }
 };
 
+// All employers (every status) for the moderation UI's tabs, with a job count
+// for the detail view. No passwordHash (EMPLOYER_SELECT).
+exports.listEmployers = async (req, res, next) => {
+  try {
+    const employers = await prisma.employer.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: { ...EMPLOYER_SELECT, _count: { select: { postedJobs: true } } },
+    });
+    res.json(employers);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.approveEmployer = async (req, res, next) => {
   try {
     const employer = await prisma.employer.findUnique({ where: { id: req.params.id } });

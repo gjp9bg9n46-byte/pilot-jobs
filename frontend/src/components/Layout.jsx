@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store';
+import { adminApi } from '../services/api';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 const S = { strokeLinecap: 'round', strokeLinejoin: 'round' };
@@ -47,7 +48,8 @@ const PAGE_TITLES = {
   '/jobs': 'Job Openings', '/airlines': 'Airline Factfile', '/alerts': 'My Alerts',
   '/logbook': 'Flight Logbook', '/profile': 'My Profile',
   '/cv': 'CV Builder', '/support': 'Support', '/settings': 'Settings',
-  '/admin/moderation': 'Moderation Queue',
+  '/admin/moderation': 'Airline Moderation',
+  '/admin/employers': 'Employer Moderation',
 };
 
 const SIGN_OUT_ICON = <Ico size={18} extra={<><path d="M7 3H3a1 1 0 00-1 1v10a1 1 0 001 1h4"/><polyline points="12 5 16 9 12 13"/><line x1="16" y1="9" x2="6" y2="9"/></>} />;
@@ -73,6 +75,13 @@ export default function Layout() {
   const isMobile   = useIsMobile();
   const path       = window.location.pathname;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [empPending, setEmpPending] = useState(0);
+
+  // Pending-employer count for the admin "Employer Moderation" badge.
+  useEffect(() => {
+    if (!pilot?.isAdmin) return;
+    adminApi.listPendingEmployers().then(({ data }) => setEmpPending(Array.isArray(data) ? data.length : 0)).catch(() => {});
+  }, [pilot?.isAdmin, path]);
 
   // Close drawer on Escape
   useEffect(() => {
@@ -179,7 +188,7 @@ export default function Layout() {
               </NavLink>
             ))}
 
-            {/* Admin-only moderation link */}
+            {/* Admin-only moderation links */}
             {pilot?.isAdmin && (
               <NavLink
                 to="/admin/moderation"
@@ -187,7 +196,20 @@ export default function Layout() {
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
-                <span>Moderation</span>
+                <span>Airline Moderation</span>
+              </NavLink>
+            )}
+            {pilot?.isAdmin && (
+              <NavLink
+                to="/admin/employers"
+                onClick={closeDrawer}
+                style={({ isActive }) => drawerLinkStyle(isActive)}
+              >
+                <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
+                <span style={{ flex: 1 }}>Employer Moderation</span>
+                {empPending > 0 && (
+                  <span style={{ background: '#E0C24A', color: '#0A1628', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px' }}>{empPending}</span>
+                )}
               </NavLink>
             )}
 
@@ -346,7 +368,22 @@ export default function Layout() {
               color: isActive ? '#00B4D8' : '#7A8CA0',
             })}>
               <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
-              Moderation
+              Airline Moderation
+            </NavLink>
+          )}
+          {pilot?.isAdmin && (
+            <NavLink to="/admin/employers" style={({ isActive }) => ({
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '11px 14px', borderRadius: 10, textDecoration: 'none',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+              background: isActive ? '#1B2B4B' : 'transparent',
+              color: isActive ? '#00B4D8' : '#7A8CA0',
+            })}>
+              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
+              <span style={{ flex: 1 }}>Employer Moderation</span>
+              {empPending > 0 && (
+                <span style={{ background: '#E0C24A', color: '#0A1628', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px' }}>{empPending}</span>
+              )}
             </NavLink>
           )}
         </nav>
