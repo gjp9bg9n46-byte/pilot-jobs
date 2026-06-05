@@ -8,8 +8,8 @@ import { setPilot, logout } from './store';
 import { EmployerAuthProvider } from './context/EmployerAuthContext';
 import RequireEmployerAuth from './components/employer/RequireEmployerAuth';
 import RequireEmployerStatus from './components/employer/RequireEmployerStatus';
-import EmployerRegister from './pages/employer/EmployerRegister';
-import EmployerLogin from './pages/employer/EmployerLogin';
+// EmployerLogin/EmployerRegister kept on disk (Phase 2a) but no longer routed —
+// /employer/login and /employer/register now redirect to the unified pages.
 import EmployerPendingApproval from './pages/employer/EmployerPendingApproval';
 import EmployerStatusNotice from './pages/employer/EmployerStatusNotice';
 import EmployerDashboard from './pages/employer/EmployerDashboard';
@@ -19,6 +19,7 @@ import EmployerJobForm from './pages/employer/EmployerJobForm';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import Landing from './pages/Landing';
 import Jobs from './pages/Jobs';
 import Airlines from './pages/Airlines';
 import AirlineDetail from './pages/AirlineDetail';
@@ -52,10 +53,17 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
-          <Route index element={<Navigate to="/jobs" replace />} />
+        {/* Public marketing landing */}
+        <Route path="/" element={<Landing />} />
+
+        {/* Unified auth — wrapped in EmployerAuthProvider so the Employer toggle works */}
+        <Route element={<EmployerAuthProvider><Outlet /></EmployerAuthProvider>}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Route>
+
+        {/* Authenticated pilot app (pathless layout — URLs unchanged) */}
+        <Route element={<RequireAuth><Layout /></RequireAuth>}>
           <Route path="jobs" element={<Jobs />} />
           <Route path="airlines" element={<Airlines />} />
           <Route path="airlines/:id" element={<AirlineDetail />} />
@@ -72,8 +80,9 @@ export default function App() {
 
         {/* Employer portal — OUTSIDE the pilot RequireAuth tree, own auth provider */}
         <Route path="/employer" element={<EmployerAuthProvider><Outlet /></EmployerAuthProvider>}>
-          <Route path="register" element={<EmployerRegister />} />
-          <Route path="login" element={<EmployerLogin />} />
+          {/* Old auth routes redirect to the unified pages (Employer tab pre-selected) */}
+          <Route path="register" element={<Navigate to="/register?as=employer" replace />} />
+          <Route path="login" element={<Navigate to="/login?as=employer" replace />} />
           <Route path="pending-approval" element={<RequireEmployerAuth><EmployerPendingApproval /></RequireEmployerAuth>} />
           <Route path="rejected" element={<RequireEmployerAuth><EmployerStatusNotice kind="rejected" /></RequireEmployerAuth>} />
           <Route path="suspended" element={<RequireEmployerAuth><EmployerStatusNotice kind="suspended" /></RequireEmployerAuth>} />
