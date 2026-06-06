@@ -490,6 +490,7 @@ model Airline {
   description          String?
   bases                String[]
   fleet                String[]
+  fleetDetail          Json?                // [{ type, inService:int|null, ordered:int|null, retired:int|null }] — enriched; `fleet` kept for fallback/community
   hiringStatus         HiringStatus         @default(UNKNOWN)
   hiringFrequency      HiringFrequency      @default(UNKNOWN)
   payRanges            Json?
