@@ -1,5 +1,5 @@
 {
-  "mode": "DRY-RUN",
+  "mode": "APPLY",
   "totals": {
     "patched": 178,
     "inserted": 2,
