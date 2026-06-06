@@ -1,0 +1,2821 @@
+{
+  "mode": "DRY-RUN",
+  "totals": {
+    "patched": 178,
+    "inserted": 2,
+    "skippedFields": 6,
+    "countryFillCandidates": 0
+  },
+  "patches": [
+    {
+      "id": "2d0e7df3-c024-46c8-9877-54a4cfd7b82e",
+      "name": "Ryanair",
+      "iata": "FR",
+      "icao": "RYR",
+      "patch": {
+        "headquarters": "Dublin Airport",
+        "bases": [
+          "London Stansted Airport"
+        ],
+        "fleet": [
+          "Boeing 737-800",
+          "Boeing 737 MAX 8-200"
+        ]
+      }
+    },
+    {
+      "id": "d3920c02-446b-4ccd-8969-e3f0f70812ea",
+      "name": "easyJet",
+      "iata": "U2",
+      "icao": "EZY",
+      "patch": {
+        "headquarters": "London Luton Airport",
+        "bases": [
+          "London Luton Airport",
+          "Milan–Malpensa \"Silvio Berlusconi\" Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A320neo",
+          "Airbus A321neo"
+        ]
+      }
+    },
+    {
+      "id": "f7edcc12-cabd-4673-9942-212de4f10e6d",
+      "name": "Wizz Air",
+      "iata": "W6",
+      "icao": "WZZ",
+      "patch": {
+        "headquarters": "Budapest Ferenc Liszt International Airport",
+        "bases": [
+          "Budapest Ferenc Liszt International Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A321neo",
+          "Airbus A321XLR"
+        ]
+      }
+    },
+    {
+      "id": "f0def0a6-6e74-4ff8-a465-8f5c1b46d464",
+      "name": "Lufthansa",
+      "iata": "LH",
+      "icao": "DLH",
+      "patch": {
+        "headquarters": "Cologne",
+        "bases": [
+          "Frankfurt Airport",
+          "Munich Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A330-300",
+          "Airbus A340-600",
+          "Airbus A350-900",
+          "Boeing 747-400",
+          "Boeing 747-8",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "7cf2a84b-cd1f-4f09-9eeb-c705d605f46b",
+      "name": "British Airways",
+      "iata": "BA",
+      "icao": "BAW",
+      "patch": {
+        "headquarters": "London",
+        "bases": [
+          "London Heathrow Airport",
+          "London Gatwick Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A350-1000",
+          "Airbus A380-800",
+          "Boeing 777-200ER",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9",
+          "Boeing 787-10"
+        ]
+      }
+    },
+    {
+      "id": "9e1f9d61-6486-40f9-b2b9-04d93a4526ae",
+      "name": "Air France",
+      "iata": "AF",
+      "icao": "AFR",
+      "patch": {
+        "headquarters": "Tremblay-en-France",
+        "bases": [
+          "Lyon–Saint-Exupéry Airport",
+          "Paris-Charles de Gaulle Airport",
+          "Orly Airport",
+          "Marseille Provence Airport",
+          "Nice Côte d'Azur Airport"
+        ],
+        "fleet": [
+          "Airbus A220-300",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A330-200",
+          "Airbus A350-900",
+          "Boeing 777-200ER",
+          "Boeing 777-300ER",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "20052739-b7d7-4d03-8aa1-120d975d3f3a",
+      "name": "KLM",
+      "iata": "KL",
+      "icao": "KLM",
+      "patch": {
+        "headquarters": "Amstelveen",
+        "bases": [
+          "Amsterdam Schiphol Airport"
+        ],
+        "fleet": [
+          "Boeing 737-700",
+          "Boeing 737-800",
+          "Boeing 737-900",
+          "Airbus A330-200",
+          "Boeing 777-200ER",
+          "Boeing 777-300ER",
+          "Boeing 787-9",
+          "Boeing 787-10"
+        ]
+      }
+    },
+    {
+      "id": "4eccaf39-a328-4326-ae92-3db22c16496c",
+      "name": "Turkish Airlines",
+      "iata": "TK",
+      "icao": "THY",
+      "patch": {
+        "headquarters": "Istanbul",
+        "bases": [
+          "Istanbul Airport"
+        ],
+        "fleet": [
+          "Airbus A321neo",
+          "Airbus A330-300",
+          "Airbus A350-900",
+          "Boeing 737-800",
+          "Boeing 737 MAX 8",
+          "Boeing 777-300ER",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "c492aecc-9e56-4e62-9500-f766fd99c747",
+      "name": "airBaltic",
+      "iata": "BT",
+      "icao": "BTI",
+      "patch": {
+        "headquarters": "Mārupe Parish",
+        "bases": [
+          "Riga International Airport"
+        ]
+      }
+    },
+    {
+      "id": "a7342767-6260-4ad8-b838-ffe6043aee9b",
+      "name": "Helvetic Airways",
+      "iata": "2L",
+      "icao": "OAW",
+      "patch": {
+        "headquarters": "Kloten",
+        "bases": [
+          "Zurich Airport"
+        ]
+      }
+    },
+    {
+      "id": "9caa3f67-3414-48b5-9ccf-d291397661f9",
+      "name": "TUI Fly",
+      "iata": "X3",
+      "icao": "TUI",
+      "patch": {
+        "headquarters": "Langenhagen",
+        "bases": [
+          "Hannover Airport"
+        ]
+      }
+    },
+    {
+      "id": "5ee4d392-d6ce-45fb-ba22-111578333ca9",
+      "name": "Jet2",
+      "iata": "LS",
+      "icao": "EXS",
+      "patch": {
+        "headquarters": "Leeds"
+      }
+    },
+    {
+      "id": "604c3a3b-a0e9-4398-8f0a-1a38c7ff39ef",
+      "name": "Norwegian",
+      "iata": "DY",
+      "icao": "NAX",
+      "patch": {
+        "headquarters": "Fornebu",
+        "bases": [
+          "Rome",
+          "London Gatwick Airport",
+          "Amsterdam Schiphol Airport",
+          "Paris-Charles de Gaulle Airport",
+          "Josep Tarradellas Airport Barcelona-El Prat",
+          "Dublin Airport",
+          "Copenhagen Airport",
+          "Oslo Airport",
+          "Helsinki Airport",
+          "Stockholm Arlanda Airport",
+          "Riga International Airport",
+          "Bergen Airport"
+        ],
+        "fleet": [
+          "Boeing 737-800",
+          "Boeing 737 MAX 8"
+        ]
+      }
+    },
+    {
+      "id": "9fe8e839-8a90-4840-b07a-5db332423a0e",
+      "name": "SAS",
+      "iata": "SK",
+      "icao": "SAS",
+      "patch": {
+        "headquarters": "Copenhagen Airport",
+        "bases": [
+          "Copenhagen Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320neo",
+          "Airbus A321LR",
+          "Airbus A330-300",
+          "Airbus A350-900"
+        ]
+      }
+    },
+    {
+      "id": "fba8e206-d5e8-4a2a-8b77-ada410fe21bc",
+      "name": "Aer Lingus",
+      "iata": "EI",
+      "icao": "EIN",
+      "patch": {
+        "headquarters": "Dublin Airport",
+        "bases": [
+          "Dublin Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A321neo LR",
+          "Airbus A330-200",
+          "Airbus A330-300"
+        ]
+      }
+    },
+    {
+      "id": "b86ff04a-8cee-4b71-aab6-1efead27e138",
+      "name": "Emirates",
+      "iata": "EK",
+      "icao": "UAE",
+      "patch": {
+        "headquarters": "Al Garhoud",
+        "bases": [
+          "Dubai International Airport"
+        ],
+        "fleet": [
+          "Airbus A380-800",
+          "Boeing 777-300ER",
+          "Boeing 777-200LR",
+          "Boeing 777F"
+        ]
+      }
+    },
+    {
+      "id": "e80aefdd-a89c-4b33-8fc4-b181ca016069",
+      "name": "Qatar Airways",
+      "iata": "QR",
+      "icao": "QTR",
+      "patch": {
+        "headquarters": "Doha",
+        "bases": [
+          "Hamad International Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A330",
+          "Airbus A350-900",
+          "Airbus A350-1000",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "9100cb90-d0da-4f57-ac55-fdc657321869",
+      "name": "Etihad Airways",
+      "iata": "EY",
+      "icao": "ETD",
+      "patch": {
+        "headquarters": "Abu Dhabi",
+        "bases": [
+          "Zayed International Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A321neo",
+          "Airbus A350-1000",
+          "Boeing 787-9",
+          "Boeing 787-10",
+          "Boeing 777-300ER"
+        ]
+      }
+    },
+    {
+      "id": "8be6ff92-24ed-40fd-8dd0-a08bb824b7ab",
+      "name": "Saudia",
+      "iata": "SV",
+      "icao": "SVA",
+      "patch": {
+        "headquarters": "Jeddah",
+        "bases": [
+          "King Abdulaziz International Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A330-300",
+          "Boeing 777-300ER",
+          "Boeing 787-9",
+          "Boeing 787-10"
+        ]
+      }
+    },
+    {
+      "id": "772c6996-cc1a-43fc-83a7-bb566c153765",
+      "name": "flydubai",
+      "iata": "FZ",
+      "icao": "FDB",
+      "patch": {
+        "headquarters": "Dubai",
+        "bases": [
+          "Dubai International Airport"
+        ],
+        "fleet": [
+          "Boeing 737-800",
+          "Boeing 737 MAX 8",
+          "Boeing 737 MAX 9"
+        ]
+      }
+    },
+    {
+      "id": "ac423eec-2a7a-43c4-b11f-1fb5cb92b004",
+      "name": "Delta Air Lines",
+      "iata": "DL",
+      "icao": "DAL",
+      "patch": {
+        "headquarters": "Atlanta",
+        "bases": [
+          "John F. Kennedy International Airport",
+          "Los Angeles International Airport",
+          "Seattle–Tacoma International Airport",
+          "Hartsfield–Jackson Atlanta International Airport",
+          "LaGuardia Airport",
+          "Salt Lake City International Airport",
+          "Detroit Metropolitan Wayne County Airport",
+          "Logan International Airport",
+          "Minneapolis–Saint Paul International Airport"
+        ],
+        "fleet": [
+          "Airbus A220-100",
+          "Airbus A220-300",
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A321neo",
+          "Airbus A330-300",
+          "Airbus A330-900",
+          "Airbus A350-900",
+          "Boeing 717-200",
+          "Boeing 737-800",
+          "Boeing 737-900ER",
+          "Boeing 757-200",
+          "Boeing 767-300ER",
+          "Boeing 767-400ER"
+        ]
+      }
+    },
+    {
+      "id": "46aad1fb-8d56-44e4-88ae-e8e42528aec9",
+      "name": "United Airlines",
+      "iata": "UA",
+      "icao": "UAL",
+      "patch": {
+        "headquarters": "Chicago",
+        "bases": [
+          "San Francisco International Airport",
+          "Los Angeles International Airport",
+          "O'Hare International Airport",
+          "Denver International Airport",
+          "Newark Liberty International Airport",
+          "Washington Dulles International Airport",
+          "George Bush Intercontinental Airport",
+          "Antonio B. Won Pat International Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321neo",
+          "Boeing 737-700",
+          "Boeing 737-800",
+          "Boeing 737-900ER",
+          "Boeing 737 MAX 8",
+          "Boeing 737 MAX 9",
+          "Boeing 757-200",
+          "Boeing 757-300",
+          "Boeing 767-300ER",
+          "Boeing 767-400ER",
+          "Boeing 777-200ER",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9",
+          "Boeing 787-10"
+        ]
+      }
+    },
+    {
+      "id": "03973656-c596-45c6-a9e9-1a5e6e088581",
+      "name": "American Airlines",
+      "iata": "AA",
+      "icao": "AAL",
+      "patch": {
+        "headquarters": "Fort Worth",
+        "bases": [
+          "John F. Kennedy International Airport",
+          "Los Angeles International Airport",
+          "Miami International Airport",
+          "O'Hare International Airport",
+          "LaGuardia Airport",
+          "Dallas/Fort Worth International Airport",
+          "Philadelphia International Airport",
+          "Charlotte Douglas International Airport",
+          "Ronald Reagan Washington National Airport",
+          "Phoenix Sky Harbor International Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A321neo",
+          "Boeing 737-800",
+          "Boeing 737 MAX 8",
+          "Boeing 777-200ER",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "c4c2dc4d-db36-4739-97e7-93cae95052ae",
+      "name": "Air Canada",
+      "iata": "AC",
+      "icao": "ACA",
+      "patch": {
+        "headquarters": "Montreal",
+        "bases": [
+          "Toronto Pearson International Airport",
+          "Vancouver International Airport",
+          "Montréal–Trudeau International Airport",
+          "Calgary International Airport"
+        ],
+        "fleet": [
+          "Airbus A220-300",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A330-300",
+          "Boeing 737 MAX 8",
+          "Boeing 777-200LR",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "00459329-fc48-4c3a-b70e-a3ee13650a74",
+      "name": "JetBlue",
+      "iata": "B6",
+      "icao": "JBU",
+      "patch": {
+        "headquarters": "Long Island City",
+        "bases": [
+          "John F. Kennedy International Airport",
+          "Los Angeles International Airport",
+          "LaGuardia Airport",
+          "Newark Liberty International Airport",
+          "Fort Lauderdale–Hollywood",
+          "Logan International Airport",
+          "Orlando International Airport",
+          "Luis Muñoz Marín International Airport"
+        ],
+        "fleet": [
+          "Airbus A220-300",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A321neo",
+          "Airbus A321LR"
+        ]
+      }
+    },
+    {
+      "id": "e8e20407-bf2a-4979-a79e-71312df00d89",
+      "name": "Singapore Airlines",
+      "iata": "SQ",
+      "icao": "SIA",
+      "patch": {
+        "headquarters": "Singapore",
+        "bases": [
+          "Singapore Changi Airport"
+        ],
+        "fleet": [
+          "Airbus A350-900",
+          "Airbus A380-800",
+          "Boeing 737 MAX 8",
+          "Boeing 777-300ER",
+          "Boeing 787-10"
+        ]
+      }
+    },
+    {
+      "id": "75fd5488-e9fb-49f8-82cd-bdfcbe24cbb6",
+      "name": "Cathay Pacific",
+      "iata": "CX",
+      "icao": "CPA",
+      "patch": {
+        "headquarters": "Hong Kong",
+        "bases": [
+          "Hong Kong International Airport"
+        ],
+        "fleet": [
+          "Airbus A321neo",
+          "Airbus A330-300",
+          "Airbus A350-900",
+          "Airbus A350-1000",
+          "Boeing 777-300ER",
+          "Boeing 777-9"
+        ]
+      }
+    },
+    {
+      "id": "660f628b-c83c-4602-99ea-f39264f98cff",
+      "name": "Qantas",
+      "iata": "QF",
+      "icao": "QFA",
+      "patch": {
+        "headquarters": "Mascot",
+        "bases": [
+          "Adelaide Airport",
+          "Sydney Airport",
+          "Singapore Changi Airport",
+          "Brisbane Airport",
+          "Perth Airport",
+          "Melbourne Airport"
+        ],
+        "fleet": [
+          "Airbus A330-200",
+          "Airbus A330-300",
+          "Airbus A380-800",
+          "Boeing 737-800",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "19e1ad43-7281-4227-ac55-e23d257dff8f",
+      "name": "ANA",
+      "iata": "NH",
+      "icao": "ANA",
+      "patch": {
+        "headquarters": "Higashi-Shinbashi",
+        "bases": [
+          "Narita International Airport",
+          "Kansai International Airport",
+          "Tokyo International Airport",
+          "Osaka International Airport"
+        ],
+        "fleet": [
+          "Airbus A320neo",
+          "Airbus A321neo",
+          "Airbus A380-800",
+          "Boeing 737-800",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9",
+          "Boeing 787-10"
+        ]
+      }
+    },
+    {
+      "id": "bc16afb8-a81a-4d32-bee0-408be5195ae2",
+      "name": "Southwest Airlines",
+      "iata": "WN",
+      "icao": "SWA",
+      "patch": {
+        "headquarters": "Dallas",
+        "bases": [
+          "Dallas Love Field"
+        ],
+        "fleet": [
+          "Boeing 737-700",
+          "Boeing 737-800",
+          "Boeing 737 MAX 8"
+        ]
+      }
+    },
+    {
+      "id": "f35d39aa-7708-4737-ae1a-48e1df38fd2c",
+      "name": "Alaska Airlines",
+      "iata": "AS",
+      "icao": "ASA",
+      "patch": {
+        "headquarters": "Seattle",
+        "bases": [
+          "San Francisco International Airport",
+          "Los Angeles International Airport",
+          "Seattle–Tacoma International Airport",
+          "Ted Stevens Anchorage International Airport",
+          "Portland International Airport"
+        ],
+        "fleet": [
+          "Boeing 737-800",
+          "Boeing 737-900ER",
+          "Boeing 737 MAX 9",
+          "Embraer E175"
+        ]
+      }
+    },
+    {
+      "id": "c6539ff8-ae0c-496f-b9ae-b5a0ffeeb250",
+      "name": "Spirit Airlines",
+      "iata": "NK",
+      "icao": "NKS",
+      "patch": {
+        "headquarters": "Dania Beach",
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A320neo",
+          "Airbus A321",
+          "Airbus A321neo"
+        ]
+      }
+    },
+    {
+      "id": "02fb985c-0f2f-4391-a0ac-47c99a80b822",
+      "name": "Frontier Airlines",
+      "iata": "F9",
+      "icao": "FFT",
+      "patch": {
+        "headquarters": "Denver",
+        "bases": [
+          "Denver International Airport"
+        ],
+        "fleet": [
+          "Airbus A320neo",
+          "Airbus A321neo"
+        ]
+      }
+    },
+    {
+      "id": "a672f551-c152-41fa-a871-67cdddcc596f",
+      "name": "Hawaiian Airlines",
+      "iata": "HA",
+      "icao": "HAL",
+      "patch": {
+        "headquarters": "Honolulu",
+        "bases": [
+          "Daniel K. Inouye International Airport",
+          "Kahului Airport"
+        ]
+      }
+    },
+    {
+      "id": "41a5cbe4-37d1-44fd-8e4b-8aed1f8e80f7",
+      "name": "Allegiant Air",
+      "iata": "G4",
+      "icao": "AAY",
+      "patch": {
+        "headquarters": "Enterprise",
+        "bases": [
+          "Los Angeles International Airport",
+          "Fort Lauderdale–Hollywood",
+          "Harry Reid International Airport",
+          "Orlando International Airport"
+        ]
+      }
+    },
+    {
+      "id": "e4845366-106d-4967-b76a-912d2b51d8f3",
+      "name": "Sun Country Airlines",
+      "iata": "SY",
+      "icao": "SCX",
+      "patch": {
+        "headquarters": "Eagan",
+        "bases": [
+          "Minneapolis–Saint Paul International Airport"
+        ]
+      }
+    },
+    {
+      "id": "29a7c567-c2c2-4e1f-a955-c4c04ef0a871",
+      "name": "Breeze Airways",
+      "iata": "MX",
+      "icao": "MXY",
+      "patch": {
+        "headquarters": "Cottonwood Heights"
+      }
+    },
+    {
+      "id": "a25ce6d4-ce75-473e-92ee-8c5ffa7b9ea1",
+      "name": "Avelo Airlines",
+      "iata": "XP",
+      "icao": "VXP",
+      "patch": {
+        "headquarters": "Houston",
+        "bases": [
+          "Hollywood Burbank Airport",
+          "Wilmington International Airport",
+          "Harry Reid International Airport",
+          "Orlando International Airport",
+          "Raleigh–Durham International Airport",
+          "Charles M. Schulz–Sonoma County Airport",
+          "Tweed-New Haven Regional Airport"
+        ]
+      }
+    },
+    {
+      "id": "e0851257-e95e-465d-92bd-56fce19f0f0b",
+      "name": "SkyWest Airlines",
+      "iata": "OO",
+      "icao": "SKW",
+      "patch": {
+        "headquarters": "St. George"
+      }
+    },
+    {
+      "id": "ea1a28d9-60b4-4045-bc95-ef512339618a",
+      "name": "Republic Airways",
+      "iata": "YX",
+      "icao": "RPA",
+      "patch": {
+        "headquarters": "Indianapolis"
+      }
+    },
+    {
+      "id": "86e0366a-d489-4ea5-8c94-68a0298d47c0",
+      "name": "Envoy Air",
+      "iata": "MQ",
+      "icao": "ENY",
+      "patch": {
+        "headquarters": "Fort Worth",
+        "bases": [
+          "John F. Kennedy International Airport",
+          "Miami International Airport",
+          "O'Hare International Airport",
+          "LaGuardia Airport",
+          "Dallas/Fort Worth International Airport",
+          "Luis Muñoz Marín International Airport"
+        ]
+      }
+    },
+    {
+      "id": "2dc70ca6-beb5-4e46-b67e-5c6c36eebd25",
+      "name": "Endeavor Air",
+      "iata": "9E",
+      "icao": "EDV",
+      "patch": {
+        "bases": [
+          "Minneapolis–Saint Paul International Airport"
+        ]
+      }
+    },
+    {
+      "id": "b77185b5-494d-4df3-a737-dea12f5fd80a",
+      "name": "Mesa Airlines",
+      "iata": "YV",
+      "icao": "ASH",
+      "patch": {
+        "headquarters": "Phoenix",
+        "bases": [
+          "O'Hare International Airport",
+          "Washington Dulles International Airport",
+          "Daniel K. Inouye International Airport",
+          "Charlotte Douglas International Airport",
+          "Phoenix Sky Harbor International Airport"
+        ]
+      }
+    },
+    {
+      "id": "3ab22cb9-c65b-4606-9366-decb0e5e4e69",
+      "name": "GoJet Airlines",
+      "iata": "G7",
+      "icao": "GJS",
+      "patch": {
+        "headquarters": "Bridgeton",
+        "bases": [
+          "St. Louis Lambert International Airport"
+        ]
+      }
+    },
+    {
+      "id": "ddb87917-ae8a-41eb-a0f1-19383cebb6b7",
+      "name": "Horizon Air",
+      "iata": "QX",
+      "icao": "QXE",
+      "patch": {
+        "headquarters": "Seattle",
+        "bases": [
+          "Seattle–Tacoma International Airport",
+          "Portland International Airport"
+        ]
+      }
+    },
+    {
+      "id": "8b0df147-264e-4f23-9066-6b222327ff22",
+      "name": "CommuteAir",
+      "iata": "C5",
+      "icao": "UCA",
+      "patch": {
+        "headquarters": "North Olmsted",
+        "bases": [
+          "Denver International Airport",
+          "Washington Dulles International Airport",
+          "George Bush Intercontinental Airport"
+        ]
+      }
+    },
+    {
+      "id": "9320ca50-b66b-41cf-b52f-e83cf8383e4c",
+      "name": "Air Wisconsin",
+      "iata": "ZW",
+      "icao": "AWI",
+      "patch": {
+        "headquarters": "Appleton",
+        "bases": [
+          "O'Hare International Airport",
+          "Washington Dulles International Airport"
+        ]
+      }
+    },
+    {
+      "id": "fa1bbfcd-3800-4b21-a73f-6a39d637ceb1",
+      "name": "FedEx Express",
+      "iata": "FX",
+      "icao": "FDX",
+      "patch": {
+        "headquarters": "Memphis",
+        "bases": [
+          "Memphis International Airport"
+        ],
+        "fleet": [
+          "Boeing 767-300F",
+          "Boeing 777F",
+          "Boeing 757-200F",
+          "Airbus A300-600F",
+          "ATR 72-600F",
+          "Cessna 408 SkyCourier"
+        ]
+      }
+    },
+    {
+      "id": "3687ac7f-561a-4844-a12f-0f05cda3df4c",
+      "name": "UPS Airlines",
+      "iata": "5X",
+      "icao": "UPS",
+      "patch": {
+        "headquarters": "Louisville",
+        "bases": [
+          "Louisville International Airport"
+        ],
+        "fleet": [
+          "Boeing 747-8F",
+          "Boeing 767-300F",
+          "Boeing 757-200F",
+          "Airbus A300-600F",
+          "McDonnell Douglas MD-11F"
+        ]
+      }
+    },
+    {
+      "id": "868729de-948e-4a3c-9f10-572023c29c8d",
+      "name": "Atlas Air",
+      "iata": "5Y",
+      "icao": "GTI",
+      "patch": {
+        "headquarters": "Purchase",
+        "bases": [
+          "Miami International Airport"
+        ]
+      }
+    },
+    {
+      "id": "b61aa151-2129-4567-bb24-da721d264594",
+      "name": "Kalitta Air",
+      "iata": "K4",
+      "icao": "CKS",
+      "patch": {
+        "headquarters": "Ypsilanti",
+        "bases": [
+          "Newark Liberty International Airport"
+        ]
+      }
+    },
+    {
+      "id": "878bcfc7-f86d-43b4-aae9-416b386c63c2",
+      "name": "Polar Air Cargo",
+      "iata": "PO",
+      "icao": "PAC",
+      "patch": {
+        "headquarters": "Purchase",
+        "bases": [
+          "Incheon International Airport"
+        ]
+      }
+    },
+    {
+      "id": "70dfbb98-e20f-42aa-aa6b-4c0f2c3da431",
+      "name": "ABX Air",
+      "iata": "GB",
+      "icao": "ABX",
+      "patch": {
+        "headquarters": "Wilmington Air Park",
+        "bases": [
+          "Miami International Airport",
+          "Cincinnati/Northern Kentucky International Airport"
+        ]
+      }
+    },
+    {
+      "id": "64063c58-f8ed-4630-84c7-d06ff46d8a7e",
+      "name": "Western Global Airlines",
+      "iata": "KD",
+      "icao": "WGN",
+      "patch": {
+        "headquarters": "Estero"
+      }
+    },
+    {
+      "id": "9bba3132-10da-4f8c-bae3-ad939935b238",
+      "name": "National Airlines",
+      "iata": "N8",
+      "icao": "NCR",
+      "patch": {
+        "headquarters": "Orlando",
+        "bases": [
+          "Orlando Sanford International Airport"
+        ]
+      }
+    },
+    {
+      "id": "9a497d4e-4793-4692-8676-337e5139fef9",
+      "name": "WestJet",
+      "iata": "WS",
+      "icao": "WJA",
+      "patch": {
+        "headquarters": "Calgary",
+        "bases": [
+          "Toronto Pearson International Airport",
+          "Calgary International Airport"
+        ]
+      }
+    },
+    {
+      "id": "b734d971-047a-46bb-a67e-fe546fce199f",
+      "name": "Porter Airlines",
+      "iata": "PD",
+      "icao": "POE",
+      "patch": {
+        "headquarters": "Toronto",
+        "bases": [
+          "Billy Bishop Toronto City Airport"
+        ]
+      }
+    },
+    {
+      "id": "ed01bf02-a473-413b-92fc-f07a41c7c97c",
+      "name": "Air Transat",
+      "iata": "TS",
+      "icao": "TSC",
+      "patch": {
+        "headquarters": "Montreal",
+        "bases": [
+          "Toronto Pearson International Airport",
+          "Vancouver International Airport",
+          "Montréal–Trudeau International Airport"
+        ]
+      }
+    },
+    {
+      "id": "62f23017-bc3d-4122-9360-b31bfcf0c7f6",
+      "name": "Flair Airlines",
+      "iata": "F8",
+      "icao": "FLE",
+      "patch": {
+        "headquarters": "Edmonton",
+        "bases": [
+          "Edmonton International Airport"
+        ]
+      }
+    },
+    {
+      "id": "92720768-19eb-45d9-97dd-385f56ca38ca",
+      "name": "LATAM Airlines",
+      "iata": "LA",
+      "icao": "LAN",
+      "patch": {
+        "headquarters": "Las Condes",
+        "bases": [
+          "Arturo Merino Benítez International Airport"
+        ]
+      }
+    },
+    {
+      "id": "332ffc1b-3960-4583-85b2-7480e33bc785",
+      "name": "Azul Brazilian Airlines",
+      "iata": "AD",
+      "icao": "AZU",
+      "patch": {
+        "headquarters": "Barueri",
+        "bases": [
+          "Viracopos International Airport",
+          "Manaus International Airport",
+          "Tancredo Neves International Airport"
+        ]
+      }
+    },
+    {
+      "id": "f43f66e1-5a01-4475-a029-e3aa5aaabf89",
+      "name": "GOL Linhas Aéreas",
+      "iata": "G3",
+      "icao": "GLO",
+      "patch": {
+        "headquarters": "São Paulo",
+        "bases": [
+          "Rio de Janeiro/Galeão – Antonio Carlos Jobim International Airport",
+          "Congonhas-São Paulo Airport",
+          "Brasilia President Juscelino Kubitschek International Airport"
+        ]
+      }
+    },
+    {
+      "id": "cf89a598-d717-4403-8ea5-258e5175e18f",
+      "name": "Avianca",
+      "iata": "AV",
+      "icao": "AVA",
+      "patch": {
+        "headquarters": "Bogotá",
+        "bases": [
+          "El Dorado International Airport"
+        ]
+      }
+    },
+    {
+      "id": "ec7c7e07-9f1c-4716-a80e-81cc20b3e4a3",
+      "name": "Copa Airlines",
+      "iata": "CM",
+      "icao": "CMP",
+      "patch": {
+        "headquarters": "Panama City",
+        "bases": [
+          "Tocumen International Airport"
+        ]
+      }
+    },
+    {
+      "id": "24ab05c0-308d-4eb3-ae1b-f92fd0f0d861",
+      "name": "Aeroméxico",
+      "iata": "AM",
+      "icao": "AMX",
+      "patch": {
+        "headquarters": "Mexico City",
+        "bases": [
+          "Aeropuerto Internacional Benito Juárez"
+        ]
+      }
+    },
+    {
+      "id": "1c9c46a3-eab7-4a32-9009-a1fbf1c1c985",
+      "name": "Volaris",
+      "iata": "Y4",
+      "icao": "VOI",
+      "patch": {
+        "headquarters": "Mexico City",
+        "bases": [
+          "Aeropuerto Internacional Benito Juárez"
+        ]
+      }
+    },
+    {
+      "id": "bb0e2d34-d746-459f-8eed-45d4d27750ab",
+      "name": "Viva Aerobus",
+      "iata": "VB",
+      "icao": "VIV",
+      "patch": {
+        "headquarters": "Apodaca",
+        "bases": [
+          "Monterrey-Gen. Mariano Escobedo"
+        ]
+      }
+    },
+    {
+      "id": "73e8a6c5-909b-4a1d-81ca-99c6f98e73f9",
+      "name": "SKY Airline",
+      "iata": "H2",
+      "icao": "SKU",
+      "patch": {
+        "headquarters": "Santiago",
+        "bases": [
+          "Arturo Merino Benítez International Airport"
+        ]
+      }
+    },
+    {
+      "id": "dea392c3-0eb8-40e4-87d8-328fee52fee7",
+      "name": "JetSMART",
+      "iata": "JA",
+      "icao": "JAT",
+      "patch": {
+        "headquarters": "Santiago",
+        "bases": [
+          "Arturo Merino Benítez International Airport"
+        ]
+      }
+    },
+    {
+      "id": "51b6bf5b-4efd-4767-b0ee-000b5b172b95",
+      "name": "Aerolíneas Argentinas",
+      "iata": "AR",
+      "icao": "ARG",
+      "patch": {
+        "headquarters": "Buenos Aires",
+        "bases": [
+          "Jorge Newbery Airport"
+        ]
+      }
+    },
+    {
+      "id": "cfc55998-174d-4629-9f7e-2e2e12e8fb8c",
+      "name": "Caribbean Airlines",
+      "iata": "BW",
+      "icao": "BWA",
+      "patch": {
+        "headquarters": "Piarco",
+        "bases": [
+          "Piarco International Airport"
+        ]
+      }
+    },
+    {
+      "id": "5d27885c-9119-4653-9c28-983d49a293d7",
+      "name": "Iberia",
+      "iata": "IB",
+      "icao": "IBE",
+      "patch": {
+        "headquarters": "Madrid",
+        "bases": [
+          "Madrid-Barajas Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A321neo",
+          "Airbus A330-200",
+          "Airbus A330-300",
+          "Airbus A350-900"
+        ]
+      }
+    },
+    {
+      "id": "4e0d7600-b5fe-4745-a1c1-935c93525e18",
+      "name": "ITA Airways",
+      "iata": "AZ",
+      "icao": "ITY",
+      "patch": {
+        "headquarters": "Palazzo delle Finanze",
+        "bases": [
+          "Roma Fiumicino Airport",
+          "Linate Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A321neo",
+          "Airbus A330-200",
+          "Airbus A330-900",
+          "Airbus A350-900"
+        ]
+      }
+    },
+    {
+      "id": "a3ae0371-6aae-4b44-8451-f099fa60328c",
+      "name": "SWISS",
+      "iata": "LX",
+      "icao": "SWR",
+      "patch": {
+        "headquarters": "Kloten",
+        "bases": [
+          "Zurich Airport",
+          "Geneva International Airport"
+        ],
+        "fleet": [
+          "Airbus A220-100",
+          "Airbus A220-300",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A330-300",
+          "Airbus A340-300",
+          "Boeing 777-300ER"
+        ]
+      }
+    },
+    {
+      "id": "5f94b435-6b24-4590-8f3b-4705c8cbe5c5",
+      "name": "Austrian Airlines",
+      "iata": "OS",
+      "icao": "AUA",
+      "patch": {
+        "headquarters": "Schwechat",
+        "bases": [
+          "Wien-Schwechat Airport"
+        ]
+      }
+    },
+    {
+      "id": "d3728a2d-f0de-47e8-9958-246f8e2c9066",
+      "name": "Brussels Airlines",
+      "iata": "SN",
+      "icao": "BEL",
+      "patch": {
+        "headquarters": "Brussels Airport",
+        "bases": [
+          "Brussels Airport"
+        ]
+      }
+    },
+    {
+      "id": "5f20d846-5976-49ec-867a-a733c947a121",
+      "name": "TAP Air Portugal",
+      "iata": "TP",
+      "icao": "TAP",
+      "patch": {
+        "headquarters": "Lisbon",
+        "bases": [
+          "Humberto Delgado Airport",
+          "Madeira Cristiano-Ronaldo Airport",
+          "Francisco de Sá Carneiro Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321neo",
+          "Airbus A330-900"
+        ]
+      }
+    },
+    {
+      "id": "93a4935c-6b74-4ab6-9d64-7de56ae4ab02",
+      "name": "Finnair",
+      "iata": "AY",
+      "icao": "FIN",
+      "patch": {
+        "headquarters": "Veromies",
+        "bases": [
+          "Helsinki Airport"
+        ]
+      }
+    },
+    {
+      "id": "d2404732-b4d8-4d29-b0fc-55f287592411",
+      "name": "LOT Polish Airlines",
+      "iata": "LO",
+      "icao": "LOT",
+      "patch": {
+        "headquarters": "Warsaw",
+        "bases": [
+          "Warsaw Chopin Airport"
+        ]
+      }
+    },
+    {
+      "id": "8928fa91-02b3-4001-9764-8edb3d8019ce",
+      "name": "Aegean Airlines",
+      "iata": "A3",
+      "icao": "AEE",
+      "patch": {
+        "headquarters": "Greece",
+        "bases": [
+          "Thessaloniki Airport \"Makedonia\"",
+          "Athens International Airport \"Eleftherios Venizelos\"",
+          "Larnaca International Airport",
+          "Rhodes International Airport \"Diagoras\"",
+          "Kalamata International Airport \"Captain Vasilis Konstantakopoulos\"",
+          "Heraklion International Airport \"Nikos Kazantzakis\"",
+          "Corfu International Airport"
+        ]
+      }
+    },
+    {
+      "id": "3e2b560f-ec33-44d2-a2c4-3c0706215613",
+      "name": "Croatia Airlines",
+      "iata": "OU",
+      "icao": "CTN",
+      "patch": {
+        "headquarters": "Zagreb",
+        "bases": [
+          "Zagreb Airport"
+        ]
+      }
+    },
+    {
+      "id": "07a6b001-0e92-43db-9810-9de0ecffff0e",
+      "name": "Air Serbia",
+      "iata": "JU",
+      "icao": "ASL",
+      "patch": {
+        "headquarters": "Belgrade",
+        "bases": [
+          "Belgrade Nikola Tesla Airport"
+        ]
+      }
+    },
+    {
+      "id": "5fd73a44-eb29-482a-9111-14969e7be4f2",
+      "name": "Icelandair",
+      "iata": "FI",
+      "icao": "ICE",
+      "patch": {
+        "headquarters": "Hafnarfjörður",
+        "bases": [
+          "Keflavík Airport"
+        ]
+      }
+    },
+    {
+      "id": "00dca71b-ffad-4a61-bba2-886d7ff3a705",
+      "name": "Luxair",
+      "iata": "LG",
+      "icao": "LGL",
+      "patch": {
+        "headquarters": "Munsbach",
+        "bases": [
+          "Luxembourg Airport"
+        ]
+      }
+    },
+    {
+      "id": "567af677-d8fe-453c-9822-7a6c6b2575de",
+      "name": "Air Europa",
+      "iata": "UX",
+      "icao": "AEA",
+      "patch": {
+        "headquarters": "Llucmajor",
+        "bases": [
+          "Madrid-Barajas Airport"
+        ]
+      }
+    },
+    {
+      "id": "de05a86a-cb27-48f5-879d-5ef1e429d1de",
+      "name": "Virgin Atlantic",
+      "iata": "VS",
+      "icao": "VIR",
+      "patch": {
+        "headquarters": "Crawley",
+        "bases": [
+          "London Heathrow Airport",
+          "Manchester Airport"
+        ],
+        "fleet": [
+          "Airbus A330-300",
+          "Airbus A330-900",
+          "Airbus A350-1000",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "2031bc35-8215-4906-9b55-129d1bd3e836",
+      "name": "Vueling",
+      "iata": "VY",
+      "icao": "VLG",
+      "patch": {
+        "headquarters": "Viladecans",
+        "bases": [
+          "Josep Tarradellas Airport Barcelona-El Prat"
+        ]
+      }
+    },
+    {
+      "id": "602c953d-2eb5-4e43-96e8-3e7c44058750",
+      "name": "Eurowings",
+      "iata": "EW",
+      "icao": "EWG",
+      "patch": {
+        "headquarters": "Düsseldorf",
+        "bases": [
+          "Düsseldorf Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321"
+        ]
+      }
+    },
+    {
+      "id": "f24994e1-0eaa-4624-a911-cda0bbfa14b2",
+      "name": "Transavia",
+      "iata": "HV",
+      "icao": "TRA",
+      "patch": {
+        "headquarters": "Amsterdam Schiphol Airport"
+      }
+    },
+    {
+      "id": "65088a04-2113-458f-ac3b-c65013bf1d99",
+      "name": "Volotea",
+      "iata": "V7",
+      "icao": "VOE",
+      "patch": {
+        "headquarters": "Asturias Airport"
+      }
+    },
+    {
+      "id": "d403bf61-f7c4-4e5c-97eb-f29298dc8f49",
+      "name": "Smartwings",
+      "iata": "QS",
+      "icao": "TVS",
+      "patch": {
+        "headquarters": "Prague"
+      }
+    },
+    {
+      "id": "3d1dff5b-b067-4a99-8c64-96bdc3ed9767",
+      "name": "Pegasus Airlines",
+      "iata": "PC",
+      "icao": "PGT",
+      "patch": {
+        "headquarters": "Istanbul",
+        "bases": [
+          "Istanbul Sabiha Gökçen International Airport",
+          "Antalya Airport"
+        ]
+      }
+    },
+    {
+      "id": "5514b104-a957-44c7-ab97-079590812afa",
+      "name": "TUI Airways",
+      "iata": "BY",
+      "icao": "TOM",
+      "patch": {
+        "headquarters": "Luton",
+        "bases": [
+          "London Luton Airport"
+        ]
+      }
+    },
+    {
+      "id": "7402ae19-75b0-40d2-a019-49e0544cbf5d",
+      "name": "Loganair",
+      "iata": "LM",
+      "icao": "LOG",
+      "patch": {
+        "headquarters": "Glasgow Airport",
+        "bases": [
+          "Glasgow Airport"
+        ]
+      }
+    },
+    {
+      "id": "868cc4e3-37f4-40f9-9a93-29566812a4bc",
+      "name": "Eastern Airways",
+      "iata": "T3",
+      "icao": "EZE",
+      "patch": {
+        "headquarters": "Humberside Airport",
+        "bases": [
+          "Humberside Airport"
+        ]
+      }
+    },
+    {
+      "id": "166e99ca-a6ec-49fb-a0df-62df3f5eee7d",
+      "name": "Widerøe",
+      "iata": "WF",
+      "icao": "WIF",
+      "patch": {
+        "headquarters": "Bodø",
+        "bases": [
+          "Bodø Airport",
+          "Oslo Airport",
+          "Bergen Airport",
+          "Trondheim Airport",
+          "Sandefjord Airport",
+          "Tromsø Airport"
+        ]
+      }
+    },
+    {
+      "id": "fcc50be0-1dac-4d4c-814f-94a680041899",
+      "name": "Air Nostrum",
+      "iata": "YW",
+      "icao": "ANE",
+      "patch": {
+        "headquarters": "Valencia",
+        "bases": [
+          "Josep Tarradellas Airport Barcelona-El Prat",
+          "Valencia Airport"
+        ]
+      }
+    },
+    {
+      "id": "07f5813b-3987-4f0d-a926-cc1d0f808784",
+      "name": "CityJet",
+      "iata": "WX",
+      "icao": "BCY",
+      "patch": {
+        "headquarters": "Swords",
+        "bases": [
+          "London City Airport",
+          "Brussels Airport",
+          "Paris-Charles de Gaulle Airport",
+          "Copenhagen Airport",
+          "Stockholm Airport"
+        ]
+      }
+    },
+    {
+      "id": "0626f6c3-cc8d-4ce0-8edb-0dd7cb8aca2a",
+      "name": "Binter Canarias",
+      "iata": "NT",
+      "icao": "IBB",
+      "patch": {
+        "headquarters": "Canary Islands",
+        "bases": [
+          "Tenerife North Airport",
+          "Gran Canaria Airport"
+        ]
+      }
+    },
+    {
+      "id": "6d4a3139-5620-4c6e-8ae9-34059c75463f",
+      "name": "Cargolux",
+      "iata": "CV",
+      "icao": "CLX",
+      "patch": {
+        "headquarters": "Luxembourg",
+        "bases": [
+          "Luxembourg Airport"
+        ]
+      }
+    },
+    {
+      "id": "e4f0ad45-59f7-43a0-82b5-9f62866e3e27",
+      "name": "DHL Air",
+      "iata": "D0",
+      "icao": "DHK",
+      "patch": {
+        "headquarters": "Hounslow",
+        "bases": [
+          "East Midlands Airport"
+        ]
+      }
+    },
+    {
+      "id": "6fba5c05-9bb4-4fc5-b7ec-3cd841c5ade6",
+      "name": "European Air Transport (DHL)",
+      "iata": "QY",
+      "icao": "BCS",
+      "patch": {
+        "headquarters": "Brussels Airport",
+        "bases": [
+          "Leipzig/Halle Airport"
+        ]
+      }
+    },
+    {
+      "id": "302844b9-e84f-4c5d-aa7a-c67b98d3fbe1",
+      "name": "ASL Airlines Ireland",
+      "iata": "AG",
+      "icao": "ABR",
+      "patch": {
+        "headquarters": "Dublin",
+        "bases": [
+          "Dublin Airport"
+        ]
+      }
+    },
+    {
+      "id": "09afee3d-57c7-455d-8b89-850a13104220",
+      "name": "Gulf Air",
+      "iata": "GF",
+      "icao": "GFA",
+      "patch": {
+        "headquarters": "Al-Muharraq",
+        "bases": [
+          "Bahrain International Airport"
+        ]
+      }
+    },
+    {
+      "id": "c5ebfdc6-9f92-40ea-93e5-43a601330729",
+      "name": "Kuwait Airways",
+      "iata": "KU",
+      "icao": "KAC",
+      "patch": {
+        "headquarters": "Kuwait City",
+        "bases": [
+          "Kuwait International Airport"
+        ]
+      }
+    },
+    {
+      "id": "7d08efa3-c737-44a3-8de4-d9aa8ccae536",
+      "name": "Oman Air",
+      "iata": "WY",
+      "icao": "OMA",
+      "patch": {
+        "headquarters": "Muscat",
+        "bases": [
+          "Muscat International Airport"
+        ]
+      }
+    },
+    {
+      "id": "aef71f0d-3e99-48b4-8e04-ae57530d239d",
+      "name": "Royal Jordanian",
+      "iata": "RJ",
+      "icao": "RJA",
+      "patch": {
+        "headquarters": "Amman",
+        "bases": [
+          "Queen Alia International Airport"
+        ]
+      }
+    },
+    {
+      "id": "f4e33ee6-fd3c-4e8d-9fc7-0fe15e03573a",
+      "name": "Middle East Airlines",
+      "iata": "ME",
+      "icao": "MEA",
+      "patch": {
+        "headquarters": "Beirut",
+        "bases": [
+          "Beirut–Rafic Hariri International Airport"
+        ]
+      }
+    },
+    {
+      "id": "71568bf7-8268-4e92-969a-cc4d8f83fcb4",
+      "name": "Air Arabia",
+      "iata": "G9",
+      "icao": "ABY",
+      "patch": {
+        "headquarters": "Sharjah"
+      }
+    },
+    {
+      "id": "273b1af6-f254-47c5-acd7-af397d675474",
+      "name": "El Al",
+      "iata": "LY",
+      "icao": "ELY",
+      "patch": {
+        "headquarters": "Tel Aviv",
+        "bases": [
+          "Ben Gurion Airport"
+        ]
+      }
+    },
+    {
+      "id": "3d3c1069-cd1c-47bf-a930-968a4a3bc4fa",
+      "name": "Jazeera Airways",
+      "iata": "J9",
+      "icao": "JZR",
+      "patch": {
+        "headquarters": "Farwaniya",
+        "bases": [
+          "Kuwait International Airport"
+        ]
+      }
+    },
+    {
+      "id": "012c52e7-6e24-4b57-94cb-e2eaee0fd16a",
+      "name": "SalamAir",
+      "iata": "OV",
+      "icao": "OMS",
+      "patch": {
+        "headquarters": "Muscat",
+        "bases": [
+          "Muscat International Airport"
+        ]
+      }
+    },
+    {
+      "id": "ae668d32-7c6e-4cd7-a571-7a93a1e0f0cb",
+      "name": "flynas",
+      "iata": "XY",
+      "icao": "KNE",
+      "patch": {
+        "headquarters": "Riyadh",
+        "bases": [
+          "King Khalid International Airport",
+          "King Abdulaziz International Airport",
+          "Abha Regional Airport"
+        ]
+      }
+    },
+    {
+      "id": "49451d84-658f-4925-91ec-829ae8645481",
+      "name": "Iraqi Airways",
+      "iata": "IA",
+      "icao": "IAW",
+      "patch": {
+        "headquarters": "Baghdad"
+      }
+    },
+    {
+      "id": "9da8b6fd-adef-488c-b047-853ba19f43ab",
+      "name": "Israir",
+      "iata": "6H",
+      "icao": "ISR",
+      "patch": {
+        "headquarters": "Tel Aviv",
+        "bases": [
+          "Ben Gurion Airport"
+        ]
+      }
+    },
+    {
+      "id": "a488dbd0-f89d-4d9a-b7e1-2b4b78deaf9b",
+      "name": "EgyptAir",
+      "iata": "MS",
+      "icao": "MSR",
+      "patch": {
+        "headquarters": "Cairo",
+        "bases": [
+          "Cairo International Airport"
+        ]
+      }
+    },
+    {
+      "id": "5acebcb2-3a99-4a45-a0dc-4e7c647ef19f",
+      "name": "Royal Air Maroc",
+      "iata": "AT",
+      "icao": "RAM",
+      "patch": {
+        "headquarters": "Casablanca-Anfa Airport",
+        "bases": [
+          "Mohammed V International Airport"
+        ]
+      }
+    },
+    {
+      "id": "12b1600d-f4d1-4997-9e0b-5923476769f7",
+      "name": "Tunisair",
+      "iata": "TU",
+      "icao": "TAR",
+      "patch": {
+        "headquarters": "Tunis",
+        "bases": [
+          "Tunis–Carthage International Airport"
+        ]
+      }
+    },
+    {
+      "id": "c12d1c2a-0c86-4d2b-b5ca-b997c4e9a0f8",
+      "name": "Air Algérie",
+      "iata": "AH",
+      "icao": "DAH",
+      "patch": {
+        "headquarters": "Algiers",
+        "bases": [
+          "Algiers Houari Boumediene Airport"
+        ]
+      }
+    },
+    {
+      "id": "138fe5d0-e6da-4b59-912d-018d85a2f65a",
+      "name": "Air Cairo",
+      "iata": "SM",
+      "icao": "MSC",
+      "patch": {
+        "headquarters": "Cairo",
+        "bases": [
+          "Cairo International Airport"
+        ]
+      }
+    },
+    {
+      "id": "37687595-f996-4437-b64d-feee4c13225e",
+      "name": "Ethiopian Airlines",
+      "iata": "ET",
+      "icao": "ETH",
+      "patch": {
+        "headquarters": "Addis Ababa Bole International Airport",
+        "bases": [
+          "Addis Ababa Bole International Airport"
+        ],
+        "fleet": [
+          "Boeing 737-800",
+          "Boeing 737 MAX 8",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9",
+          "Airbus A350-900"
+        ]
+      }
+    },
+    {
+      "id": "05d23081-b2f1-46cc-b81b-d69915daf489",
+      "name": "Kenya Airways",
+      "iata": "KQ",
+      "icao": "KQA",
+      "patch": {
+        "headquarters": "Embakasi",
+        "bases": [
+          "Jomo Kenyatta International Airport"
+        ]
+      }
+    },
+    {
+      "id": "150084de-34b7-4bd5-a132-43447ab7320f",
+      "name": "South African Airways",
+      "iata": "SA",
+      "icao": "SAA",
+      "patch": {
+        "headquarters": "OR Tambo International Airport",
+        "bases": [
+          "OR Tambo International Airport",
+          "Cape Town International Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A330-300",
+          "Airbus A340-300"
+        ]
+      }
+    },
+    {
+      "id": "d4e3b3d5-f152-46a5-911b-a27254217868",
+      "name": "Airlink",
+      "iata": "4Z",
+      "icao": "LNK",
+      "patch": {
+        "headquarters": "Johannesburg",
+        "bases": [
+          "OR Tambo International Airport"
+        ]
+      }
+    },
+    {
+      "id": "5e5ef202-a255-4454-b69f-3830ac05fc6c",
+      "name": "FlySafair",
+      "iata": "FA",
+      "icao": "SFR",
+      "patch": {
+        "headquarters": "Johannesburg"
+      }
+    },
+    {
+      "id": "52276381-d468-4b10-b729-a1e46a2afe96",
+      "name": "Air Mauritius",
+      "iata": "MK",
+      "icao": "MAU",
+      "patch": {
+        "headquarters": "Port Louis",
+        "bases": [
+          "Sir Seewoosagur Ramgoolam International Airport"
+        ]
+      }
+    },
+    {
+      "id": "352006ad-8705-4e99-b30f-c80a8c308757",
+      "name": "RwandAir",
+      "iata": "WB",
+      "icao": "RWD",
+      "patch": {
+        "headquarters": "Kigali",
+        "bases": [
+          "Kigali International Airport"
+        ]
+      }
+    },
+    {
+      "id": "b7d1126f-2cfc-4250-9549-2ead44f9e50c",
+      "name": "Air Senegal",
+      "iata": "HC",
+      "icao": "SNG",
+      "patch": {
+        "headquarters": "Dakar"
+      }
+    },
+    {
+      "id": "8f245de1-0ed0-41fe-93c5-f5e0e02b643c",
+      "name": "ASKY Airlines",
+      "iata": "KP",
+      "icao": "SKK",
+      "patch": {
+        "headquarters": "Lomé",
+        "bases": [
+          "Lomé-Tokoin Airport"
+        ]
+      }
+    },
+    {
+      "id": "4f750f84-992d-4879-a98a-d3ce39f91680",
+      "name": "TAAG Angola Airlines",
+      "iata": "DT",
+      "icao": "DTA",
+      "patch": {
+        "headquarters": "Luanda",
+        "bases": [
+          "Quatro de Fevereiro Airport"
+        ]
+      }
+    },
+    {
+      "id": "63abd7f9-d0ea-4242-8a42-3efb23d4afce",
+      "name": "Air Côte d'Ivoire",
+      "iata": "HF",
+      "icao": "VRE",
+      "patch": {
+        "headquarters": "Abidjan",
+        "bases": [
+          "Port Bouet Airport"
+        ]
+      }
+    },
+    {
+      "id": "642cd5ea-3d47-4656-adf2-b7e1e257b06b",
+      "name": "Precision Air",
+      "iata": "PW",
+      "icao": "PRF",
+      "patch": {
+        "bases": [
+          "Julius Nyerere International Airport"
+        ]
+      }
+    },
+    {
+      "id": "d507115f-18f0-4040-977a-3cf2031dd52b",
+      "name": "Air Peace",
+      "iata": "P4",
+      "icao": "APK",
+      "patch": {
+        "headquarters": "Ikeja"
+      }
+    },
+    {
+      "id": "dcdbff42-1fb5-4fdd-bb93-1eb762136c29",
+      "name": "Arik Air",
+      "iata": "W3",
+      "icao": "ARA",
+      "patch": {
+        "headquarters": "Murtala Muhammed International Airport",
+        "bases": [
+          "Nnamdi Azikiwe International Airport",
+          "Murtala Muhammed International Airport"
+        ]
+      }
+    },
+    {
+      "id": "75124b24-2640-4b99-a9e0-2430a0ac9e3e",
+      "name": "Fastjet",
+      "iata": "FN",
+      "icao": "FTZ",
+      "patch": {
+        "bases": [
+          "Robert Gabriel Mugabe International Airport"
+        ]
+      }
+    },
+    {
+      "id": "fc4c8c7e-942a-473c-b99a-740bce83739a",
+      "name": "Japan Airlines",
+      "iata": "JL",
+      "icao": "JAL",
+      "patch": {
+        "headquarters": "Higashi-Shinagawa",
+        "bases": [
+          "Narita International Airport",
+          "Kansai International Airport",
+          "Tokyo International Airport",
+          "Osaka International Airport"
+        ],
+        "fleet": [
+          "Airbus A350-900",
+          "Airbus A350-1000",
+          "Boeing 737-800",
+          "Boeing 767-300ER",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "eb2248ed-b168-4617-aa33-f10228f97171",
+      "name": "Korean Air",
+      "iata": "KE",
+      "icao": "KAL",
+      "patch": {
+        "headquarters": "Gonghang-dong",
+        "bases": [
+          "Incheon International Airport",
+          "Gimpo International Airport"
+        ],
+        "fleet": [
+          "Airbus A220-300",
+          "Airbus A330-300",
+          "Airbus A380-800",
+          "Boeing 737-800",
+          "Boeing 737 MAX 8",
+          "Boeing 777-300ER",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "1364dbff-d910-4f14-a6ed-d5dbda0ec197",
+      "name": "Asiana Airlines",
+      "iata": "OZ",
+      "icao": "AAR",
+      "patch": {
+        "headquarters": "Seoul",
+        "bases": [
+          "Incheon International Airport",
+          "Gimpo International Airport"
+        ]
+      }
+    },
+    {
+      "id": "871f3b63-6f89-4ab5-9eab-e1429473d7f9",
+      "name": "China Airlines",
+      "iata": "CI",
+      "icao": "CAL",
+      "patch": {
+        "headquarters": "CAL Park",
+        "bases": [
+          "Taoyuan International Airport"
+        ]
+      }
+    },
+    {
+      "id": "7c9a277e-b0e7-4183-be71-94262ebd4d76",
+      "name": "EVA Air",
+      "iata": "BR",
+      "icao": "EVA",
+      "patch": {
+        "headquarters": "Luzhu District",
+        "bases": [
+          "Taoyuan International Airport"
+        ]
+      }
+    },
+    {
+      "id": "3942142d-af8e-41c7-acf5-5f7c79ba7450",
+      "name": "Air China",
+      "iata": "CA",
+      "icao": "CCA",
+      "patch": {
+        "headquarters": "Beijing",
+        "bases": [
+          "Beijing Capital International Airport",
+          "Shanghai Pudong International Airport",
+          "Chengdu Shuangliu International Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A330-200",
+          "Airbus A330-300",
+          "Airbus A350-900",
+          "Boeing 737-800",
+          "Boeing 747-8",
+          "Boeing 777-300ER",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "bbbcb810-9ae0-46b3-ad74-e204c2d2d625",
+      "name": "China Southern Airlines",
+      "iata": "CZ",
+      "icao": "CSN",
+      "patch": {
+        "headquarters": "Guangzhou",
+        "bases": [
+          "Guangzhou Baiyun International Airport",
+          "Ürümqi Tianshan International Airport",
+          "Chongqing Jiangbei International Airport",
+          "Beijing Daxing International Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A330-300",
+          "Airbus A350-900",
+          "Boeing 737-800",
+          "Boeing 777-300ER",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "3273a94f-1d78-4425-abb4-44bc019175f2",
+      "name": "China Eastern Airlines",
+      "iata": "MU",
+      "icao": "CES",
+      "patch": {
+        "headquarters": "Shanghai Hongqiao International Airport",
+        "bases": [
+          "Shanghai Pudong International Airport",
+          "Xi'an Xianyang International Airport",
+          "Shanghai Hongqiao International Airport",
+          "Beijing Daxing International Airport",
+          "Kunming Changshui International Airport"
+        ],
+        "fleet": [
+          "Airbus A319",
+          "Airbus A320",
+          "Airbus A321",
+          "Airbus A330-200",
+          "Airbus A350-900",
+          "Boeing 737-800",
+          "Boeing 777-300ER",
+          "COMAC C919"
+        ]
+      }
+    },
+    {
+      "id": "8fc2df68-e345-4120-8d99-3a1d6032ea9e",
+      "name": "Hainan Airlines",
+      "iata": "HU",
+      "icao": "CHH",
+      "patch": {
+        "headquarters": "Haikou",
+        "bases": [
+          "Beijing Capital International Airport",
+          "Haikou Meilan International Airport"
+        ]
+      }
+    },
+    {
+      "id": "14ec94df-490c-43f0-9a11-56fb6d14f9ba",
+      "name": "Xiamen Air",
+      "iata": "MF",
+      "icao": "CXA",
+      "patch": {
+        "headquarters": "Xiamen",
+        "bases": [
+          "Xiamen Gaoqi International Airport"
+        ]
+      }
+    },
+    {
+      "id": "407e5305-bb4a-4a4d-a3e7-dc021322c28d",
+      "name": "Shenzhen Airlines",
+      "iata": "ZH",
+      "icao": "CSZ",
+      "patch": {
+        "headquarters": "Shenzhen",
+        "bases": [
+          "Guangzhou Baiyun International Airport",
+          "Shenzhen Bao'an International Airport",
+          "Shenyang Taoxian International Airport",
+          "Nanning Wuxu International Airport"
+        ]
+      }
+    },
+    {
+      "id": "499e4add-32bb-4cbe-97c3-20e85c531628",
+      "name": "Juneyao Airlines",
+      "iata": "HO",
+      "icao": "DKH",
+      "patch": {
+        "headquarters": "Shanghai",
+        "bases": [
+          "Shanghai Hongqiao International Airport"
+        ]
+      }
+    },
+    {
+      "id": "09d67352-6195-48cb-88e5-37ad87d8d912",
+      "name": "Spring Airlines",
+      "iata": "9C",
+      "icao": "CQH",
+      "patch": {
+        "headquarters": "Shanghai",
+        "bases": [
+          "Shanghai Pudong International Airport"
+        ]
+      }
+    },
+    {
+      "id": "fe79b327-bad2-4205-b084-f8c904033492",
+      "name": "Skymark Airlines",
+      "iata": "BC",
+      "icao": "SKY",
+      "patch": {
+        "headquarters": "Tokyo"
+      }
+    },
+    {
+      "id": "bfd71fb2-f617-4708-a710-d937cc543dec",
+      "name": "Peach Aviation",
+      "iata": "MM",
+      "icao": "APJ",
+      "patch": {
+        "headquarters": "Izumisano",
+        "bases": [
+          "Kansai International Airport"
+        ]
+      }
+    },
+    {
+      "id": "188bf657-d2ac-485c-b8af-58c9e3c602bf",
+      "name": "Thai Airways",
+      "iata": "TG",
+      "icao": "THA",
+      "patch": {
+        "headquarters": "Chatuchak",
+        "bases": [
+          "Suvarnabhumi Airport"
+        ],
+        "fleet": [
+          "Airbus A320",
+          "Airbus A350-900",
+          "Boeing 777-300ER",
+          "Boeing 787-8",
+          "Boeing 787-9"
+        ]
+      }
+    },
+    {
+      "id": "1ce89059-cf1e-4db9-928b-0ecb92af70ff",
+      "name": "Malaysia Airlines",
+      "iata": "MH",
+      "icao": "MAS",
+      "patch": {
+        "headquarters": "Kuala Lumpur International Airport",
+        "bases": [
+          "Kuala Lumpur International Airport",
+          "Kota Kinabalu International Airport",
+          "Kuching International Airport"
+        ],
+        "fleet": [
+          "Boeing 737-800",
+          "Boeing 737 MAX 8",
+          "Airbus A330-300",
+          "Airbus A350-900"
+        ]
+      }
+    },
+    {
+      "id": "827850c9-f80c-4990-9f5c-d13626feb7ad",
+      "name": "Garuda Indonesia",
+      "iata": "GA",
+      "icao": "GIA",
+      "patch": {
+        "headquarters": "Soekarno–Hatta International Airport",
+        "bases": [
+          "Sultan Aji Muhammad Sulaiman Sepinggan Airport",
+          "Soekarno–Hatta International Airport",
+          "Ngurah Rai International Airport",
+          "Juanda International Airport",
+          "Sultan Hasanuddin International Airport",
+          "Kualanamu International Airport"
+        ],
+        "fleet": [
+          "Boeing 737-800",
+          "Airbus A330-300",
+          "Boeing 777-300ER"
+        ]
+      }
+    },
+    {
+      "id": "d6b99185-6a79-4b36-b9dc-c6e2611297d9",
+      "name": "Vietnam Airlines",
+      "iata": "VN",
+      "icao": "HVN",
+      "patch": {
+        "headquarters": "Long Biên",
+        "bases": [
+          "Long Thanh International Airport",
+          "Tan Son Nhat International Airport",
+          "Da Nang International Airport",
+          "Noi Bai International Airport"
+        ]
+      }
+    },
+    {
+      "id": "4bf74aae-a437-44d2-bd11-ff2377213ac0",
+      "name": "Philippine Airlines",
+      "iata": "PR",
+      "icao": "PAL",
+      "patch": {
+        "headquarters": "Pasay",
+        "bases": [
+          "Ninoy Aquino International Airport",
+          "Mactan–Cebu International Airport"
+        ]
+      }
+    },
+    {
+      "id": "d9e8cb4a-0ea5-4e7b-b110-d9697a4db847",
+      "name": "AirAsia",
+      "iata": "AK",
+      "icao": "AXM",
+      "patch": {
+        "headquarters": "Kuala Lumpur International Airport",
+        "bases": [
+          "Kuala Lumpur International Airport",
+          "Kota Kinabalu International Airport",
+          "Penang International Airport",
+          "Kuching International Airport"
+        ]
+      }
+    },
+    {
+      "id": "33742964-1647-4df6-9b98-2fd8a4c81b84",
+      "name": "Cebu Pacific",
+      "iata": "5J",
+      "icao": "CEB",
+      "patch": {
+        "headquarters": "Cebu City",
+        "bases": [
+          "Ninoy Aquino International Airport",
+          "Clark International Airport",
+          "Mactan–Cebu International Airport",
+          "Francisco Bangoy International Airport",
+          "Kalibo International Airport",
+          "Iloilo International Airport"
+        ]
+      }
+    },
+    {
+      "id": "787ea916-f2dc-4bb1-96ec-f754d2fd54b7",
+      "name": "Lion Air",
+      "iata": "JT",
+      "icao": "LNI",
+      "patch": {
+        "headquarters": "Jakarta",
+        "bases": [
+          "Soekarno–Hatta International Airport",
+          "Soewondo Air Force Base",
+          "Juanda International Airport"
+        ]
+      }
+    },
+    {
+      "id": "4cb60dcf-553c-44bb-ba66-980390551405",
+      "name": "VietJet Air",
+      "iata": "VJ",
+      "icao": "VJC",
+      "patch": {
+        "headquarters": "Ho Chi Minh City",
+        "bases": [
+          "Tan Son Nhat International Airport",
+          "Noi Bai International Airport"
+        ]
+      }
+    },
+    {
+      "id": "2165048e-e9e2-497d-8b25-a08438d34f71",
+      "name": "Scoot",
+      "iata": "TR",
+      "icao": "TGW",
+      "patch": {
+        "headquarters": "Singapore",
+        "bases": [
+          "Singapore Changi Airport"
+        ]
+      }
+    },
+    {
+      "id": "00e794c9-b01c-4a85-8bab-afb0950817e5",
+      "name": "Batik Air",
+      "iata": "ID",
+      "icao": "BTK",
+      "patch": {
+        "headquarters": "Jakarta",
+        "bases": [
+          "Soekarno–Hatta International Airport",
+          "Halim Perdanakusuma Airport",
+          "Sam Ratulangi International Airport"
+        ]
+      }
+    },
+    {
+      "id": "b2157fee-c8d9-4cec-a70b-d48220e4d1ca",
+      "name": "Bamboo Airways",
+      "iata": "QH",
+      "icao": "BAV",
+      "patch": {
+        "headquarters": "Phu Cat Airport",
+        "bases": [
+          "Tan Son Nhat International Airport",
+          "Noi Bai International Airport"
+        ]
+      }
+    },
+    {
+      "id": "48afdbe4-ac49-4f8f-acfa-2bbc1b19084c",
+      "name": "Royal Brunei Airlines",
+      "iata": "BI",
+      "icao": "RBA",
+      "patch": {
+        "headquarters": "Bandar Seri Begawan",
+        "bases": [
+          "Brunei International Airport"
+        ]
+      }
+    },
+    {
+      "id": "6524f9ef-293e-4344-8020-a42cbddf5e1f",
+      "name": "Air India",
+      "iata": "AI",
+      "icao": "AIC",
+      "patch": {
+        "headquarters": "Gurgaon",
+        "bases": [
+          "Netaji Subhas Chandra Bose International Airport",
+          "Chennai International Airport",
+          "Chhatrapati Shivaji Maharaj International Airport",
+          "Indira Gandhi International Airport"
+        ],
+        "fleet": [
+          "Airbus A320neo",
+          "Airbus A321neo",
+          "Airbus A350-900",
+          "Boeing 777-300ER",
+          "Boeing 787-8"
+        ]
+      }
+    },
+    {
+      "id": "5e8770be-bb0e-4ac0-b3f1-2ae63a84dd8e",
+      "name": "IndiGo",
+      "iata": "6E",
+      "icao": "IGO",
+      "patch": {
+        "headquarters": "Gurgaon",
+        "bases": [
+          "Lal Bahadur Shastri Airport"
+        ],
+        "fleet": [
+          "Airbus A320neo",
+          "Airbus A321neo",
+          "ATR 72-600"
+        ]
+      }
+    },
+    {
+      "id": "f01419fb-f4f8-4c52-bf00-7c71abb11f84",
+      "name": "SpiceJet",
+      "iata": "SG",
+      "icao": "SEJ",
+      "patch": {
+        "headquarters": "Gurgaon",
+        "bases": [
+          "Chennai International Airport"
+        ]
+      }
+    },
+    {
+      "id": "30fb8e8f-f9fe-4d63-991d-019961ca1812",
+      "name": "SriLankan Airlines",
+      "iata": "UL",
+      "icao": "ALK",
+      "patch": {
+        "headquarters": "Colombo",
+        "bases": [
+          "Bandaranaike International Airport"
+        ]
+      }
+    },
+    {
+      "id": "98a8d548-df26-4a62-9af6-80afdd8bf98a",
+      "name": "Biman Bangladesh Airlines",
+      "iata": "BG",
+      "icao": "BBC",
+      "patch": {
+        "headquarters": "Dhaka",
+        "bases": [
+          "Osmani International Airport"
+        ]
+      }
+    },
+    {
+      "id": "6d36a81c-740f-472d-ad61-d52110c83b30",
+      "name": "Nepal Airlines",
+      "iata": "RA",
+      "icao": "RNA",
+      "patch": {
+        "headquarters": "Kathmandu",
+        "bases": [
+          "Tribhuvan International Airport"
+        ]
+      }
+    },
+    {
+      "id": "068d1bc9-49c6-4ed9-b8c0-5f810b049ed5",
+      "name": "Air New Zealand",
+      "iata": "NZ",
+      "icao": "ANZ",
+      "patch": {
+        "headquarters": "Auckland",
+        "bases": [
+          "Auckland Airport"
+        ]
+      }
+    },
+    {
+      "id": "37550d65-97a2-4401-b251-a5a5550a8dba",
+      "name": "Virgin Australia",
+      "iata": "VA",
+      "icao": "VOZ",
+      "patch": {
+        "headquarters": "Bowen Hills",
+        "bases": [
+          "Sydney Airport",
+          "Brisbane Airport",
+          "Auckland Airport",
+          "Melbourne Airport",
+          "Christchurch International Airport"
+        ]
+      }
+    },
+    {
+      "id": "6760746b-e6db-4eb0-9a3a-06bb0dd310fd",
+      "name": "Jetstar",
+      "iata": "JQ",
+      "icao": "JST",
+      "patch": {
+        "headquarters": "Melbourne",
+        "bases": [
+          "Brisbane Airport",
+          "Cairns Airport",
+          "Melbourne Airport",
+          "Gold Coast Airport"
+        ]
+      }
+    },
+    {
+      "id": "2d663cf1-9c6b-463c-8a26-a5f282a9a381",
+      "name": "Fiji Airways",
+      "iata": "FJ",
+      "icao": "FJI",
+      "patch": {
+        "headquarters": "Nadi International Airport",
+        "bases": [
+          "Nadi International Airport",
+          "Nausori International Airport"
+        ]
+      }
+    },
+    {
+      "id": "73c4de8f-c377-4dbb-ae8a-66ba3339f78b",
+      "name": "Air Astana",
+      "iata": "KC",
+      "icao": "KZR",
+      "patch": {
+        "headquarters": "Almaty",
+        "bases": [
+          "Nursultan Nazarbayev International Airport",
+          "Almaty International Airport"
+        ]
+      }
+    },
+    {
+      "id": "e73feb95-36f4-4aa3-a3b4-f7c689dc823a",
+      "name": "Uzbekistan Airways",
+      "iata": "HY",
+      "icao": "UZB",
+      "patch": {
+        "headquarters": "Tashkent",
+        "bases": [
+          "Tashkent International Airport"
+        ]
+      }
+    },
+    {
+      "id": "852b66c3-9d3a-4f20-b31e-d71860f213c0",
+      "name": "NetJets",
+      "iata": "1I",
+      "icao": "EJA",
+      "patch": {
+        "headquarters": "Columbus"
+      }
+    },
+    {
+      "id": "8946ad1c-a511-4dae-b6bd-761ec66644d3",
+      "name": "VistaJet",
+      "iata": null,
+      "icao": "VJT",
+      "patch": {
+        "headquarters": "Malta International Airport"
+      }
+    },
+    {
+      "id": "4493bbe9-80e6-45ba-8b26-933034093db3",
+      "name": "GlobeAir",
+      "iata": null,
+      "icao": "GAC",
+      "patch": {
+        "headquarters": "Hörsching"
+      }
+    }
+  ],
+  "inserts": [
+    {
+      "name": "Jet Aviation",
+      "iataCode": null,
+      "icaoCode": "JAS",
+      "country": "Switzerland",
+      "region": "Europe"
+    },
+    {
+      "name": "Luxaviation",
+      "iataCode": null,
+      "icaoCode": "LXA",
+      "country": "Luxembourg",
+      "region": "Europe"
+    }
+  ],
+  "skipped": [
+    {
+      "name": "PSA Airlines",
+      "field": "headquarters",
+      "suppressedValue": "Erlanger"
+    },
+    {
+      "name": "Endeavor Air",
+      "field": "headquarters",
+      "suppressedValue": "Memphis"
+    },
+    {
+      "name": "Piedmont Airlines",
+      "field": "headquarters",
+      "suppressedValue": "Gothenburg"
+    },
+    {
+      "name": "Piedmont Airlines",
+      "field": "bases",
+      "suppressedValue": [
+        "Malmö Airport"
+      ]
+    },
+    {
+      "name": "Bristow Group",
+      "field": "headquarters",
+      "suppressedValue": "Stavanger"
+    },
+    {
+      "name": "Bristow Group",
+      "field": "bases",
+      "suppressedValue": [
+        "Stavanger Airport"
+      ]
+    }
+  ],
+  "hqGranularityToNormalizeLater": [
+    {
+      "name": "Ryanair",
+      "hq": "Dublin Airport"
+    },
+    {
+      "name": "easyJet",
+      "hq": "London Luton Airport"
+    },
+    {
+      "name": "Wizz Air",
+      "hq": "Budapest Ferenc Liszt International Airport"
+    },
+    {
+      "name": "SAS",
+      "hq": "Copenhagen Airport"
+    },
+    {
+      "name": "Aer Lingus",
+      "hq": "Dublin Airport"
+    },
+    {
+      "name": "Emirates",
+      "hq": "Al Garhoud"
+    },
+    {
+      "name": "ANA",
+      "hq": "Higashi-Shinbashi"
+    },
+    {
+      "name": "ABX Air",
+      "hq": "Wilmington Air Park"
+    },
+    {
+      "name": "Brussels Airlines",
+      "hq": "Brussels Airport"
+    },
+    {
+      "name": "Transavia",
+      "hq": "Amsterdam Schiphol Airport"
+    },
+    {
+      "name": "Volotea",
+      "hq": "Asturias Airport"
+    },
+    {
+      "name": "Loganair",
+      "hq": "Glasgow Airport"
+    },
+    {
+      "name": "Eastern Airways",
+      "hq": "Humberside Airport"
+    },
+    {
+      "name": "European Air Transport (DHL)",
+      "hq": "Brussels Airport"
+    },
+    {
+      "name": "Royal Air Maroc",
+      "hq": "Casablanca-Anfa Airport"
+    },
+    {
+      "name": "Ethiopian Airlines",
+      "hq": "Addis Ababa Bole International Airport"
+    },
+    {
+      "name": "South African Airways",
+      "hq": "OR Tambo International Airport"
+    },
+    {
+      "name": "Arik Air",
+      "hq": "Murtala Muhammed International Airport"
+    },
+    {
+      "name": "Korean Air",
+      "hq": "Gonghang-dong"
+    },
+    {
+      "name": "EVA Air",
+      "hq": "Luzhu District"
+    },
+    {
+      "name": "China Eastern Airlines",
+      "hq": "Shanghai Hongqiao International Airport"
+    },
+    {
+      "name": "Malaysia Airlines",
+      "hq": "Kuala Lumpur International Airport"
+    },
+    {
+      "name": "Garuda Indonesia",
+      "hq": "Soekarno–Hatta International Airport"
+    },
+    {
+      "name": "AirAsia",
+      "hq": "Kuala Lumpur International Airport"
+    },
+    {
+      "name": "Bamboo Airways",
+      "hq": "Phu Cat Airport"
+    },
+    {
+      "name": "Fiji Airways",
+      "hq": "Nadi International Airport"
+    },
+    {
+      "name": "VistaJet",
+      "hq": "Malta International Airport"
+    },
+    {
+      "name": "GlobeAir",
+      "hq": "Hörsching"
+    }
+  ]
+}

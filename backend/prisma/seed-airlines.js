@@ -233,6 +233,9 @@ const AIRLINES = [
   { name: 'GlobeAir',           iataCode: null, icaoCode: 'GAC', country: 'Austria', region: 'Europe' },
   { name: 'Bristow Group',      iataCode: null, icaoCode: 'BHL', country: 'United States', region: 'Americas' },
   { name: 'Erickson',           iataCode: null, icaoCode: 'EAC', country: 'United States', region: 'Americas' },
+  // Resolved via Wikidata in Step B (ICAO-only). The other 10 deferred ops were unresolvable and dropped.
+  { name: 'Jet Aviation',       iataCode: null, icaoCode: 'JAS', country: 'Switzerland', region: 'Europe' },
+  { name: 'Luxaviation',        iataCode: null, icaoCode: 'LXA', country: 'Luxembourg',  region: 'Europe' },
 ];
 
 async function main() {
