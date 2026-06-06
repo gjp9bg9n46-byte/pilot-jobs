@@ -1,0 +1,4076 @@
+[
+  {
+    "dbId": "2d0e7df3-c024-46c8-9877-54a4cfd7b82e",
+    "dbName": "Ryanair",
+    "dbIata": "FR",
+    "dbIcao": "RYR",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "RYR",
+    "icaoMatch": true,
+    "hq": "Dublin Airport",
+    "hubs": [
+      "London Stansted Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Ryanair"
+    ],
+    "wikidataName": "Ryanair",
+    "qid": "Q170614"
+  },
+  {
+    "dbId": "d3920c02-446b-4ccd-8969-e3f0f70812ea",
+    "dbName": "easyJet",
+    "dbIata": "U2",
+    "dbIcao": "EZY",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "EZY",
+    "icaoMatch": true,
+    "hq": "London Luton Airport",
+    "hubs": [
+      "London Luton Airport",
+      "Milan–Malpensa \"Silvio Berlusconi\" Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "easyJet"
+    ],
+    "wikidataName": "easyJet",
+    "qid": "Q191551"
+  },
+  {
+    "dbId": "f7edcc12-cabd-4673-9942-212de4f10e6d",
+    "dbName": "Wizz Air",
+    "dbIata": "W6",
+    "dbIcao": "WZZ",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "WZZ",
+    "icaoMatch": true,
+    "hq": "Budapest Ferenc Liszt International Airport",
+    "hubs": [
+      "Budapest Ferenc Liszt International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Wizz Air"
+    ],
+    "wikidataName": "Wizz Air",
+    "qid": "Q335147"
+  },
+  {
+    "dbId": "f0def0a6-6e74-4ff8-a465-8f5c1b46d464",
+    "dbName": "Lufthansa",
+    "dbIata": "LH",
+    "dbIcao": "DLH",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "DLH",
+    "icaoMatch": true,
+    "hq": "Cologne",
+    "hubs": [
+      "Frankfurt Airport",
+      "Munich Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Lufthansa",
+      "Lufthansa Regional",
+      "Lufthansa Cargo"
+    ],
+    "wikidataName": "Lufthansa",
+    "qid": "Q9325"
+  },
+  {
+    "dbId": "7cf2a84b-cd1f-4f09-9eeb-c705d605f46b",
+    "dbName": "British Airways",
+    "dbIata": "BA",
+    "dbIcao": "BAW",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "BAW",
+    "icaoMatch": true,
+    "hq": "London",
+    "hubs": [
+      "London Heathrow Airport",
+      "London Gatwick Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "British Airways",
+      "British Overseas Airways Corporation",
+      "British Overseas Airways Corporation",
+      "British Airways Limited"
+    ],
+    "wikidataName": "British Airways",
+    "qid": "Q8766"
+  },
+  {
+    "dbId": "9e1f9d61-6486-40f9-b2b9-04d93a4526ae",
+    "dbName": "Air France",
+    "dbIata": "AF",
+    "dbIcao": "AFR",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "AFR",
+    "icaoMatch": true,
+    "hq": "Tremblay-en-France",
+    "hubs": [
+      "Lyon–Saint-Exupéry Airport",
+      "Paris-Charles de Gaulle Airport",
+      "Orly Airport",
+      "Marseille Provence Airport",
+      "Nice Côte d'Azur Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air France",
+      "Air France KLM Martinair Cargo"
+    ],
+    "wikidataName": "Air France",
+    "qid": "Q131005"
+  },
+  {
+    "dbId": "20052739-b7d7-4d03-8aa1-120d975d3f3a",
+    "dbName": "KLM",
+    "dbIata": "KL",
+    "dbIcao": "KLM",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "KLM",
+    "icaoMatch": true,
+    "hq": "Amstelveen",
+    "hubs": [
+      "Amsterdam Schiphol Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "KLM",
+      "KLM Asia",
+      "KLM Asia",
+      "KLM Cargo"
+    ],
+    "wikidataName": "KLM",
+    "qid": "Q181912"
+  },
+  {
+    "dbId": "4eccaf39-a328-4326-ae92-3db22c16496c",
+    "dbName": "Turkish Airlines",
+    "dbIata": "TK",
+    "dbIcao": "THY",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "THY",
+    "icaoMatch": true,
+    "hq": "Istanbul",
+    "hubs": [
+      "Istanbul Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Turkish Airlines",
+      "AJet",
+      "AJet"
+    ],
+    "wikidataName": "Turkish Airlines",
+    "qid": "Q4548"
+  },
+  {
+    "dbId": "c492aecc-9e56-4e62-9500-f766fd99c747",
+    "dbName": "airBaltic",
+    "dbIata": "BT",
+    "dbIcao": "BTI",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "BTI",
+    "icaoMatch": true,
+    "hq": "Mārupe Parish",
+    "hubs": [
+      "Riga International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "AirBaltic"
+    ],
+    "wikidataName": "AirBaltic",
+    "qid": "Q300924"
+  },
+  {
+    "dbId": "a7342767-6260-4ad8-b838-ffe6043aee9b",
+    "dbName": "Helvetic Airways",
+    "dbIata": "2L",
+    "dbIcao": "OAW",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "OAW",
+    "icaoMatch": true,
+    "hq": "Kloten",
+    "hubs": [
+      "Zurich Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Helvetic Airways",
+      "Líneas Aéreas Entre Ríos",
+      "Transportes Aéreos Bolivianos"
+    ],
+    "wikidataName": "Helvetic Airways",
+    "qid": "Q152490"
+  },
+  {
+    "dbId": "9caa3f67-3414-48b5-9ccf-d291397661f9",
+    "dbName": "TUI Fly",
+    "dbIata": "X3",
+    "dbIcao": "TUI",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "TUI",
+    "icaoMatch": true,
+    "hq": "Langenhagen",
+    "hubs": [
+      "Hannover Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "TUI fly Deutschland",
+      "Hapag-Lloyd Express",
+      "Baikal Airlines"
+    ],
+    "wikidataName": "TUI fly Deutschland",
+    "qid": "Q508417"
+  },
+  {
+    "dbId": "5ee4d392-d6ce-45fb-ba22-111578333ca9",
+    "dbName": "Jet2",
+    "dbIata": "LS",
+    "dbIcao": "EXS",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "EXS",
+    "icaoMatch": true,
+    "hq": "Leeds",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Channel Express",
+      "Jet2.com"
+    ],
+    "wikidataName": "Jet2.com",
+    "qid": "Q1140807"
+  },
+  {
+    "dbId": "604c3a3b-a0e9-4398-8f0a-1a38c7ff39ef",
+    "dbName": "Norwegian",
+    "dbIata": "DY",
+    "dbIcao": "NAX",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "NAX",
+    "icaoMatch": true,
+    "hq": "Fornebu",
+    "hubs": [
+      "Rome",
+      "London Gatwick Airport",
+      "Amsterdam Schiphol Airport",
+      "Paris-Charles de Gaulle Airport",
+      "Josep Tarradellas Airport Barcelona-El Prat",
+      "Dublin Airport",
+      "Copenhagen Airport",
+      "Oslo Airport",
+      "Helsinki Airport",
+      "Stockholm Arlanda Airport",
+      "Riga International Airport",
+      "Bergen Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Norwegian Air Shuttle",
+      "Alyemda"
+    ],
+    "wikidataName": "Norwegian Air Shuttle",
+    "qid": "Q215392"
+  },
+  {
+    "dbId": "9fe8e839-8a90-4840-b07a-5db332423a0e",
+    "dbName": "SAS",
+    "dbIata": "SK",
+    "dbIcao": "SAS",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "SAS",
+    "icaoMatch": true,
+    "hq": "Copenhagen Airport",
+    "hubs": [
+      "Copenhagen Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Scandinavian Airlines",
+      "Scandinavian Airlines",
+      "Scandinavian Airlines",
+      "Scandinavian Airlines",
+      "Scandinavian Airlines",
+      "Scandinavian Airlines",
+      "SAS Commuter",
+      "SAS Commuter",
+      "SAS Commuter",
+      "SAS Commuter",
+      "SAS Commuter",
+      "SAS Commuter",
+      "SAS Commuter",
+      "SAS Commuter",
+      "SAS Commuter",
+      "Skyline Airways",
+      "SAS Snowflake",
+      "SAS Cargo Group"
+    ],
+    "wikidataName": "SAS Commuter",
+    "qid": "Q7388801"
+  },
+  {
+    "dbId": "fba8e206-d5e8-4a2a-8b77-ada410fe21bc",
+    "dbName": "Aer Lingus",
+    "dbIata": "EI",
+    "dbIcao": "EIN",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "EIN",
+    "icaoMatch": true,
+    "hq": "Dublin Airport",
+    "hubs": [
+      "Dublin Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Aer Lingus",
+      "Aer Lingus Regional"
+    ],
+    "wikidataName": "Aer Lingus",
+    "qid": "Q83716"
+  },
+  {
+    "dbId": "b86ff04a-8cee-4b71-aab6-1efead27e138",
+    "dbName": "Emirates",
+    "dbIata": "EK",
+    "dbIcao": "UAE",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "UAE",
+    "icaoMatch": true,
+    "hq": "Al Garhoud",
+    "hubs": [
+      "Dubai International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Emirates",
+      "Emirates SkyCargo"
+    ],
+    "wikidataName": "Emirates",
+    "qid": "Q180432"
+  },
+  {
+    "dbId": "e80aefdd-a89c-4b33-8fc4-b181ca016069",
+    "dbName": "Qatar Airways",
+    "dbIata": "QR",
+    "dbIcao": "QTR",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "QTR",
+    "icaoMatch": true,
+    "hq": "Doha",
+    "hubs": [
+      "Hamad International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Qatar Airways",
+      "Paraense Transportes Aéreos",
+      "Qatar Executive",
+      "Al Maha Airways",
+      "Qatar Airways Cargo"
+    ],
+    "wikidataName": "Qatar Airways",
+    "qid": "Q208033"
+  },
+  {
+    "dbId": "9100cb90-d0da-4f57-ac55-fdc657321869",
+    "dbName": "Etihad Airways",
+    "dbIata": "EY",
+    "dbIcao": "ETD",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "ETD",
+    "icaoMatch": true,
+    "hq": "Abu Dhabi",
+    "hubs": [
+      "Zayed International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Etihad Airways",
+      "EAS Europe Airlines",
+      "Eagle Air",
+      "Mayan World Airlines"
+    ],
+    "wikidataName": "Etihad Airways",
+    "qid": "Q212304"
+  },
+  {
+    "dbId": "8be6ff92-24ed-40fd-8dd0-a08bb824b7ab",
+    "dbName": "Saudia",
+    "dbIata": "SV",
+    "dbIcao": "SVA",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "SVA",
+    "icaoMatch": true,
+    "hq": "Jeddah",
+    "hubs": [
+      "King Abdulaziz International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Saudia Cargo",
+      "Saudia"
+    ],
+    "wikidataName": "Saudia",
+    "qid": "Q541179"
+  },
+  {
+    "dbId": "772c6996-cc1a-43fc-83a7-bb566c153765",
+    "dbName": "flydubai",
+    "dbIata": "FZ",
+    "dbIcao": "FDB",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "FDB",
+    "icaoMatch": true,
+    "hq": "Dubai",
+    "hubs": [
+      "Dubai International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "flydubai",
+      "flydubai",
+      "Alisea Airlines"
+    ],
+    "wikidataName": "flydubai",
+    "qid": "Q1048495"
+  },
+  {
+    "dbId": "ac423eec-2a7a-43c4-b11f-1fb5cb92b004",
+    "dbName": "Delta Air Lines",
+    "dbIata": "DL",
+    "dbIcao": "DAL",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "DAL",
+    "icaoMatch": true,
+    "hq": "Atlanta",
+    "hubs": [
+      "John F. Kennedy International Airport",
+      "Los Angeles International Airport",
+      "Seattle–Tacoma International Airport",
+      "Hartsfield–Jackson Atlanta International Airport",
+      "LaGuardia Airport",
+      "Salt Lake City International Airport",
+      "Detroit Metropolitan Wayne County Airport",
+      "Logan International Airport",
+      "Minneapolis–Saint Paul International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Delta Air Lines",
+      "Song",
+      "Delta Express",
+      "Delta Shuttle"
+    ],
+    "wikidataName": "Delta Air Lines",
+    "qid": "Q188920"
+  },
+  {
+    "dbId": "46aad1fb-8d56-44e4-88ae-e8e42528aec9",
+    "dbName": "United Airlines",
+    "dbIata": "UA",
+    "dbIcao": "UAL",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "UAL",
+    "icaoMatch": true,
+    "hq": "Chicago",
+    "hubs": [
+      "San Francisco International Airport",
+      "Los Angeles International Airport",
+      "O'Hare International Airport",
+      "Denver International Airport",
+      "Newark Liberty International Airport",
+      "Washington Dulles International Airport",
+      "George Bush Intercontinental Airport",
+      "Antonio B. Won Pat International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "United Airlines",
+      "United Airlines",
+      "Ted",
+      "United Express",
+      "Shuttle by United",
+      "United p.s."
+    ],
+    "wikidataName": "United Airlines",
+    "qid": "Q174769"
+  },
+  {
+    "dbId": "03973656-c596-45c6-a9e9-1a5e6e088581",
+    "dbName": "American Airlines",
+    "dbIata": "AA",
+    "dbIcao": "AAL",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "AAL",
+    "icaoMatch": true,
+    "hq": "Fort Worth",
+    "hubs": [
+      "John F. Kennedy International Airport",
+      "Los Angeles International Airport",
+      "Miami International Airport",
+      "O'Hare International Airport",
+      "LaGuardia Airport",
+      "Dallas/Fort Worth International Airport",
+      "Philadelphia International Airport",
+      "Charlotte Douglas International Airport",
+      "Ronald Reagan Washington National Airport",
+      "Phoenix Sky Harbor International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "American Airlines"
+    ],
+    "wikidataName": "American Airlines",
+    "qid": "Q32396"
+  },
+  {
+    "dbId": "c4c2dc4d-db36-4739-97e7-93cae95052ae",
+    "dbName": "Air Canada",
+    "dbIata": "AC",
+    "dbIcao": "ACA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "ACA",
+    "icaoMatch": true,
+    "hq": "Montreal",
+    "hubs": [
+      "Toronto Pearson International Airport",
+      "Vancouver International Airport",
+      "Montréal–Trudeau International Airport",
+      "Calgary International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Canada",
+      "Air Canada",
+      "Air Canada Jetz",
+      "Air Canada Tango"
+    ],
+    "wikidataName": "Air Canada",
+    "qid": "Q185339"
+  },
+  {
+    "dbId": "00459329-fc48-4c3a-b70e-a3ee13650a74",
+    "dbName": "JetBlue",
+    "dbIata": "B6",
+    "dbIcao": "JBU",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "JBU",
+    "icaoMatch": true,
+    "hq": "Long Island City",
+    "hubs": [
+      "John F. Kennedy International Airport",
+      "Los Angeles International Airport",
+      "LaGuardia Airport",
+      "Newark Liberty International Airport",
+      "Fort Lauderdale–Hollywood",
+      "Logan International Airport",
+      "Orlando International Airport",
+      "Luis Muñoz Marín International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "JetBlue Airways"
+    ],
+    "wikidataName": "JetBlue Airways",
+    "qid": "Q161086"
+  },
+  {
+    "dbId": "e8e20407-bf2a-4979-a79e-71312df00d89",
+    "dbName": "Singapore Airlines",
+    "dbIata": "SQ",
+    "dbIcao": "SIA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "SIA",
+    "icaoMatch": true,
+    "hq": "Singapore",
+    "hubs": [
+      "Singapore Changi Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Singapore Airlines",
+      "Singapore Airlines Cargo"
+    ],
+    "wikidataName": "Singapore Airlines",
+    "qid": "Q32245"
+  },
+  {
+    "dbId": "75fd5488-e9fb-49f8-82cd-bdfcbe24cbb6",
+    "dbName": "Cathay Pacific",
+    "dbIata": "CX",
+    "dbIcao": "CPA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CPA",
+    "icaoMatch": true,
+    "hq": "Hong Kong",
+    "hubs": [
+      "Hong Kong International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Cathay Pacific"
+    ],
+    "wikidataName": "Cathay Pacific",
+    "qid": "Q32141"
+  },
+  {
+    "dbId": "660f628b-c83c-4602-99ea-f39264f98cff",
+    "dbName": "Qantas",
+    "dbIata": "QF",
+    "dbIcao": "QFA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "QFA",
+    "icaoMatch": true,
+    "hq": "Mascot",
+    "hubs": [
+      "Adelaide Airport",
+      "Sydney Airport",
+      "Singapore Changi Airport",
+      "Brisbane Airport",
+      "Perth Airport",
+      "Melbourne Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Qantas Airways",
+      "Eastern Australia Airlines",
+      "National Jet Systems",
+      "Qantas Freight",
+      "Sunstate Airlines",
+      "Sunstate Airlines",
+      "Jetconnect",
+      "QantasLink"
+    ],
+    "wikidataName": "Qantas Airways",
+    "qid": "Q32491"
+  },
+  {
+    "dbId": "19e1ad43-7281-4227-ac55-e23d257dff8f",
+    "dbName": "ANA",
+    "dbIata": "NH",
+    "dbIcao": "ANA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "ANA",
+    "icaoMatch": true,
+    "hq": "Higashi-Shinbashi",
+    "hubs": [
+      "Narita International Airport",
+      "Kansai International Airport",
+      "Tokyo International Airport",
+      "Osaka International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "All Nippon Airways",
+      "Equair"
+    ],
+    "wikidataName": "All Nippon Airways",
+    "qid": "Q204284"
+  },
+  {
+    "dbId": "bc16afb8-a81a-4d32-bee0-408be5195ae2",
+    "dbName": "Southwest Airlines",
+    "dbIata": "WN",
+    "dbIcao": "SWA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "SWA",
+    "icaoMatch": true,
+    "hq": "Dallas",
+    "hubs": [
+      "Dallas Love Field"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Southwest Airlines"
+    ],
+    "wikidataName": "Southwest Airlines",
+    "qid": "Q503308"
+  },
+  {
+    "dbId": "f35d39aa-7708-4737-ae1a-48e1df38fd2c",
+    "dbName": "Alaska Airlines",
+    "dbIata": "AS",
+    "dbIcao": "ASA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "ASA",
+    "icaoMatch": true,
+    "hq": "Seattle",
+    "hubs": [
+      "San Francisco International Airport",
+      "Los Angeles International Airport",
+      "Seattle–Tacoma International Airport",
+      "Ted Stevens Anchorage International Airport",
+      "Portland International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Alaska Airlines",
+      "Alaska Airlines"
+    ],
+    "wikidataName": "Alaska Airlines",
+    "qid": "Q822614"
+  },
+  {
+    "dbId": "c6539ff8-ae0c-496f-b9ae-b5a0ffeeb250",
+    "dbName": "Spirit Airlines",
+    "dbIata": "NK",
+    "dbIcao": "NKS",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "NKS",
+    "icaoMatch": true,
+    "hq": "Dania Beach",
+    "hubs": [],
+    "ambiguous": false,
+    "candidateNames": [
+      "Spirit Airlines"
+    ],
+    "wikidataName": "Spirit Airlines",
+    "qid": "Q1190598"
+  },
+  {
+    "dbId": "02fb985c-0f2f-4391-a0ac-47c99a80b822",
+    "dbName": "Frontier Airlines",
+    "dbIata": "F9",
+    "dbIcao": "FFT",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "FFT",
+    "icaoMatch": true,
+    "hq": "Denver",
+    "hubs": [
+      "Denver International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Frontier Airlines"
+    ],
+    "wikidataName": "Frontier Airlines",
+    "qid": "Q1139541"
+  },
+  {
+    "dbId": "a672f551-c152-41fa-a871-67cdddcc596f",
+    "dbName": "Hawaiian Airlines",
+    "dbIata": "HA",
+    "dbIcao": "HAL",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "HAL",
+    "icaoMatch": true,
+    "hq": "Honolulu",
+    "hubs": [
+      "Daniel K. Inouye International Airport",
+      "Kahului Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Hawaiian Airlines"
+    ],
+    "wikidataName": "Hawaiian Airlines",
+    "qid": "Q642610"
+  },
+  {
+    "dbId": "41a5cbe4-37d1-44fd-8e4b-8aed1f8e80f7",
+    "dbName": "Allegiant Air",
+    "dbIata": "G4",
+    "dbIcao": "AAY",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "AAY",
+    "icaoMatch": true,
+    "hq": "Enterprise",
+    "hubs": [
+      "Los Angeles International Airport",
+      "Fort Lauderdale–Hollywood",
+      "Harry Reid International Airport",
+      "Orlando International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Allegiant Air",
+      "Guizhou Airlines"
+    ],
+    "wikidataName": "Allegiant Air",
+    "qid": "Q1319601"
+  },
+  {
+    "dbId": "e4845366-106d-4967-b76a-912d2b51d8f3",
+    "dbName": "Sun Country Airlines",
+    "dbIata": "SY",
+    "dbIcao": "SCX",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "SCX",
+    "icaoMatch": true,
+    "hq": "Eagan",
+    "hubs": [
+      "Minneapolis–Saint Paul International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Alsace",
+      "Sun Country Airlines",
+      "Sky Aviation"
+    ],
+    "wikidataName": "Sun Country Airlines",
+    "qid": "Q866289"
+  },
+  {
+    "dbId": "29a7c567-c2c2-4e1f-a955-c4c04ef0a871",
+    "dbName": "Breeze Airways",
+    "dbIata": "MX",
+    "dbIcao": "MXY",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "MXY",
+    "icaoMatch": true,
+    "hq": "Cottonwood Heights",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Mexicana de Aviación",
+      "Breeze Airways"
+    ],
+    "wikidataName": "Breeze Airways",
+    "qid": "Q55641146"
+  },
+  {
+    "dbId": "a25ce6d4-ce75-473e-92ee-8c5ffa7b9ea1",
+    "dbName": "Avelo Airlines",
+    "dbIata": "XP",
+    "dbIcao": "VXP",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "VXP",
+    "icaoMatch": true,
+    "hq": "Houston",
+    "hubs": [
+      "Hollywood Burbank Airport",
+      "Wilmington International Airport",
+      "Harry Reid International Airport",
+      "Orlando International Airport",
+      "Raleigh–Durham International Airport",
+      "Charles M. Schulz–Sonoma County Airport",
+      "Tweed-New Haven Regional Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Tahoe Air",
+      "Avelo Airlines",
+      "SkyValue",
+      "Western"
+    ],
+    "wikidataName": "Avelo Airlines",
+    "qid": "Q8045045"
+  },
+  {
+    "dbId": "e0851257-e95e-465d-92bd-56fce19f0f0b",
+    "dbName": "SkyWest Airlines",
+    "dbIata": "OO",
+    "dbIcao": "SKW",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "SKW",
+    "icaoMatch": true,
+    "hq": "St. George",
+    "hubs": [],
+    "ambiguous": false,
+    "candidateNames": [
+      "SkyWest Airlines"
+    ],
+    "wikidataName": "SkyWest Airlines",
+    "qid": "Q773662"
+  },
+  {
+    "dbId": "ea1a28d9-60b4-4045-bc95-ef512339618a",
+    "dbName": "Republic Airways",
+    "dbIata": "YX",
+    "dbIcao": "RPA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "RPA",
+    "icaoMatch": true,
+    "hq": "Indianapolis",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Midwest Airlines",
+      "Republic Airways"
+    ],
+    "wikidataName": "Republic Airways",
+    "qid": "Q1669658"
+  },
+  {
+    "dbId": "86e0366a-d489-4ea5-8c94-68a0298d47c0",
+    "dbName": "Envoy Air",
+    "dbIata": "MQ",
+    "dbIcao": "ENY",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "ENY",
+    "icaoMatch": true,
+    "hq": "Fort Worth",
+    "hubs": [
+      "John F. Kennedy International Airport",
+      "Miami International Airport",
+      "O'Hare International Airport",
+      "LaGuardia Airport",
+      "Dallas/Fort Worth International Airport",
+      "Luis Muñoz Marín International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Envoy Air",
+      "Simmons Airlines",
+      "Maldives Airways"
+    ],
+    "wikidataName": "Envoy Air",
+    "qid": "Q371306"
+  },
+  {
+    "dbId": "3fbed91b-708b-4f25-b4d0-62023185b0d3",
+    "dbName": "PSA Airlines",
+    "dbIata": "OH",
+    "dbIcao": "JIA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "COM",
+    "icaoMatch": false,
+    "hq": "Erlanger",
+    "hubs": [],
+    "ambiguous": false,
+    "candidateNames": [
+      "Comair"
+    ],
+    "wikidataName": "Comair",
+    "qid": "Q1113243"
+  },
+  {
+    "dbId": "2dc70ca6-beb5-4e46-b67e-5c6c36eebd25",
+    "dbName": "Endeavor Air",
+    "dbIata": "9E",
+    "dbIcao": "EDV",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "FLG",
+    "icaoMatch": false,
+    "hq": "Memphis",
+    "hubs": [
+      "Minneapolis–Saint Paul International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "XL Airways Germany",
+      "Endeavor Air",
+      "Endeavor Air"
+    ],
+    "wikidataName": "Endeavor Air",
+    "qid": "Q1145445"
+  },
+  {
+    "dbId": "b77185b5-494d-4df3-a737-dea12f5fd80a",
+    "dbName": "Mesa Airlines",
+    "dbIata": "YV",
+    "dbIcao": "ASH",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "ASH",
+    "icaoMatch": true,
+    "hq": "Phoenix",
+    "hubs": [
+      "O'Hare International Airport",
+      "Washington Dulles International Airport",
+      "Daniel K. Inouye International Airport",
+      "Charlotte Douglas International Airport",
+      "Phoenix Sky Harbor International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Go!",
+      "Mesa Airlines",
+      "America West Express",
+      "America West Express"
+    ],
+    "wikidataName": "Mesa Airlines",
+    "qid": "Q1922297"
+  },
+  {
+    "dbId": "34dc43b4-86c9-4b98-901f-f31713e67d5a",
+    "dbName": "Piedmont Airlines",
+    "dbIata": "PT",
+    "dbIcao": "PDT",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "SWN",
+    "icaoMatch": false,
+    "hq": "Gothenburg",
+    "hubs": [
+      "Malmö Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "West Atlantic Sweden",
+      "PrivatAir",
+      "PrivatAir",
+      "PrivatAir",
+      "Capital Cargo International Airlines",
+      "West Atlantic",
+      "Provincetown-Boston Airlines"
+    ],
+    "wikidataName": "West Atlantic Sweden",
+    "qid": "Q605968"
+  },
+  {
+    "dbId": "3ab22cb9-c65b-4606-9366-decb0e5e4e69",
+    "dbName": "GoJet Airlines",
+    "dbIata": "G7",
+    "dbIcao": "GJS",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "GJS",
+    "icaoMatch": true,
+    "hq": "Bridgeton",
+    "hubs": [
+      "St. Louis Lambert International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "GoJet Airlines LLC",
+      "Gandalf Airlines",
+      "Gandalf Airlines",
+      "KAPO Avia"
+    ],
+    "wikidataName": "GoJet Airlines LLC",
+    "qid": "Q1533365"
+  },
+  {
+    "dbId": "ddb87917-ae8a-41eb-a0f1-19383cebb6b7",
+    "dbName": "Horizon Air",
+    "dbIata": "QX",
+    "dbIcao": "QXE",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "QXE",
+    "icaoMatch": true,
+    "hq": "Seattle",
+    "hubs": [
+      "Seattle–Tacoma International Airport",
+      "Portland International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Horizon Air"
+    ],
+    "wikidataName": "Horizon Air",
+    "qid": "Q1200062"
+  },
+  {
+    "dbId": "8b0df147-264e-4f23-9066-6b222327ff22",
+    "dbName": "CommuteAir",
+    "dbIata": "C5",
+    "dbIcao": "UCA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "UCA",
+    "icaoMatch": true,
+    "hq": "North Olmsted",
+    "hubs": [
+      "Denver International Airport",
+      "Washington Dulles International Airport",
+      "George Bush Intercontinental Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "CommuteAir",
+      "Cretan Airlines"
+    ],
+    "wikidataName": "CommuteAir",
+    "qid": "Q528492"
+  },
+  {
+    "dbId": "9320ca50-b66b-41cf-b52f-e83cf8383e4c",
+    "dbName": "Air Wisconsin",
+    "dbIata": "ZW",
+    "dbIcao": "AWI",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "AWI",
+    "icaoMatch": true,
+    "hq": "Appleton",
+    "hubs": [
+      "O'Hare International Airport",
+      "Washington Dulles International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Air Wisconsin"
+    ],
+    "wikidataName": "Air Wisconsin",
+    "qid": "Q407911"
+  },
+  {
+    "dbId": "fa1bbfcd-3800-4b21-a73f-6a39d637ceb1",
+    "dbName": "FedEx Express",
+    "dbIata": "FX",
+    "dbIcao": "FDX",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "FDX",
+    "icaoMatch": true,
+    "hq": "Memphis",
+    "hubs": [
+      "Memphis International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "FedEx Express",
+      "German Cargo"
+    ],
+    "wikidataName": "FedEx Express",
+    "qid": "Q782557"
+  },
+  {
+    "dbId": "3687ac7f-561a-4844-a12f-0f05cda3df4c",
+    "dbName": "UPS Airlines",
+    "dbIata": "5X",
+    "dbIcao": "UPS",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "UPS",
+    "icaoMatch": true,
+    "hq": "Louisville",
+    "hubs": [
+      "Louisville International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "UPS Airlines"
+    ],
+    "wikidataName": "UPS Airlines",
+    "qid": "Q1318737"
+  },
+  {
+    "dbId": "868729de-948e-4a3c-9f10-572023c29c8d",
+    "dbName": "Atlas Air",
+    "dbIata": "5Y",
+    "dbIcao": "GTI",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "GTI",
+    "icaoMatch": true,
+    "hq": "Purchase",
+    "hubs": [
+      "Miami International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Atlas Air",
+      "Isles of Scilly Skybus"
+    ],
+    "wikidataName": "Atlas Air",
+    "qid": "Q757135"
+  },
+  {
+    "dbId": "b61aa151-2129-4567-bb24-da721d264594",
+    "dbName": "Kalitta Air",
+    "dbIata": "K4",
+    "dbIcao": "CKS",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "CKS",
+    "icaoMatch": true,
+    "hq": "Ypsilanti",
+    "hubs": [
+      "Newark Liberty International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Kalitta Air",
+      "ALS – Aircraft Leasing Services",
+      "Kazakhstan Airlines"
+    ],
+    "wikidataName": "Kalitta Air",
+    "qid": "Q1368443"
+  },
+  {
+    "dbId": "878bcfc7-f86d-43b4-aae9-416b386c63c2",
+    "dbName": "Polar Air Cargo",
+    "dbIata": "PO",
+    "dbIcao": "PAC",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "PAC",
+    "icaoMatch": true,
+    "hq": "Purchase",
+    "hubs": [
+      "Incheon International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Polar Air Cargo"
+    ],
+    "wikidataName": "Polar Air Cargo",
+    "qid": "Q1186574"
+  },
+  {
+    "dbId": "70dfbb98-e20f-42aa-aa6b-4c0f2c3da431",
+    "dbName": "ABX Air",
+    "dbIata": "GB",
+    "dbIcao": "ABX",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "ABX",
+    "icaoMatch": true,
+    "hq": "Wilmington Air Park",
+    "hubs": [
+      "Miami International Airport",
+      "Cincinnati/Northern Kentucky International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "ABX Air",
+      "Q3120944"
+    ],
+    "wikidataName": "ABX Air",
+    "qid": "Q1366724"
+  },
+  {
+    "dbId": "64063c58-f8ed-4630-84c7-d06ff46d8a7e",
+    "dbName": "Western Global Airlines",
+    "dbIata": "KD",
+    "dbIcao": "WGN",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "WGN",
+    "icaoMatch": true,
+    "hq": "Estero",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "British Island Airways (1982)",
+      "Western Global Airlines",
+      "KD Avia",
+      "Kalstar Aviation",
+      "British Island Airways",
+      "Kendell Airlines"
+    ],
+    "wikidataName": "Western Global Airlines",
+    "qid": "Q21470356"
+  },
+  {
+    "dbId": "9bba3132-10da-4f8c-bae3-ad939935b238",
+    "dbName": "National Airlines",
+    "dbIata": "N8",
+    "dbIcao": "NCR",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "NCR",
+    "icaoMatch": true,
+    "hq": "Orlando",
+    "hubs": [
+      "Orlando Sanford International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "National Airlines"
+    ],
+    "wikidataName": "National Airlines",
+    "qid": "Q899774"
+  },
+  {
+    "dbId": "9a497d4e-4793-4692-8676-337e5139fef9",
+    "dbName": "WestJet",
+    "dbIata": "WS",
+    "dbIcao": "WJA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "WJA",
+    "icaoMatch": true,
+    "hq": "Calgary",
+    "hubs": [
+      "Toronto Pearson International Airport",
+      "Calgary International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "WestJet"
+    ],
+    "wikidataName": "WestJet",
+    "qid": "Q1059770"
+  },
+  {
+    "dbId": "b734d971-047a-46bb-a67e-fe546fce199f",
+    "dbName": "Porter Airlines",
+    "dbIata": "PD",
+    "dbIcao": "POE",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "POE",
+    "icaoMatch": true,
+    "hq": "Toronto",
+    "hubs": [
+      "Billy Bishop Toronto City Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Partnair",
+      "Porter Airlines",
+      "Pem-Air"
+    ],
+    "wikidataName": "Porter Airlines",
+    "qid": "Q1811473"
+  },
+  {
+    "dbId": "ed01bf02-a473-413b-92fc-f07a41c7c97c",
+    "dbName": "Air Transat",
+    "dbIata": "TS",
+    "dbIcao": "TSC",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "TSC",
+    "icaoMatch": true,
+    "hq": "Montreal",
+    "hubs": [
+      "Toronto Pearson International Airport",
+      "Vancouver International Airport",
+      "Montréal–Trudeau International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Air Transat"
+    ],
+    "wikidataName": "Air Transat",
+    "qid": "Q407869"
+  },
+  {
+    "dbId": "62f23017-bc3d-4122-9360-b31bfcf0c7f6",
+    "dbName": "Flair Airlines",
+    "dbIata": "F8",
+    "dbIcao": "FLE",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "FLE",
+    "icaoMatch": true,
+    "hq": "Edmonton",
+    "hubs": [
+      "Edmonton International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "air2there",
+      "Freedom Airlines",
+      "Flair Airlines"
+    ],
+    "wikidataName": "Flair Airlines",
+    "qid": "Q4038797"
+  },
+  {
+    "dbId": "92720768-19eb-45d9-97dd-385f56ca38ca",
+    "dbName": "LATAM Airlines",
+    "dbIata": "LA",
+    "dbIcao": "LAN",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "LAN",
+    "icaoMatch": true,
+    "hq": "Las Condes",
+    "hubs": [
+      "Arturo Merino Benítez International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "LATAM Airlines",
+      "LAN Airlines"
+    ],
+    "wikidataName": "LATAM Airlines",
+    "qid": "Q649178"
+  },
+  {
+    "dbId": "332ffc1b-3960-4583-85b2-7480e33bc785",
+    "dbName": "Azul Brazilian Airlines",
+    "dbIata": "AD",
+    "dbIcao": "AZU",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "AZU",
+    "icaoMatch": true,
+    "hq": "Barueri",
+    "hubs": [
+      "Viracopos International Airport",
+      "Manaus International Airport",
+      "Tancredo Neves International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Paradise International",
+      "Q794272",
+      "Lone Star Airlines"
+    ],
+    "wikidataName": "Q794272",
+    "qid": "Q794272"
+  },
+  {
+    "dbId": "f43f66e1-5a01-4475-a029-e3aa5aaabf89",
+    "dbName": "GOL Linhas Aéreas",
+    "dbIata": "G3",
+    "dbIcao": "GLO",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "GLO",
+    "icaoMatch": true,
+    "hq": "São Paulo",
+    "hubs": [
+      "Rio de Janeiro/Galeão – Antonio Carlos Jobim International Airport",
+      "Congonhas-São Paulo Airport",
+      "Brasilia President Juscelino Kubitschek International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Gol Transportes Aéreos",
+      "City Connexion Airlines",
+      "Emerald Airways"
+    ],
+    "wikidataName": "Gol Transportes Aéreos",
+    "qid": "Q691637"
+  },
+  {
+    "dbId": "cf89a598-d717-4403-8ea5-258e5175e18f",
+    "dbName": "Avianca",
+    "dbIata": "AV",
+    "dbIcao": "AVA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "AVA",
+    "icaoMatch": true,
+    "hq": "Bogotá",
+    "hubs": [
+      "El Dorado International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Avianca",
+      "Avianca",
+      "Avio Linee Italiane"
+    ],
+    "wikidataName": "Avianca",
+    "qid": "Q308911"
+  },
+  {
+    "dbId": "ec7c7e07-9f1c-4716-a80e-81cc20b3e4a3",
+    "dbName": "Copa Airlines",
+    "dbIata": "CM",
+    "dbIcao": "CMP",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "CMP",
+    "icaoMatch": true,
+    "hq": "Panama City",
+    "hubs": [
+      "Tocumen International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Copa Airlines"
+    ],
+    "wikidataName": "Copa Airlines",
+    "qid": "Q849404"
+  },
+  {
+    "dbId": "24ab05c0-308d-4eb3-ae1b-f92fd0f0d861",
+    "dbName": "Aeroméxico",
+    "dbIata": "AM",
+    "dbIcao": "AMX",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "AMX",
+    "icaoMatch": true,
+    "hq": "Mexico City",
+    "hubs": [
+      "Aeropuerto Internacional Benito Juárez"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Aeroméxico",
+      "Aeroméxico Travel"
+    ],
+    "wikidataName": "Aeroméxico",
+    "qid": "Q381563"
+  },
+  {
+    "dbId": "1c9c46a3-eab7-4a32-9009-a1fbf1c1c985",
+    "dbName": "Volaris",
+    "dbIata": "Y4",
+    "dbIcao": "VOI",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "VOI",
+    "icaoMatch": true,
+    "hq": "Mexico City",
+    "hubs": [
+      "Aeropuerto Internacional Benito Juárez"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Volaris"
+    ],
+    "wikidataName": "Volaris",
+    "qid": "Q431757"
+  },
+  {
+    "dbId": "bb0e2d34-d746-459f-8eed-45d4d27750ab",
+    "dbName": "Viva Aerobus",
+    "dbIata": "VB",
+    "dbIcao": "VIV",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "VIV",
+    "icaoMatch": true,
+    "hq": "Apodaca",
+    "hubs": [
+      "Monterrey-Gen. Mariano Escobedo"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Viva",
+      "Duo Airways",
+      "Flylink Express",
+      "Maersk Air UK"
+    ],
+    "wikidataName": "Viva",
+    "qid": "Q795990"
+  },
+  {
+    "dbId": "73e8a6c5-909b-4a1d-81ca-99c6f98e73f9",
+    "dbName": "SKY Airline",
+    "dbIata": "H2",
+    "dbIcao": "SKU",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "SKU",
+    "icaoMatch": true,
+    "hq": "Santiago",
+    "hubs": [
+      "Arturo Merino Benítez International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Sky Airline",
+      "CityBird"
+    ],
+    "wikidataName": "Sky Airline",
+    "qid": "Q1427299"
+  },
+  {
+    "dbId": "dea392c3-0eb8-40e4-87d8-328fee52fee7",
+    "dbName": "JetSMART",
+    "dbIata": "JA",
+    "dbIcao": "JAT",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "JAT",
+    "icaoMatch": true,
+    "hq": "Santiago",
+    "hubs": [
+      "Arturo Merino Benítez International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Jagson Group",
+      "B&H Airlines",
+      "JetSmart",
+      "Norway Airlines"
+    ],
+    "wikidataName": "JetSmart",
+    "qid": "Q30106175"
+  },
+  {
+    "dbId": "51b6bf5b-4efd-4767-b0ee-000b5b172b95",
+    "dbName": "Aerolíneas Argentinas",
+    "dbIata": "AR",
+    "dbIcao": "ARG",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "ARG",
+    "icaoMatch": true,
+    "hq": "Buenos Aires",
+    "hubs": [
+      "Jorge Newbery Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Q83535",
+      "Air Regional"
+    ],
+    "wikidataName": "Q83535",
+    "qid": "Q83535"
+  },
+  {
+    "dbId": "cfc55998-174d-4629-9f7e-2e2e12e8fb8c",
+    "dbName": "Caribbean Airlines",
+    "dbIata": "BW",
+    "dbIcao": "BWA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "BWA",
+    "icaoMatch": true,
+    "hq": "Piarco",
+    "hubs": [
+      "Piarco International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "BWIA West Indies Airways",
+      "Q1036118",
+      "Tobago Express"
+    ],
+    "wikidataName": "Q1036118",
+    "qid": "Q1036118"
+  },
+  {
+    "dbId": "5d27885c-9119-4653-9c28-983d49a293d7",
+    "dbName": "Iberia",
+    "dbIata": "IB",
+    "dbIcao": "IBE",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "IBE",
+    "icaoMatch": true,
+    "hq": "Madrid",
+    "hubs": [
+      "Madrid-Barajas Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Iberia"
+    ],
+    "wikidataName": "Iberia",
+    "qid": "Q187972"
+  },
+  {
+    "dbId": "4e0d7600-b5fe-4745-a1c1-935c93525e18",
+    "dbName": "ITA Airways",
+    "dbIata": "AZ",
+    "dbIcao": "ITY",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "ITY",
+    "icaoMatch": true,
+    "hq": "Palazzo delle Finanze",
+    "hubs": [
+      "Roma Fiumicino Airport",
+      "Linate Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Alitalia",
+      "Q1549255",
+      "ITA Airways"
+    ],
+    "wikidataName": "ITA Airways",
+    "qid": "Q108251249"
+  },
+  {
+    "dbId": "a3ae0371-6aae-4b44-8451-f099fa60328c",
+    "dbName": "SWISS",
+    "dbIata": "LX",
+    "dbIcao": "SWR",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "SWR",
+    "icaoMatch": true,
+    "hq": "Kloten",
+    "hubs": [
+      "Zurich Airport",
+      "Geneva International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Swiss International Air Lines",
+      "Crossair",
+      "Crossair",
+      "Swiss Private Aviation"
+    ],
+    "wikidataName": "Swiss International Air Lines",
+    "qid": "Q156776"
+  },
+  {
+    "dbId": "5f94b435-6b24-4590-8f3b-4705c8cbe5c5",
+    "dbName": "Austrian Airlines",
+    "dbIata": "OS",
+    "dbIcao": "AUA",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "AUA",
+    "icaoMatch": true,
+    "hq": "Schwechat",
+    "hubs": [
+      "Wien-Schwechat Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Austrian Airlines"
+    ],
+    "wikidataName": "Austrian Airlines",
+    "qid": "Q781770"
+  },
+  {
+    "dbId": "d3728a2d-f0de-47e8-9958-246f8e2c9066",
+    "dbName": "Brussels Airlines",
+    "dbIata": "SN",
+    "dbIcao": "BEL",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "BEL",
+    "icaoMatch": true,
+    "hq": "Brussels Airport",
+    "hubs": [
+      "Brussels Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Brussels Airlines",
+      "SN Brussels Airlines"
+    ],
+    "wikidataName": "Brussels Airlines",
+    "qid": "Q153571"
+  },
+  {
+    "dbId": "5f20d846-5976-49ec-867a-a733c947a121",
+    "dbName": "TAP Air Portugal",
+    "dbIata": "TP",
+    "dbIcao": "TAP",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "TAP",
+    "icaoMatch": true,
+    "hq": "Lisbon",
+    "hubs": [
+      "Humberto Delgado Airport",
+      "Madeira Cristiano-Ronaldo Airport",
+      "Francisco de Sá Carneiro Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "TAP Air Portugal",
+      "TAP Air Portugal",
+      "TAP Express"
+    ],
+    "wikidataName": "TAP Air Portugal",
+    "qid": "Q208232"
+  },
+  {
+    "dbId": "93a4935c-6b74-4ab6-9d64-7de56ae4ab02",
+    "dbName": "Finnair",
+    "dbIata": "AY",
+    "dbIcao": "FIN",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "FIN",
+    "icaoMatch": true,
+    "hq": "Veromies",
+    "hubs": [
+      "Helsinki Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Finnair"
+    ],
+    "wikidataName": "Finnair",
+    "qid": "Q201821"
+  },
+  {
+    "dbId": "d2404732-b4d8-4d29-b0fc-55f287592411",
+    "dbName": "LOT Polish Airlines",
+    "dbIata": "LO",
+    "dbIcao": "LOT",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "LOT",
+    "icaoMatch": true,
+    "hq": "Warsaw",
+    "hubs": [
+      "Warsaw Chopin Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "LOT Polish Airlines",
+      "LOT Polish Airlines"
+    ],
+    "wikidataName": "LOT Polish Airlines",
+    "qid": "Q204268"
+  },
+  {
+    "dbId": "8928fa91-02b3-4001-9764-8edb3d8019ce",
+    "dbName": "Aegean Airlines",
+    "dbIata": "A3",
+    "dbIcao": "AEE",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "AEE",
+    "icaoMatch": true,
+    "hq": "Greece",
+    "hubs": [
+      "Thessaloniki Airport \"Makedonia\"",
+      "Athens International Airport \"Eleftherios Venizelos\"",
+      "Larnaca International Airport",
+      "Rhodes International Airport \"Diagoras\"",
+      "Kalamata International Airport \"Captain Vasilis Konstantakopoulos\"",
+      "Heraklion International Airport \"Nikos Kazantzakis\"",
+      "Corfu International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Aegean Airlines",
+      "Aegean Airlines"
+    ],
+    "wikidataName": "Aegean Airlines",
+    "qid": "Q380580"
+  },
+  {
+    "dbId": "3e2b560f-ec33-44d2-a2c4-3c0706215613",
+    "dbName": "Croatia Airlines",
+    "dbIata": "OU",
+    "dbIcao": "CTN",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "CTN",
+    "icaoMatch": true,
+    "hq": "Zagreb",
+    "hubs": [
+      "Zagreb Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Croatia Airlines",
+      "City Express"
+    ],
+    "wikidataName": "Croatia Airlines",
+    "qid": "Q308974"
+  },
+  {
+    "dbId": "07a6b001-0e92-43db-9810-9de0ecffff0e",
+    "dbName": "Air Serbia",
+    "dbIata": "JU",
+    "dbIcao": "ASL",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "ASL",
+    "icaoMatch": true,
+    "hq": "Belgrade",
+    "hubs": [
+      "Belgrade Nikola Tesla Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Serbia",
+      "Jat Airways AVIO taxi",
+      "Jat Airways",
+      "Aviolet"
+    ],
+    "wikidataName": "Air Serbia",
+    "qid": "Q460373"
+  },
+  {
+    "dbId": "5fd73a44-eb29-482a-9111-14969e7be4f2",
+    "dbName": "Icelandair",
+    "dbIata": "FI",
+    "dbIcao": "ICE",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "ICE",
+    "icaoMatch": true,
+    "hq": "Hafnarfjörður",
+    "hubs": [
+      "Keflavík Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Icelandair"
+    ],
+    "wikidataName": "Icelandair",
+    "qid": "Q216645"
+  },
+  {
+    "dbId": "00dca71b-ffad-4a61-bba2-886d7ff3a705",
+    "dbName": "Luxair",
+    "dbIata": "LG",
+    "dbIcao": "LGL",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "LGL",
+    "icaoMatch": true,
+    "hq": "Munsbach",
+    "hubs": [
+      "Luxembourg Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Luxair"
+    ],
+    "wikidataName": "Luxair",
+    "qid": "Q726813"
+  },
+  {
+    "dbId": "567af677-d8fe-453c-9822-7a6c6b2575de",
+    "dbName": "Air Europa",
+    "dbIata": "UX",
+    "dbIcao": "AEA",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "AEA",
+    "icaoMatch": true,
+    "hq": "Llucmajor",
+    "hubs": [
+      "Madrid-Barajas Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Europa",
+      "Air Illinois",
+      "Air Europa Express",
+      "Air Europa Express"
+    ],
+    "wikidataName": "Air Europa",
+    "qid": "Q332980"
+  },
+  {
+    "dbId": "de05a86a-cb27-48f5-879d-5ef1e429d1de",
+    "dbName": "Virgin Atlantic",
+    "dbIata": "VS",
+    "dbIcao": "VIR",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "VIR",
+    "icaoMatch": true,
+    "hq": "Crawley",
+    "hubs": [
+      "London Heathrow Airport",
+      "Manchester Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Virgin Atlantic",
+      "Virgin Sun Airlines",
+      "Virgin Atlantic Little Red"
+    ],
+    "wikidataName": "Virgin Atlantic",
+    "qid": "Q32277"
+  },
+  {
+    "dbId": "2031bc35-8215-4906-9b55-129d1bd3e836",
+    "dbName": "Vueling",
+    "dbIata": "VY",
+    "dbIcao": "VLG",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "VLG",
+    "icaoMatch": true,
+    "hq": "Viladecans",
+    "hubs": [
+      "Josep Tarradellas Airport Barcelona-El Prat"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Vueling",
+      "Highland Express Airways",
+      "Formosa Airlines"
+    ],
+    "wikidataName": "Vueling",
+    "qid": "Q646741"
+  },
+  {
+    "dbId": "602c953d-2eb5-4e43-96e8-3e7c44058750",
+    "dbName": "Eurowings",
+    "dbIata": "EW",
+    "dbIcao": "EWG",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "EWG",
+    "icaoMatch": true,
+    "hq": "Düsseldorf",
+    "hubs": [
+      "Düsseldorf Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Eurowings",
+      "East-West Airlines"
+    ],
+    "wikidataName": "Eurowings",
+    "qid": "Q168836"
+  },
+  {
+    "dbId": "f24994e1-0eaa-4624-a911-cda0bbfa14b2",
+    "dbName": "Transavia",
+    "dbIata": "HV",
+    "dbIcao": "TRA",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "TRA",
+    "icaoMatch": true,
+    "hq": "Amsterdam Schiphol Airport",
+    "hubs": [],
+    "ambiguous": false,
+    "candidateNames": [
+      "Transavia"
+    ],
+    "wikidataName": "Transavia",
+    "qid": "Q246952"
+  },
+  {
+    "dbId": "65088a04-2113-458f-ac3b-c65013bf1d99",
+    "dbName": "Volotea",
+    "dbIata": "V7",
+    "dbIcao": "VOE",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "VOE",
+    "icaoMatch": true,
+    "hq": "Asturias Airport",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Sénégal International",
+      "Volotea"
+    ],
+    "wikidataName": "Volotea",
+    "qid": "Q2296193"
+  },
+  {
+    "dbId": "d403bf61-f7c4-4e5c-97eb-f29298dc8f49",
+    "dbName": "Smartwings",
+    "dbIata": "QS",
+    "dbIcao": "TVS",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": null,
+    "icaoMatch": null,
+    "hq": "Prague",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "SmartWings",
+      "Smartwings",
+      "Jordanian World Airways",
+      "Northeastern International Airways"
+    ],
+    "wikidataName": "SmartWings",
+    "qid": "Q774608"
+  },
+  {
+    "dbId": "3d1dff5b-b067-4a99-8c64-96bdc3ed9767",
+    "dbName": "Pegasus Airlines",
+    "dbIata": "PC",
+    "dbIcao": "PGT",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "PGT",
+    "icaoMatch": true,
+    "hq": "Istanbul",
+    "hubs": [
+      "Istanbul Sabiha Gökçen International Airport",
+      "Antalya Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Fiji",
+      "Pegasus Airlines",
+      "Continental Airways",
+      "Pacific Air Lines"
+    ],
+    "wikidataName": "Pegasus Airlines",
+    "qid": "Q1100424"
+  },
+  {
+    "dbId": "5514b104-a957-44c7-ab97-079590812afa",
+    "dbName": "TUI Airways",
+    "dbIata": "BY",
+    "dbIcao": "TOM",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "TOM",
+    "icaoMatch": true,
+    "hq": "Luton",
+    "hubs": [
+      "London Luton Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Britannia Airways",
+      "Thomsonfly",
+      "TUI Airways"
+    ],
+    "wikidataName": "TUI Airways",
+    "qid": "Q1156859"
+  },
+  {
+    "dbId": "7402ae19-75b0-40d2-a019-49e0544cbf5d",
+    "dbName": "Loganair",
+    "dbIata": "LM",
+    "dbIcao": "LOG",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "LOG",
+    "icaoMatch": true,
+    "hq": "Glasgow Airport",
+    "hubs": [
+      "Glasgow Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Loganair",
+      "Livingston Energy Flight",
+      "ALM Antillean Airlines"
+    ],
+    "wikidataName": "Loganair",
+    "qid": "Q934983"
+  },
+  {
+    "dbId": "868cc4e3-37f4-40f9-9a93-29566812a4bc",
+    "dbName": "Eastern Airways",
+    "dbIata": "T3",
+    "dbIcao": "EZE",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "EZE",
+    "icaoMatch": true,
+    "hq": "Humberside Airport",
+    "hubs": [
+      "Humberside Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Eastern Airways",
+      "TriStar Airlines"
+    ],
+    "wikidataName": "Eastern Airways",
+    "qid": "Q1278136"
+  },
+  {
+    "dbId": "166e99ca-a6ec-49fb-a0df-62df3f5eee7d",
+    "dbName": "Widerøe",
+    "dbIata": "WF",
+    "dbIcao": "WIF",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "WIF",
+    "icaoMatch": true,
+    "hq": "Bodø",
+    "hubs": [
+      "Bodø Airport",
+      "Oslo Airport",
+      "Bergen Airport",
+      "Trondheim Airport",
+      "Sandefjord Airport",
+      "Tromsø Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Widerøe"
+    ],
+    "wikidataName": "Widerøe",
+    "qid": "Q28344"
+  },
+  {
+    "dbId": "fcc50be0-1dac-4d4c-814f-94a680041899",
+    "dbName": "Air Nostrum",
+    "dbIata": "YW",
+    "dbIcao": "ANE",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "ANE",
+    "icaoMatch": true,
+    "hq": "Valencia",
+    "hubs": [
+      "Josep Tarradellas Airport Barcelona-El Prat",
+      "Valencia Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Nostrum",
+      "StatesWest Airlines"
+    ],
+    "wikidataName": "Air Nostrum",
+    "qid": "Q407694"
+  },
+  {
+    "dbId": "07f5813b-3987-4f0d-a926-cc1d0f808784",
+    "dbName": "CityJet",
+    "dbIata": "WX",
+    "dbIcao": "BCY",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "BCY",
+    "icaoMatch": true,
+    "hq": "Swords",
+    "hubs": [
+      "London City Airport",
+      "Brussels Airport",
+      "Paris-Charles de Gaulle Airport",
+      "Copenhagen Airport",
+      "Stockholm Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "CityJet"
+    ],
+    "wikidataName": "CityJet",
+    "qid": "Q163625"
+  },
+  {
+    "dbId": "0626f6c3-cc8d-4ce0-8edb-0dd7cb8aca2a",
+    "dbName": "Binter Canarias",
+    "dbIata": "NT",
+    "dbIcao": "IBB",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "IBB",
+    "icaoMatch": true,
+    "hq": "Canary Islands",
+    "hubs": [
+      "Tenerife North Airport",
+      "Gran Canaria Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Binter Canarias"
+    ],
+    "wikidataName": "Binter Canarias",
+    "qid": "Q864087"
+  },
+  {
+    "dbId": "6d4a3139-5620-4c6e-8ae9-34059c75463f",
+    "dbName": "Cargolux",
+    "dbIata": "CV",
+    "dbIcao": "CLX",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "CLX",
+    "icaoMatch": true,
+    "hq": "Luxembourg",
+    "hubs": [
+      "Luxembourg Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Chathams",
+      "Cargolux"
+    ],
+    "wikidataName": "Cargolux",
+    "qid": "Q1036100"
+  },
+  {
+    "dbId": "e4f0ad45-59f7-43a0-82b5-9f62866e3e27",
+    "dbName": "DHL Air",
+    "dbIata": "D0",
+    "dbIcao": "DHK",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "DHK",
+    "icaoMatch": true,
+    "hq": "Hounslow",
+    "hubs": [
+      "East Midlands Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "DHL Air UK"
+    ],
+    "wikidataName": "DHL Air UK",
+    "qid": "Q835482"
+  },
+  {
+    "dbId": "6fba5c05-9bb4-4fc5-b7ec-3cd841c5ade6",
+    "dbName": "European Air Transport (DHL)",
+    "dbIata": "QY",
+    "dbIcao": "BCS",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "BCS",
+    "icaoMatch": true,
+    "hq": "Brussels Airport",
+    "hubs": [
+      "Leipzig/Halle Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "European Air Transport Leipzig",
+      "European Air Transport"
+    ],
+    "wikidataName": "European Air Transport",
+    "qid": "Q573300"
+  },
+  {
+    "dbId": "302844b9-e84f-4c5d-aa7a-c67b98d3fbe1",
+    "dbName": "ASL Airlines Ireland",
+    "dbIata": "AG",
+    "dbIcao": "ABR",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "ABR",
+    "icaoMatch": true,
+    "hq": "Dublin",
+    "hubs": [
+      "Dublin Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "ASL Airlines Ireland",
+      "Agni Air",
+      "Air Trans Africa",
+      "Fly Aruba",
+      "Aruba Airlines"
+    ],
+    "wikidataName": "ASL Airlines Ireland",
+    "qid": "Q407043"
+  },
+  {
+    "dbId": "09afee3d-57c7-455d-8b89-850a13104220",
+    "dbName": "Gulf Air",
+    "dbIata": "GF",
+    "dbIcao": "GFA",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "GFA",
+    "icaoMatch": true,
+    "hq": "Al-Muharraq",
+    "hubs": [
+      "Bahrain International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Gulf Air",
+      "Gulf Traveller"
+    ],
+    "wikidataName": "Gulf Air",
+    "qid": "Q473231"
+  },
+  {
+    "dbId": "c5ebfdc6-9f92-40ea-93e5-43a601330729",
+    "dbName": "Kuwait Airways",
+    "dbIata": "KU",
+    "dbIcao": "KAC",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "KAC",
+    "icaoMatch": true,
+    "hq": "Kuwait City",
+    "hubs": [
+      "Kuwait International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Kuwait Airways"
+    ],
+    "wikidataName": "Kuwait Airways",
+    "qid": "Q860389"
+  },
+  {
+    "dbId": "7d08efa3-c737-44a3-8de4-d9aa8ccae536",
+    "dbName": "Oman Air",
+    "dbIata": "WY",
+    "dbIcao": "OMA",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "OMA",
+    "icaoMatch": true,
+    "hq": "Muscat",
+    "hubs": [
+      "Muscat International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Oman Air",
+      "Oman aviation services"
+    ],
+    "wikidataName": "Oman Air",
+    "qid": "Q860379"
+  },
+  {
+    "dbId": "aef71f0d-3e99-48b4-8e04-ae57530d239d",
+    "dbName": "Royal Jordanian",
+    "dbIata": "RJ",
+    "dbIcao": "RJA",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "RJA",
+    "icaoMatch": true,
+    "hq": "Amman",
+    "hubs": [
+      "Queen Alia International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Royal Jordanian"
+    ],
+    "wikidataName": "Royal Jordanian",
+    "qid": "Q824225"
+  },
+  {
+    "dbId": "f4e33ee6-fd3c-4e8d-9fc7-0fe15e03573a",
+    "dbName": "Middle East Airlines",
+    "dbIata": "ME",
+    "dbIcao": "MEA",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "MEA",
+    "icaoMatch": true,
+    "hq": "Beirut",
+    "hubs": [
+      "Beirut–Rafic Hariri International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Middle East Airlines - Air Liban"
+    ],
+    "wikidataName": "Middle East Airlines - Air Liban",
+    "qid": "Q859510"
+  },
+  {
+    "dbId": "71568bf7-8268-4e92-969a-cc4d8f83fcb4",
+    "dbName": "Air Arabia",
+    "dbIata": "G9",
+    "dbIcao": "ABY",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "ABY",
+    "icaoMatch": true,
+    "hq": "Sharjah",
+    "hubs": [],
+    "ambiguous": false,
+    "candidateNames": [
+      "Air Arabia"
+    ],
+    "wikidataName": "Air Arabia",
+    "qid": "Q406798"
+  },
+  {
+    "dbId": "273b1af6-f254-47c5-acd7-af397d675474",
+    "dbName": "El Al",
+    "dbIata": "LY",
+    "dbIcao": "ELY",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "ELY",
+    "icaoMatch": true,
+    "hq": "Tel Aviv",
+    "hubs": [
+      "Ben Gurion Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "EL AL Israel Airlines Ltd.",
+      "EL AL Israel Airlines Ltd.",
+      "EL AL Israel Airlines Ltd.",
+      "Sun d'Or International Airlines",
+      "Melilla Airlines",
+      "Up",
+      "Up"
+    ],
+    "wikidataName": "EL AL Israel Airlines Ltd.",
+    "qid": "Q208489"
+  },
+  {
+    "dbId": "3d3c1069-cd1c-47bf-a930-968a4a3bc4fa",
+    "dbName": "Jazeera Airways",
+    "dbIata": "J9",
+    "dbIcao": "JZR",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "JZR",
+    "icaoMatch": true,
+    "hq": "Farwaniya",
+    "hubs": [
+      "Kuwait International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Jazeera Airways",
+      "Guinee Airlines"
+    ],
+    "wikidataName": "Jazeera Airways",
+    "qid": "Q1064048"
+  },
+  {
+    "dbId": "012c52e7-6e24-4b57-94cb-e2eaee0fd16a",
+    "dbName": "SalamAir",
+    "dbIata": "OV",
+    "dbIcao": "OMS",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "OMS",
+    "icaoMatch": true,
+    "hq": "Muscat",
+    "hubs": [
+      "Muscat International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Estonian Air",
+      "Aéromaritime",
+      "SalamAir"
+    ],
+    "wikidataName": "SalamAir",
+    "qid": "Q27926620"
+  },
+  {
+    "dbId": "ae668d32-7c6e-4cd7-a571-7a93a1e0f0cb",
+    "dbName": "flynas",
+    "dbIata": "XY",
+    "dbIcao": "KNE",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "KNE",
+    "icaoMatch": true,
+    "hq": "Riyadh",
+    "hubs": [
+      "King Khalid International Airport",
+      "King Abdulaziz International Airport",
+      "Abha Regional Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Kayala Airline",
+      "Flynas"
+    ],
+    "wikidataName": "Flynas",
+    "qid": "Q1189080"
+  },
+  {
+    "dbId": "49451d84-658f-4925-91ec-829ae8645481",
+    "dbName": "Iraqi Airways",
+    "dbIata": "IA",
+    "dbIcao": "IAW",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "IAW",
+    "icaoMatch": true,
+    "hq": "Baghdad",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Iraqi Airways",
+      "Inversija"
+    ],
+    "wikidataName": "Iraqi Airways",
+    "qid": "Q853937"
+  },
+  {
+    "dbId": "9da8b6fd-adef-488c-b047-853ba19f43ab",
+    "dbName": "Israir",
+    "dbIata": "6H",
+    "dbIcao": "ISR",
+    "region": "Middle East",
+    "iataFound": true,
+    "icaoWikidata": "ISR",
+    "icaoMatch": true,
+    "hq": "Tel Aviv",
+    "hubs": [
+      "Ben Gurion Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Israir Airlines"
+    ],
+    "wikidataName": "Israir Airlines",
+    "qid": "Q558002"
+  },
+  {
+    "dbId": "a488dbd0-f89d-4d9a-b7e1-2b4b78deaf9b",
+    "dbName": "EgyptAir",
+    "dbIata": "MS",
+    "dbIcao": "MSR",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "MSR",
+    "icaoMatch": true,
+    "hq": "Cairo",
+    "hubs": [
+      "Cairo International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "EgyptAir",
+      "EgyptAir Cargo",
+      "United Arab Airlines"
+    ],
+    "wikidataName": "EgyptAir",
+    "qid": "Q374740"
+  },
+  {
+    "dbId": "5acebcb2-3a99-4a45-a0dc-4e7c647ef19f",
+    "dbName": "Royal Air Maroc",
+    "dbIata": "AT",
+    "dbIcao": "RAM",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "RAM",
+    "icaoMatch": true,
+    "hq": "Casablanca-Anfa Airport",
+    "hubs": [
+      "Mohammed V International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Royal Air Maroc",
+      "RAM Cargo",
+      "Ad Astral Aviation"
+    ],
+    "wikidataName": "Royal Air Maroc",
+    "qid": "Q866103"
+  },
+  {
+    "dbId": "12b1600d-f4d1-4997-9e0b-5923476769f7",
+    "dbName": "Tunisair",
+    "dbIata": "TU",
+    "dbIcao": "TAR",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "TAR",
+    "icaoMatch": true,
+    "hq": "Tunis",
+    "hubs": [
+      "Tunis–Carthage International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Tunisair",
+      "Turpial Airlines"
+    ],
+    "wikidataName": "Tunisair",
+    "qid": "Q692811"
+  },
+  {
+    "dbId": "c12d1c2a-0c86-4d2b-b5ca-b997c4e9a0f8",
+    "dbName": "Air Algérie",
+    "dbIata": "AH",
+    "dbIcao": "DAH",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "DAH",
+    "icaoMatch": true,
+    "hq": "Algiers",
+    "hubs": [
+      "Algiers Houari Boumediene Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Algérie",
+      "Airhub Airlines",
+      "Air Algérie Cargo"
+    ],
+    "wikidataName": "Air Algérie",
+    "qid": "Q406764"
+  },
+  {
+    "dbId": "138fe5d0-e6da-4b59-912d-018d85a2f65a",
+    "dbName": "Air Cairo",
+    "dbIata": "SM",
+    "dbIcao": "MSC",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "MSC",
+    "icaoMatch": true,
+    "hq": "Cairo",
+    "hubs": [
+      "Cairo International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Altair Linee Aeree",
+      "Spirit of Manila Airlines",
+      "Air Cairo",
+      "Swedline Express",
+      "Altair"
+    ],
+    "wikidataName": "Air Cairo",
+    "qid": "Q1147012"
+  },
+  {
+    "dbId": "37687595-f996-4437-b64d-feee4c13225e",
+    "dbName": "Ethiopian Airlines",
+    "dbIata": "ET",
+    "dbIcao": "ETH",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "ETH",
+    "icaoMatch": true,
+    "hq": "Addis Ababa Bole International Airport",
+    "hubs": [
+      "Addis Ababa Bole International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Ethiopian Airlines"
+    ],
+    "wikidataName": "Ethiopian Airlines",
+    "qid": "Q245233"
+  },
+  {
+    "dbId": "05d23081-b2f1-46cc-b81b-d69915daf489",
+    "dbName": "Kenya Airways",
+    "dbIata": "KQ",
+    "dbIcao": "KQA",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "KQA",
+    "icaoMatch": true,
+    "hq": "Embakasi",
+    "hubs": [
+      "Jomo Kenyatta International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Kenya Airways",
+      "Air South"
+    ],
+    "wikidataName": "Kenya Airways",
+    "qid": "Q638900"
+  },
+  {
+    "dbId": "150084de-34b7-4bd5-a132-43447ab7320f",
+    "dbName": "South African Airways",
+    "dbIata": "SA",
+    "dbIcao": "SAA",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "SAA",
+    "icaoMatch": true,
+    "hq": "OR Tambo International Airport",
+    "hubs": [
+      "OR Tambo International Airport",
+      "Cape Town International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "South African Airways",
+      "Sabah Air",
+      "Zimbabwe Airlink"
+    ],
+    "wikidataName": "South African Airways",
+    "qid": "Q223763"
+  },
+  {
+    "dbId": "d4e3b3d5-f152-46a5-911b-a27254217868",
+    "dbName": "Airlink",
+    "dbIata": "4Z",
+    "dbIcao": "LNK",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "LNK",
+    "icaoMatch": true,
+    "hq": "Johannesburg",
+    "hubs": [
+      "OR Tambo International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Airlink",
+      "Swaziland Airlink",
+      "Airlink Cargo"
+    ],
+    "wikidataName": "Airlink",
+    "qid": "Q408831"
+  },
+  {
+    "dbId": "5e5ef202-a255-4454-b69f-3830ac05fc6c",
+    "dbName": "FlySafair",
+    "dbIata": "FA",
+    "dbIcao": "SFR",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "SFR",
+    "icaoMatch": true,
+    "hq": "Johannesburg",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Safair",
+      "Finnaviation",
+      "FlySafair"
+    ],
+    "wikidataName": "FlySafair",
+    "qid": "Q17053011"
+  },
+  {
+    "dbId": "52276381-d468-4b10-b729-a1e46a2afe96",
+    "dbName": "Air Mauritius",
+    "dbIata": "MK",
+    "dbIcao": "MAU",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "MAU",
+    "icaoMatch": true,
+    "hq": "Port Louis",
+    "hubs": [
+      "Sir Seewoosagur Ramgoolam International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Air Mauritius"
+    ],
+    "wikidataName": "Air Mauritius",
+    "qid": "Q407556"
+  },
+  {
+    "dbId": "352006ad-8705-4e99-b30f-c80a8c308757",
+    "dbName": "RwandAir",
+    "dbIata": "WB",
+    "dbIcao": "RWD",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "RWD",
+    "icaoMatch": true,
+    "hq": "Kigali",
+    "hubs": [
+      "Kigali International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "RwandAir",
+      "Wan Air",
+      "SAN Ecuador"
+    ],
+    "wikidataName": "RwandAir",
+    "qid": "Q392542"
+  },
+  {
+    "dbId": "b7d1126f-2cfc-4250-9549-2ead44f9e50c",
+    "dbName": "Air Senegal",
+    "dbIata": "HC",
+    "dbIcao": "SNG",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "SZN",
+    "icaoMatch": false,
+    "hq": "Dakar",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Iceland Express",
+      "Holidays Czech Airlines",
+      "Aero-Tropics Air Services",
+      "Hunting-Clan Air Transport",
+      "Hunting-Clan Air Transport",
+      "Air Senegal"
+    ],
+    "wikidataName": "Air Senegal",
+    "qid": "Q56754455"
+  },
+  {
+    "dbId": "8f245de1-0ed0-41fe-93c5-f5e0e02b643c",
+    "dbName": "ASKY Airlines",
+    "dbIata": "KP",
+    "dbIcao": "SKK",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "SKK",
+    "icaoMatch": true,
+    "hq": "Lomé",
+    "hubs": [
+      "Lomé-Tokoin Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Asky Airlines",
+      "Kiwi International Air Lines"
+    ],
+    "wikidataName": "Asky Airlines",
+    "qid": "Q127529"
+  },
+  {
+    "dbId": "4f750f84-992d-4879-a98a-d3ce39f91680",
+    "dbName": "TAAG Angola Airlines",
+    "dbIata": "DT",
+    "dbIcao": "DTA",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "DTA",
+    "icaoMatch": true,
+    "hq": "Luanda",
+    "hubs": [
+      "Quatro de Fevereiro Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "TAAG Angola Airlines"
+    ],
+    "wikidataName": "TAAG Angola Airlines",
+    "qid": "Q1050518"
+  },
+  {
+    "dbId": "63abd7f9-d0ea-4242-8a42-3efb23d4afce",
+    "dbName": "Air Côte d'Ivoire",
+    "dbIata": "HF",
+    "dbIcao": "VRE",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "VRE",
+    "icaoMatch": true,
+    "hq": "Abidjan",
+    "hubs": [
+      "Port Bouet Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Côte d'Ivoire",
+      "Hapag-Lloyd Flug"
+    ],
+    "wikidataName": "Air Côte d'Ivoire",
+    "qid": "Q392864"
+  },
+  {
+    "dbId": "642cd5ea-3d47-4656-adf2-b7e1e257b06b",
+    "dbName": "Precision Air",
+    "dbIata": "PW",
+    "dbIcao": "PRF",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "PRF",
+    "icaoMatch": true,
+    "hq": null,
+    "hubs": [
+      "Julius Nyerere International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "German Wings",
+      "Precision Air",
+      "Pacific Western Airlines"
+    ],
+    "wikidataName": "Precision Air",
+    "qid": "Q957305"
+  },
+  {
+    "dbId": "d507115f-18f0-4040-977a-3cf2031dd52b",
+    "dbName": "Air Peace",
+    "dbIata": "P4",
+    "dbIcao": "APK",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "APK",
+    "icaoMatch": true,
+    "hq": "Ikeja",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Aerolíneas Sosa",
+      "Air Peace"
+    ],
+    "wikidataName": "Air Peace",
+    "qid": "Q18161750"
+  },
+  {
+    "dbId": "dcdbff42-1fb5-4fdd-bb93-1eb762136c29",
+    "dbName": "Arik Air",
+    "dbIata": "W3",
+    "dbIcao": "ARA",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "ARA",
+    "icaoMatch": true,
+    "hq": "Murtala Muhammed International Airport",
+    "hubs": [
+      "Nnamdi Azikiwe International Airport",
+      "Murtala Muhammed International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Arik Air"
+    ],
+    "wikidataName": "Arik Air",
+    "qid": "Q660986"
+  },
+  {
+    "dbId": "75124b24-2640-4b99-a9e0-2430a0ac9e3e",
+    "dbName": "Fastjet",
+    "dbIata": "FN",
+    "dbIcao": "FTZ",
+    "region": "Africa",
+    "iataFound": true,
+    "icaoWikidata": "FJW",
+    "icaoMatch": false,
+    "hq": null,
+    "hubs": [
+      "Robert Gabriel Mugabe International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Regional Air Lines",
+      "Royal Air Maroc Express",
+      "Niue Airlines",
+      "Fastjet Zimbabwe",
+      "Fastjet Tanzania"
+    ],
+    "wikidataName": "Fastjet Zimbabwe",
+    "qid": "Q21096628"
+  },
+  {
+    "dbId": "fc4c8c7e-942a-473c-b99a-740bce83739a",
+    "dbName": "Japan Airlines",
+    "dbIata": "JL",
+    "dbIcao": "JAL",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "JAL",
+    "icaoMatch": true,
+    "hq": "Higashi-Shinagawa",
+    "hubs": [
+      "Narita International Airport",
+      "Kansai International Airport",
+      "Tokyo International Airport",
+      "Osaka International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Japan Airlines"
+    ],
+    "wikidataName": "Japan Airlines",
+    "qid": "Q213140"
+  },
+  {
+    "dbId": "eb2248ed-b168-4617-aa33-f10228f97171",
+    "dbName": "Korean Air",
+    "dbIata": "KE",
+    "dbIcao": "KAL",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "KAL",
+    "icaoMatch": true,
+    "hq": "Gonghang-dong",
+    "hubs": [
+      "Incheon International Airport",
+      "Gimpo International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Q213147"
+    ],
+    "wikidataName": "Q213147",
+    "qid": "Q213147"
+  },
+  {
+    "dbId": "1364dbff-d910-4f14-a6ed-d5dbda0ec197",
+    "dbName": "Asiana Airlines",
+    "dbIata": "OZ",
+    "dbIcao": "AAR",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "AAR",
+    "icaoMatch": true,
+    "hq": "Seoul",
+    "hubs": [
+      "Incheon International Airport",
+      "Gimpo International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Asiana Airlines",
+      "Ozark Air Lines"
+    ],
+    "wikidataName": "Asiana Airlines",
+    "qid": "Q211165"
+  },
+  {
+    "dbId": "871f3b63-6f89-4ab5-9eab-e1429473d7f9",
+    "dbName": "China Airlines",
+    "dbIata": "CI",
+    "dbIcao": "CAL",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CAL",
+    "icaoMatch": true,
+    "hq": "CAL Park",
+    "hubs": [
+      "Taoyuan International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "China Airlines"
+    ],
+    "wikidataName": "China Airlines",
+    "qid": "Q51756"
+  },
+  {
+    "dbId": "7c9a277e-b0e7-4183-be71-94262ebd4d76",
+    "dbName": "EVA Air",
+    "dbIata": "BR",
+    "dbIcao": "EVA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "EVA",
+    "icaoMatch": true,
+    "hq": "Luzhu District",
+    "hubs": [
+      "Taoyuan International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "British United Airways",
+      "EVA Air",
+      "British Caledonian",
+      "British Asia Airways",
+      "British Asia Airways"
+    ],
+    "wikidataName": "EVA Air",
+    "qid": "Q715113"
+  },
+  {
+    "dbId": "3942142d-af8e-41c7-acf5-5f7c79ba7450",
+    "dbName": "Air China",
+    "dbIata": "CA",
+    "dbIcao": "CCA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CCA",
+    "icaoMatch": true,
+    "hq": "Beijing",
+    "hubs": [
+      "Beijing Capital International Airport",
+      "Shanghai Pudong International Airport",
+      "Chengdu Shuangliu International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air China",
+      "Air China Cargo",
+      "Caledonian Airways",
+      "Dalian Airlines",
+      "CAAC Airlines",
+      "Beijing Airlines",
+      "Air China Inner Mongolia"
+    ],
+    "wikidataName": "Air China",
+    "qid": "Q51747"
+  },
+  {
+    "dbId": "bbbcb810-9ae0-46b3-ad74-e204c2d2d625",
+    "dbName": "China Southern Airlines",
+    "dbIata": "CZ",
+    "dbIcao": "CSN",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CSN",
+    "icaoMatch": true,
+    "hq": "Guangzhou",
+    "hubs": [
+      "Guangzhou Baiyun International Airport",
+      "Ürümqi Tianshan International Airport",
+      "Chongqing Jiangbei International Airport",
+      "Beijing Daxing International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "China Southern Airlines"
+    ],
+    "wikidataName": "China Southern Airlines",
+    "qid": "Q291090"
+  },
+  {
+    "dbId": "3273a94f-1d78-4425-abb4-44bc019175f2",
+    "dbName": "China Eastern Airlines",
+    "dbIata": "MU",
+    "dbIcao": "CES",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CES",
+    "icaoMatch": true,
+    "hq": "Shanghai Hongqiao International Airport",
+    "hubs": [
+      "Shanghai Pudong International Airport",
+      "Xi'an Xianyang International Airport",
+      "Shanghai Hongqiao International Airport",
+      "Beijing Daxing International Airport",
+      "Kunming Changshui International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "China Eastern Airlines",
+      "OTT Airlines"
+    ],
+    "wikidataName": "China Eastern Airlines",
+    "qid": "Q291796"
+  },
+  {
+    "dbId": "8fc2df68-e345-4120-8d99-3a1d6032ea9e",
+    "dbName": "Hainan Airlines",
+    "dbIata": "HU",
+    "dbIcao": "CHH",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CHH",
+    "icaoMatch": true,
+    "hq": "Haikou",
+    "hubs": [
+      "Beijing Capital International Airport",
+      "Haikou Meilan International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Hainan Airlines",
+      "Trinidad and Tobago Air Services"
+    ],
+    "wikidataName": "Hainan Airlines",
+    "qid": "Q292428"
+  },
+  {
+    "dbId": "14ec94df-490c-43f0-9a11-56fb6d14f9ba",
+    "dbName": "Xiamen Air",
+    "dbIata": "MF",
+    "dbIcao": "CXA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CXA",
+    "icaoMatch": true,
+    "hq": "Xiamen",
+    "hubs": [
+      "Xiamen Gaoqi International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Xiamen Airlines",
+      "Air Road Cargo"
+    ],
+    "wikidataName": "Xiamen Airlines",
+    "qid": "Q147208"
+  },
+  {
+    "dbId": "407e5305-bb4a-4a4d-a3e7-dc021322c28d",
+    "dbName": "Shenzhen Airlines",
+    "dbIata": "ZH",
+    "dbIcao": "CSZ",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CSZ",
+    "icaoMatch": true,
+    "hq": "Shenzhen",
+    "hubs": [
+      "Guangzhou Baiyun International Airport",
+      "Shenzhen Bao'an International Airport",
+      "Shenyang Taoxian International Airport",
+      "Nanning Wuxu International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Shenzhen Airlines",
+      "Shenzhen Airlines"
+    ],
+    "wikidataName": "Shenzhen Airlines",
+    "qid": "Q974899"
+  },
+  {
+    "dbId": "499e4add-32bb-4cbe-97c3-20e85c531628",
+    "dbName": "Juneyao Airlines",
+    "dbIata": "HO",
+    "dbIcao": "DKH",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "DKH",
+    "icaoMatch": true,
+    "hq": "Shanghai",
+    "hubs": [
+      "Shanghai Hongqiao International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Q1713277",
+      "Antinea Airlines",
+      "Mid Pacific Air",
+      "Airways International"
+    ],
+    "wikidataName": "Q1713277",
+    "qid": "Q1713277"
+  },
+  {
+    "dbId": "09d67352-6195-48cb-88e5-37ad87d8d912",
+    "dbName": "Spring Airlines",
+    "dbIata": "9C",
+    "dbIcao": "CQH",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CQH",
+    "icaoMatch": true,
+    "hq": "Shanghai",
+    "hubs": [
+      "Shanghai Pudong International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Wimbi Dira Airways",
+      "Spring Airlines",
+      "Samair",
+      "Gill Airways"
+    ],
+    "wikidataName": "Spring Airlines",
+    "qid": "Q1340408"
+  },
+  {
+    "dbId": "fe79b327-bad2-4205-b084-f8c904033492",
+    "dbName": "Skymark Airlines",
+    "dbIata": "BC",
+    "dbIcao": "SKY",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "SKY",
+    "icaoMatch": true,
+    "hq": "Tokyo",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "Skymark Airlines",
+      "Brymon Airways"
+    ],
+    "wikidataName": "Skymark Airlines",
+    "qid": "Q735664"
+  },
+  {
+    "dbId": "bfd71fb2-f617-4708-a710-d937cc543dec",
+    "dbName": "Peach Aviation",
+    "dbIata": "MM",
+    "dbIcao": "APJ",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "APJ",
+    "icaoMatch": true,
+    "hq": "Izumisano",
+    "hubs": [
+      "Kansai International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Peach",
+      "SAM Colombia",
+      "Malta MedAir"
+    ],
+    "wikidataName": "Peach",
+    "qid": "Q1376634"
+  },
+  {
+    "dbId": "188bf657-d2ac-485c-b8af-58c9e3c602bf",
+    "dbName": "Thai Airways",
+    "dbIata": "TG",
+    "dbIcao": "THA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "THA",
+    "icaoMatch": true,
+    "hq": "Chatuchak",
+    "hubs": [
+      "Suvarnabhumi Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Thai Airways"
+    ],
+    "wikidataName": "Thai Airways",
+    "qid": "Q188710"
+  },
+  {
+    "dbId": "1ce89059-cf1e-4db9-928b-0ecb92af70ff",
+    "dbName": "Malaysia Airlines",
+    "dbIata": "MH",
+    "dbIcao": "MAS",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "MAS",
+    "icaoMatch": true,
+    "hq": "Kuala Lumpur International Airport",
+    "hubs": [
+      "Kuala Lumpur International Airport",
+      "Kota Kinabalu International Airport",
+      "Kuching International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Malaysia Airlines",
+      "MASkargo"
+    ],
+    "wikidataName": "Malaysia Airlines",
+    "qid": "Q308952"
+  },
+  {
+    "dbId": "827850c9-f80c-4990-9f5c-d13626feb7ad",
+    "dbName": "Garuda Indonesia",
+    "dbIata": "GA",
+    "dbIcao": "GIA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "GIA",
+    "icaoMatch": true,
+    "hq": "Soekarno–Hatta International Airport",
+    "hubs": [
+      "Sultan Aji Muhammad Sulaiman Sepinggan Airport",
+      "Soekarno–Hatta International Airport",
+      "Ngurah Rai International Airport",
+      "Juanda International Airport",
+      "Sultan Hasanuddin International Airport",
+      "Kualanamu International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Garuda Indonesia"
+    ],
+    "wikidataName": "Garuda Indonesia",
+    "qid": "Q512468"
+  },
+  {
+    "dbId": "d6b99185-6a79-4b36-b9dc-c6e2611297d9",
+    "dbName": "Vietnam Airlines",
+    "dbIata": "VN",
+    "dbIcao": "HVN",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "HVN",
+    "icaoMatch": true,
+    "hq": "Long Biên",
+    "hubs": [
+      "Long Thanh International Airport",
+      "Tan Son Nhat International Airport",
+      "Da Nang International Airport",
+      "Noi Bai International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Vietnam Airlines",
+      "Venezolana",
+      "Air Vietnam"
+    ],
+    "wikidataName": "Vietnam Airlines",
+    "qid": "Q174386"
+  },
+  {
+    "dbId": "4bf74aae-a437-44d2-bd11-ff2377213ac0",
+    "dbName": "Philippine Airlines",
+    "dbIata": "PR",
+    "dbIcao": "PAL",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "PAL",
+    "icaoMatch": true,
+    "hq": "Pasay",
+    "hubs": [
+      "Ninoy Aquino International Airport",
+      "Mactan–Cebu International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Philippine Airlines",
+      "Q106555489",
+      "2GO Air"
+    ],
+    "wikidataName": "Philippine Airlines",
+    "qid": "Q846910"
+  },
+  {
+    "dbId": "d9e8cb4a-0ea5-4e7b-b110-d9697a4db847",
+    "dbName": "AirAsia",
+    "dbIata": "AK",
+    "dbIcao": "AXM",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "AXM",
+    "icaoMatch": true,
+    "hq": "Kuala Lumpur International Airport",
+    "hubs": [
+      "Kuala Lumpur International Airport",
+      "Kota Kinabalu International Airport",
+      "Penang International Airport",
+      "Kuching International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "AirAsia",
+      "Airways International Cymru",
+      "Altair Airlines"
+    ],
+    "wikidataName": "AirAsia",
+    "qid": "Q406643"
+  },
+  {
+    "dbId": "33742964-1647-4df6-9b98-2fd8a4c81b84",
+    "dbName": "Cebu Pacific",
+    "dbIata": "5J",
+    "dbIcao": "CEB",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "CEB",
+    "icaoMatch": true,
+    "hq": "Cebu City",
+    "hubs": [
+      "Ninoy Aquino International Airport",
+      "Clark International Airport",
+      "Mactan–Cebu International Airport",
+      "Francisco Bangoy International Airport",
+      "Kalibo International Airport",
+      "Iloilo International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Cebu Pacific",
+      "Private Jet Expeditions"
+    ],
+    "wikidataName": "Cebu Pacific",
+    "qid": "Q995151"
+  },
+  {
+    "dbId": "787ea916-f2dc-4bb1-96ec-f754d2fd54b7",
+    "dbName": "Lion Air",
+    "dbIata": "JT",
+    "dbIcao": "LNI",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "LNI",
+    "icaoMatch": true,
+    "hq": "Jakarta",
+    "hubs": [
+      "Soekarno–Hatta International Airport",
+      "Soewondo Air Force Base",
+      "Juanda International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Lion Air",
+      "Lion Air",
+      "Transair"
+    ],
+    "wikidataName": "Lion Air",
+    "qid": "Q1056794"
+  },
+  {
+    "dbId": "4cb60dcf-553c-44bb-ba66-980390551405",
+    "dbName": "VietJet Air",
+    "dbIata": "VJ",
+    "dbIcao": "VJC",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "VJC",
+    "icaoMatch": true,
+    "hq": "Ho Chi Minh City",
+    "hubs": [
+      "Tan Son Nhat International Airport",
+      "Noi Bai International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "VietJet Air",
+      "Royal Air Cambodge"
+    ],
+    "wikidataName": "VietJet Air",
+    "qid": "Q853878"
+  },
+  {
+    "dbId": "2165048e-e9e2-497d-8b25-a08438d34f71",
+    "dbName": "Scoot",
+    "dbIata": "TR",
+    "dbIcao": "TGW",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "SCO",
+    "icaoMatch": false,
+    "hq": "Singapore",
+    "hubs": [
+      "Singapore Changi Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Transbrasil",
+      "Tiger Airways",
+      "Scoot",
+      "Scoot",
+      "Travira Air"
+    ],
+    "wikidataName": "Scoot",
+    "qid": "Q1319404"
+  },
+  {
+    "dbId": "00e794c9-b01c-4a85-8bab-afb0950817e5",
+    "dbName": "Batik Air",
+    "dbIata": "ID",
+    "dbIcao": "BTK",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "BTK",
+    "icaoMatch": true,
+    "hq": "Jakarta",
+    "hubs": [
+      "Soekarno–Hatta International Airport",
+      "Halim Perdanakusuma Airport",
+      "Sam Ratulangi International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Batik Air",
+      "Interlink Airlines"
+    ],
+    "wikidataName": "Batik Air",
+    "qid": "Q618960"
+  },
+  {
+    "dbId": "b2157fee-c8d9-4cec-a70b-d48220e4d1ca",
+    "dbName": "Bamboo Airways",
+    "dbIata": "QH",
+    "dbIcao": "BAV",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "BAV",
+    "icaoMatch": true,
+    "hq": "Phu Cat Airport",
+    "hubs": [
+      "Tan Son Nhat International Airport",
+      "Noi Bai International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Kyrgyzstan Air Company",
+      "Air Florida",
+      "Bamboo Airways"
+    ],
+    "wikidataName": "Bamboo Airways",
+    "qid": "Q51779763"
+  },
+  {
+    "dbId": "48afdbe4-ac49-4f8f-acfa-2bbc1b19084c",
+    "dbName": "Royal Brunei Airlines",
+    "dbIata": "BI",
+    "dbIcao": "RBA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "RBA",
+    "icaoMatch": true,
+    "hq": "Bandar Seri Begawan",
+    "hubs": [
+      "Brunei International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Royal Brunei Airlines",
+      "Borneo Airways"
+    ],
+    "wikidataName": "Royal Brunei Airlines",
+    "qid": "Q1050783"
+  },
+  {
+    "dbId": "6524f9ef-293e-4344-8020-a42cbddf5e1f",
+    "dbName": "Air India",
+    "dbIata": "AI",
+    "dbIcao": "AIC",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "AIC",
+    "icaoMatch": true,
+    "hq": "Gurgaon",
+    "hubs": [
+      "Netaji Subhas Chandra Bose International Airport",
+      "Chennai International Airport",
+      "Chhatrapati Shivaji Maharaj International Airport",
+      "Indira Gandhi International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air India",
+      "Air India Cargo",
+      "Airmark Indonesia"
+    ],
+    "wikidataName": "Air India",
+    "qid": "Q69906"
+  },
+  {
+    "dbId": "5e8770be-bb0e-4ac0-b3f1-2ae63a84dd8e",
+    "dbName": "IndiGo",
+    "dbIata": "6E",
+    "dbIcao": "IGO",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "IGO",
+    "icaoMatch": true,
+    "hq": "Gurgaon",
+    "hubs": [
+      "Lal Bahadur Shastri Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "IndiGo",
+      "City-Air",
+      "City-Air",
+      "Viva Air Dominicana"
+    ],
+    "wikidataName": "IndiGo",
+    "qid": "Q1057110"
+  },
+  {
+    "dbId": "f01419fb-f4f8-4c52-bf00-7c71abb11f84",
+    "dbName": "SpiceJet",
+    "dbIata": "SG",
+    "dbIcao": "SEJ",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "SEJ",
+    "icaoMatch": true,
+    "hq": "Gurgaon",
+    "hubs": [
+      "Chennai International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "SpiceJet",
+      "Air Sarnia",
+      "Nouvelle Air Affaires Gabon",
+      "Jetsgo",
+      "Sempati Air",
+      "Saeaga Airlines",
+      "Iskwew Air"
+    ],
+    "wikidataName": "SpiceJet",
+    "qid": "Q943813"
+  },
+  {
+    "dbId": "30fb8e8f-f9fe-4d63-991d-019961ca1812",
+    "dbName": "SriLankan Airlines",
+    "dbIata": "UL",
+    "dbIcao": "ALK",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "ALK",
+    "icaoMatch": true,
+    "hq": "Colombo",
+    "hubs": [
+      "Bandaranaike International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "SriLankan Airlines"
+    ],
+    "wikidataName": "SriLankan Airlines",
+    "qid": "Q853293"
+  },
+  {
+    "dbId": "98a8d548-df26-4a62-9af6-80afdd8bf98a",
+    "dbName": "Biman Bangladesh Airlines",
+    "dbIata": "BG",
+    "dbIcao": "BBC",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "BBC",
+    "icaoMatch": true,
+    "hq": "Dhaka",
+    "hubs": [
+      "Osmani International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Q863432"
+    ],
+    "wikidataName": "Q863432",
+    "qid": "Q863432"
+  },
+  {
+    "dbId": "6d36a81c-740f-472d-ad61-d52110c83b30",
+    "dbName": "Nepal Airlines",
+    "dbIata": "RA",
+    "dbIcao": "RNA",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "RNA",
+    "icaoMatch": true,
+    "hq": "Kathmandu",
+    "hubs": [
+      "Tribhuvan International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Rayyan Air",
+      "Nepal Airlines"
+    ],
+    "wikidataName": "Nepal Airlines",
+    "qid": "Q588909"
+  },
+  {
+    "dbId": "068d1bc9-49c6-4ed9-b8c0-5f810b049ed5",
+    "dbName": "Air New Zealand",
+    "dbIata": "NZ",
+    "dbIcao": "ANZ",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "ANZ",
+    "icaoMatch": true,
+    "hq": "Auckland",
+    "hubs": [
+      "Auckland Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Nelson",
+      "Air New Zealand",
+      "Eagle Airways",
+      "New Zealand National Airways Corporation"
+    ],
+    "wikidataName": "Air New Zealand",
+    "qid": "Q204296"
+  },
+  {
+    "dbId": "37550d65-97a2-4401-b251-a5a5550a8dba",
+    "dbName": "Virgin Australia",
+    "dbIata": "VA",
+    "dbIcao": "VOZ",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "VOZ",
+    "icaoMatch": true,
+    "hq": "Bowen Hills",
+    "hubs": [
+      "Sydney Airport",
+      "Brisbane Airport",
+      "Auckland Airport",
+      "Melbourne Airport",
+      "Christchurch International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Virgin Australia Regional Airlines",
+      "Virgin Australia",
+      "Virgin Samoa",
+      "VIASA",
+      "V Australia"
+    ],
+    "wikidataName": "Virgin Australia",
+    "qid": "Q727074"
+  },
+  {
+    "dbId": "6760746b-e6db-4eb0-9a3a-06bb0dd310fd",
+    "dbName": "Jetstar",
+    "dbIata": "JQ",
+    "dbIcao": "JST",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "JST",
+    "icaoMatch": true,
+    "hq": "Melbourne",
+    "hubs": [
+      "Brisbane Airport",
+      "Cairns Airport",
+      "Melbourne Airport",
+      "Gold Coast Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Jetstar Airways"
+    ],
+    "wikidataName": "Jetstar Airways",
+    "qid": "Q767627"
+  },
+  {
+    "dbId": "2d663cf1-9c6b-463c-8a26-a5f282a9a381",
+    "dbName": "Fiji Airways",
+    "dbIata": "FJ",
+    "dbIcao": "FJI",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "FJI",
+    "icaoMatch": true,
+    "hq": "Nadi International Airport",
+    "hubs": [
+      "Nadi International Airport",
+      "Nausori International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Fiji Airways",
+      "Fiji Airways",
+      "Fiji Link"
+    ],
+    "wikidataName": "Fiji Airways",
+    "qid": "Q407719"
+  },
+  {
+    "dbId": "73c4de8f-c377-4dbb-ae8a-66ba3339f78b",
+    "dbName": "Air Astana",
+    "dbIata": "KC",
+    "dbIcao": "KZR",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "KZR",
+    "icaoMatch": true,
+    "hq": "Almaty",
+    "hubs": [
+      "Nursultan Nazarbayev International Airport",
+      "Almaty International Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Air Astana",
+      "Conair of Scandinavia",
+      "Kiwi Travel International Airlines",
+      "Q26271118"
+    ],
+    "wikidataName": "Air Astana",
+    "qid": "Q406828"
+  },
+  {
+    "dbId": "e73feb95-36f4-4aa3-a3b4-f7c689dc823a",
+    "dbName": "Uzbekistan Airways",
+    "dbIata": "HY",
+    "dbIcao": "UZB",
+    "region": "Asia-Pacific",
+    "iataFound": true,
+    "icaoWikidata": "UZB",
+    "icaoMatch": true,
+    "hq": "Tashkent",
+    "hubs": [
+      "Tashkent International Airport"
+    ],
+    "ambiguous": false,
+    "candidateNames": [
+      "Uzbekistan Airways"
+    ],
+    "wikidataName": "Uzbekistan Airways",
+    "qid": "Q610003"
+  },
+  {
+    "dbId": "852b66c3-9d3a-4f20-b31e-d71860f213c0",
+    "dbName": "NetJets",
+    "dbIata": "1I",
+    "dbIcao": "EJA",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "EJA",
+    "icaoMatch": true,
+    "hq": "Columbus",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "NetJets",
+      "Novair"
+    ],
+    "wikidataName": "NetJets",
+    "qid": "Q1504132"
+  },
+  {
+    "dbId": "83ccb186-89e3-4f28-8b8d-147a2eb70286",
+    "dbName": "Flexjet",
+    "dbIata": null,
+    "dbIcao": "LXJ",
+    "region": "Americas",
+    "iataFound": false,
+    "icaoWikidata": null,
+    "icaoMatch": null,
+    "hq": null,
+    "hubs": [],
+    "ambiguous": false,
+    "candidateNames": [],
+    "wikidataName": null,
+    "qid": null
+  },
+  {
+    "dbId": "8946ad1c-a511-4dae-b6bd-761ec66644d3",
+    "dbName": "VistaJet",
+    "dbIata": null,
+    "dbIcao": "VJT",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "VJT",
+    "icaoMatch": true,
+    "hq": "Malta International Airport",
+    "hubs": [],
+    "ambiguous": true,
+    "candidateNames": [
+      "VistaJet",
+      "VistaJet",
+      "VistaJet Malta"
+    ],
+    "wikidataName": "VistaJet",
+    "qid": "Q690988"
+  },
+  {
+    "dbId": "4493bbe9-80e6-45ba-8b26-933034093db3",
+    "dbName": "GlobeAir",
+    "dbIata": null,
+    "dbIcao": "GAC",
+    "region": "Europe",
+    "iataFound": true,
+    "icaoWikidata": "GAC",
+    "icaoMatch": true,
+    "hq": "Hörsching",
+    "hubs": [],
+    "ambiguous": false,
+    "candidateNames": [
+      "GlobeAir"
+    ],
+    "wikidataName": "GlobeAir",
+    "qid": "Q1406781"
+  },
+  {
+    "dbId": "949b665a-52c7-47a9-b3cf-a82611aeb630",
+    "dbName": "Bristow Group",
+    "dbIata": null,
+    "dbIcao": "BHL",
+    "region": "Americas",
+    "iataFound": true,
+    "icaoWikidata": "BHL",
+    "icaoMatch": true,
+    "hq": "Stavanger",
+    "hubs": [
+      "Stavanger Airport"
+    ],
+    "ambiguous": true,
+    "candidateNames": [
+      "Bristow Helicopters",
+      "Bristow Norway"
+    ],
+    "wikidataName": "Bristow Norway",
+    "qid": "Q4969142"
+  },
+  {
+    "dbId": "a5427e53-8753-446d-a0bd-960a8ac48476",
+    "dbName": "Erickson",
+    "dbIata": null,
+    "dbIcao": "EAC",
+    "region": "Americas",
+    "iataFound": false,
+    "icaoWikidata": null,
+    "icaoMatch": null,
+    "hq": null,
+    "hubs": [],
+    "ambiguous": false,
+    "candidateNames": [],
+    "wikidataName": null,
+    "qid": null
+  }
+]

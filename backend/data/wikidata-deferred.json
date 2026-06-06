@@ -1,0 +1,179 @@
+[
+  {
+    "name": "Wheels Up",
+    "status": "unresolvable",
+    "qid": "Q56273933",
+    "resolved": {
+      "qid": "Q56273933",
+      "name": "Wheels Up",
+      "iata": null,
+      "icao": null,
+      "country": "United States",
+      "hq": "New York City",
+      "hubs": []
+    },
+    "candidateDescs": [
+      "Wheels Up — 2011 mixtape by Kid Ink",
+      "Wheels Up — episode of CSI: Miami (S9 E12)",
+      "Wheels Up — episode of Criminal Minds (S13 E1)",
+      "Wheels Up — episode of Odd Mom Out (S1 E1)",
+      "Wheels Up — American aviation company"
+    ]
+  },
+  {
+    "name": "Luxaviation",
+    "status": "icao-only",
+    "qid": "Q845932",
+    "resolved": {
+      "qid": "Q845932",
+      "name": "Luxaviation",
+      "iata": null,
+      "icao": "LXA",
+      "country": "Luxembourg",
+      "hq": null,
+      "hubs": [
+        "Luxembourg Airport"
+      ]
+    },
+    "candidateDescs": [
+      "Luxaviation — airline",
+      "Abelag Aviation — Belgian charter airline"
+    ]
+  },
+  {
+    "name": "Jet Aviation",
+    "status": "iata+icao",
+    "qid": "Q941940",
+    "resolved": {
+      "qid": "Q941940",
+      "name": "Jet Aviation",
+      "iata": "PP",
+      "icao": "JAS",
+      "country": "France",
+      "hq": "Basel",
+      "hubs": [
+        "EuroAirport Basel-Mulhouse-Freiburg"
+      ]
+    },
+    "candidateDescs": [
+      "Jet Aviation — airline",
+      "Jet Aviation France — "
+    ]
+  },
+  {
+    "name": "Jet Linx",
+    "status": "unresolvable",
+    "qid": null,
+    "resolved": null,
+    "candidateDescs": []
+  },
+  {
+    "name": "Solairus Aviation",
+    "status": "unresolvable",
+    "qid": null,
+    "resolved": null,
+    "candidateDescs": []
+  },
+  {
+    "name": "Air Methods",
+    "status": "unresolvable",
+    "qid": "Q4698090",
+    "resolved": {
+      "qid": "Q4698090",
+      "name": "Air Methods",
+      "iata": null,
+      "icao": null,
+      "country": null,
+      "hq": "Centennial Airport",
+      "hubs": []
+    },
+    "candidateDescs": [
+      "Air Methods — American privately owned helicopter operator",
+      "Air Methods, LLC, d/b/a United Rotorcraft — "
+    ]
+  },
+  {
+    "name": "PHI Aviation",
+    "status": "unresolvable",
+    "qid": null,
+    "resolved": null,
+    "candidateDescs": []
+  },
+  {
+    "name": "CHC Helicopter",
+    "status": "unresolvable",
+    "qid": "Q2071877",
+    "resolved": {
+      "qid": "Q2071877",
+      "name": "CHC Helicopter",
+      "iata": null,
+      "icao": null,
+      "country": "Canada",
+      "hq": "Richmond",
+      "hubs": []
+    },
+    "candidateDescs": [
+      "CHC Helicopter — Canadian helicopter services company",
+      "2013 CHC Helicopters Eurocopter AS332 crash — an air accident at Sumburgh 23 Aug 2013"
+    ]
+  },
+  {
+    "name": "Babcock International",
+    "status": "unresolvable",
+    "qid": "Q385426",
+    "resolved": {
+      "qid": "Q385426",
+      "name": "Babcock International",
+      "iata": null,
+      "icao": null,
+      "country": "United Kingdom",
+      "hq": "London",
+      "hubs": []
+    },
+    "candidateDescs": [
+      "Babcock International — British multinational support services company"
+    ]
+  },
+  {
+    "name": "Coulson Aviation",
+    "status": "unresolvable",
+    "qid": "Q113834949",
+    "resolved": {
+      "qid": "Q113834949",
+      "name": "Coulson Aviation",
+      "iata": null,
+      "icao": null,
+      "country": "Canada",
+      "hq": "Port Alberni",
+      "hubs": []
+    },
+    "candidateDescs": [
+      "Coulson Aviation — Aviation company based in Canada",
+      "2020 Coulson Aviation Lockheed C-130 Hercules crash — aviation incident in New South Wales, Australia"
+    ]
+  },
+  {
+    "name": "10 Tanker Air Carrier",
+    "status": "unresolvable",
+    "qid": "Q170091",
+    "resolved": {
+      "qid": "Q170091",
+      "name": "DC-10 Air Tanker",
+      "iata": null,
+      "icao": null,
+      "country": "United States",
+      "hq": null,
+      "hubs": []
+    },
+    "candidateDescs": [
+      "DC-10 Air Tanker — U.S. plane"
+    ]
+  },
+  {
+    "name": "Omni Helicopters International",
+    "status": "unresolvable",
+    "qid": null,
+    "resolved": null,
+    "candidateDescs": []
+  }
+]
