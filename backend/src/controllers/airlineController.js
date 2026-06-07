@@ -131,7 +131,7 @@ exports.getAirline = async (req, res, next) => {
       select: {
         id: true, name: true, iataCode: true, icaoCode: true,
         country: true, region: true, headquarters: true, description: true,
-        bases: true, fleet: true,
+        bases: true, fleet: true, fleetDetail: true,
         hiringStatus: true, hiringFrequency: true,
         payRanges: true, rosterPattern: true, contractType: true,
         workAuthRequired: true, avgResponseDays: true,

@@ -110,6 +110,95 @@ function Field({ label, children }) {
   );
 }
 
+// ── Structured fleet (fleetDetail) ───────────────────────────────────────────
+const FS = {
+  wrap: { marginBottom: 12 },
+  head: { display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10, flexWrap: 'wrap' },
+  label: { fontSize: 12, color: '#4A6080', fontWeight: 600 },
+  sub: { fontSize: 11, color: '#3A4A60', fontStyle: 'italic' },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  th: { textAlign: 'right', fontSize: 10, fontWeight: 700, color: '#4A6080', textTransform: 'uppercase', letterSpacing: 0.5, padding: '0 0 8px 12px', borderBottom: '1px solid #1E3050', whiteSpace: 'nowrap' },
+  thType: { textAlign: 'left', paddingLeft: 0 },
+  td: { textAlign: 'right', fontSize: 13, color: '#E6EDF5', padding: '8px 0 8px 12px', borderBottom: '1px solid #16263F', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontVariantNumeric: 'tabular-nums' },
+  tdType: { textAlign: 'left', fontSize: 14, color: '#fff', fontWeight: 600, fontFamily: 'inherit', paddingLeft: 0 },
+  dash: { color: '#4A6080' },
+  card: { background: '#0A1729', border: '1px solid #16263F', borderRadius: 10, padding: '12px 14px', marginBottom: 8 },
+  cardType: { fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 },
+  cardLine: { fontSize: 13, color: '#C8D8E8', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontVariantNumeric: 'tabular-nums' },
+};
+
+function useNarrow(bp = 640) {
+  const [n, setN] = useState(typeof window !== 'undefined' ? window.innerWidth < bp : false);
+  useEffect(() => {
+    const h = () => setN(window.innerWidth < bp);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, [bp]);
+  return n;
+}
+
+// null → em-dash; 0 → "0"; positive → number
+const numCell = (v) => (v == null ? <span style={FS.dash}>—</span> : v);
+
+function FleetBlock({ detail }) {
+  const narrow = useNarrow(640);
+  const hasIS = detail.some((r) => r.inService != null);
+  const hasOrd = detail.some((r) => r.ordered != null);
+  const hasRet = detail.some((r) => r.retired != null);
+  const header = (
+    <div style={FS.head}>
+      <span style={FS.label}>Fleet</span>
+      <span style={FS.sub}>Last updated from public sources</span>
+    </div>
+  );
+
+  if (narrow) {
+    return (
+      <div style={FS.wrap}>
+        {header}
+        {detail.map((r, i) => {
+          const segs = [];
+          if (r.inService != null) segs.push(`${r.inService} in service`);
+          if (r.ordered != null) segs.push(`${r.ordered} on order`);
+          if (r.retired != null) segs.push(`${r.retired} retired`);
+          return (
+            <div key={r.type + i} style={FS.card}>
+              <div style={FS.cardType}>{r.type}</div>
+              <div style={FS.cardLine}>{segs.join(' · ') || '—'}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div style={FS.wrap}>
+      {header}
+      <table style={FS.table}>
+        <thead>
+          <tr>
+            <th style={{ ...FS.th, ...FS.thType }}>Aircraft</th>
+            {hasIS && <th style={FS.th}>In Service</th>}
+            {hasOrd && <th style={FS.th}>On Order</th>}
+            {hasRet && <th style={FS.th}>Retired</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {detail.map((r, i) => (
+            <tr key={r.type + i}>
+              <td style={{ ...FS.td, ...FS.tdType }}>{r.type}</td>
+              {hasIS && <td style={FS.td}>{numCell(r.inService)}</td>}
+              {hasOrd && <td style={FS.td}>{numCell(r.ordered)}</td>}
+              {hasRet && <td style={FS.td}>{numCell(r.retired)}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function AirlineDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -188,11 +277,15 @@ export default function AirlineDetail() {
       {/* Operations */}
       <div style={S.section}>
         <div style={S.sectionTitle}>Operations</div>
-        <Field label="Fleet">
-          {airline.fleet?.length > 0
-            ? <div style={S.tags}>{airline.fleet.map((t) => <span key={t} style={S.tag}>{t}</span>)}</div>
-            : null}
-        </Field>
+        {airline.fleetDetail?.length > 0
+          ? <FleetBlock detail={airline.fleetDetail} />
+          : (
+            <Field label="Fleet">
+              {airline.fleet?.length > 0
+                ? <div style={S.tags}>{airline.fleet.map((t) => <span key={t} style={S.tag}>{t}</span>)}</div>
+                : null}
+            </Field>
+          )}
         <Field label="Bases">
           {airline.bases?.length > 0
             ? <div style={S.tags}>{airline.bases.map((b) => <span key={b} style={S.tag}>{b}</span>)}</div>
