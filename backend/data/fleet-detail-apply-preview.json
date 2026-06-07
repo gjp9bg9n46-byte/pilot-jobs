@@ -1,0 +1,884 @@
+{
+  "mode": "APPLY",
+  "willPatch": 175,
+  "skippedExisting": 0,
+  "skippedNotParsed": 10,
+  "missing": 0,
+  "patches": [
+    {
+      "name": "ABX Air",
+      "key": "GB",
+      "rows": 2
+    },
+    {
+      "name": "Aegean Airlines",
+      "key": "A3",
+      "rows": 5
+    },
+    {
+      "name": "Aer Lingus",
+      "key": "EI",
+      "rows": 6
+    },
+    {
+      "name": "Aerolíneas Argentinas",
+      "key": "AR",
+      "rows": 6
+    },
+    {
+      "name": "Aeroméxico",
+      "key": "AM",
+      "rows": 5
+    },
+    {
+      "name": "Air Algérie",
+      "key": "AH",
+      "rows": 11
+    },
+    {
+      "name": "Air Arabia",
+      "key": "G9",
+      "rows": 6
+    },
+    {
+      "name": "AirAsia",
+      "key": "AK",
+      "rows": 7
+    },
+    {
+      "name": "Air Astana",
+      "key": "KC",
+      "rows": 6
+    },
+    {
+      "name": "airBaltic",
+      "key": "BT",
+      "rows": 1
+    },
+    {
+      "name": "Air Cairo",
+      "key": "SM",
+      "rows": 4
+    },
+    {
+      "name": "Air Canada",
+      "key": "AC",
+      "rows": 13
+    },
+    {
+      "name": "Air China",
+      "key": "CA",
+      "rows": 21
+    },
+    {
+      "name": "Air Côte d'Ivoire",
+      "key": "HF",
+      "rows": 6
+    },
+    {
+      "name": "Air Europa",
+      "key": "UX",
+      "rows": 5
+    },
+    {
+      "name": "Air France",
+      "key": "AF",
+      "rows": 14
+    },
+    {
+      "name": "Air India",
+      "key": "AI",
+      "rows": 12
+    },
+    {
+      "name": "Airlink",
+      "key": "4Z",
+      "rows": 7
+    },
+    {
+      "name": "Air Mauritius",
+      "key": "MK",
+      "rows": 5
+    },
+    {
+      "name": "Air New Zealand",
+      "key": "NZ",
+      "rows": 9
+    },
+    {
+      "name": "Air Nostrum",
+      "key": "YW",
+      "rows": 4
+    },
+    {
+      "name": "Air Peace",
+      "key": "P4",
+      "rows": 9
+    },
+    {
+      "name": "Air Senegal",
+      "key": "HC",
+      "rows": 6
+    },
+    {
+      "name": "Air Serbia",
+      "key": "JU",
+      "rows": 5
+    },
+    {
+      "name": "Air Transat",
+      "key": "TS",
+      "rows": 5
+    },
+    {
+      "name": "Air Wisconsin",
+      "key": "ZW",
+      "rows": 1
+    },
+    {
+      "name": "Alaska Airlines",
+      "key": "AS",
+      "rows": 11
+    },
+    {
+      "name": "Allegiant Air",
+      "key": "G4",
+      "rows": 4
+    },
+    {
+      "name": "American Airlines",
+      "key": "AA",
+      "rows": 12
+    },
+    {
+      "name": "ANA",
+      "key": "NH",
+      "rows": 20
+    },
+    {
+      "name": "Arik Air",
+      "key": "W3",
+      "rows": 5
+    },
+    {
+      "name": "Asiana Airlines",
+      "key": "OZ",
+      "rows": 6
+    },
+    {
+      "name": "ASKY Airlines",
+      "key": "KP",
+      "rows": 3
+    },
+    {
+      "name": "ASL Airlines Ireland",
+      "key": "AG",
+      "rows": 6
+    },
+    {
+      "name": "Atlas Air",
+      "key": "5Y",
+      "rows": 8
+    },
+    {
+      "name": "Austrian Airlines",
+      "key": "OS",
+      "rows": 9
+    },
+    {
+      "name": "Avelo Airlines",
+      "key": "XP",
+      "rows": 3
+    },
+    {
+      "name": "Avianca",
+      "key": "AV",
+      "rows": 5
+    },
+    {
+      "name": "Azul Brazilian Airlines",
+      "key": "AD",
+      "rows": 8
+    },
+    {
+      "name": "Bamboo Airways",
+      "key": "QH",
+      "rows": 4
+    },
+    {
+      "name": "Batik Air",
+      "key": "ID",
+      "rows": 5
+    },
+    {
+      "name": "Biman Bangladesh Airlines",
+      "key": "BG",
+      "rows": 7
+    },
+    {
+      "name": "Binter Canarias",
+      "key": "NT",
+      "rows": 2
+    },
+    {
+      "name": "Breeze Airways",
+      "key": "MX",
+      "rows": 2
+    },
+    {
+      "name": "British Airways",
+      "key": "BA",
+      "rows": 12
+    },
+    {
+      "name": "Brussels Airlines",
+      "key": "SN",
+      "rows": 4
+    },
+    {
+      "name": "Cargolux",
+      "key": "CV",
+      "rows": 4
+    },
+    {
+      "name": "Caribbean Airlines",
+      "key": "BW",
+      "rows": 6
+    },
+    {
+      "name": "Cathay Pacific",
+      "key": "CX",
+      "rows": 11
+    },
+    {
+      "name": "Cebu Pacific",
+      "key": "5J",
+      "rows": 5
+    },
+    {
+      "name": "China Airlines",
+      "key": "CI",
+      "rows": 12
+    },
+    {
+      "name": "China Eastern Airlines",
+      "key": "MU",
+      "rows": 15
+    },
+    {
+      "name": "China Southern Airlines",
+      "key": "CZ",
+      "rows": 15
+    },
+    {
+      "name": "CityJet",
+      "key": "WX",
+      "rows": 2
+    },
+    {
+      "name": "CommuteAir",
+      "key": "C5",
+      "rows": 2
+    },
+    {
+      "name": "Copa Airlines",
+      "key": "CM",
+      "rows": 6
+    },
+    {
+      "name": "Croatia Airlines",
+      "key": "OU",
+      "rows": 4
+    },
+    {
+      "name": "Delta Air Lines",
+      "key": "DL",
+      "rows": 20
+    },
+    {
+      "name": "DHL Air",
+      "key": "D0",
+      "rows": 4
+    },
+    {
+      "name": "Eastern Airways",
+      "key": "T3",
+      "rows": 4
+    },
+    {
+      "name": "easyJet",
+      "key": "U2",
+      "rows": 4
+    },
+    {
+      "name": "EgyptAir",
+      "key": "MS",
+      "rows": 9
+    },
+    {
+      "name": "El Al",
+      "key": "LY",
+      "rows": 8
+    },
+    {
+      "name": "Emirates",
+      "key": "EK",
+      "rows": 8
+    },
+    {
+      "name": "Endeavor Air",
+      "key": "9E",
+      "rows": 2
+    },
+    {
+      "name": "Envoy Air",
+      "key": "MQ",
+      "rows": 2
+    },
+    {
+      "name": "Ethiopian Airlines",
+      "key": "ET",
+      "rows": 15
+    },
+    {
+      "name": "Etihad Airways",
+      "key": "EY",
+      "rows": 14
+    },
+    {
+      "name": "Eurowings",
+      "key": "EW",
+      "rows": 6
+    },
+    {
+      "name": "EVA Air",
+      "key": "BR",
+      "rows": 9
+    },
+    {
+      "name": "Fastjet",
+      "key": "FN",
+      "rows": 1
+    },
+    {
+      "name": "FedEx Express",
+      "key": "FX",
+      "rows": 10
+    },
+    {
+      "name": "Fiji Airways",
+      "key": "FJ",
+      "rows": 5
+    },
+    {
+      "name": "Finnair",
+      "key": "AY",
+      "rows": 5
+    },
+    {
+      "name": "Flair Airlines",
+      "key": "F8",
+      "rows": 2
+    },
+    {
+      "name": "Flexjet",
+      "key": "LXJ",
+      "rows": 6
+    },
+    {
+      "name": "flydubai",
+      "key": "FZ",
+      "rows": 6
+    },
+    {
+      "name": "flynas",
+      "key": "XY",
+      "rows": 5
+    },
+    {
+      "name": "FlySafair",
+      "key": "FA",
+      "rows": 2
+    },
+    {
+      "name": "Frontier Airlines",
+      "key": "F9",
+      "rows": 4
+    },
+    {
+      "name": "Garuda Indonesia",
+      "key": "GA",
+      "rows": 7
+    },
+    {
+      "name": "GoJet Airlines",
+      "key": "G7",
+      "rows": 1
+    },
+    {
+      "name": "GOL Linhas Aéreas",
+      "key": "G3",
+      "rows": 6
+    },
+    {
+      "name": "Gulf Air",
+      "key": "GF",
+      "rows": 6
+    },
+    {
+      "name": "Hainan Airlines",
+      "key": "HU",
+      "rows": 11
+    },
+    {
+      "name": "Hawaiian Airlines",
+      "key": "HA",
+      "rows": 4
+    },
+    {
+      "name": "Helvetic Airways",
+      "key": "2L",
+      "rows": 4
+    },
+    {
+      "name": "Horizon Air",
+      "key": "QX",
+      "rows": 1
+    },
+    {
+      "name": "Iberia",
+      "key": "IB",
+      "rows": 8
+    },
+    {
+      "name": "Icelandair",
+      "key": "FI",
+      "rows": 8
+    },
+    {
+      "name": "IndiGo",
+      "key": "6E",
+      "rows": 8
+    },
+    {
+      "name": "Iraqi Airways",
+      "key": "IA",
+      "rows": 11
+    },
+    {
+      "name": "Israir",
+      "key": "6H",
+      "rows": 2
+    },
+    {
+      "name": "ITA Airways",
+      "key": "AZ",
+      "rows": 9
+    },
+    {
+      "name": "Japan Airlines",
+      "key": "JL",
+      "rows": 10
+    },
+    {
+      "name": "Jazeera Airways",
+      "key": "J9",
+      "rows": 3
+    },
+    {
+      "name": "Jet2",
+      "key": "LS",
+      "rows": 4
+    },
+    {
+      "name": "JetBlue",
+      "key": "B6",
+      "rows": 6
+    },
+    {
+      "name": "JetSMART",
+      "key": "JA",
+      "rows": 4
+    },
+    {
+      "name": "Jetstar",
+      "key": "JQ",
+      "rows": 6
+    },
+    {
+      "name": "Juneyao Airlines",
+      "key": "HO",
+      "rows": 5
+    },
+    {
+      "name": "Kalitta Air",
+      "key": "K4",
+      "rows": 5
+    },
+    {
+      "name": "Kenya Airways",
+      "key": "KQ",
+      "rows": 6
+    },
+    {
+      "name": "KLM",
+      "key": "KL",
+      "rows": 15
+    },
+    {
+      "name": "Korean Air",
+      "key": "KE",
+      "rows": 30
+    },
+    {
+      "name": "Kuwait Airways",
+      "key": "KU",
+      "rows": 10
+    },
+    {
+      "name": "LATAM Airlines",
+      "key": "LA",
+      "rows": 13
+    },
+    {
+      "name": "Lion Air",
+      "key": "JT",
+      "rows": 6
+    },
+    {
+      "name": "Loganair",
+      "key": "LM",
+      "rows": 8
+    },
+    {
+      "name": "LOT Polish Airlines",
+      "key": "LO",
+      "rows": 11
+    },
+    {
+      "name": "Lufthansa",
+      "key": "LH",
+      "rows": 16
+    },
+    {
+      "name": "Luxair",
+      "key": "LG",
+      "rows": 7
+    },
+    {
+      "name": "Malaysia Airlines",
+      "key": "MH",
+      "rows": 7
+    },
+    {
+      "name": "Middle East Airlines",
+      "key": "ME",
+      "rows": 6
+    },
+    {
+      "name": "National Airlines",
+      "key": "N8",
+      "rows": 6
+    },
+    {
+      "name": "Nepal Airlines",
+      "key": "RA",
+      "rows": 3
+    },
+    {
+      "name": "Norwegian",
+      "key": "DY",
+      "rows": 2
+    },
+    {
+      "name": "Oman Air",
+      "key": "WY",
+      "rows": 4
+    },
+    {
+      "name": "Peach Aviation",
+      "key": "MM",
+      "rows": 5
+    },
+    {
+      "name": "Pegasus Airlines",
+      "key": "PC",
+      "rows": 5
+    },
+    {
+      "name": "Philippine Airlines",
+      "key": "PR",
+      "rows": 6
+    },
+    {
+      "name": "Piedmont Airlines",
+      "key": "PT",
+      "rows": 2
+    },
+    {
+      "name": "Polar Air Cargo",
+      "key": "PO",
+      "rows": 2
+    },
+    {
+      "name": "Porter Airlines",
+      "key": "PD",
+      "rows": 2
+    },
+    {
+      "name": "Precision Air",
+      "key": "PW",
+      "rows": 3
+    },
+    {
+      "name": "PSA Airlines",
+      "key": "OH",
+      "rows": 3
+    },
+    {
+      "name": "Qantas",
+      "key": "QF",
+      "rows": 9
+    },
+    {
+      "name": "Qatar Airways",
+      "key": "QR",
+      "rows": 17
+    },
+    {
+      "name": "Republic Airways",
+      "key": "YX",
+      "rows": 2
+    },
+    {
+      "name": "Royal Air Maroc",
+      "key": "AT",
+      "rows": 5
+    },
+    {
+      "name": "Royal Brunei Airlines",
+      "key": "BI",
+      "rows": 3
+    },
+    {
+      "name": "Royal Jordanian",
+      "key": "RJ",
+      "rows": 11
+    },
+    {
+      "name": "RwandAir",
+      "key": "WB",
+      "rows": 7
+    },
+    {
+      "name": "Ryanair",
+      "key": "FR",
+      "rows": 6
+    },
+    {
+      "name": "SalamAir",
+      "key": "OV",
+      "rows": 4
+    },
+    {
+      "name": "Saudia",
+      "key": "SV",
+      "rows": 9
+    },
+    {
+      "name": "Scoot",
+      "key": "TR",
+      "rows": 6
+    },
+    {
+      "name": "Shenzhen Airlines",
+      "key": "ZH",
+      "rows": 7
+    },
+    {
+      "name": "Singapore Airlines",
+      "key": "SQ",
+      "rows": 10
+    },
+    {
+      "name": "SKY Airline",
+      "key": "H2",
+      "rows": 3
+    },
+    {
+      "name": "Skymark Airlines",
+      "key": "BC",
+      "rows": 3
+    },
+    {
+      "name": "SkyWest Airlines",
+      "key": "OO",
+      "rows": 7
+    },
+    {
+      "name": "Smartwings",
+      "key": "QS",
+      "rows": 3
+    },
+    {
+      "name": "South African Airways",
+      "key": "SA",
+      "rows": 3
+    },
+    {
+      "name": "Southwest Airlines",
+      "key": "WN",
+      "rows": 4
+    },
+    {
+      "name": "SpiceJet",
+      "key": "SG",
+      "rows": 6
+    },
+    {
+      "name": "Spirit Airlines",
+      "key": "NK",
+      "rows": 4
+    },
+    {
+      "name": "Spring Airlines",
+      "key": "9C",
+      "rows": 3
+    },
+    {
+      "name": "SriLankan Airlines",
+      "key": "UL",
+      "rows": 5
+    },
+    {
+      "name": "Sun Country Airlines",
+      "key": "SY",
+      "rows": 3
+    },
+    {
+      "name": "SWISS",
+      "key": "LX",
+      "rows": 11
+    },
+    {
+      "name": "TAAG Angola Airlines",
+      "key": "DT",
+      "rows": 9
+    },
+    {
+      "name": "TAP Air Portugal",
+      "key": "TP",
+      "rows": 8
+    },
+    {
+      "name": "Thai Airways",
+      "key": "TG",
+      "rows": 9
+    },
+    {
+      "name": "Transavia",
+      "key": "HV",
+      "rows": 3
+    },
+    {
+      "name": "TUI Airways",
+      "key": "BY",
+      "rows": 5
+    },
+    {
+      "name": "TUI Fly",
+      "key": "X3",
+      "rows": 2
+    },
+    {
+      "name": "Tunisair",
+      "key": "TU",
+      "rows": 4
+    },
+    {
+      "name": "Turkish Airlines",
+      "key": "TK",
+      "rows": 18
+    },
+    {
+      "name": "United Airlines",
+      "key": "UA",
+      "rows": 22
+    },
+    {
+      "name": "UPS Airlines",
+      "key": "5X",
+      "rows": 6
+    },
+    {
+      "name": "Uzbekistan Airways",
+      "key": "HY",
+      "rows": 10
+    },
+    {
+      "name": "VietJet Air",
+      "key": "VJ",
+      "rows": 9
+    },
+    {
+      "name": "Vietnam Airlines",
+      "key": "VN",
+      "rows": 8
+    },
+    {
+      "name": "Virgin Atlantic",
+      "key": "VS",
+      "rows": 4
+    },
+    {
+      "name": "Virgin Australia",
+      "key": "VA",
+      "rows": 4
+    },
+    {
+      "name": "Viva Aerobus",
+      "key": "VB",
+      "rows": 4
+    },
+    {
+      "name": "Volaris",
+      "key": "Y4",
+      "rows": 4
+    },
+    {
+      "name": "Volotea",
+      "key": "V7",
+      "rows": 2
+    },
+    {
+      "name": "Vueling",
+      "key": "VY",
+      "rows": 7
+    },
+    {
+      "name": "Western Global Airlines",
+      "key": "KD",
+      "rows": 2
+    },
+    {
+      "name": "WestJet",
+      "key": "WS",
+      "rows": 5
+    },
+    {
+      "name": "Widerøe",
+      "key": "WF",
+      "rows": 5
+    },
+    {
+      "name": "Wizz Air",
+      "key": "W6",
+      "rows": 5
+    },
+    {
+      "name": "Xiamen Air",
+      "key": "MF",
+      "rows": 9
+    }
+  ]
+}
