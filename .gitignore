@@ -45,3 +45,4 @@ yarn-error.log*
 # Test artifacts
 frontend/dist-test/
 frontend/test-*.pdf
+backend/data/wikipedia-html-cache/
