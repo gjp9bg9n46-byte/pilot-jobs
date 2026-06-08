@@ -79,6 +79,35 @@ The element must be inside an `.app-light` subtree.
 
 Used by `Layout.jsx` (sidebar/drawer nav + icon buttons) and `SiteFooter.jsx`.
 
+## Migrating a page to light
+
+### Standalone light pages (own full-screen background)
+Pages that render **outside `Layout`** and paint their own full-screen background
+(landing, `/login`, `/register`) must keep the shared dark `body` (still
+`#0A1628` in `index.html`) from showing through on overscroll / iOS rubber-band.
+Rule — set the body warm on mount, **restore to the dark default on unmount**:
+
+```jsx
+useEffect(() => {
+  document.body.style.background = '#F8F6F1';
+  return () => { document.body.style.background = '#0A1628'; };  // not "restore previous"
+}, []);
+```
+
+Restoring to `#0A1628` (not the previously-captured value) is deliberate: every
+non-migrated destination is dark, so this prevents a cream flash on the dark page
+you navigate to. Wrap the page root in `className="app-light"`. These per-page
+body hacks all get removed at the final phase when `index.html` flips to cream.
+
+### Pages inside `Layout` — different mechanism, not yet decided
+Most pages (Settings, Profile, Jobs, CV…) render **inside `Layout`**, whose
+content area has an explicit dark background (`#0A1628`). They do **not** control
+their own full-screen bg, so the standalone pattern above does **not** apply.
+Making them light needs a separate mechanism (the page overriding Layout's dark
+content area, or Layout flagging migrated routes). **This is deliberately
+deferred — to be decided when Phase 6 (Settings) is planned.** Don't copy the
+standalone pattern onto an inside-Layout page.
+
 ## Banned patterns
 - **NEVER** run a repo-wide color replace, e.g. `find . -exec sed -i 's/#0D1E35/var(--surface)/g'`. Several hexes (`#0D1E35`, `#1B2B4B`) are **also** intentional CV-PDF accent colors in `components/cv/accentPalette.js` + `Template*.jsx` — a blind replace corrupts user PDFs. Migration is **per-file judgment**, never global sed.
 - Don't tokenize the `Badge` semantic colors yet — they're deliberately internal until another primitive (Toast/Alert) needs to share them.

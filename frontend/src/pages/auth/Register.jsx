@@ -5,6 +5,7 @@ import { authApi } from '../../services/api';
 import { setAuth } from '../../store';
 import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { Card, Input } from '../../components/primitives';
 
 const DEST_FOR = { PENDING: '/employer/pending-approval', APPROVED: '/employer/dashboard', REJECTED: '/employer/rejected', SUSPENDED: '/employer/suspended' };
 
@@ -24,26 +25,26 @@ const EMP_INIT = { companyName: '', companyType: '', country: '', headquartersCi
 const DESC_MAX = 5000;
 
 const css = {
-  page: { minHeight: '100vh', background: '#0A1628', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 24 },
-  card: { background: '#0D1E35', borderRadius: 20, width: '100%', maxWidth: 520, border: '1px solid #1E3050', margin: '24px 0' },
-  logo: { fontSize: 28, fontWeight: 800, color: '#00B4D8', marginBottom: 6 },
-  subtitle: { color: '#7A8CA0', fontSize: 14, marginBottom: 24, lineHeight: 1.5 },
-  toggle: { display: 'flex', background: '#0A1729', border: '1px solid #243050', borderRadius: 12, padding: 4, marginBottom: 24 },
-  seg: (on) => ({ flex: 1, textAlign: 'center', padding: '10px', borderRadius: 9, cursor: 'pointer', fontSize: 14, fontWeight: 700, border: 'none', background: on ? '#1B2B4B' : 'transparent', color: on ? '#00B4D8' : '#7A8CA0' }),
+  page: { minHeight: '100vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 24 },
+  logo: { fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 },
+  subtitle: { color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24, lineHeight: 1.5 },
+  toggle: { display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 4, marginBottom: 24 },
+  seg: (on) => ({ flex: 1, textAlign: 'center', padding: '10px', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 600, border: 'none', background: on ? 'rgba(0,63,136,0.08)' : 'transparent', color: on ? 'var(--accent)' : 'var(--text-secondary)', transition: 'background 0.15s, color 0.15s' }),
   grid: { display: 'grid', gap: 16 },
   full: { gridColumn: '1 / -1' },
-  label: { display: 'block', color: '#C0CDE0', fontSize: 13, fontWeight: 600, marginBottom: 8 },
-  input: { width: '100%', background: '#1B2B4B', border: '1px solid #243050', borderRadius: 10, padding: '13px 14px', color: '#fff', fontSize: 16, outline: 'none', boxSizing: 'border-box' },
-  textarea: { width: '100%', background: '#1B2B4B', border: '1px solid #243050', borderRadius: 10, padding: '13px 14px', color: '#fff', fontSize: 16, outline: 'none', boxSizing: 'border-box', minHeight: 84, resize: 'vertical', fontFamily: 'inherit' },
-  field: { marginBottom: 16 },
-  hint: { color: '#6B7A90', fontSize: 12, marginTop: 6 },
-  fieldErr: { color: '#FF6B6B', fontSize: 12, marginTop: 6 },
-  btn: { width: '100%', background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 10, padding: '15px', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginTop: 8 },
-  error: { background: '#2D1A1A', border: '1px solid #5C2626', borderRadius: 8, padding: '12px 14px', color: '#FF6B6B', fontSize: 13, marginBottom: 20 },
-  footer: { textAlign: 'center', marginTop: 24, color: '#7A8CA0', fontSize: 14 },
-  link: { color: '#00B4D8', fontWeight: 600, textDecoration: 'none' },
-  required: { color: '#00B4D8', marginLeft: 2 },
+  hint: { color: 'var(--text-secondary)', fontSize: 12, marginTop: 6 },
+  btn: { width: '100%', background: 'var(--accent)', border: 'none', borderRadius: 4, padding: '15px', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 500, cursor: 'pointer', marginTop: 20 },
+  error: { background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 6, padding: '12px 14px', color: '#991B1B', fontSize: 13, marginBottom: 20 },
+  footer: { textAlign: 'center', marginTop: 24, color: 'var(--text-secondary)', fontSize: 14 },
+  link: { color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' },
+  reqMark: { color: 'var(--accent)', marginLeft: 2 },
 };
+
+const PlaneMark = () => (
+  <svg width="22" height="22" viewBox="0 0 18 18" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: 'var(--accent)' }}>
+    <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
+  </svg>
+);
 
 export default function Register() {
   const dispatch = useDispatch();
@@ -59,6 +60,13 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Standalone light page: paint body warm; restore to dark default on unmount
+  // (see primitives/README.md → body-bg pattern).
+  useEffect(() => {
+    document.body.style.background = '#F8F6F1';
+    return () => { document.body.style.background = '#0A1628'; };
+  }, []);
 
   useEffect(() => {
     if (pilotToken) { navigate('/jobs', { replace: true }); return; }
@@ -129,12 +137,10 @@ export default function Register() {
 
   const handleSubmit = (e) => { e.preventDefault(); setError(''); mode === 'employer' ? submitEmployer() : submitPilot(); };
 
-  const Err = ({ name }) => fieldErrors[name] ? <div style={css.fieldErr}>{fieldErrors[name]}</div> : null;
-
   return (
-    <div style={css.page}>
-      <div style={{ ...css.card, padding: isMobile ? '32px 20px' : '40px 40px' }}>
-        <div style={css.logo}>✈ CockpitHire</div>
+    <div className="app-light" style={css.page}>
+      <Card style={{ maxWidth: 480, width: '100%', margin: '24px 0', padding: isMobile ? '32px 20px' : '40px 36px', borderRadius: 12 }}>
+        <div style={css.logo}><PlaneMark /> CockpitHire</div>
         <div style={css.subtitle}>{mode === 'employer' ? 'Post pilot jobs directly to our pilot-facing Jobs page.' : "Create your free account — you'll add your pilot details after sign-up."}</div>
 
         <div style={css.toggle}>
@@ -148,30 +154,41 @@ export default function Register() {
           {mode === 'pilot' ? (
             <div style={{ ...css.grid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
               {PILOT_FIELDS.map(({ name, label, type = 'text', required, half, full, hint }) => (
-                <div key={name} style={{ ...(isMobile || full || !half ? css.full : {}), ...css.field }}>
-                  <label style={css.label}>{label}{required && <span style={css.required}> *</span>}{hint && <span style={{ color: '#4A6080', fontSize: 11, fontWeight: 400, marginLeft: 8 }}>{hint}</span>}</label>
-                  <input style={css.input} type={type} value={form[name]} onChange={set(name)} placeholder={label.replace(' (optional)', '')} />
+                <div key={name} style={(isMobile || full || !half) ? css.full : undefined}>
+                  <Input
+                    type={type}
+                    value={form[name]}
+                    onChange={set(name)}
+                    placeholder={label.replace(' (optional)', '')}
+                    label={<>{label}{required && <span style={css.reqMark}>*</span>}{hint && <span style={{ color: 'var(--text-secondary)', fontSize: 11, fontWeight: 400, marginLeft: 8 }}>{hint}</span>}</>}
+                  />
                 </div>
               ))}
             </div>
           ) : (
-            <>
-              <div style={css.field}><label style={css.label}>Company Name *</label><input style={css.input} value={form.companyName} onChange={set('companyName')} placeholder="e.g. Skyline Charter" /><Err name="companyName" /></div>
-              <div style={css.field}><label style={css.label}>Company Type *</label><select style={css.input} value={form.companyType} onChange={set('companyType')}><option value="">Select a type…</option>{COMPANY_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select><Err name="companyType" /></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Input label={<>Company Name<span style={css.reqMark}>*</span></>} value={form.companyName} onChange={set('companyName')} placeholder="e.g. Skyline Charter" error={fieldErrors.companyName} />
+              <Input as="select" label={<>Company Type<span style={css.reqMark}>*</span></>} value={form.companyType} onChange={set('companyType')} error={fieldErrors.companyType}>
+                <option value="">Select a type…</option>
+                {COMPANY_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </Input>
               <div style={{ ...css.grid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
-                <div style={css.field}><label style={css.label}>Country *</label><input style={css.input} value={form.country} onChange={set('country')} placeholder="e.g. Portugal" /><Err name="country" /></div>
-                <div style={css.field}><label style={css.label}>Headquarters City</label><input style={css.input} value={form.headquartersCity} onChange={set('headquartersCity')} placeholder="e.g. Lisbon" /></div>
+                <Input label={<>Country<span style={css.reqMark}>*</span></>} value={form.country} onChange={set('country')} placeholder="e.g. Portugal" error={fieldErrors.country} />
+                <Input label="Headquarters City" value={form.headquartersCity} onChange={set('headquartersCity')} placeholder="e.g. Lisbon" />
               </div>
-              <div style={css.field}><label style={css.label}>Website</label><input style={css.input} value={form.website} onChange={set('website')} placeholder="https://example.com" /><Err name="website" /></div>
-              <div style={css.field}><label style={css.label}>Description</label><textarea style={css.textarea} value={form.description} onChange={set('description')} maxLength={DESC_MAX} placeholder="Tell pilots about your operation (optional)." /><div style={css.hint}>{form.description.length}/{DESC_MAX}</div><Err name="description" /></div>
-              <div style={css.field}><label style={css.label}>Contact Name *</label><input style={css.input} value={form.contactName} onChange={set('contactName')} placeholder="Your full name" /><Err name="contactName" /></div>
-              <div style={css.field}><label style={css.label}>Contact Email *</label><input style={css.input} type="email" value={form.contactEmail} onChange={set('contactEmail')} placeholder="you@company.com" /><Err name="contactEmail" /></div>
-              <div style={css.field}><label style={css.label}>Contact Phone</label><input style={css.input} value={form.contactPhone} onChange={set('contactPhone')} placeholder="+1 555 0100" /></div>
+              <Input label="Website" value={form.website} onChange={set('website')} placeholder="https://example.com" error={fieldErrors.website} />
+              <div>
+                <Input as="textarea" rows={3} label="Description" value={form.description} onChange={set('description')} maxLength={DESC_MAX} placeholder="Tell pilots about your operation (optional)." error={fieldErrors.description} />
+                <div style={css.hint}>{form.description.length}/{DESC_MAX}</div>
+              </div>
+              <Input label={<>Contact Name<span style={css.reqMark}>*</span></>} value={form.contactName} onChange={set('contactName')} placeholder="Your full name" error={fieldErrors.contactName} />
+              <Input label={<>Contact Email<span style={css.reqMark}>*</span></>} type="email" value={form.contactEmail} onChange={set('contactEmail')} placeholder="you@company.com" error={fieldErrors.contactEmail} />
+              <Input label="Contact Phone" value={form.contactPhone} onChange={set('contactPhone')} placeholder="+1 555 0100" />
               <div style={{ ...css.grid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
-                <div style={css.field}><label style={css.label}>Password *</label><input style={css.input} type="password" value={form.password} onChange={set('password')} placeholder="••••••••" /><Err name="password" /></div>
-                <div style={css.field}><label style={css.label}>Confirm Password *</label><input style={css.input} type="password" value={form.confirmPassword} onChange={set('confirmPassword')} placeholder="••••••••" /><Err name="confirmPassword" /></div>
+                <Input label={<>Password<span style={css.reqMark}>*</span></>} type="password" value={form.password} onChange={set('password')} placeholder="••••••••" error={fieldErrors.password} />
+                <Input label={<>Confirm Password<span style={css.reqMark}>*</span></>} type="password" value={form.confirmPassword} onChange={set('confirmPassword')} placeholder="••••••••" error={fieldErrors.confirmPassword} />
               </div>
-            </>
+            </div>
           )}
 
           <button style={{ ...css.btn, opacity: loading ? 0.6 : 1 }} disabled={loading}>
@@ -183,7 +200,7 @@ export default function Register() {
           Already have an account?{' '}
           <Link to={mode === 'employer' ? '/login?as=employer' : '/login'} style={css.link}>Sign in</Link>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
