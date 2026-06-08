@@ -1,49 +1,93 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Target, Bell, ClipboardList, Globe, Lock, Plane } from 'lucide-react';
+import { RefreshCw, Target, Bell, ClipboardList, Globe, Lock } from 'lucide-react';
 import { useIsMobile } from '../hooks/useIsMobile';
-import SiteFooter from '../components/SiteFooter';
+import '../styles/landing-tokens.css';
 
-// Marketing landing — same palette/copy as the app. Lucide icons (no emoji).
-const C = { bg: '#0A1628', surface: '#1B2B4B', accent: '#00B4D8', text: '#E8F0FA', muted: '#7A8CA0', border: '#243050' };
-
+// ── Content (copy preserved verbatim from the previous landing) ──────────────
 const FEATURES = [
-  [RefreshCw, 'Always-fresh listings', 'We scrape Lever, Greenhouse, and direct airline career boards every 6 hours and deduplicate across sources — no stale postings, no duplicates.'],
-  [Target, 'Matched to your ratings', 'Enter your certificates (ATPL, CPL), total hours, PIC time, aircraft type ratings, and issuing authority. We surface only the jobs you meet the minimums for.'],
-  [Bell, 'Instant push alerts', 'New job that matches your profile? You get a push notification within minutes of it hitting the board — before the rush of applicants.'],
-  [ClipboardList, 'Digital logbook', 'Log flights directly in the app. Import from ForeFlight CSV or manual entry. Your totals update in real-time and power the matching engine.'],
-  [Globe, 'Global coverage', 'Jobs across FAA, EASA, GCAA, CAAC, and CASA authorities. Regional airlines, flag carriers, cargo operators, and eVTOL companies.'],
-  [Lock, 'Private by default', 'Your profile is invisible until you choose to share it. Anonymous browsing mode lets you research jobs without leaving a trace.'],
+  { icon: RefreshCw,    title: 'Always-fresh listings',    body: 'We scrape Lever, Greenhouse, and direct airline career boards every 6 hours and deduplicate across sources — no stale postings, no duplicates.', photo: 'feature-fresh.webp' },
+  { icon: Target,       title: 'Matched to your ratings',  body: 'Enter your certificates (ATPL, CPL), total hours, PIC time, aircraft type ratings, and issuing authority. We surface only the jobs you meet the minimums for.', photo: 'feature-ratings.webp' },
+  { icon: Bell,         title: 'Instant push alerts',      body: 'New job that matches your profile? You get a push notification within minutes of it hitting the board — before the rush of applicants.', photo: null },
+  { icon: ClipboardList, title: 'Digital logbook',         body: 'Log flights directly in the app. Import from ForeFlight CSV or manual entry. Your totals update in real-time and power the matching engine.', photo: null },
+  { icon: Globe,        title: 'Global coverage',          body: 'Jobs across FAA, EASA, GCAA, CAAC, and CASA authorities. Regional airlines, flag carriers, cargo operators, and eVTOL companies.', photo: 'feature-coverage.webp' },
+  { icon: Lock,         title: 'Private by default',       body: 'Your profile is invisible until you choose to share it. Anonymous browsing mode lets you research jobs without leaving a trace.', photo: 'feature-private.webp' },
 ];
+
 const SOURCES = ['Shield AI', 'United Airlines', 'Southwest Airlines', 'Joby Aviation', 'Wisk Aero', 'Textron Aviation', 'Ameriflight', 'Contour Aviation', 'Sun Country', 'Flexjet', 'NetJets', '+ more added weekly'];
 
-// Hardcoded for landing performance (no fetch). IDs + fleet lines verified live.
 const FACTFILES = [
-  { id: 'b86ff04a-8cee-4b71-aab6-1efead27e138', name: 'Emirates',         country: 'UAE',           iso: 'ae', fleet: '8 aircraft types · 117 777-300ER · 116 A380-800' },
-  { id: 'f0def0a6-6e74-4ff8-a465-8f5c1b46d464', name: 'Lufthansa',        country: 'Germany',       iso: 'de', fleet: '16 aircraft types · 44 A320-200 · 41 A320neo' },
-  { id: 'ac423eec-2a7a-43c4-b11f-1fb5cb92b004', name: 'Delta Air Lines',  country: 'United States', iso: 'us', fleet: '20 aircraft types · 163 737-900ER · 127 A321-200' },
+  { id: 'b86ff04a-8cee-4b71-aab6-1efead27e138', name: 'Emirates',        country: 'UAE',           iso: 'ae', fleet: '8 aircraft types · 117 777-300ER · 116 A380-800' },
+  { id: 'f0def0a6-6e74-4ff8-a465-8f5c1b46d464', name: 'Lufthansa',       country: 'Germany',       iso: 'de', fleet: '16 aircraft types · 44 A320-200 · 41 A320neo' },
+  { id: 'ac423eec-2a7a-43c4-b11f-1fb5cb92b004', name: 'Delta Air Lines', country: 'United States', iso: 'us', fleet: '20 aircraft types · 163 737-900ER · 127 A321-200' },
 ];
 
-// Adaptive freshness label from lastScrapedAt. Returns null when the data is
-// missing or stale (>7 days) — better to hide than to advertise a stalled scraper.
+const FOOTER_COLS = [
+  ['Product', [
+    { label: 'Web App', to: '/login' },
+    { label: 'Browse Jobs', to: '/jobs' },
+    { label: 'Browse Airlines', to: '/airlines' },
+  ]],
+  ['For Employers', [
+    { label: 'Post a Job', to: '/employer/register' },
+    { label: 'Employer Login', to: '/login?as=employer' },
+  ]],
+  ['Company', [
+    { label: 'About', href: '#' },
+    { label: 'Contact', href: 'mailto:contact@cockpithire.com' },
+    { label: 'Privacy Policy', href: '#' },
+    { label: 'Terms', href: '#' },
+  ]],
+];
+
+// Adaptive freshness — drives whether the third data-strip stat appears.
+// Returns a cadence word when recent, null when stale (>7d) or missing.
 function freshnessLabel(lastScrapedAt) {
   if (!lastScrapedAt) return null;
   const ageMs = Date.now() - new Date(lastScrapedAt).getTime();
   if (Number.isNaN(ageMs) || ageMs < 0) return null;
-  const HOUR = 36 * 60 * 60 * 1000;
   const WEEK = 7 * 24 * 60 * 60 * 1000;
-  if (ageMs <= HOUR) return 'Updated today';
-  if (ageMs <= WEEK) return 'Updated within the week';
+  if (ageMs <= WEEK) return 'Daily';
   return null;
+}
+
+// One-time fade-in on scroll (IntersectionObserver). Styling lives in landing-tokens.css.
+function Reveal({ children, as: Tag = 'div', className = '', style }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') { el.classList.add('is-visible'); return; }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { el.classList.add('is-visible'); io.unobserve(el); } });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return <Tag ref={ref} className={`reveal ${className}`} style={style}>{children}</Tag>;
 }
 
 export default function Landing() {
   const isMobile = useIsMobile();
   const [stats, setStats] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
 
-  // Graceful, non-blocking: fetch public aggregates on mount with a short
-  // timeout. On any failure/slowness the strip simply never appears — the
-  // landing always renders without it. No spinner, no error UI.
+  // Prevent the shared dark body bg from showing through (iOS rubber-band).
+  useEffect(() => {
+    const prev = document.body.style.background;
+    document.body.style.background = '#F8F6F1';
+    return () => { document.body.style.background = prev; };
+  }, []);
+
+  // Nav: transparent over hero, solid on scroll.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Public aggregates for the data strip. Graceful: strip hides on failure.
   useEffect(() => {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 2500);
@@ -55,162 +99,233 @@ export default function Landing() {
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, []);
 
-  const statItems = stats ? [
+  const statEntries = stats ? [
     Number.isFinite(stats.airlinesCount) && stats.airlinesCount > 0
-      ? `${stats.airlinesCount} airlines tracked` : null,
+      ? { num: String(stats.airlinesCount), label: 'Airlines tracked', amber: true } : null,
     Number.isFinite(stats.fleetProfilesCount) && stats.fleetProfilesCount > 0
-      ? `${stats.fleetProfilesCount} with detailed fleets` : null,
-    freshnessLabel(stats.lastScrapedAt),
+      ? { num: String(stats.fleetProfilesCount), label: 'With detailed fleets' } : null,
+    freshnessLabel(stats.lastScrapedAt)
+      ? { num: 'Daily', label: 'Data refreshed' } : null,
   ].filter(Boolean) : [];
 
+  // ── Type scale (desktop / mobile ~0.65× on display sizes) ─────────────────
+  const display = 'var(--font-display)';
+  const body = 'var(--font-body)';
+  const mono = 'var(--font-mono)';
+  const padY = isMobile ? 80 : 128;
+
   const css = {
-    page: { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'Inter', system-ui, sans-serif", lineHeight: 1.6 },
-    nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '16px 20px' : '20px 40px', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: 'rgba(10,22,40,0.92)', backdropFilter: 'blur(8px)', zIndex: 10 },
-    logo: { fontSize: '1.2rem', fontWeight: 800, color: C.accent, letterSpacing: '-0.3px' },
-    navCta: { background: C.accent, color: '#fff', fontWeight: 700, fontSize: '0.85rem', padding: '8px 16px', borderRadius: 9, textDecoration: 'none' },
-    hero: { maxWidth: 720, margin: '0 auto', padding: isMobile ? '56px 20px 56px' : '96px 24px 80px', textAlign: 'center' },
-    tag: { display: 'inline-block', background: 'rgba(0,180,216,0.12)', border: '1px solid rgba(0,180,216,0.3)', color: C.accent, fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 14px', borderRadius: 20, marginBottom: 28 },
-    h1: { fontSize: 'clamp(2rem, 5vw, 3.2rem)', fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.5px', marginBottom: 20 },
-    sub: { fontSize: '1.05rem', color: C.muted, maxWidth: 520, margin: '0 auto 48px', lineHeight: 1.7 },
-    ctaGroup: { display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' },
-    primary: { display: 'inline-flex', alignItems: 'center', gap: 8, background: C.accent, color: '#fff', fontWeight: 700, fontSize: '0.95rem', padding: '14px 28px', borderRadius: 10, textDecoration: 'none' },
-    ghost: { display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', color: C.muted, fontWeight: 600, fontSize: '0.95rem', padding: '14px 28px', borderRadius: 10, border: `1px solid ${C.border}`, textDecoration: 'none' },
-    statStrip: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: isMobile ? '6px 14px' : '8px 18px', marginTop: 36, color: C.muted, fontSize: '0.85rem', fontWeight: 600 },
-    statItem: { whiteSpace: 'nowrap' },
-    statNum: { color: C.accent, fontWeight: 700 },
-    statDot: { color: C.border },
-    // hero screenshot
-    shotSection: { padding: isMobile ? '4px 16px 56px' : '8px 24px 88px', display: 'flex', justifyContent: 'center' },
-    shot: { width: '100%', maxWidth: 960, height: 'auto', display: 'block', borderRadius: isMobile ? 10 : 14, border: `1px solid ${C.border}`, boxShadow: '0 24px 70px rgba(0,0,0,0.5)' },
-    features: { maxWidth: 960, margin: '0 auto', padding: '0 24px 96px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 },
-    // factfile teaser
-    teaser: { maxWidth: 960, margin: '0 auto', padding: isMobile ? '0 20px 80px' : '0 24px 96px', textAlign: 'center' },
-    teaserH2: { fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 },
-    teaserSub: { color: C.muted, maxWidth: 640, margin: '0 auto 40px', fontSize: '1rem', lineHeight: 1.7 },
-    teaserGrid: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 16, textAlign: 'left' },
-    fcard: { display: 'block', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 22px', textDecoration: 'none', color: C.text },
-    fcardTop: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 },
-    flag: { borderRadius: 3, flexShrink: 0, border: `1px solid ${C.border}`, display: 'block' },
-    fcardName: { fontSize: '1.05rem', fontWeight: 700 },
-    fcardCountry: { fontSize: '0.8rem', color: C.muted, marginBottom: 14 },
-    fcardFleet: { fontSize: '0.85rem', color: C.text, opacity: 0.85, lineHeight: 1.55, display: 'flex', alignItems: 'flex-start', gap: 7 },
-    teaserCta: { display: 'inline-block', background: C.accent, color: '#fff', fontWeight: 700, fontSize: '0.95rem', padding: '13px 26px', borderRadius: 10, textDecoration: 'none', marginTop: 36 },
-    // employer CTA
-    employer: { padding: isMobile ? '56px 20px' : '80px 24px', display: 'flex', justifyContent: 'center' },
-    employerCard: { maxWidth: 680, width: '100%', textAlign: 'center', background: 'rgba(0,180,216,0.06)', border: '1px solid rgba(0,180,216,0.35)', borderRadius: 18, padding: isMobile ? '36px 24px' : '48px 40px' },
-    employerH2: { fontSize: isMobile ? '1.4rem' : '1.7rem', fontWeight: 800, marginBottom: 12, lineHeight: 1.25 },
-    employerSub: { color: C.muted, fontSize: '1rem', marginBottom: 28 },
-    employerCta: { display: 'inline-block', background: C.accent, color: '#fff', fontWeight: 700, fontSize: '0.95rem', padding: '14px 28px', borderRadius: 10, textDecoration: 'none' },
-    card: { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: '28px 26px' },
-    cardIcon: { color: C.accent, marginBottom: 16 },
-    cardH3: { fontSize: '1rem', fontWeight: 700, marginBottom: 8 },
-    cardP: { fontSize: '0.9rem', color: C.muted, lineHeight: 1.65 },
-    sources: { textAlign: 'center', padding: '0 24px 96px' },
-    sourcesLabel: { fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 24 },
-    chips: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
-    chip: { background: C.surface, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.82rem', fontWeight: 600, padding: '6px 16px', borderRadius: 20 },
-    download: { background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, textAlign: 'center', padding: '80px 24px' },
-    downloadH2: { fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 },
-    comingSoon: { color: C.muted, fontSize: '0.95rem', marginTop: 20 },
+    root: { minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-primary)', fontFamily: body, lineHeight: 1.6, overflowX: 'hidden' },
+    container: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '0 20px' : '0 40px' },
+
+    // Nav
+    nav: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '14px 20px' : '20px 40px', background: scrolled ? 'var(--bg)' : 'transparent', borderBottom: `1px solid ${scrolled ? 'var(--border)' : 'transparent'}`, transition: 'background 0.3s ease, border-color 0.3s ease' },
+    wordmark: { fontFamily: display, fontWeight: 600, fontSize: isMobile ? 19 : 22, letterSpacing: '-0.01em', color: scrolled ? 'var(--text-primary)' : '#fff', textDecoration: 'none', transition: 'color 0.3s ease' },
+    navCta: { fontFamily: body, fontWeight: 500, fontSize: 15, background: 'var(--accent)', color: '#fff', padding: '9px 18px', borderRadius: 4, textDecoration: 'none' },
+
+    // Hero
+    hero: { position: 'relative', width: '100%', height: isMobile ? 'auto' : '80vh', aspectRatio: isMobile ? '4 / 5' : 'auto', minHeight: isMobile ? undefined : 480, overflow: 'hidden', display: 'flex', alignItems: 'flex-end' },
+    heroImg: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' },
+    heroScrim: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0) 22%), linear-gradient(to top, rgba(0,0,0,0.64) 0%, rgba(0,0,0,0.12) 42%, rgba(0,0,0,0) 62%)' },
+    heroContent: { position: 'relative', zIndex: 2, width: '100%', maxWidth: 760, padding: isMobile ? '0 24px 32px' : '0 64px 64px' },
+    heroH1: { fontFamily: display, fontWeight: 500, fontSize: isMobile ? 44 : 72, lineHeight: 1.04, letterSpacing: '-0.02em', color: '#fff', marginBottom: isMobile ? 16 : 22 },
+    heroSub: { fontFamily: body, fontWeight: 500, fontSize: isMobile ? 16 : 19, color: 'rgba(255,255,255,0.9)', maxWidth: 540, marginBottom: isMobile ? 24 : 32, lineHeight: 1.5 },
+
+    // Data strip
+    dataStrip: { borderTop: '1px solid var(--border)', padding: isMobile ? '56px 0' : '88px 0' },
+    dataRow: { display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 36 : 96 },
+    dataNum: { fontFamily: mono, fontWeight: 500, fontSize: isMobile ? 39 : 56, letterSpacing: '-0.02em', lineHeight: 1, color: 'var(--text-primary)' },
+    dataLabel: { fontFamily: body, fontWeight: 500, fontSize: 13, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginTop: 14 },
+
+    // Section primitives
+    section: { padding: `${padY}px 0` },
+    eyebrow: { fontFamily: body, fontWeight: 500, fontSize: 13, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-secondary)' },
+    h2: { fontFamily: display, fontWeight: 500, fontSize: isMobile ? 29 : 44, letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--text-primary)' },
+    lead: { fontFamily: body, fontWeight: 400, fontSize: isMobile ? 16 : 17, lineHeight: 1.6, color: 'var(--text-secondary)' },
+
+    // Feature grid
+    grid: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 32 },
+    card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' },
+    cardMedia: { width: '100%', height: 240, objectFit: 'cover', display: 'block' },
+    cardIconPanel: { width: '100%', height: 240, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)' },
+    cardBody: { padding: 32 },
+    cardTitle: { fontFamily: display, fontWeight: 500, fontSize: 22, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 10 },
+    cardText: { fontFamily: body, fontWeight: 400, fontSize: 16, lineHeight: 1.6, color: 'var(--text-secondary)' },
+
+    // Screenshot
+    shotFrame: { display: 'block', width: '100%', maxWidth: 1000, margin: '48px auto 0', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(15,20,25,0.06)' },
+
+    // Factfile teaser
+    ffGrid: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 32, marginTop: 28 },
+    ffCardOuter: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' },
+    ffCardLink: { display: 'block', padding: 28, textDecoration: 'none', color: 'var(--text-primary)' },
+    ffTop: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 },
+    flag: { width: 28, height: 21, borderRadius: 3, border: '1px solid var(--border)', display: 'block', flexShrink: 0 },
+    ffName: { fontFamily: display, fontWeight: 500, fontSize: 20, letterSpacing: '-0.01em' },
+    ffCountry: { fontFamily: body, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 },
+    ffFleet: { fontFamily: mono, fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: 'var(--text-primary)' },
+
+    // Sources
+    chips: { display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 24 },
+    chip: { fontFamily: body, fontWeight: 500, fontSize: 13, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: '7px 14px', borderRadius: 4 },
+
+    // Employer CTA
+    employerCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)', borderRadius: 6, padding: isMobile ? '32px 24px' : '44px 48px' },
+    employerH: { fontFamily: display, fontWeight: 500, fontSize: isMobile ? 24 : 32, letterSpacing: '-0.01em', lineHeight: 1.15, color: 'var(--text-primary)', marginBottom: 12, maxWidth: 620 },
+    employerSub: { fontFamily: body, fontWeight: 400, fontSize: isMobile ? 16 : 17, color: 'var(--text-secondary)', marginBottom: 28 },
+
+    // Buttons
+    btnPrimary: { display: 'inline-block', fontFamily: body, fontWeight: 500, fontSize: 16, background: 'var(--accent)', color: '#fff', padding: '14px 28px', borderRadius: 4, textDecoration: 'none' },
+
+    // Footer
+    footer: { background: 'var(--bg)', borderTop: '1px solid var(--border)' },
+    footerTop: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '56px 20px 36px' : '72px 40px 48px', display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: isMobile ? 32 : 40 },
+    fBrandName: { fontFamily: display, fontWeight: 600, fontSize: 20, color: 'var(--text-primary)', textDecoration: 'none' },
+    fTagline: { fontFamily: body, fontSize: 14, color: 'var(--text-secondary)', marginTop: 10 },
+    fColTitle: { fontFamily: body, fontWeight: 600, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 16, marginTop: isMobile ? 28 : 0 },
+    fLink: { display: 'block', fontFamily: body, fontSize: 15, color: 'var(--text-primary)', textDecoration: 'none', marginBottom: 11 },
+    footerStrip: { borderTop: '1px solid var(--border)', textAlign: 'center', padding: '20px', fontFamily: body, fontSize: 13, color: 'var(--text-secondary)' },
+    footerA: { color: 'var(--accent)', textDecoration: 'none' },
   };
 
   return (
-    <div style={css.page}>
+    <div className="landing-root" style={css.root}>
+      {/* 1 — Nav */}
       <nav style={css.nav}>
-        <span style={css.logo}>✈ CockpitHire</span>
-        <Link to="/login" style={css.navCta}>Web App →</Link>
+        <Link to="/" style={css.wordmark}>✈ CockpitHire</Link>
+        <Link to="/login" className="btn-primary" style={css.navCta}>Web App →</Link>
       </nav>
 
-      <section style={css.hero}>
-        <div style={css.tag}>Pilot job search, reimagined</div>
-        <h1 style={css.h1}>Your next command,<br /><span style={{ color: C.accent }}>matched to your licence</span></h1>
-        <p style={css.sub}>Filtered by your ratings, hours, and authority. No noise.</p>
-        <div style={css.ctaGroup}>
-          <Link to="/login" style={css.primary}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z" /><path d="M12 8v8M8 12l4 4 4-4" /></svg>
-            Open the Web App
-          </Link>
-          <a href="#features" style={css.ghost}>See how it works</a>
+      {/* 2 — Hero */}
+      <header style={css.hero}>
+        <img src="/landing-photos/hero.webp" alt="Airliner taxiing on the runway at sunrise" style={css.heroImg} loading="eager" />
+        <div style={css.heroScrim} />
+        <div style={css.heroContent}>
+          <h1 style={css.heroH1}>Your next command,<br />matched to your licence</h1>
+          <p style={css.heroSub}>Filtered by your ratings, hours, and authority. No noise.</p>
+          <Link to="/login" className="btn-primary" style={css.btnPrimary}>Open the Web App</Link>
         </div>
-        {statItems.length > 0 && (
-          <div style={css.statStrip}>
-            {statItems.map((s, i) => (
-              <React.Fragment key={s}>
-                {i > 0 && <span style={css.statDot} aria-hidden>·</span>}
-                <span style={css.statItem}>{s}</span>
-              </React.Fragment>
+      </header>
+
+      {/* 3 — Data strip */}
+      {statEntries.length > 0 && (
+        <section style={css.dataStrip}>
+          <div style={css.container}>
+            <Reveal style={css.dataRow}>
+              {statEntries.map((s) => (
+                <div key={s.label}>
+                  <div style={{ ...css.dataNum, ...(s.amber ? { color: 'var(--accent-amber)' } : {}) }}>{s.num}</div>
+                  <div style={css.dataLabel}>{s.label}</div>
+                </div>
+              ))}
+            </Reveal>
+          </div>
+        </section>
+      )}
+
+      {/* 4 — Why CockpitHire */}
+      <section style={css.section} id="features">
+        <div style={css.container}>
+          <Reveal>
+            <div style={css.eyebrow}>Why CockpitHire</div>
+            <h2 style={{ ...css.h2, marginTop: 14, maxWidth: 640 }}>Built for the flight deck, not a job board</h2>
+          </Reveal>
+          <div style={{ ...css.grid, marginTop: isMobile ? 40 : 56 }}>
+            {FEATURES.map(({ icon: Icon, title, body: text, photo }) => (
+              <Reveal key={title} className="card" style={css.card}>
+                {photo
+                  ? <img src={`/landing-photos/${photo}`} alt={title} style={css.cardMedia} loading="lazy" />
+                  : <div style={css.cardIconPanel}><Icon size={40} color="var(--accent)" strokeWidth={1.5} /></div>}
+                <div style={css.cardBody}>
+                  <h3 style={css.cardTitle}>{title}</h3>
+                  <p style={css.cardText}>{text}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
-        )}
+        </div>
       </section>
 
-      <section style={css.shotSection}>
-        <img
-          src="/screenshot-hero.webp"
-          alt="CockpitHire airline factfile — Emirates fleet breakdown with in-service and on-order counts"
-          width="1440" height="810"
-          style={css.shot}
-        />
+      {/* 5 — Screenshot section */}
+      <section style={{ ...css.section, paddingTop: 0 }}>
+        <div style={css.container}>
+          <Reveal style={{ maxWidth: 680 }}>
+            <div style={css.eyebrow}>Airline factfiles</div>
+            <h2 style={{ ...css.h2, marginTop: 14 }}>Research before you apply</h2>
+            <p style={{ ...css.lead, marginTop: 18 }}>Fleet, hubs, hiring status, and pilot insights for 185 airlines worldwide. Updated by pilots who actually fly them.</p>
+          </Reveal>
+          <Reveal>
+            <img src="/screenshot-hero.webp" alt="CockpitHire airline factfile — Emirates fleet breakdown" style={css.shotFrame} loading="lazy" />
+          </Reveal>
+        </div>
       </section>
 
-      <section style={css.features} id="features">
-        {FEATURES.map(([Icon, title, body]) => (
-          <div key={title} style={css.card}>
-            <div style={css.cardIcon}><Icon size={26} /></div>
-            <h3 style={css.cardH3}>{title}</h3>
-            <p style={css.cardP}>{body}</p>
+      {/* 6 — Factfile teaser */}
+      <section style={{ ...css.section, paddingTop: 0 }}>
+        <div style={css.container}>
+          <div style={css.ffGrid}>
+            {FACTFILES.map((a) => (
+              <Reveal key={a.id} className="card" style={css.ffCardOuter}>
+                <Link to={`/airlines/${a.id}`} style={css.ffCardLink}>
+                  <div style={css.ffTop}>
+                    <img src={`https://flagcdn.com/w40/${a.iso}.png`} srcSet={`https://flagcdn.com/w80/${a.iso}.png 2x`} alt={a.country} style={css.flag} loading="lazy" width="28" height="21" />
+                    <span style={css.ffName}>{a.name}</span>
+                  </div>
+                  <div style={css.ffCountry}>{a.country}</div>
+                  <div style={css.ffFleet}>{a.fleet}</div>
+                </Link>
+              </Reveal>
+            ))}
           </div>
-        ))}
+          <div style={{ marginTop: 40 }}>
+            <Link to="/airlines" className="btn-primary" style={css.btnPrimary}>Browse 185 airlines →</Link>
+          </div>
+        </div>
       </section>
 
-      <section style={css.teaser}>
-        <h2 style={css.teaserH2}>Research before you apply</h2>
-        <p style={css.teaserSub}>Fleet, hubs, hiring status, and pilot insights for 185 airlines worldwide. Updated by pilots who actually fly them.</p>
-        <div style={css.teaserGrid}>
-          {FACTFILES.map((a) => (
-            <Link to={`/airlines/${a.id}`} key={a.id} style={css.fcard}>
-              <div style={css.fcardTop}>
-                <img
-                  src={`https://flagcdn.com/w40/${a.iso}.png`}
-                  srcSet={`https://flagcdn.com/w80/${a.iso}.png 2x`}
-                  alt={a.country}
-                  width="28" height="21"
-                  style={css.flag}
-                  loading="lazy"
-                />
-                <span style={css.fcardName}>{a.name}</span>
-              </div>
-              <div style={css.fcardCountry}>{a.country}</div>
-              <div style={css.fcardFleet}>
-                <Plane size={14} style={{ color: C.accent, flexShrink: 0, marginTop: 2 }} />
-                <span>{a.fleet}</span>
-              </div>
-            </Link>
+      {/* 7 — Sources strip */}
+      <section style={{ ...css.section, paddingTop: 0 }}>
+        <div style={css.container}>
+          <Reveal>
+            <div style={css.eyebrow}>Sources we monitor</div>
+            <div style={css.chips}>{SOURCES.map((s) => <span key={s} style={css.chip}>{s}</span>)}</div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* 8 — Employer CTA */}
+      <section style={{ ...css.section, paddingTop: 0 }}>
+        <div style={css.container}>
+          <Reveal style={css.employerCard}>
+            <h2 style={css.employerH}>Are you an airline, charter operator, or flight school?</h2>
+            <p style={css.employerSub}>Post pilot openings directly to our community. Free in 2026.</p>
+            <Link to="/employer/register" className="btn-primary" style={css.btnPrimary}>Apply to post jobs →</Link>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* 9 — Footer (landing-only light footer; shared SiteFooter left untouched) */}
+      <footer style={css.footer}>
+        <div style={css.footerTop}>
+          <div>
+            <Link to="/" style={css.fBrandName}>✈ CockpitHire</Link>
+            <div style={css.fTagline}>Built by pilots, for pilots</div>
+          </div>
+          {FOOTER_COLS.map(([title, links]) => (
+            <div key={title}>
+              <div style={css.fColTitle}>{title}</div>
+              {links.map((l) => (
+                l.to
+                  ? <Link key={l.label} to={l.to} className="ls-link" style={css.fLink}>{l.label}</Link>
+                  : <a key={l.label} href={l.href} className="ls-link" style={css.fLink}>{l.label}</a>
+              ))}
+            </div>
           ))}
         </div>
-        <Link to="/airlines" style={css.teaserCta}>Browse 185 airlines →</Link>
-      </section>
-
-      <section style={css.sources}>
-        <p style={css.sourcesLabel}>Sources we monitor</p>
-        <div style={css.chips}>{SOURCES.map((s) => <span key={s} style={css.chip}>{s}</span>)}</div>
-      </section>
-
-      <section style={css.download} id="download">
-        <h2 style={css.downloadH2}>Ready when you are</h2>
-        <p style={{ color: C.muted }}>Set up your profile in under a minute — right in your browser.</p>
-        <p style={css.comingSoon}>Mobile apps coming soon — bookmark cockpithire.com for now.</p>
-      </section>
-
-      <section style={css.employer}>
-        <div style={css.employerCard}>
-          <h2 style={css.employerH2}>Are you an airline, charter operator, or flight school?</h2>
-          <p style={css.employerSub}>Post pilot openings directly to our community. Free in 2026.</p>
-          <Link to="/employer/register" style={css.employerCta}>Apply to post jobs →</Link>
+        <div style={css.footerStrip}>
+          © 2026 CockpitHire &nbsp;·&nbsp; <a href="mailto:contact@cockpithire.com" style={css.footerA}>contact@cockpithire.com</a>
         </div>
-      </section>
-
-      <SiteFooter />
+      </footer>
     </div>
   );
 }

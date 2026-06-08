@@ -1,0 +1,49 @@
+/* Tier 2 landing design tokens — scoped to .landing-root so nothing leaks to
+   other pages. Imported only by Landing.jsx. Inline style objects remain the
+   primary styling pattern; this file holds tokens + the hover/keyframe states
+   that inline styles cannot express. */
+.landing-root {
+  --bg: #F8F6F1;
+  --surface: #FFFFFF;
+  --text-primary: #0F1419;
+  --text-secondary: #5A5F66;
+  --border: #E5E1D8;
+  --accent: #003F88;
+  --accent-hover: #002B5C;
+  --accent-amber: #D97706;
+
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+/* Buttons */
+.landing-root .btn-primary { transition: background 0.2s ease; }
+.landing-root .btn-primary:hover { background: var(--accent-hover); }
+.landing-root .btn-secondary { transition: background 0.2s ease, color 0.2s ease; }
+.landing-root .btn-secondary:hover { background: var(--text-primary); color: #fff; }
+
+/* Cards — no shadow at rest, subtle shadow on hover */
+.landing-root .card { transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
+.landing-root .card:hover { box-shadow: 0 4px 12px rgba(15, 20, 25, 0.06); }
+
+/* Text links */
+.landing-root .ls-link { transition: color 0.2s ease; }
+.landing-root .ls-link:hover { color: var(--accent); }
+
+/* One-time fade-in on scroll (IntersectionObserver toggles .is-visible) */
+.landing-root .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+  will-change: opacity, transform;
+}
+.landing-root .reveal.is-visible { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-root .reveal { opacity: 1; transform: none; transition: none; }
+}
