@@ -17,6 +17,7 @@ import EmployerProfile from './pages/employer/EmployerProfile';
 import EmployerJobForm from './pages/employer/EmployerJobForm';
 
 import Layout from './components/Layout';
+import PublicLayout from './components/PublicLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Landing from './pages/Landing';
@@ -37,6 +38,13 @@ const CVBuilder = lazy(() => import('./pages/CVBuilder'));
 function RequireAuth({ children }) {
   const token = useSelector((s) => s.auth.token);
   return token ? children : <Navigate to="/login" replace />;
+}
+
+// Airline factfile is public: logged-in pilots get the full app chrome (sidebar),
+// logged-out visitors get the slim public shell. Same page content either way.
+function AirlineChrome() {
+  const token = useSelector((s) => s.auth.token);
+  return token ? <Layout /> : <PublicLayout />;
 }
 
 export default function App() {
@@ -62,11 +70,15 @@ export default function App() {
           <Route path="/register" element={<Register />} />
         </Route>
 
+        {/* Public airline factfile — chrome adapts to auth state (slim shell when logged out) */}
+        <Route element={<AirlineChrome />}>
+          <Route path="airlines" element={<Airlines />} />
+          <Route path="airlines/:id" element={<AirlineDetail />} />
+        </Route>
+
         {/* Authenticated pilot app (pathless layout — URLs unchanged) */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
           <Route path="jobs" element={<Jobs />} />
-          <Route path="airlines" element={<Airlines />} />
-          <Route path="airlines/:id" element={<AirlineDetail />} />
           <Route path="airlines/:id/contribute" element={<AirlineContribute />} />
           <Route path="admin/moderation" element={<AdminModeration />} />
           <Route path="admin/employers" element={<AdminEmployers />} />

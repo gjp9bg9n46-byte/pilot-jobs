@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Target, Bell, ClipboardList, Globe, Lock } from 'lucide-react';
 import { useIsMobile } from '../hooks/useIsMobile';
+import SiteFooter from '../components/SiteFooter';
 
 // Marketing landing — same palette/copy as the app. Lucide icons (no emoji).
 const C = { bg: '#0A1628', surface: '#1B2B4B', accent: '#00B4D8', text: '#E8F0FA', muted: '#7A8CA0', border: '#243050' };
@@ -15,24 +16,6 @@ const FEATURES = [
   [Lock, 'Private by default', 'Your profile is invisible until you choose to share it. Anonymous browsing mode lets you research jobs without leaving a trace.'],
 ];
 const SOURCES = ['Shield AI', 'United Airlines', 'Southwest Airlines', 'Joby Aviation', 'Wisk Aero', 'Textron Aviation', 'Ameriflight', 'Contour Aviation', 'Sun Country', 'Flexjet', 'NetJets', '+ more added weekly'];
-
-const FOOTER_COLS = [
-  ['Product', [
-    { label: 'Web App', to: '/login' },
-    { label: 'Browse Jobs', to: '/jobs' },
-    { label: 'Browse Airlines', to: '/airlines' },
-  ]],
-  ['For Employers', [
-    { label: 'Post a Job', to: '/employer/register' },
-    { label: 'Employer Login', to: '/login?as=employer' },
-  ]],
-  ['Company', [
-    { label: 'About', href: '#' },
-    { label: 'Contact', href: 'mailto:contact@cockpithire.com' },
-    { label: 'Privacy Policy', href: '#' },
-    { label: 'Terms', href: '#' },
-  ]],
-];
 
 // Adaptive freshness label from lastScrapedAt. Returns null when the data is
 // missing or stale (>7 days) — better to hide than to advertise a stalled scraper.
@@ -101,16 +84,6 @@ export default function Landing() {
     download: { background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, textAlign: 'center', padding: '80px 24px' },
     downloadH2: { fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 },
     comingSoon: { color: C.muted, fontSize: '0.95rem', marginTop: 20 },
-    // footer
-    footer: { borderTop: `1px solid ${C.border}` },
-    footerTop: { maxWidth: 960, margin: '0 auto', padding: isMobile ? '40px 24px 28px' : '52px 40px 36px', display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', gap: isMobile ? 28 : 32 },
-    fBrand: { marginBottom: isMobile ? 28 : 0 },
-    fLogo: { fontSize: '1.05rem', fontWeight: 800, color: C.accent, letterSpacing: '-0.3px' },
-    fTagline: { color: C.muted, fontSize: '0.82rem', marginTop: 8 },
-    fColTitle: { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 14, marginTop: isMobile ? 4 : 0 },
-    fLink: { display: 'block', color: C.text, fontSize: '0.88rem', textDecoration: 'none', marginBottom: 10, opacity: 0.85 },
-    footerStrip: { borderTop: `1px solid ${C.border}`, textAlign: 'center', padding: '18px 24px', color: C.muted, fontSize: '0.8rem' },
-    footerA: { color: C.accent, textDecoration: 'none' },
   };
 
   return (
@@ -164,27 +137,7 @@ export default function Landing() {
         <p style={css.comingSoon}>Mobile apps coming soon — bookmark cockpithire.com for now.</p>
       </section>
 
-      <footer style={css.footer}>
-        <div style={css.footerTop}>
-          <div style={css.fBrand}>
-            <span style={css.fLogo}>✈ CockpitHire</span>
-            <div style={css.fTagline}>Built by pilots, for pilots</div>
-          </div>
-          {FOOTER_COLS.map(([title, links]) => (
-            <div key={title}>
-              <div style={css.fColTitle}>{title}</div>
-              {links.map((l) => (
-                l.to
-                  ? <Link key={l.label} to={l.to} style={css.fLink}>{l.label}</Link>
-                  : <a key={l.label} href={l.href} style={css.fLink}>{l.label}</a>
-              ))}
-            </div>
-          ))}
-        </div>
-        <div style={css.footerStrip}>
-          © 2026 CockpitHire &nbsp;·&nbsp; <a href="mailto:contact@cockpithire.com" style={css.footerA}>contact@cockpithire.com</a>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
