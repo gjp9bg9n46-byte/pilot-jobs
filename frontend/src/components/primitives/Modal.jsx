@@ -19,14 +19,12 @@ export default function Modal({ isOpen, onClose, title, children }) {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
 
-    // Entrance + basic focus (first focusable inside, else the card).
+    // Entrance + focus. Focus the dialog container itself (tabIndex=-1,
+    // outline:none) — keeps focus inside the dialog without highlighting the
+    // X close button. Tab from here moves to the first child control normally.
     const raf = requestAnimationFrame(() => {
       setShow(true);
-      const el = cardRef.current;
-      if (el) {
-        const focusable = el.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        (focusable || el).focus?.();
-      }
+      cardRef.current?.focus?.();
     });
 
     return () => {

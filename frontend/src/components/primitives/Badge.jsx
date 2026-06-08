@@ -9,7 +9,7 @@ const VARIANTS = {
   warning: { bg: '#FEF3C7', fg: '#92400E' },
   error:   { bg: '#FEE2E2', fg: '#991B1B' },
   info:    { bg: '#DBEAFE', fg: '#1E40AF' },
-  neutral: { bg: '#F3F4F6', fg: '#374151' },
+  neutral: { bg: '#E5E7EB', fg: '#374151' },
 };
 
 export default function Badge({ variant = 'neutral', children, style, ...props }) {
