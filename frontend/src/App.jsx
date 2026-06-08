@@ -21,6 +21,7 @@ import PublicLayout from './components/PublicLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Landing from './pages/Landing';
+import Primitives from './pages/dev/Primitives';
 import Jobs from './pages/Jobs';
 import Airlines from './pages/Airlines';
 import AirlineDetail from './pages/AirlineDetail';
@@ -63,6 +64,9 @@ export default function App() {
       <Routes>
         {/* Public marketing landing */}
         <Route path="/" element={<Landing />} />
+
+        {/* Internal design-primitives showcase (unlinked, public) */}
+        <Route path="/dev/primitives" element={<Primitives />} />
 
         {/* Unified auth — wrapped in EmployerAuthProvider so the Employer toggle works */}
         <Route element={<EmployerAuthProvider><Outlet /></EmployerAuthProvider>}>
