@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Target, Bell, ClipboardList, Globe, Lock } from 'lucide-react';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -34,8 +34,45 @@ const FOOTER_COLS = [
   ]],
 ];
 
+// Adaptive freshness label from lastScrapedAt. Returns null when the data is
+// missing or stale (>7 days) — better to hide than to advertise a stalled scraper.
+function freshnessLabel(lastScrapedAt) {
+  if (!lastScrapedAt) return null;
+  const ageMs = Date.now() - new Date(lastScrapedAt).getTime();
+  if (Number.isNaN(ageMs) || ageMs < 0) return null;
+  const HOUR = 36 * 60 * 60 * 1000;
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
+  if (ageMs <= HOUR) return 'Updated today';
+  if (ageMs <= WEEK) return 'Updated within the week';
+  return null;
+}
+
 export default function Landing() {
   const isMobile = useIsMobile();
+  const [stats, setStats] = useState(null);
+
+  // Graceful, non-blocking: fetch public aggregates on mount with a short
+  // timeout. On any failure/slowness the strip simply never appears — the
+  // landing always renders without it. No spinner, no error UI.
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 2500);
+    fetch('/api/stats', { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setStats(d); })
+      .catch(() => {})
+      .finally(() => clearTimeout(timer));
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, []);
+
+  const statItems = stats ? [
+    Number.isFinite(stats.airlinesCount) && stats.airlinesCount > 0
+      ? `${stats.airlinesCount} airlines tracked` : null,
+    Number.isFinite(stats.fleetProfilesCount) && stats.fleetProfilesCount > 0
+      ? `${stats.fleetProfilesCount} with detailed fleets` : null,
+    freshnessLabel(stats.lastScrapedAt),
+  ].filter(Boolean) : [];
+
   const css = {
     page: { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'Inter', system-ui, sans-serif", lineHeight: 1.6 },
     nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '16px 20px' : '20px 40px', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: 'rgba(10,22,40,0.92)', backdropFilter: 'blur(8px)', zIndex: 10 },
@@ -48,6 +85,10 @@ export default function Landing() {
     ctaGroup: { display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' },
     primary: { display: 'inline-flex', alignItems: 'center', gap: 8, background: C.accent, color: '#fff', fontWeight: 700, fontSize: '0.95rem', padding: '14px 28px', borderRadius: 10, textDecoration: 'none' },
     ghost: { display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', color: C.muted, fontWeight: 600, fontSize: '0.95rem', padding: '14px 28px', borderRadius: 10, border: `1px solid ${C.border}`, textDecoration: 'none' },
+    statStrip: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: isMobile ? '6px 14px' : '8px 18px', marginTop: 36, color: C.muted, fontSize: '0.85rem', fontWeight: 600 },
+    statItem: { whiteSpace: 'nowrap' },
+    statNum: { color: C.accent, fontWeight: 700 },
+    statDot: { color: C.border },
     features: { maxWidth: 960, margin: '0 auto', padding: '0 24px 96px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 },
     card: { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: '28px 26px' },
     cardIcon: { color: C.accent, marginBottom: 16 },
@@ -90,6 +131,16 @@ export default function Landing() {
           </Link>
           <a href="#features" style={css.ghost}>See how it works</a>
         </div>
+        {statItems.length > 0 && (
+          <div style={css.statStrip}>
+            {statItems.map((s, i) => (
+              <React.Fragment key={s}>
+                {i > 0 && <span style={css.statDot} aria-hidden>·</span>}
+                <span style={css.statItem}>{s}</span>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
       </section>
 
       <section style={css.features} id="features">

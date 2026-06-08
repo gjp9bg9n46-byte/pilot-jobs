@@ -41,6 +41,7 @@ app.use('/api/flight-logs', require('./routes/flightLogs'));
 app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/cv',   require('./routes/cv'));
 app.use('/api/airlines', require('./routes/airlines'));
+app.use('/api/stats', require('./routes/stats'));
 app.use('/api/admin',   require('./routes/admin'));
 app.use('/api/employers', require('./routes/employers'));
 
