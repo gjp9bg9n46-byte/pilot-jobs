@@ -1,0 +1,25 @@
+/* Global design tokens — Tier 2 light identity.
+   DEFINITIONS ONLY. These do not change :root/body background, so pages that
+   don't opt in (everything except the landing today) are completely unaffected.
+   Surfaces opt into the light theme via the .app-light wrapper (or by setting
+   background/color themselves). Loaded once globally from main.jsx. */
+:root {
+  --bg: #F8F6F1;
+  --surface: #FFFFFF;
+  --text-primary: #0F1419;
+  --text-secondary: #5A5F66;
+  --border: #E5E1D8;
+  --accent: #003F88;
+  --accent-hover: #002B5C;
+  --accent-amber: #D97706;
+
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Opt-in light-theme wrapper for future page migrations. Unused for now. */
+.app-light {
+  background: var(--bg);
+  color: var(--text-primary);
+}

@@ -1,21 +1,8 @@
-/* Tier 2 landing design tokens — scoped to .landing-root so nothing leaks to
-   other pages. Imported only by Landing.jsx. Inline style objects remain the
-   primary styling pattern; this file holds tokens + the hover/keyframe states
-   that inline styles cannot express. */
+/* Landing-specific styles. The design tokens now live globally in
+   design-tokens.css (:root); this file keeps the landing's surface + the
+   hover/keyframe states that inline styles cannot express.
+   Imported only by Landing.jsx. */
 .landing-root {
-  --bg: #F8F6F1;
-  --surface: #FFFFFF;
-  --text-primary: #0F1419;
-  --text-secondary: #5A5F66;
-  --border: #E5E1D8;
-  --accent: #003F88;
-  --accent-hover: #002B5C;
-  --accent-amber: #D97706;
-
-  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-
   background: var(--bg);
   color: var(--text-primary);
   font-family: var(--font-body);
