@@ -58,6 +58,39 @@ lift (no translate).
 <Card as="article" hover className="custom">…</Card>
 ```
 
+## Button
+Light-theme button. Variants: `primary` (solid accent), `secondary` (outlined,
+fills on hover), `ghost` (transparent, subtle hover), `danger` (solid red).
+Hover is handled internally (state), so no `:hover` CSS needed.
+
+```jsx
+<Button onClick={save}>Save</Button>                  {/* primary */}
+<Button variant="secondary">Cancel</Button>
+<Button variant="ghost">Dismiss</Button>
+<Button variant="danger" onClick={confirmDelete}>Delete account</Button>
+```
+
+## LightPage
+Light-theme wrapper for pages that render **inside `Layout`** (Settings, Profile,
+Logbook, Alerts, Jobs, CV, Admin, Employer…). It full-bleeds over Layout's dark
+content-area padding so the page surface meets the light sidebar with **no dark
+seam**. It does **not** touch `document.body`.
+
+```jsx
+export default function SomePage() {
+  return (
+    <LightPage>
+      {/* page content */}
+    </LightPage>
+  );
+}
+```
+
+> **COUPLING:** `LightPage` bleeds over Layout's content `<div>` padding (32px
+> desktop / 16-24px mobile). If that padding changes in `Layout.jsx`, update the
+> `bleed` object in `LightPage.jsx`. A matching `// NOTE:` comment sits next to
+> the padding declarations in `Layout.jsx`.
+
 ## Migration guidance
 When migrating a page from the dark theme:
 - Replace inline-styled `<input>/<select>/<textarea>` → `<Input>`.
@@ -99,14 +132,13 @@ non-migrated destination is dark, so this prevents a cream flash on the dark pag
 you navigate to. Wrap the page root in `className="app-light"`. These per-page
 body hacks all get removed at the final phase when `index.html` flips to cream.
 
-### Pages inside `Layout` — different mechanism, not yet decided
+### Pages inside `Layout` — use `<LightPage>`
 Most pages (Settings, Profile, Jobs, CV…) render **inside `Layout`**, whose
 content area has an explicit dark background (`#0A1628`). They do **not** control
-their own full-screen bg, so the standalone pattern above does **not** apply.
-Making them light needs a separate mechanism (the page overriding Layout's dark
-content area, or Layout flagging migrated routes). **This is deliberately
-deferred — to be decided when Phase 6 (Settings) is planned.** Don't copy the
-standalone pattern onto an inside-Layout page.
+their own full-screen bg, so the standalone body-bg pattern does **not** apply.
+Instead, wrap the page root in **`<LightPage>`** (see above) — it full-bleeds
+over Layout's content padding to cover the dark area seamlessly. Do **not** add a
+`document.body` effect on these pages.
 
 ## Banned patterns
 - **NEVER** run a repo-wide color replace, e.g. `find . -exec sed -i 's/#0D1E35/var(--surface)/g'`. Several hexes (`#0D1E35`, `#1B2B4B`) are **also** intentional CV-PDF accent colors in `components/cv/accentPalette.js` + `Template*.jsx` — a blind replace corrupts user PDFs. Migration is **per-file judgment**, never global sed.

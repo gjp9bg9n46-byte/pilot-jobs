@@ -308,6 +308,7 @@ export default function Layout() {
 
         {/* ── Page content ───────────────────────────────────────────────────── */}
         {/* intentional — dark page body; light page bodies migrate later */}
+        {/* NOTE: LightPage primitive bleeds over this padding (16px 16px 24px). Keep in sync. */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 24px', background: '#0A1628', color: '#fff' }}>
           <Outlet />
         </div>
@@ -393,6 +394,7 @@ export default function Layout() {
           </div>
         </header>
         {/* intentional — dark page body; light page bodies migrate later */}
+        {/* NOTE: LightPage primitive bleeds over this padding (32px). Keep in sync. */}
         <div style={{ flex: 1, padding: '32px', overflowY: 'auto', background: '#0A1628', color: '#fff' }}>
           <Outlet />
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Badge, Input, Modal, Card } from '../../components/primitives';
+import { Badge, Input, Modal, Card, Button, LightPage } from '../../components/primitives';
 import '../../styles/design-tokens.css';
 
 // Internal showcase / living documentation for the design primitives.
@@ -90,7 +90,7 @@ export default function Primitives() {
       </section>
 
       {/* Card */}
-      <section style={{ ...section, borderBottom: 'none', paddingBottom: 80 }}>
+      <section style={section}>
         <SectionTitle>Card</SectionTitle>
         <Sub>White surface on warm bg. <code>hover</code> opts into a subtle shadow lift (no translate).</Sub>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
@@ -106,6 +106,32 @@ export default function Primitives() {
             <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 20, margin: '0 0 8px' }}>as=&quot;article&quot;</h3>
             <p style={{ fontSize: 15, color: 'var(--text-secondary)', margin: 0 }}>Renders a semantic element.</p>
           </Card>
+        </div>
+      </section>
+
+      {/* Button */}
+      <section style={section}>
+        <SectionTitle>Button</SectionTitle>
+        <Sub>Variants: primary / secondary / ghost / danger. Hover handled internally.</Sub>
+        <Row>
+          <Button onClick={() => {}}>Primary</Button>
+          <Button variant="secondary">Secondary</Button>
+          <Button variant="ghost">Ghost</Button>
+          <Button variant="danger">Delete account</Button>
+          <Button disabled>Disabled</Button>
+        </Row>
+      </section>
+
+      {/* LightPage */}
+      <section style={{ ...section, borderBottom: 'none', paddingBottom: 80 }}>
+        <SectionTitle>LightPage</SectionTitle>
+        <Sub>Page-level light theme wrapper for inside-Layout pages. Used by every migrated page that renders inside Layout&apos;s dark content area. (Shown here in a sized box; in the app it full-bleeds over Layout&apos;s content padding.)</Sub>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', height: 220 }}>
+          <LightPage style={{ margin: 0, minHeight: '100%' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 22, margin: '0 0 8px' }}>Page heading</h3>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', margin: '0 0 16px' }}>Body paragraph on the warm page surface.</p>
+            <Card><strong>A Card</strong> sitting on the LightPage surface.</Card>
+          </LightPage>
         </div>
       </section>
     </div>

@@ -3,29 +3,22 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import api, { profileApi, flightLogApi, authApi } from '../services/api';
 import { logout } from '../store';
-
-// ── Shared styles (module-level so components don't recreate on each render) ──
-const inputStyle = {
-  background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8,
-  padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
-};
-const saveButtonStyle = {
-  background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 8,
-  padding: '11px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-};
+import { Card, Input, Button, Badge, Modal, LightPage } from '../components/primitives';
 
 // ── Components defined OUTSIDE Settings to prevent remount-on-keypress ────────
 function Toggle({ value, onChange }) {
   return (
-    <div onClick={() => onChange(!value)} style={{ width: 44, height: 24, borderRadius: 12, background: value ? '#00B4D8' : '#1E3050', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
-      <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+    <div onClick={() => onChange(!value)} style={{ width: 44, height: 24, borderRadius: 12, background: value ? 'var(--accent)' : 'var(--border)', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
+      <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 2px rgba(15,20,25,0.2)', transition: 'left 0.2s' }} />
     </div>
   );
 }
 
 function Chip({ label, active, onClick }) {
+  const [hover, setHover] = useState(false);
   return (
-    <button type="button" onClick={onClick} style={{ background: active ? 'rgba(0,180,216,0.18)' : '#1B2B4B', border: `1px solid ${active ? '#00B4D8' : '#243050'}`, borderRadius: 20, padding: '6px 14px', color: active ? '#00B4D8' : '#7A8CA0', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+    <button type="button" onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{ background: active ? 'rgba(0,63,136,0.08)' : 'var(--surface)', border: `1px solid ${active ? 'var(--accent)' : (hover ? 'rgba(0,63,136,0.4)' : 'var(--border)')}`, borderRadius: 20, padding: '6px 14px', color: active ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s, border-color 0.15s, color 0.15s' }}>
       {label}
     </button>
   );
@@ -33,9 +26,9 @@ function Chip({ label, active, onClick }) {
 
 function Tag({ label, onRemove }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(0,180,216,0.12)', border: '1px solid #00B4D8', borderRadius: 20, padding: '4px 12px', fontSize: 13, color: '#00B4D8', fontWeight: 600 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(0,63,136,0.08)', border: '1px solid var(--accent)', borderRadius: 20, padding: '4px 12px', fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>
       {label}
-      <span onClick={onRemove} style={{ cursor: 'pointer', lineHeight: 1, color: '#7A8CA0', fontSize: 14 }}>✕</span>
+      <span onClick={onRemove} style={{ cursor: 'pointer', lineHeight: 1, color: 'var(--text-secondary)', fontSize: 14 }}>✕</span>
     </span>
   );
 }
@@ -49,8 +42,10 @@ function TagInput({ inputVal, setInputVal, tags, setTags, placeholder }) {
   return (
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }} placeholder={placeholder} style={{ ...inputStyle, flex: 1 }} />
-        <button type="button" onClick={handleAdd} style={{ ...saveButtonStyle, padding: '11px 18px', whiteSpace: 'nowrap' }}>Add</button>
+        <div style={{ flex: 1 }}>
+          <Input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }} placeholder={placeholder} />
+        </div>
+        <Button type="button" onClick={handleAdd} style={{ whiteSpace: 'nowrap' }}>Add</Button>
       </div>
       {tags.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -121,6 +116,9 @@ export default function Settings() {
   const [visibleToRecruiters, setVisibleToRecruiters] = useState(true);
   const [anonymousBrowsing, setAnonymousBrowsing] = useState(false);
   const [showSeniority, setShowSeniority] = useState(true);
+
+  // ── Delete account confirmation ───────────────────────────────────────
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // ── Load preferences on mount ─────────────────────────────────────────
   useEffect(() => {
@@ -255,9 +253,9 @@ export default function Settings() {
     } catch (_) {}
   }
 
-  async function handleDeleteAccount() {
-    const confirmed = window.confirm('Are you sure? This cannot be undone.');
-    if (!confirmed) return;
+  // Deletion logic preserved verbatim — only the confirmation UI changed
+  // (window.confirm → <Modal>).
+  async function confirmDelete() {
     try {
       await api.delete('/api/auth/account');
       dispatch(logout());
@@ -267,124 +265,68 @@ export default function Settings() {
     }
   }
 
-  // ── Shared styles (local to render, plain objects are fine here) ──────
-  const cardStyle = { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 28, marginBottom: 24 };
-  const labelStyle = { display: 'block', fontSize: 13, color: '#7A8CA0', marginBottom: 6, fontWeight: 600 };
-  const sectionTitleStyle = { fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 4 };
-  const sectionSubtitleStyle = { fontSize: 13, color: '#4A6080', marginBottom: 20 };
-  const successBanner = { background: '#0A2A1A', border: '1px solid #1A5C3A', borderRadius: 8, padding: '10px 14px', color: '#4ADE80', fontSize: 13, marginBottom: 14 };
-  const errorBanner = { background: '#2A0A0A', border: '1px solid #5C1A1A', borderRadius: 8, padding: '10px 14px', color: '#F87171', fontSize: 13, marginBottom: 14 };
-  const divider = { borderTop: '1px solid #1E3050', margin: '20px 0' };
+  // ── Shared styles ─────────────────────────────────────────────────────
+  const cardStyle = { padding: 28, marginBottom: 24 };
+  const labelStyle = { display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 };
+  const sectionTitleStyle = { fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.01em' };
+  const sectionSubtitleStyle = { fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 };
+  const successBanner = { background: '#DCFCE7', border: '1px solid #BBF7D0', borderRadius: 6, padding: '10px 14px', color: '#166534', fontSize: 13, marginTop: 14 };
+  const errorBanner = { background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 6, padding: '10px 14px', color: '#991B1B', fontSize: 13, marginTop: 14 };
+  const divider = { borderTop: '1px solid var(--border)', margin: '20px 0' };
 
   return (
-    <div
-      style={{
-        padding: '0 0 24px',
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900, color: '#fff', marginBottom: 8 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>
           Settings
         </h1>
-        <p style={{ color: '#7A8CA0', marginBottom: 32, fontSize: 15 }}>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 32, fontSize: 15 }}>
           Manage your account, preferences, notifications, and data.
         </p>
 
         {/* ── Account Card ─────────────────────────────────────────────── */}
-        <div style={cardStyle}>
+        <Card style={cardStyle}>
           <div style={sectionTitleStyle}>Account</div>
           <div style={sectionSubtitleStyle}>Your login credentials and security settings.</div>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Email Address</label>
-            <input
-              type="email"
-              value={pilot?.email || ''}
-              readOnly
-              style={{ ...inputStyle, width: '100%', opacity: 0.6, cursor: 'not-allowed' }}
-            />
+            <Input label="Email Address" type="email" value={pilot?.email || ''} readOnly style={{ opacity: 0.6, cursor: 'not-allowed' }} />
           </div>
 
           <div style={divider} />
 
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 16 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
             Change Password
           </div>
           <form onSubmit={handleChangePassword}>
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Current Password</label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                placeholder="Enter current password"
-                style={{ ...inputStyle, width: '100%' }}
-              />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                placeholder="At least 8 characters"
-                style={{ ...inputStyle, width: '100%' }}
-              />
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={labelStyle}>Confirm New Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                placeholder="Repeat new password"
-                style={{ ...inputStyle, width: '100%' }}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Input label="Current Password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required placeholder="Enter current password" />
+              <Input label="New Password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} placeholder="At least 8 characters" />
+              <Input label="Confirm New Password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required placeholder="Repeat new password" />
             </div>
             {passwordMsg && <div style={successBanner}>{passwordMsg}</div>}
             {passwordError && <div style={errorBanner}>{passwordError}</div>}
-            <button
-              type="submit"
-              disabled={passwordLoading}
-              style={{ ...saveButtonStyle, opacity: passwordLoading ? 0.7 : 1 }}
-            >
+            <Button type="submit" disabled={passwordLoading} style={{ marginTop: 16 }}>
               {passwordLoading ? 'Saving…' : 'Update Password'}
-            </button>
+            </Button>
           </form>
-        </div>
+        </Card>
 
         {/* ── Job Preferences Card ──────────────────────────────────────── */}
-        <div style={cardStyle}>
+        <Card style={cardStyle}>
           <div style={sectionTitleStyle}>Job Preferences</div>
           <div style={sectionSubtitleStyle}>Tell us what kinds of opportunities you are looking for.</div>
 
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>Preferred Countries</label>
-            <TagInput
-              inputVal={countryInput}
-              setInputVal={setCountryInput}
-              tags={preferredCountries}
-              setTags={setPreferredCountries}
-              placeholder="e.g. UAE, Germany, USA"
-            />
+            <TagInput inputVal={countryInput} setInputVal={setCountryInput} tags={preferredCountries} setTags={setPreferredCountries} placeholder="e.g. UAE, Germany, USA" />
           </div>
 
           <div style={divider} />
 
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>Preferred Aircraft Types</label>
-            <TagInput
-              inputVal={aircraftInput}
-              setInputVal={setAircraftInput}
-              tags={preferredAircraft}
-              setTags={setPreferredAircraft}
-              placeholder="e.g. B737, A320, B777"
-            />
+            <TagInput inputVal={aircraftInput} setInputVal={setAircraftInput} tags={preferredAircraft} setTags={setPreferredAircraft} placeholder="e.g. B737, A320, B777" />
           </div>
 
           <div style={divider} />
@@ -393,12 +335,7 @@ export default function Settings() {
             <label style={labelStyle}>Contract Types</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {CONTRACT_OPTIONS.map((opt) => (
-                <Chip
-                  key={opt}
-                  label={opt}
-                  active={contractTypes.includes(opt)}
-                  onClick={() => toggleChip(opt, contractTypes, setContractTypes)}
-                />
+                <Chip key={opt} label={opt} active={contractTypes.includes(opt)} onClick={() => toggleChip(opt, contractTypes, setContractTypes)} />
               ))}
             </div>
           </div>
@@ -409,12 +346,7 @@ export default function Settings() {
             <label style={labelStyle}>Route Preferences</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {ROUTE_OPTIONS.map((opt) => (
-                <Chip
-                  key={opt}
-                  label={opt}
-                  active={routePreferences.includes(opt)}
-                  onClick={() => toggleChip(opt, routePreferences, setRoutePreferences)}
-                />
+                <Chip key={opt} label={opt} active={routePreferences.includes(opt)} onClick={() => toggleChip(opt, routePreferences, setRoutePreferences)} />
               ))}
             </div>
           </div>
@@ -424,83 +356,45 @@ export default function Settings() {
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>Minimum Salary</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-              <input
-                type="number"
-                value={minSalary}
-                onChange={(e) => setMinSalary(e.target.value)}
-                disabled={salaryNegotiable}
-                placeholder="Amount"
-                style={{
-                  ...inputStyle,
-                  flex: '1 1 120px',
-                  minWidth: 100,
-                  opacity: salaryNegotiable ? 0.4 : 1,
-                  cursor: salaryNegotiable ? 'not-allowed' : 'text',
-                }}
-              />
-              <select
-                value={salaryCurrency}
-                onChange={(e) => setSalaryCurrency(e.target.value)}
-                style={{ ...inputStyle, flex: '0 0 80px' }}
-              >
-                <option>USD</option>
-                <option>EUR</option>
-                <option>GBP</option>
-                <option>AED</option>
-              </select>
-              <select
-                value={salaryPeriod}
-                onChange={(e) => setSalaryPeriod(e.target.value)}
-                style={{ ...inputStyle, flex: '1 1 120px', minWidth: 120 }}
-              >
-                <option>Per month</option>
-                <option>Per year</option>
-              </select>
+              <div style={{ flex: '1 1 120px', minWidth: 100 }}>
+                <Input type="number" value={minSalary} onChange={(e) => setMinSalary(e.target.value)} disabled={salaryNegotiable} placeholder="Amount" style={{ opacity: salaryNegotiable ? 0.4 : 1 }} />
+              </div>
+              <div style={{ flex: '0 0 90px' }}>
+                <Input as="select" value={salaryCurrency} onChange={(e) => setSalaryCurrency(e.target.value)}>
+                  <option>USD</option>
+                  <option>EUR</option>
+                  <option>GBP</option>
+                  <option>AED</option>
+                </Input>
+              </div>
+              <div style={{ flex: '1 1 120px', minWidth: 120 }}>
+                <Input as="select" value={salaryPeriod} onChange={(e) => setSalaryPeriod(e.target.value)}>
+                  <option>Per month</option>
+                  <option>Per year</option>
+                </Input>
+              </div>
             </div>
-            <label
-              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}
-            >
-              <input
-                type="checkbox"
-                checked={salaryNegotiable}
-                onChange={(e) => setSalaryNegotiable(e.target.checked)}
-                style={{ accentColor: '#00B4D8', width: 15, height: 15 }}
-              />
-              <span style={{ fontSize: 13, color: '#7A8CA0' }}>Negotiable</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+              <input type="checkbox" checked={salaryNegotiable} onChange={(e) => setSalaryNegotiable(e.target.checked)} style={{ accentColor: 'var(--accent)', width: 15, height: 15 }} />
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Negotiable</span>
             </label>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSavePreferences}
-            disabled={prefLoading}
-            style={{ ...saveButtonStyle, opacity: prefLoading ? 0.7 : 1 }}
-          >
+          <Button type="button" onClick={handleSavePreferences} disabled={prefLoading}>
             {prefSaved ? 'Saved ✓' : prefLoading ? 'Saving…' : 'Save Preferences'}
-          </button>
-        </div>
+          </Button>
+        </Card>
 
         {/* ── Notifications Card ────────────────────────────────────────── */}
-        <div style={cardStyle}>
+        <Card style={cardStyle}>
           <div style={sectionTitleStyle}>Notifications</div>
           <div style={sectionSubtitleStyle}>Choose what emails you receive from CockpitHire.</div>
 
           {/* Master toggle */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 20,
-              padding: '14px 16px',
-              background: '#0A1628',
-              borderRadius: 10,
-              border: '1px solid #1E3050',
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, padding: '14px 16px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
             <div>
-              <div style={{ fontSize: 14, color: '#fff', fontWeight: 700 }}>All email notifications</div>
-              <div style={{ fontSize: 12, color: '#7A8CA0', marginTop: 2 }}>
+              <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 700 }}>All email notifications</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                 Master switch — disabling this overrides all per-category settings
               </div>
             </div>
@@ -509,52 +403,20 @@ export default function Settings() {
 
           {/* Per-category matrix */}
           <div style={{ marginBottom: 20 }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto',
-                gap: '0 16px',
-                alignItems: 'center',
-                marginBottom: 8,
-                paddingBottom: 8,
-                borderBottom: '1px solid #1E3050',
-              }}
-            >
-              <span style={{ fontSize: 12, color: '#4A6080', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-                Category
-              </span>
-              <span style={{ fontSize: 12, color: '#4A6080', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>
-                Email
-              </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0 16px', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Category</span>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>Email</span>
             </div>
             {NOTIF_ROWS.map((row) => (
-              <div
-                key={row.key}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr auto',
-                  gap: '0 16px',
-                  alignItems: 'center',
-                  padding: '10px 0',
-                  borderBottom: '1px solid #0D1E35',
-                }}
-              >
-                <span style={{ fontSize: 14, color: '#fff' }}>{row.label}</span>
+              <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0 16px', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{row.label}</span>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <input
                     type="checkbox"
                     checked={notifMatrix[row.key]}
                     disabled={!allEmailOn}
-                    onChange={(e) =>
-                      setNotifMatrix((prev) => ({ ...prev, [row.key]: e.target.checked }))
-                    }
-                    style={{
-                      accentColor: '#00B4D8',
-                      width: 16,
-                      height: 16,
-                      cursor: allEmailOn ? 'pointer' : 'not-allowed',
-                      opacity: allEmailOn ? 1 : 0.4,
-                    }}
+                    onChange={(e) => setNotifMatrix((prev) => ({ ...prev, [row.key]: e.target.checked }))}
+                    style={{ accentColor: 'var(--accent)', width: 16, height: 16, cursor: allEmailOn ? 'pointer' : 'not-allowed', opacity: allEmailOn ? 1 : 0.4 }}
                   />
                 </div>
               </div>
@@ -564,41 +426,22 @@ export default function Settings() {
           {/* Quiet Hours */}
           <div style={divider} />
           <div style={{ marginBottom: 20 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: quietHours ? 14 : 0,
-              }}
-            >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: quietHours ? 14 : 0 }}>
               <div>
-                <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>Enable quiet hours</div>
-                <div style={{ fontSize: 12, color: '#7A8CA0', marginTop: 2 }}>
+                <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>Enable quiet hours</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                   Pause notifications during specified hours
                 </div>
               </div>
               <Toggle value={quietHours} onChange={setQuietHours} />
             </div>
             {quietHours && (
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginTop: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>From</label>
-                  <input
-                    type="time"
-                    value={quietFrom}
-                    onChange={(e) => setQuietFrom(e.target.value)}
-                    style={{ ...inputStyle, width: '100%' }}
-                  />
+                  <Input label="From" type="time" value={quietFrom} onChange={(e) => setQuietFrom(e.target.value)} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>To</label>
-                  <input
-                    type="time"
-                    value={quietTo}
-                    onChange={(e) => setQuietTo(e.target.value)}
-                    style={{ ...inputStyle, width: '100%' }}
-                  />
+                  <Input label="To" type="time" value={quietTo} onChange={(e) => setQuietTo(e.target.value)} />
                 </div>
               </div>
             )}
@@ -606,67 +449,33 @@ export default function Settings() {
 
           {notifMsg && <div style={successBanner}>{notifMsg}</div>}
           {notifError && <div style={errorBanner}>{notifError}</div>}
-          <button
-            type="button"
-            onClick={handleSaveNotifications}
-            disabled={notifLoading}
-            style={{ ...saveButtonStyle, opacity: notifLoading ? 0.7 : 1 }}
-          >
+          <Button type="button" onClick={handleSaveNotifications} disabled={notifLoading} style={{ marginTop: 16 }}>
             {notifLoading ? 'Saving…' : 'Save Notification Preferences'}
-          </button>
-        </div>
+          </Button>
+        </Card>
 
         {/* ── Privacy Card ──────────────────────────────────────────────── */}
-        <div style={cardStyle}>
+        <Card style={cardStyle}>
           <div style={sectionTitleStyle}>Privacy</div>
           <div style={sectionSubtitleStyle}>Control how your profile and activity are visible.</div>
 
           {[
-            {
-              key: 'visibleToRecruiters',
-              value: visibleToRecruiters,
-              label: 'Profile visible to recruiters',
-              desc: 'Allow airlines and recruiters to view your profile',
-            },
-            {
-              key: 'anonymousBrowsing',
-              value: anonymousBrowsing,
-              label: 'Anonymous browsing',
-              desc: 'Browse jobs without leaving a trace',
-            },
-            {
-              key: 'showSeniority',
-              value: showSeniority,
-              label: 'Show seniority publicly',
-              desc: 'Display your total hours and seniority on your public profile',
-            },
+            { key: 'visibleToRecruiters', value: visibleToRecruiters, label: 'Profile visible to recruiters', desc: 'Allow airlines and recruiters to view your profile' },
+            { key: 'anonymousBrowsing', value: anonymousBrowsing, label: 'Anonymous browsing', desc: 'Browse jobs without leaving a trace' },
+            { key: 'showSeniority', value: showSeniority, label: 'Show seniority publicly', desc: 'Display your total hours and seniority on your public profile' },
           ].map((item, i, arr) => (
-            <div
-              key={item.key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
-                paddingBottom: i < arr.length - 1 ? 18 : 0,
-                marginBottom: i < arr.length - 1 ? 18 : 0,
-                borderBottom: i < arr.length - 1 ? '1px solid #1E3050' : 'none',
-              }}
-            >
+            <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, paddingBottom: i < arr.length - 1 ? 18 : 0, marginBottom: i < arr.length - 1 ? 18 : 0, borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
               <div>
-                <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>{item.label}</div>
-                <div style={{ fontSize: 12, color: '#7A8CA0', marginTop: 3 }}>{item.desc}</div>
+                <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>{item.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>{item.desc}</div>
               </div>
-              <Toggle
-                value={item.value}
-                onChange={(v) => handlePrivacyToggle(item.key, v)}
-              />
+              <Toggle value={item.value} onChange={(v) => handlePrivacyToggle(item.key, v)} />
             </div>
           ))}
-        </div>
+        </Card>
 
         {/* ── Data Card ─────────────────────────────────────────────────── */}
-        <div style={cardStyle}>
+        <Card style={cardStyle}>
           <div style={sectionTitleStyle}>Data</div>
           <div style={sectionSubtitleStyle}>Export your data or create a backup.</div>
 
@@ -676,111 +485,56 @@ export default function Settings() {
               { label: 'Export for ForeFlight (CSV)', format: 'FOREFLIGHT' },
               { label: 'Export All Data (JSON)', format: 'JSON' },
             ].map((item) => (
-              <button
+              <Button
                 key={item.format}
-                type="button"
+                variant="ghost"
                 onClick={() => handleExport(item.format)}
-                style={{
-                  background: '#1B2B4B',
-                  border: '1px solid #243050',
-                  borderRadius: 10,
-                  padding: '13px 18px',
-                  color: '#fff',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
+                style={{ width: '100%', justifyContent: 'space-between', padding: '13px 18px', border: '1px solid var(--border)', fontWeight: 600 }}
               >
                 {item.label}
-                <span style={{ fontSize: 12, color: '#00B4D8' }}>Download</span>
-              </button>
+                <span style={{ fontSize: 12, color: 'var(--accent)' }}>Download</span>
+              </Button>
             ))}
 
             {/* Cloud Backup — coming soon */}
-            <div
-              style={{
-                background: '#1B2B4B',
-                border: '1px solid #243050',
-                borderRadius: 10,
-                padding: '13px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                opacity: 0.55,
-              }}
-            >
-              <span style={{ fontSize: 14, color: '#7A8CA0', fontWeight: 600 }}>Cloud Backup</span>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#7A8CA0',
-                  background: '#243050',
-                  borderRadius: 20,
-                  padding: '3px 10px',
-                  letterSpacing: 0.5,
-                  textTransform: 'uppercase',
-                }}
-              >
-                Coming soon
-              </span>
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.7 }}>
+              <span style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 600 }}>Cloud Backup</span>
+              <Badge variant="neutral">Coming soon</Badge>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* ── Danger Zone Card ──────────────────────────────────────────── */}
-        <div
-          style={{
-            background: '#1A0A0A',
-            border: '1px solid #5C2626',
-            borderRadius: 16,
-            padding: 28,
-            marginBottom: 24,
-          }}
-        >
-          <div style={sectionTitleStyle}>Danger Zone</div>
-          <div style={{ ...sectionSubtitleStyle, color: '#7A4040' }}>
+        <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 6, padding: 28, marginBottom: 24 }}>
+          <div style={{ ...sectionTitleStyle, color: '#991B1B' }}>Danger Zone</div>
+          <div style={{ fontSize: 13, color: '#991B1B', opacity: 0.85, marginBottom: 20 }}>
             Permanent and irreversible actions.
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
             <div>
-              <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>Delete Account</div>
-              <div style={{ fontSize: 13, color: '#7A4040', marginTop: 3 }}>
+              <div style={{ fontSize: 14, color: '#991B1B', fontWeight: 700 }}>Delete Account</div>
+              <div style={{ fontSize: 13, color: '#991B1B', opacity: 0.85, marginTop: 3 }}>
                 Permanently remove your account and all associated data.
               </div>
             </div>
-            <button
-              onClick={handleDeleteAccount}
-              style={{
-                background: 'transparent',
-                border: '1px solid #C0392B',
-                borderRadius: 8,
-                padding: '10px 20px',
-                color: '#E74C3C',
-                fontWeight: 700,
-                fontSize: 14,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <Button variant="danger" onClick={() => setDeleteOpen(true)} style={{ whiteSpace: 'nowrap' }}>
               Delete Account
-            </button>
+            </Button>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Delete confirmation (replaces window.confirm) */}
+      <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete account?">
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 0 }}>
+          Are you sure? This cannot be undone.
+        </p>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <Button variant="danger" onClick={() => { setDeleteOpen(false); confirmDelete(); }}>Delete account</Button>
+          <Button variant="ghost" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+        </div>
+      </Modal>
+    </LightPage>
   );
 }
