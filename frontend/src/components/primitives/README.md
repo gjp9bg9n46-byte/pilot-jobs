@@ -66,6 +66,19 @@ When migrating a page from the dark theme:
 - Replace surface panels → `<Card>`.
 - Wrap the migrated page (or its shell) in `className="app-light"` to adopt the light surface.
 
+## Chrome hover utility classes
+Inline styles can't express `:hover`, so migrated chrome uses these global
+classes (defined in `src/styles/design-tokens.css`, scoped under `.app-light`).
+The element must be inside an `.app-light` subtree.
+
+| Class | Effect | Rule for use |
+|-------|--------|--------------|
+| `nav-link` | `:hover` → `background: rgba(0,63,136,0.05)` | **Don't** set an inline `background` (inline beats `:hover`). Active state uses a 3px left-border + accent text instead of a fill. |
+| `icon-button` | `:hover` → `background: rgba(0,63,136,0.05)` | **Don't** set inline `background`. Give it a `border-radius` so the hover fill looks right. |
+| `footer-link` | base `color: var(--text-primary)`, `:hover` → `var(--accent)` | **Don't** set inline `color` — the base color comes from the class so `:hover` can override it. |
+
+Used by `Layout.jsx` (sidebar/drawer nav + icon buttons) and `SiteFooter.jsx`.
+
 ## Banned patterns
 - **NEVER** run a repo-wide color replace, e.g. `find . -exec sed -i 's/#0D1E35/var(--surface)/g'`. Several hexes (`#0D1E35`, `#1B2B4B`) are **also** intentional CV-PDF accent colors in `components/cv/accentPalette.js` + `Template*.jsx` — a blind replace corrupts user PDFs. Migration is **per-file judgment**, never global sed.
 - Don't tokenize the `Badge` semantic colors yet — they're deliberately internal until another primitive (Toast/Alert) needs to share them.

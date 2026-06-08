@@ -54,17 +54,36 @@ const PAGE_TITLES = {
 
 const SIGN_OUT_ICON = <Ico size={18} extra={<><path d="M7 3H3a1 1 0 00-1 1v10a1 1 0 001 1h4"/><polyline points="12 5 16 9 12 13"/><line x1="16" y1="9" x2="6" y2="9"/></>} />;
 
-// ─── Drawer nav link style (mirrors desktop sidebar active state) ─────────────
+// Plane wordmark glyph (stroke via style so it can use the accent token).
+const PlaneMark = ({ size = 18, style }) => (
+  <svg width={size} height={size} viewBox="0 0 18 18" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: 'var(--accent)', ...style }}>
+    <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
+  </svg>
+);
+
+// Light-theme nav link: active gets accent text + a 3px left-border accent.
+// No inline background, so the .nav-link:hover utility can apply the fill.
+function navLinkStyle(isActive) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '11px 14px', borderLeft: `3px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
+    borderRadius: 10, textDecoration: 'none',
+    fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s, color 0.15s',
+    color: isActive ? 'var(--accent)' : 'var(--text-primary)',
+  };
+}
 function drawerLinkStyle(isActive) {
   return {
     display: 'flex', alignItems: 'center', gap: 14,
-    padding: '13px 20px', textDecoration: 'none',
-    fontSize: 15, fontWeight: 600,
-    background: isActive ? '#1B2B4B' : 'transparent',
-    color: isActive ? '#00B4D8' : '#C8D8E8',
+    padding: '13px 20px', borderLeft: `3px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
+    textDecoration: 'none', fontSize: 15, fontWeight: 600,
+    color: isActive ? 'var(--accent)' : 'var(--text-primary)',
     transition: 'background 0.1s, color 0.1s',
   };
 }
+
+const unreadBadge = { background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px' };
+const pendingBadge = { background: '#FEF3C7', color: '#92400E', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px' };
 
 export default function Layout() {
   const dispatch   = useDispatch();
@@ -105,10 +124,16 @@ export default function Layout() {
     ? `${pilot.firstName?.[0] ?? ''}${pilot.lastName?.[0] ?? ''}`.toUpperCase()
     : '?';
 
+  const avatar = (size) => ({
+    width: size, height: size, borderRadius: '50%', background: 'var(--accent)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontWeight: 800, fontSize: size > 32 ? 13 : 12, color: '#fff', flexShrink: 0,
+  });
+
   // ─── Mobile layout ────────────────────────────────────────────────────────────
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0A1628', overflow: 'hidden' }}>
+      <div className="app-light" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
 
         {/* ── Backdrop ───────────────────────────────────────────────────────── */}
         <div
@@ -116,7 +141,7 @@ export default function Layout() {
           onClick={closeDrawer}
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'rgba(15,20,25,0.5)',
             opacity: drawerOpen ? 1 : 0,
             pointerEvents: drawerOpen ? 'auto' : 'none',
             transition: 'opacity 250ms ease',
@@ -131,7 +156,7 @@ export default function Layout() {
           style={{
             position: 'fixed', top: 0, left: 0, height: '100%',
             width: '80vw', maxWidth: 320,
-            background: '#0D1E35', borderRight: '1px solid #1E3050',
+            background: 'var(--surface)', borderRight: '1px solid var(--border)',
             display: 'flex', flexDirection: 'column',
             zIndex: 1001,
             transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -142,20 +167,18 @@ export default function Layout() {
           {/* Drawer header — fixed at top */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '18px 16px', borderBottom: '1px solid #1E3050', flexShrink: 0,
+            padding: '18px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0,
           }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#00B4D8', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#00B4D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
-              </svg>
-              CockpitHire
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <PlaneMark size={16} /> CockpitHire
             </div>
             <button
               onClick={closeDrawer}
               aria-label="Close menu"
+              className="icon-button"
               style={{
                 width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'none', border: 'none', cursor: 'pointer', color: '#7A8CA0',
+                border: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
                 borderRadius: 8, flexShrink: 0,
               }}
             >
@@ -173,18 +196,12 @@ export default function Layout() {
                 key={to}
                 to={to}
                 onClick={closeDrawer}
+                className="nav-link"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
                 <span style={{ flex: 1 }}>{label}</span>
-                {to === '/alerts' && unread > 0 && (
-                  <span style={{
-                    background: '#00B4D8', color: '#0A1628',
-                    borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px',
-                  }}>
-                    {unread}
-                  </span>
-                )}
+                {to === '/alerts' && unread > 0 && <span style={unreadBadge}>{unread}</span>}
               </NavLink>
             ))}
 
@@ -193,6 +210,7 @@ export default function Layout() {
               <NavLink
                 to="/admin/moderation"
                 onClick={closeDrawer}
+                className="nav-link"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
@@ -203,18 +221,17 @@ export default function Layout() {
               <NavLink
                 to="/admin/employers"
                 onClick={closeDrawer}
+                className="nav-link"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
                 <span style={{ flex: 1 }}>Employer Moderation</span>
-                {empPending > 0 && (
-                  <span style={{ background: '#E0C24A', color: '#0A1628', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px' }}>{empPending}</span>
-                )}
+                {empPending > 0 && <span style={pendingBadge}>{empPending}</span>}
               </NavLink>
             )}
 
             {/* Divider */}
-            <div style={{ height: 1, background: '#1E3050', margin: '8px 20px' }} />
+            <div style={{ height: 1, background: 'var(--border)', margin: '8px 20px' }} />
 
             {/* Bottom nav items */}
             {BOTTOM_NAV_ITEMS.map(({ to, icon, label }) => (
@@ -222,6 +239,7 @@ export default function Layout() {
                 key={to}
                 to={to}
                 onClick={closeDrawer}
+                className="nav-link"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
@@ -231,13 +249,14 @@ export default function Layout() {
           </div>
 
           {/* Sign out — pinned at bottom of drawer */}
-          <div style={{ borderTop: '1px solid #1E3050', padding: '8px 0', flexShrink: 0 }}>
+          <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0', flexShrink: 0 }}>
             <button
               onClick={() => { closeDrawer(); handleLogout(); }}
+              className="nav-link"
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 14,
                 padding: '13px 20px', background: 'none', border: 'none',
-                cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#7A8CA0',
+                cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)',
                 textAlign: 'left',
               }}
             >
@@ -251,8 +270,8 @@ export default function Layout() {
         <header style={{
           padding: '0 16px',
           height: 52,
-          background: '#0D1E35',
-          borderBottom: '1px solid #1E3050',
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexShrink: 0,
         }}>
@@ -261,9 +280,10 @@ export default function Layout() {
             onClick={() => setDrawerOpen(true)}
             aria-label="Open navigation menu"
             aria-expanded={drawerOpen}
+            className="icon-button"
             style={{
               width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'none', border: 'none', cursor: 'pointer', color: '#C8D8E8',
+              border: 'none', cursor: 'pointer', color: 'var(--text-primary)',
               borderRadius: 8, flexShrink: 0, marginLeft: -8,
             }}
           >
@@ -275,36 +295,20 @@ export default function Layout() {
           </button>
 
           {/* Logo */}
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#00B4D8', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="#00B4D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
-            </svg>
-            CockpitHire
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <PlaneMark size={15} /> CockpitHire
           </div>
 
           {/* Avatar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {unread > 0 && (
-              <span style={{
-                background: '#00B4D8', color: '#0A1628',
-                borderRadius: 10, fontSize: 10, fontWeight: 800, padding: '2px 6px',
-              }}>
-                {unread}
-              </span>
-            )}
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #00B4D8, #0077A8)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, fontSize: 12, color: '#fff', flexShrink: 0,
-            }}>
-              {initials}
-            </div>
+            {unread > 0 && <span style={{ ...unreadBadge, fontSize: 10, padding: '2px 6px' }}>{unread}</span>}
+            <div style={avatar(32)}>{initials}</div>
           </div>
         </header>
 
         {/* ── Page content ───────────────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 24px' }}>
+        {/* intentional — dark page body; light page bodies migrate later */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 24px', background: '#0A1628', color: '#fff' }}>
           <Outlet />
         </div>
 
@@ -314,87 +318,58 @@ export default function Layout() {
 
   // ─── Desktop layout ───────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0A1628' }}>
+    <div className="app-light" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* Sidebar */}
       <aside style={{
-        width: 240, flexShrink: 0, background: '#0D1E35',
-        borderRight: '1px solid #1E3050',
+        width: 240, flexShrink: 0, background: 'var(--surface)',
+        borderRight: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column', padding: '0 0 24px',
       }}>
         <div style={{
-          padding: '28px 24px 24px', borderBottom: '1px solid #1E3050',
-          fontSize: 20, fontWeight: 800, color: '#00B4D8', letterSpacing: '-0.5px',
+          padding: '28px 24px 24px', borderBottom: '1px solid var(--border)',
+          fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.3px',
         }}>
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#00B4D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }}>
-            <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
-          </svg>
+          <PlaneMark size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
           CockpitHire
-          <div style={{ fontSize: 11, color: '#4A6080', fontWeight: 500, marginTop: 2 }}>Aviation Careers Worldwide</div>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, marginTop: 2 }}>Aviation Careers Worldwide</div>
         </div>
 
         <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {SIDEBAR_NAV.map(({ to, icon, label }, i) => (
             <React.Fragment key={to}>
               {/* Divider before Settings (index 6 = after CV Builder and Profile) */}
-              {i === 6 && <div style={{ height: 1, background: '#1E3050', margin: '4px 2px 8px' }} />}
-              <NavLink to={to} style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '11px 14px', borderRadius: 10, textDecoration: 'none',
-                fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                background: isActive ? '#1B2B4B' : 'transparent',
-                color: isActive ? '#00B4D8' : '#7A8CA0',
-              })}>
+              {i === 6 && <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px 8px' }} />}
+              <NavLink to={to} className="nav-link" style={({ isActive }) => navLinkStyle(isActive)}>
                 <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{icon}</span>
                 {label}
-                {to === '/alerts' && unread > 0 && (
-                  <span style={{
-                    marginLeft: 'auto', background: '#00B4D8', color: '#0A1628',
-                    borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px',
-                  }}>
-                    {unread}
-                  </span>
-                )}
+                {to === '/alerts' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 'auto' }}>{unread}</span>}
               </NavLink>
             </React.Fragment>
           ))}
 
           {pilot?.isAdmin && (
-            <NavLink to="/admin/moderation" style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '11px 14px', borderRadius: 10, textDecoration: 'none',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-              marginTop: 4,
-              background: isActive ? '#1B2B4B' : 'transparent',
-              color: isActive ? '#00B4D8' : '#7A8CA0',
-            })}>
+            <NavLink to="/admin/moderation" className="nav-link" style={({ isActive }) => ({ ...navLinkStyle(isActive), marginTop: 4 })}>
               <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
               Airline Moderation
             </NavLink>
           )}
           {pilot?.isAdmin && (
-            <NavLink to="/admin/employers" style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '11px 14px', borderRadius: 10, textDecoration: 'none',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-              background: isActive ? '#1B2B4B' : 'transparent',
-              color: isActive ? '#00B4D8' : '#7A8CA0',
-            })}>
+            <NavLink to="/admin/employers" className="nav-link" style={({ isActive }) => navLinkStyle(isActive)}>
               <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
               <span style={{ flex: 1 }}>Employer Moderation</span>
-              {empPending > 0 && (
-                <span style={{ background: '#E0C24A', color: '#0A1628', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px' }}>{empPending}</span>
-              )}
+              {empPending > 0 && <span style={pendingBadge}>{empPending}</span>}
             </NavLink>
           )}
         </nav>
 
         <button
           onClick={handleLogout}
+          className="nav-link"
           style={{
             margin: '0 12px', padding: '11px 14px', borderRadius: 10,
             background: 'transparent', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 12,
-            color: '#4A6080', fontSize: 14, fontWeight: 600,
+            color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600,
           }}
         >
           <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>
@@ -407,24 +382,18 @@ export default function Layout() {
       {/* Main */}
       <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         <header style={{
-          padding: '16px 32px', borderBottom: '1px solid #1E3050',
+          padding: '16px 32px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: '#0D1E35', flexShrink: 0,
+          background: 'var(--surface)', flexShrink: 0,
         }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>{PAGE_TITLES[path] ?? 'CockpitHire'}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#7A8CA0' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>{PAGE_TITLES[path] ?? 'CockpitHire'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
             <span>{pilot ? `${pilot.firstName} ${pilot.lastName}` : 'Pilot'}</span>
-            <div style={{
-              width: 34, height: 34, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #00B4D8, #0077A8)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, fontSize: 13, color: '#fff',
-            }}>
-              {initials}
-            </div>
+            <div style={avatar(34)}>{initials}</div>
           </div>
         </header>
-        <div style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
+        {/* intentional — dark page body; light page bodies migrate later */}
+        <div style={{ flex: 1, padding: '32px', overflowY: 'auto', background: '#0A1628', color: '#fff' }}>
           <Outlet />
         </div>
       </div>

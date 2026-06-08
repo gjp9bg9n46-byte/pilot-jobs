@@ -23,3 +23,13 @@
   background: var(--bg);
   color: var(--text-primary);
 }
+
+/* Chrome hover utilities (migrated shared shell). Inline styles can't express
+   :hover, so chrome elements use these classes. IMPORTANT: do not set the
+   corresponding inline property (background for nav-link/icon-button, color for
+   footer-link) or it will beat the :hover rule. footer-link also gets its base
+   color here so the hover can override it. */
+.app-light .nav-link:hover { background: rgba(0, 63, 136, 0.05); }
+.app-light .icon-button:hover { background: rgba(0, 63, 136, 0.05); }
+.app-light .footer-link { color: var(--text-primary); text-decoration: none; }
+.app-light .footer-link:hover { color: var(--accent); }
