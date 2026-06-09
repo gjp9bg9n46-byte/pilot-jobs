@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { airlineApi } from '../services/api';
+import { LightPage, Input, Button } from '../components/primitives';
 
 const HIRING_STATUSES = [
   { value: 'ACTIVELY_HIRING', label: 'Actively Hiring' },
@@ -160,89 +161,51 @@ const S = {
   page: { maxWidth: 740, margin: '0 auto', paddingBottom: 80 },
   back: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    color: '#7A8CA0', fontSize: 13, fontWeight: 600,
+    color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500,
     cursor: 'pointer', marginBottom: 20, background: 'none', border: 'none', padding: 0,
+    fontFamily: 'var(--font-body)',
   },
-  title: { fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 4 },
-  sub:   { fontSize: 13, color: '#4A6080', marginBottom: 20 },
+  title: { fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 4 },
+  sub:   { fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 },
   banner: {
-    background: 'rgba(0,180,216,0.08)', border: '1px solid rgba(0,180,216,0.2)',
+    background: 'rgba(0,63,136,0.06)', border: '1px solid rgba(0,63,136,0.2)',
     borderRadius: 10, padding: '10px 16px', marginBottom: 20,
-    fontSize: 13, color: '#00B4D8', display: 'flex', alignItems: 'center', gap: 8,
+    fontSize: 13, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8,
   },
   section: {
-    background: '#0D1E35', border: '1px solid #1E3050',
-    borderRadius: 14, padding: '20px 24px', marginBottom: 14,
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 12, padding: '20px 24px', marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 11, fontWeight: 800, color: '#4A6080',
+    fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)',
     letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16,
   },
   field: { marginBottom: 16 },
-  label: { fontSize: 12, fontWeight: 700, color: '#7A8CA0', marginBottom: 4, display: 'block' },
-  hint:  { fontSize: 11, color: '#4A6080', marginTop: 4, lineHeight: 1.5 },
-  input: (err) => ({
-    width: '100%', boxSizing: 'border-box',
-    padding: '9px 12px', borderRadius: 8,
-    background: '#0A1628',
-    border: `1px solid ${err ? '#E74C3C' : '#1E3050'}`,
-    color: '#fff', fontSize: 14, outline: 'none',
-  }),
-  textarea: (err) => ({
-    width: '100%', boxSizing: 'border-box',
-    padding: '9px 12px', borderRadius: 8,
-    background: '#0A1628',
-    border: `1px solid ${err ? '#E74C3C' : '#1E3050'}`,
-    color: '#fff', fontSize: 14, outline: 'none',
-    resize: 'vertical', minHeight: 80,
-  }),
-  select: (err) => ({
-    width: '100%', boxSizing: 'border-box',
-    padding: '9px 12px', borderRadius: 8,
-    background: '#0A1628',
-    border: `1px solid ${err ? '#E74C3C' : '#1E3050'}`,
-    color: '#C8D8E8', fontSize: 14, outline: 'none', cursor: 'pointer',
-  }),
-  fieldErr: { fontSize: 11, color: '#E74C3C', marginTop: 4 },
+  label: { fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' },
+  hint:  { fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 },
   payGrid: {
     display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
   },
   submitRow: {
     display: 'flex', gap: 12, marginTop: 24, justifyContent: 'flex-end', flexWrap: 'wrap',
   },
-  cancelBtn: {
-    padding: '10px 24px', borderRadius: 10, fontSize: 14, fontWeight: 600,
-    background: 'transparent', border: '1px solid #1E3050', color: '#7A8CA0', cursor: 'pointer',
-  },
-  submitBtn: (disabled) => ({
-    padding: '10px 28px', borderRadius: 10, fontSize: 14, fontWeight: 700,
-    background: disabled ? '#1B2B4B' : 'linear-gradient(135deg, #00B4D8, #0077A8)',
-    border: 'none', color: disabled ? '#4A6080' : '#fff',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-  }),
   success: {
     textAlign: 'center', padding: '60px 20px',
-    background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16,
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
   },
-  successIcon: { fontSize: 36, marginBottom: 16 },
-  successTitle: { fontSize: 20, fontWeight: 800, color: '#2ECC71', marginBottom: 8 },
-  successMsg: { fontSize: 14, color: '#7A8CA0', lineHeight: 1.6 },
+  successIcon: { fontSize: 36, marginBottom: 16, color: '#166534' },
+  successTitle: { fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: '#166534', marginBottom: 8 },
+  successMsg: { fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 },
   toastWrap: {
     position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-    background: '#E74C3C', color: '#fff', borderRadius: 10,
+    background: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA', borderRadius: 10,
     padding: '10px 20px', fontSize: 13, fontWeight: 600, zIndex: 9999,
+    boxShadow: '0 4px 24px rgba(15,20,25,0.12)',
   },
 };
 
-function Field({ label, hint, error, children }) {
-  return (
-    <div style={S.field}>
-      <label style={S.label}>{label}</label>
-      {children}
-      {error && <div style={S.fieldErr}>{error}</div>}
-      {hint && <div style={S.hint}>{hint}</div>}
-    </div>
-  );
+function Hint({ children }) {
+  return children ? <div style={S.hint}>{children}</div> : null;
 }
 
 export default function AirlineContribute() {
@@ -308,208 +271,168 @@ export default function AirlineContribute() {
     }
   };
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: '#7A8CA0' }}>Loading…</div>;
+  if (loading) return <LightPage style={{ fontFamily: 'var(--font-body)' }}><div style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary)' }}>Loading…</div></LightPage>;
   if (!airline) return null;
 
   if (success) {
     return (
-      <div style={S.page}>
-        <div style={S.success}>
-          <div style={S.successIcon}>✓</div>
-          <div style={S.successTitle}>Contribution submitted!</div>
-          <div style={S.successMsg}>
-            Your contribution is in review. Thanks for helping the community.
-            <br />Redirecting back to {airline.name} in a moment…
+      <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+        <div style={S.page}>
+          <div style={S.success}>
+            <div style={S.successIcon}>✓</div>
+            <div style={S.successTitle}>Contribution submitted!</div>
+            <div style={S.successMsg}>
+              Your contribution is in review. Thanks for helping the community.
+              <br />Redirecting back to {airline.name} in a moment…
+            </div>
           </div>
         </div>
-      </div>
+      </LightPage>
     );
   }
 
-  const inp = (key, extra = {}) => (
-    <input
-      style={S.input(fieldErrors[key])}
-      value={form[key] ?? ''}
-      onChange={(e) => set(key, e.target.value)}
-      {...extra}
-    />
+  // ── Light form-control helpers (Input primitive + preserved hint) ──
+  const inp = (key, label, hint, extra = {}) => (
+    <div style={S.field}>
+      <Input label={label} error={fieldErrors[key]} value={form[key] ?? ''} onChange={(e) => set(key, e.target.value)} {...extra} />
+      <Hint>{hint}</Hint>
+    </div>
   );
 
-  const ta = (key, rows = 3) => (
-    <textarea
-      style={{ ...S.textarea(fieldErrors[key]), minHeight: rows * 24 + 16 }}
-      value={form[key] ?? ''}
-      onChange={(e) => set(key, e.target.value)}
-    />
+  const ta = (key, label, hint, rows = 3) => (
+    <div style={S.field}>
+      <Input as="textarea" label={label} error={fieldErrors[key]} value={form[key] ?? ''} onChange={(e) => set(key, e.target.value)} style={{ minHeight: rows * 24 + 16 }} />
+      <Hint>{hint}</Hint>
+    </div>
   );
 
-  const sel = (key, options, withBlank = true) => (
-    <select
-      style={S.select(fieldErrors[key])}
-      value={form[key] ?? ''}
-      onChange={(e) => set(key, e.target.value)}
-    >
-      {withBlank && <option value="">— Not specified —</option>}
-      {options.map((o) => (
-        <option key={typeof o === 'string' ? o : o.value} value={typeof o === 'string' ? o : o.value}>
-          {typeof o === 'string' ? o : o.label}
-        </option>
-      ))}
-    </select>
+  const sel = (key, label, hint, options, withBlank = true) => (
+    <div style={S.field}>
+      <Input as="select" label={label} error={fieldErrors[key]} value={form[key] ?? ''} onChange={(e) => set(key, e.target.value)}>
+        {withBlank && <option value="">— Not specified —</option>}
+        {options.map((o) => (
+          <option key={typeof o === 'string' ? o : o.value} value={typeof o === 'string' ? o : o.value}>
+            {typeof o === 'string' ? o : o.label}
+          </option>
+        ))}
+      </Input>
+      <Hint>{hint}</Hint>
+    </div>
   );
 
   return (
-    <div style={S.page}>
-      {toast && <div style={S.toastWrap}>{toast}</div>}
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+      <div style={S.page}>
+        {toast && <div style={S.toastWrap}>{toast}</div>}
 
-      <button style={S.back} onClick={() => navigate(`/airlines/${id}`)}>
-        ← Back to {airline.name}
-      </button>
+        <button style={S.back} onClick={() => navigate(`/airlines/${id}`)}>
+          ← Back to {airline.name}
+        </button>
 
-      <div style={S.title}>Suggest an edit — {airline.name}</div>
-      <div style={S.sub}>
-        Only fields you change will be submitted. All contributions are reviewed before going live.
-      </div>
-
-      {pending.length > 0 && (
-        <div style={S.banner}>
-          <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="9" cy="9" r="7.5"/><line x1="9" y1="6" x2="9" y2="9.5"/><circle cx="9" cy="12.5" r="0.75" fill="currentColor" stroke="none"/>
-          </svg>
-          You have a pending edit for this airline awaiting review. You can still submit additional edits.
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-
-        {/* Operations */}
-        <div style={S.section}>
-          <div style={S.sectionTitle}>Operations</div>
-
-          <Field label="Headquarters" hint="City or country where the airline's main HQ is located." error={fieldErrors.headquarters}>
-            {inp('headquarters', { placeholder: 'e.g. Dublin, Ireland' })}
-          </Field>
-
-          <Field label="Description" hint="A short factual overview of the airline — fleet size, routes, market position." error={fieldErrors.description}>
-            {ta('description', 4)}
-          </Field>
-
-          <Field label="Fleet" hint="One aircraft type per line, e.g. Boeing 737-800" error={fieldErrors.fleet}>
-            {ta('fleet', 4)}
-          </Field>
-
-          <Field label="Bases" hint="One base (airport IATA code or city) per line, e.g. DUB" error={fieldErrors.bases}>
-            {ta('bases', 3)}
-          </Field>
-
-          <Field label="Contract Type" hint="The primary type of employment contract offered." error={fieldErrors.contractType}>
-            {sel('contractType', CONTRACT_TYPES)}
-          </Field>
-
-          <Field label="Roster Pattern" hint='How the duty/off cycle typically works, e.g. "5 on / 4 off".' error={fieldErrors.rosterPattern}>
-            {inp('rosterPattern', { placeholder: 'e.g. 5 on / 4 off' })}
-          </Field>
-
-          <Field label="Work Auth Required" hint="One country or region per line where work authorisation is required to be considered." error={fieldErrors.workAuthRequired}>
-            {ta('workAuthRequired', 3)}
-          </Field>
-
-          <Field label="Region" hint="The geographic region this airline operates from." error={fieldErrors.region}>
-            {sel('region', REGIONS, false)}
-          </Field>
+        <div style={S.title}>Suggest an edit — {airline.name}</div>
+        <div style={S.sub}>
+          Only fields you change will be submitted. All contributions are reviewed before going live.
         </div>
 
-        {/* Compensation */}
-        <div style={S.section}>
-          <div style={S.sectionTitle}>Compensation</div>
-          <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 14 }}>
-            Enter the pay range you know about. Leave blank for fields you don't know.
+        {pending.length > 0 && (
+          <div style={S.banner}>
+            <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="9" r="7.5"/><line x1="9" y1="6" x2="9" y2="9.5"/><circle cx="9" cy="12.5" r="0.75" fill="currentColor" stroke="none"/>
+            </svg>
+            You have a pending edit for this airline awaiting review. You can still submit additional edits.
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+
+          {/* Operations */}
+          <div style={S.section}>
+            <div style={S.sectionTitle}>Operations</div>
+            {inp('headquarters', 'Headquarters', "City or country where the airline's main HQ is located.", { placeholder: 'e.g. Dublin, Ireland' })}
+            {ta('description', 'Description', 'A short factual overview of the airline — fleet size, routes, market position.', 4)}
+            {ta('fleet', 'Fleet', 'One aircraft type per line, e.g. Boeing 737-800', 4)}
+            {ta('bases', 'Bases', 'One base (airport IATA code or city) per line, e.g. DUB', 3)}
+            {sel('contractType', 'Contract Type', 'The primary type of employment contract offered.', CONTRACT_TYPES)}
+            {inp('rosterPattern', 'Roster Pattern', 'How the duty/off cycle typically works, e.g. "5 on / 4 off".', { placeholder: 'e.g. 5 on / 4 off' })}
+            {ta('workAuthRequired', 'Work Auth Required', 'One country or region per line where work authorisation is required to be considered.', 3)}
+            {sel('region', 'Region', 'The geographic region this airline operates from.', REGIONS, false)}
           </div>
 
-          <Field label="Captain — Min / Max" hint="Gross annual salary range (or monthly — set Period accordingly)." error={fieldErrors.captainMin || fieldErrors.captainMax}>
-            <div style={S.payGrid}>
-              <input style={S.input(fieldErrors.captainMin)} value={form.captainMin ?? ''} onChange={(e) => set('captainMin', e.target.value)} placeholder="Min (e.g. 90000)" type="number" min="0" />
-              <input style={S.input(fieldErrors.captainMax)} value={form.captainMax ?? ''} onChange={(e) => set('captainMax', e.target.value)} placeholder="Max (e.g. 150000)" type="number" min="0" />
+          {/* Compensation */}
+          <div style={S.section}>
+            <div style={S.sectionTitle}>Compensation</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
+              Enter the pay range you know about. Leave blank for fields you don't know.
             </div>
-          </Field>
 
-          <Field label="Captain — Currency / Period" error={null}>
-            <div style={S.payGrid}>
-              <input style={S.input(null)} value={form.captainCurrency ?? ''} onChange={(e) => set('captainCurrency', e.target.value)} placeholder="Currency (e.g. EUR)" maxLength={4} />
-              <input style={S.input(null)} value={form.captainPeriod ?? ''}   onChange={(e) => set('captainPeriod', e.target.value)}   placeholder="Period (e.g. year)" />
+            <div style={S.field}>
+              <label style={S.label}>Captain — Min / Max</label>
+              <div style={S.payGrid}>
+                <Input error={fieldErrors.captainMin} value={form.captainMin ?? ''} onChange={(e) => set('captainMin', e.target.value)} placeholder="Min (e.g. 90000)" type="number" min="0" />
+                <Input error={fieldErrors.captainMax} value={form.captainMax ?? ''} onChange={(e) => set('captainMax', e.target.value)} placeholder="Max (e.g. 150000)" type="number" min="0" />
+              </div>
+              <Hint>Gross annual salary range (or monthly — set Period accordingly).</Hint>
             </div>
-          </Field>
 
-          <Field label="First Officer — Min / Max" hint="Gross salary range for FO." error={fieldErrors.foMin || fieldErrors.foMax}>
-            <div style={S.payGrid}>
-              <input style={S.input(fieldErrors.foMin)} value={form.foMin ?? ''} onChange={(e) => set('foMin', e.target.value)} placeholder="Min" type="number" min="0" />
-              <input style={S.input(fieldErrors.foMax)} value={form.foMax ?? ''} onChange={(e) => set('foMax', e.target.value)} placeholder="Max" type="number" min="0" />
+            <div style={S.field}>
+              <label style={S.label}>Captain — Currency / Period</label>
+              <div style={S.payGrid}>
+                <Input value={form.captainCurrency ?? ''} onChange={(e) => set('captainCurrency', e.target.value)} placeholder="Currency (e.g. EUR)" maxLength={4} />
+                <Input value={form.captainPeriod ?? ''} onChange={(e) => set('captainPeriod', e.target.value)} placeholder="Period (e.g. year)" />
+              </div>
             </div>
-          </Field>
 
-          <Field label="First Officer — Currency / Period" error={null}>
-            <div style={S.payGrid}>
-              <input style={S.input(null)} value={form.foCurrency ?? ''} onChange={(e) => set('foCurrency', e.target.value)} placeholder="Currency (e.g. EUR)" maxLength={4} />
-              <input style={S.input(null)} value={form.foPeriod ?? ''}   onChange={(e) => set('foPeriod', e.target.value)}   placeholder="Period (e.g. year)" />
+            <div style={S.field}>
+              <label style={S.label}>First Officer — Min / Max</label>
+              <div style={S.payGrid}>
+                <Input error={fieldErrors.foMin} value={form.foMin ?? ''} onChange={(e) => set('foMin', e.target.value)} placeholder="Min" type="number" min="0" />
+                <Input error={fieldErrors.foMax} value={form.foMax ?? ''} onChange={(e) => set('foMax', e.target.value)} placeholder="Max" type="number" min="0" />
+              </div>
+              <Hint>Gross salary range for FO.</Hint>
             </div>
-          </Field>
-        </div>
 
-        {/* Career */}
-        <div style={S.section}>
-          <div style={S.sectionTitle}>Career</div>
+            <div style={S.field}>
+              <label style={S.label}>First Officer — Currency / Period</label>
+              <div style={S.payGrid}>
+                <Input value={form.foCurrency ?? ''} onChange={(e) => set('foCurrency', e.target.value)} placeholder="Currency (e.g. EUR)" maxLength={4} />
+                <Input value={form.foPeriod ?? ''} onChange={(e) => set('foPeriod', e.target.value)} placeholder="Period (e.g. year)" />
+              </div>
+            </div>
+          </div>
 
-          <Field label="Hiring Status" hint="Is the airline actively recruiting pilots right now?" error={fieldErrors.hiringStatus}>
-            {sel('hiringStatus', HIRING_STATUSES)}
-          </Field>
+          {/* Career */}
+          <div style={S.section}>
+            <div style={S.sectionTitle}>Career</div>
+            {sel('hiringStatus', 'Hiring Status', 'Is the airline actively recruiting pilots right now?', HIRING_STATUSES)}
+            {sel('hiringFrequency', 'Hiring Frequency', 'How often does the airline open pilot recruitment cycles?', HIRING_FREQUENCIES)}
+            {inp('upgradeTimeMinYears', 'Upgrade Min Years', 'Minimum number of years typically required before upgrade to Captain.', { type: 'number', min: '0', step: '0.5', placeholder: 'e.g. 3' })}
+            {inp('upgradeTimeMaxYears', 'Upgrade Max Years', 'Maximum years before upgrade (typical ceiling).', { type: 'number', min: '0', step: '0.5', placeholder: 'e.g. 7' })}
+          </div>
 
-          <Field label="Hiring Frequency" hint="How often does the airline open pilot recruitment cycles?" error={fieldErrors.hiringFrequency}>
-            {sel('hiringFrequency', HIRING_FREQUENCIES)}
-          </Field>
+          {/* Application Process */}
+          <div style={S.section}>
+            <div style={S.sectionTitle}>Application Process</div>
+            {inp('avgResponseDays', 'Avg Response Days', 'How many days did your application take to get a first response?', { type: 'number', min: '0', placeholder: 'e.g. 14' })}
+            {ta('interviewStages', 'Interview Stages', 'List each stage on a new line, in order, e.g. HR screen, Technical sim, Medical.', 4)}
+            {inp('simType', 'Sim Type', 'The simulator aircraft/model used in the type rating or selection process.', { placeholder: 'e.g. Boeing 737 Full Flight Sim Level D' })}
+          </div>
 
-          <Field label="Upgrade Min Years" hint="Minimum number of years typically required before upgrade to Captain." error={fieldErrors.upgradeTimeMinYears}>
-            {inp('upgradeTimeMinYears', { type: 'number', min: '0', step: '0.5', placeholder: 'e.g. 3' })}
-          </Field>
+          {/* Notes */}
+          <div style={S.section}>
+            <div style={S.sectionTitle}>Notes</div>
+            {ta('notes', 'General Notes', "Anything useful for fellow pilots that doesn't fit the above sections — culture, pay structure quirks, seniority system, etc.", 5)}
+          </div>
 
-          <Field label="Upgrade Max Years" hint="Maximum years before upgrade (typical ceiling)." error={fieldErrors.upgradeTimeMaxYears}>
-            {inp('upgradeTimeMaxYears', { type: 'number', min: '0', step: '0.5', placeholder: 'e.g. 7' })}
-          </Field>
-        </div>
-
-        {/* Application Process */}
-        <div style={S.section}>
-          <div style={S.sectionTitle}>Application Process</div>
-
-          <Field label="Avg Response Days" hint="How many days did your application take to get a first response?" error={fieldErrors.avgResponseDays}>
-            {inp('avgResponseDays', { type: 'number', min: '0', placeholder: 'e.g. 14' })}
-          </Field>
-
-          <Field label="Interview Stages" hint="List each stage on a new line, in order, e.g. HR screen, Technical sim, Medical." error={fieldErrors.interviewStages}>
-            {ta('interviewStages', 4)}
-          </Field>
-
-          <Field label="Sim Type" hint="The simulator aircraft/model used in the type rating or selection process." error={fieldErrors.simType}>
-            {inp('simType', { placeholder: 'e.g. Boeing 737 Full Flight Sim Level D' })}
-          </Field>
-        </div>
-
-        {/* Notes */}
-        <div style={S.section}>
-          <div style={S.sectionTitle}>Notes</div>
-          <Field label="General Notes" hint="Anything useful for fellow pilots that doesn't fit the above sections — culture, pay structure quirks, seniority system, etc." error={fieldErrors.notes}>
-            {ta('notes', 5)}
-          </Field>
-        </div>
-
-        <div style={S.submitRow}>
-          <button type="button" style={S.cancelBtn} onClick={() => navigate(`/airlines/${id}`)}>
-            Cancel
-          </button>
-          <button type="submit" style={S.submitBtn(submitting)} disabled={submitting}>
-            {submitting ? 'Submitting…' : 'Submit contribution'}
-          </button>
-        </div>
-      </form>
-    </div>
+          <div style={S.submitRow}>
+            <Button type="button" variant="secondary" onClick={() => navigate(`/airlines/${id}`)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Submitting…' : 'Submit contribution'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </LightPage>
   );
 }
