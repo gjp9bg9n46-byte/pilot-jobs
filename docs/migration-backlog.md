@@ -90,6 +90,27 @@ deferred so each phase stays presentation-only and tightly scoped.
   all three verbatim (presentation-only) and did NOT fix them. Name, frequency,
   pause/resume, and delete work correctly; only the `filters` plumbing is broken.
 
+## Airlines (Phase 12 / 12.1) — pre-existing, do NOT fix this phase
+
+- **AirlineDetail "Open jobs at X" link is inert.** It navigates to
+  `/jobs?q=<airline name>`, but Jobs reads its search from local state and never
+  parses the query string (see the "No URL-state sync for Jobs filters" item
+  above) — so the link lands on an *unfiltered* Jobs list. Fix is the same
+  URL-state-sync work already queued for Jobs.
+
+- **Airlines list search has no debounce.** `q` is a `fetchAirlines` dependency,
+  so every keystroke fires a `GET /airlines` request. Add debounce.
+
+- **`DELETE /auth/account` returns 500 when the pilot has airline
+  contributions.** Discovered during Phase 12.1 verification: after a pilot
+  submits an airline contribution, `authController.deleteAccount`'s hard
+  `prisma.pilot.delete()` fails on a foreign-key constraint (the
+  `AirlineContribution` relation has no `onDelete: Cascade`), returning 500 and
+  orphaning the account. Pilots with flight logs / saved searches / alerts delete
+  fine (those cascade), so only the contributions relation is missing the rule.
+  Pre-existing, unrelated to migration. (Compounds the earlier missing-password
+  500 already logged.)
+
 ## Settings notification preferences (product + backend)
 
 - **`PUT /api/.../preferences` 500 — schema mismatch.** Open since Phase 6
