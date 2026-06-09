@@ -73,6 +73,23 @@ deferred so each phase stays presentation-only and tightly scoped.
   both pages (2 consumers). Per the "extract at 3+ consumers" rule, keep
   page-local for now; dedupe to a shared primitive/component at a 3rd consumer.
 
+- **Saved-search create/display/edit schema mismatch (pre-existing; feature
+  broken).** Discovered during Phase 11 verification. The backend stores filters
+  nested as `{ name, filters: { authority, aircraftType }, frequency }`, but the
+  frontend `SavedSearchModal`/`SavedSearchesTab`:
+  (1) **Create** posts flat `{ name, frequency, authority, aircraftType }` →
+      backend returns **400 "name and filters are required"**, so creating a
+      saved search from the UI has never worked.
+  (2) **Display** reads `s.authority` / `s.aircraftType` (always `undefined` —
+      data lives under `s.filters.*`), so the authority/aircraft meta chips
+      never render.
+  (3) **Edit** initialises the form from `initial.authority` / `initial.aircraftType`
+      (also `undefined`), so editing loses the filters.
+  Fix = align the frontend to the `{ name, filters: {...}, frequency }` envelope
+  (create payload, row display, edit prefill). The Phase-11 migration preserved
+  all three verbatim (presentation-only) and did NOT fix them. Name, frequency,
+  pause/resume, and delete work correctly; only the `filters` plumbing is broken.
+
 ## Settings notification preferences (product + backend)
 
 - **`PUT /api/.../preferences` 500 — schema mismatch.** Open since Phase 6
