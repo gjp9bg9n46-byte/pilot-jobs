@@ -53,3 +53,38 @@ deferred so each phase stays presentation-only and tightly scoped.
   mirrors the server-side `qualifiedOnly` filter in `jobController.getJobs`.
   They must stay in sync by hand (already flagged in an in-file comment). Drift
   risk — long-term, compute server-side and return in the API response.
+
+## Alerts page (Phase 11) — pre-existing, do NOT fix this phase
+
+- **`triggerMatch()` fires on every Alerts mount.** `Alerts` POSTs
+  `/jobs/alerts/run-match` once per mount (the `matchTriggered` ref resets on
+  every navigation/remount), so opening Alerts re-runs matching each visit.
+  Potentially expensive — consider debouncing or server-side scheduling.
+
+- **Matches `savedMap` never hydrated from server.** `MatchesTab` inits
+  `savedMap` all-false and never reads each alert's real saved state, so the
+  PlaneSave toggle is optimistic-only — save state does not survive reload.
+
+- **Saved-search response-shape uncertainty.** `SavedSearchesTab` reads
+  `data.searches ?? data ?? []`, guessing the API envelope. Confirm the
+  `/jobs/saved-searches` GET contract and pin the frontend to it.
+
+- **`PlaneSave` duplicated (Jobs + Alerts).** Byte-identical copies now live in
+  both pages (2 consumers). Per the "extract at 3+ consumers" rule, keep
+  page-local for now; dedupe to a shared primitive/component at a 3rd consumer.
+
+## Settings notification preferences (product + backend)
+
+- **`PUT /api/.../preferences` 500 — schema mismatch.** Open since Phase 6
+  (also tracked in memory `settings-double-api-bugs`). Not fixed during
+  migration.
+
+- **PRODUCT DECISION — alert cadence model (`frequency` ↔ `alertDigest`).**
+  Consolidated into this Settings-preferences ticket (per Phase 11). Alerts'
+  saved-search rules carry a per-rule `frequency` (INSTANT/DAILY/WEEKLY) while
+  Settings' Notifications card has a single global `alertDigest` email toggle.
+  No control is duplicated today, but the two models are conceptually adjacent:
+  a global digest channel vs per-rule cadence. Product should decide whether
+  these unify (e.g. per-rule cadence drives digest batching, or a global
+  cadence with per-rule overrides) before the notification system grows.
+  Migration changed neither; logged for product review.
