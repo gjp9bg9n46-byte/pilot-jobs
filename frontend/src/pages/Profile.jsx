@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { profileApi } from '../services/api';
 import AircraftCombobox from '../components/AircraftCombobox';
+import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 
 const LICENCE_TYPES = [
   { value: 'ATPL', label: 'ATPL — Airline Transport Pilot' },
@@ -73,6 +74,11 @@ const ENGLISH_LEVELS = [
   { value: 'Level 6', label: 'Level 6' },
 ];
 
+// Semantic status colors remapped to light-AA shades (meaning preserved):
+//   dark #2ECC71 → #166534 (ok/valid), #F0A500 / #F39C12 → #92400E (warn),
+//   #FF4757 → #991B1B (expired/danger). Matches the Badge primitive palette.
+const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
+
 // Returns the most-used issuing authority from the pilot's existing certificates,
 // falling back to FAA when the profile has none yet.
 function defaultAuthority(profile) {
@@ -85,47 +91,16 @@ function defaultAuthority(profile) {
 
 const css = {
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24, alignItems: 'start' },
-  card: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 28, marginBottom: 0 },
-  cardFull: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 28, marginBottom: 24 },
   cardHeader: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 },
-  cardIcon: { fontSize: 22 },
-  cardTitle: { fontSize: 17, fontWeight: 700, color: '#fff' },
-  cardSubtitle: { fontSize: 12, color: '#4A6080', marginTop: 2 },
-  item: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '12px 0', borderBottom: '1px solid #1B2B4B',
-  },
-  itemTitle: { fontSize: 14, fontWeight: 600, color: '#fff' },
-  itemSub: { fontSize: 12, color: '#7A8CA0', marginTop: 3 },
-  deleteBtn: { background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer', padding: 4, display: 'inline-flex', alignItems: 'center' },
-  addBtn: {
-    background: 'transparent', border: '1px dashed #243050', borderRadius: 8,
-    padding: '10px 0', width: '100%', color: '#00B4D8', fontWeight: 600,
-    fontSize: 13, cursor: 'pointer', marginTop: 14, transition: 'border-color 0.15s',
-  },
-  emptyNote: { color: '#4A6080', fontSize: 13, fontStyle: 'italic', marginBottom: 6 },
-  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#7A8CA0', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 },
-  input: {
-    width: '100%', background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
-  },
-  select: {
-    width: '100%', background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none', cursor: 'pointer', boxSizing: 'border-box',
-  },
+  cardTitle: { fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)' },
+  cardSubtitle: { fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 },
+  item: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' },
+  itemTitle: { fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' },
+  itemSub: { fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 },
+  emptyNote: { color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic', marginBottom: 6 },
   formRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 14 },
-  saveBtn: {
-    background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none',
-    borderRadius: 8, padding: '11px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-  },
-  cancelBtn: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8,
-    padding: '11px 18px', color: '#7A8CA0', fontWeight: 600, fontSize: 14, cursor: 'pointer', marginRight: 10,
-  },
-  successNote: {
-    background: '#0D2B1A', border: '1px solid #1A4A2A', borderRadius: 8,
-    padding: '10px 14px', color: '#2ECC71', fontSize: 13, marginTop: 12,
-  },
+  addPanel: { marginTop: 14, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 },
+  fieldErr: { color: SEM.red, fontSize: 12, marginTop: 6 },
 };
 
 function daysUntil(dateStr) {
@@ -137,9 +112,9 @@ function daysUntil(dateStr) {
 function ExpiryBadge({ dateStr }) {
   const days = daysUntil(dateStr);
   if (days === null) return null;
-  if (days < 0) return <span style={{ color: '#FF4757', fontSize: 12, fontWeight: 600 }}> · Expired</span>;
-  if (days < 30) return <span style={{ color: '#FF4757', fontSize: 12, fontWeight: 600 }}> · Expires in {days}d</span>;
-  if (days < 90) return <span style={{ color: '#F0A500', fontSize: 12, fontWeight: 600 }}> · Expires in {days}d</span>;
+  if (days < 0) return <span style={{ color: SEM.red, fontSize: 12, fontWeight: 600 }}> · Expired</span>;
+  if (days < 30) return <span style={{ color: SEM.red, fontSize: 12, fontWeight: 600 }}> · Expires in {days}d</span>;
+  if (days < 90) return <span style={{ color: SEM.amber, fontSize: 12, fontWeight: 600 }}> · Expires in {days}d</span>;
   return null;
 }
 
@@ -172,11 +147,28 @@ function useSave() {
 }
 
 function SaveStatus({ saving, savedAt, error }) {
-  if (saving) return <span style={{ color: '#7A8CA0', fontSize: 13 }}>Saving…</span>;
-  if (savedAt) return <span style={{ color: '#2ECC71', fontSize: 13, fontWeight: 600 }}>✓ Saved {savedAt}</span>;
-  if (error) return <span style={{ color: '#FF4757', fontSize: 13, fontWeight: 600 }}>⚠ Save failed — try again</span>;
+  if (saving) return <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Saving…</span>;
+  if (savedAt) return <span style={{ color: SEM.green, fontSize: 13, fontWeight: 600 }}>✓ Saved {savedAt}</span>;
+  if (error) return <span style={{ color: SEM.red, fontSize: 13, fontWeight: 600 }}>⚠ Save failed — try again</span>;
   return null;
 }
+
+// Dashed "add row" affordance (kept distinct from <Button> per design decision).
+function AddButton({ children, onClick }) {
+  const [h, setH] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setH(true)}
+      onMouseLeave={() => setH(false)}
+      style={{ width: '100%', marginTop: 14, padding: '10px 0', borderRadius: 8, border: `1px dashed ${h ? 'var(--accent)' : 'var(--border)'}`, background: 'rgba(0,63,136,0.04)', color: 'var(--accent)', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'border-color 0.15s ease' }}
+    >
+      {children}
+    </button>
+  );
+}
+
+const formActions = { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' };
 
 function FlightTotalsCard({ totals }) {
   const stats = [
@@ -192,43 +184,37 @@ function FlightTotalsCard({ totals }) {
   const allZero = !totals || stats.every((s) => !totals[s.key] || totals[s.key] === 0);
 
   return (
-    <div style={css.cardFull}>
+    <Card style={{ padding: 28, marginBottom: 24 }}>
       <div style={css.cardHeader}>
-        <BarChart2 size={22} color="#00B4D8" />
+        <BarChart2 size={22} style={{ color: 'var(--accent)' }} />
         <div>
           <div style={css.cardTitle}>Flight Experience Totals</div>
           <div style={css.cardSubtitle}>Aggregated from your logbook</div>
         </div>
       </div>
       {allZero ? (
-        <div style={{ color: '#7A8CA0', fontSize: 13, fontStyle: 'italic' }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic' }}>
           Log flights in your logbook to see your totals here.
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 12 }}>
           {stats.map(({ key, label }) => (
-            <div
-              key={key}
-              style={{
-                background: '#0A1628', border: '1px solid #1E3050', borderRadius: 10,
-                padding: '14px 10px', textAlign: 'center',
-              }}
-            >
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#00B4D8', lineHeight: 1.1 }}>
+            <div key={key} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 10px', textAlign: 'center' }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)', lineHeight: 1.1 }}>
                 {totals?.[key] ?? 0}
               </div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#7A8CA0', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 5 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 5 }}>
                 {label}
               </div>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
-function LicencesCard({ profile, setProfile }) {
+function LicencesCard({ profile, setProfile, confirmDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     type: 'ATPL',
@@ -255,9 +241,9 @@ function LicencesCard({ profile, setProfile }) {
   });
 
   return (
-    <div style={css.card}>
+    <Card style={{ padding: 28 }}>
       <div style={css.cardHeader}>
-        <FileText size={22} color="#00B4D8" />
+        <FileText size={22} style={{ color: 'var(--accent)' }} />
         <div>
           <div style={css.cardTitle}>My Pilot Licences</div>
           <div style={css.cardSubtitle}>Add every licence you hold</div>
@@ -270,7 +256,7 @@ function LicencesCard({ profile, setProfile }) {
         const lic = LICENCE_TYPES.find((l) => l.value === cert.type);
         const auth = AUTHORITIES.find((a) => a.value === cert.issuingAuthority);
         const days = daysUntil(cert.expiryDate);
-        const expiryColor = days !== null && days < 90 ? (days < 0 ? '#FF4757' : days < 30 ? '#FF4757' : '#F0A500') : null;
+        const expiryColor = days !== null && days < 90 ? (days < 0 ? SEM.red : days < 30 ? SEM.red : SEM.amber) : null;
         return (
           <div key={cert.id} style={css.item}>
             <div>
@@ -279,19 +265,17 @@ function LicencesCard({ profile, setProfile }) {
                 {auth?.label || cert.issuingAuthority}
                 {cert.certificateNumber && <span> · #{cert.certificateNumber}</span>}
                 {cert.expiryDate && (
-                  <span style={{ color: expiryColor || '#7A8CA0' }}>
+                  <span style={{ color: expiryColor || 'var(--text-secondary)' }}>
                     {' · Exp '}{new Date(cert.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     {expiryColor && <ExpiryBadge dateStr={cert.expiryDate} />}
                   </span>
                 )}
-
               </div>
             </div>
-            <button style={css.deleteBtn} onClick={async () => {
-              if (!window.confirm('Remove this licence?')) return;
+            <Button variant="ghost" style={{ padding: 6, color: SEM.red }} onClick={() => confirmDelete('licence', async () => {
               await profileApi.deleteCertificate(cert.id);
               setProfile((p) => ({ ...p, certificates: p.certificates.filter((c) => c.id !== cert.id) }));
-            }}><Trash2 size={15} /></button>
+            })}><Trash2 size={15} /></Button>
           </div>
         );
       })}
@@ -299,60 +283,42 @@ function LicencesCard({ profile, setProfile }) {
       {!showForm
         ? (
           <>
-            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add a licence</button>
+            <AddButton onClick={() => setShowForm(true)}>+ Add a licence</AddButton>
             <SaveStatus saving={saving} savedAt={savedAt} error={error} />
           </>
         )
         : (
-          <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+          <div style={css.addPanel}>
             <div style={css.formRow}>
+              <Input as="select" label="Licence type" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
+                <SelectOptions options={LICENCE_TYPES} />
+              </Input>
               <div>
-                <label style={css.label}>Licence type</label>
-                <select style={css.select} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
-                  <SelectOptions options={LICENCE_TYPES} />
-                </select>
-              </div>
-              <div>
-                <label style={css.label}>Issuing authority</label>
-                <select style={css.select} value={form.authority} onChange={(e) => setForm((f) => ({ ...f, authority: e.target.value, authorityOther: '' }))}>
+                <Input as="select" label="Issuing authority" value={form.authority} onChange={(e) => setForm((f) => ({ ...f, authority: e.target.value, authorityOther: '' }))}>
                   <SelectOptions options={AUTHORITIES} />
-                </select>
+                </Input>
                 {form.authority === 'Other' && (
-                  <input
-                    style={{ ...css.input, marginTop: 8 }}
-                    value={form.authorityOther}
-                    onChange={(e) => setForm((f) => ({ ...f, authorityOther: e.target.value }))}
-                    placeholder="Enter authority name"
-                  />
+                  <div style={{ marginTop: 8 }}>
+                    <Input value={form.authorityOther} onChange={(e) => setForm((f) => ({ ...f, authorityOther: e.target.value }))} placeholder="Enter authority name" />
+                  </div>
                 )}
               </div>
-              <div>
-                <label style={css.label}>Certificate Number</label>
-                <input style={css.input} value={form.certificateNumber} onChange={(e) => setForm((f) => ({ ...f, certificateNumber: e.target.value }))} placeholder="Optional" />
-              </div>
-              <div>
-                <label style={css.label}>Issue Date</label>
-                <input style={css.input} type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
-              </div>
-              <div>
-                <label style={css.label}>Expiry Date</label>
-                <input style={css.input} type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
-              </div>
+              <Input label="Certificate Number" value={form.certificateNumber} onChange={(e) => setForm((f) => ({ ...f, certificateNumber: e.target.value }))} placeholder="Optional" />
+              <Input label="Issue Date" type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
+              <Input label="Expiry Date" type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
-              <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+            <div style={formActions}>
+              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button onClick={handleAdd} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
               <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
-    </div>
+    </Card>
   );
 }
 
-function MedicalCard({ profile, setProfile }) {
+function MedicalCard({ profile, setProfile, confirmDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(() => ({
     medicalClass: 'CLASS_1',
@@ -360,10 +326,15 @@ function MedicalCard({ profile, setProfile }) {
     issueDate: '',
     expiryDate: '',
   }));
+  const [dateErr, setDateErr] = useState({});
   const { saving, savedAt, error, run } = useSave();
 
   const handleAdd = () => {
-    if (!form.issueDate || !form.expiryDate) return alert('Please enter both dates.');
+    if (!form.issueDate || !form.expiryDate) {
+      setDateErr({ issueDate: !form.issueDate ? 'Required' : undefined, expiryDate: !form.expiryDate ? 'Required' : undefined });
+      return;
+    }
+    setDateErr({});
     run(async () => {
       const { data } = await profileApi.addMedical({
         ...form,
@@ -376,9 +347,9 @@ function MedicalCard({ profile, setProfile }) {
   };
 
   return (
-    <div style={css.card}>
+    <Card style={{ padding: 28 }}>
       <div style={css.cardHeader}>
-        <Shield size={22} color="#00B4D8" />
+        <Shield size={22} style={{ color: 'var(--accent)' }} />
         <div>
           <div style={css.cardTitle}>Medical Certificate</div>
           <div style={css.cardSubtitle}>Required by most airlines</div>
@@ -396,16 +367,15 @@ function MedicalCard({ profile, setProfile }) {
             <div>
               <div style={css.itemTitle}>{mc?.label || med.medicalClass}</div>
               <div style={css.itemSub}>
-                <span style={{ color: expired ? '#FF4757' : '#2ECC71' }}>
+                <span style={{ color: expired ? SEM.red : SEM.green }}>
                   {expired ? '⚠ Expired' : 'Valid until'} {expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </div>
             </div>
-            <button style={css.deleteBtn} onClick={async () => {
-              if (!window.confirm('Remove this medical?')) return;
+            <Button variant="ghost" style={{ padding: 6, color: SEM.red }} onClick={() => confirmDelete('medical', async () => {
               await profileApi.deleteMedical(med.id);
               setProfile((p) => ({ ...p, medicals: p.medicals.filter((m) => m.id !== med.id) }));
-            }}><Trash2 size={15} /></button>
+            })}><Trash2 size={15} /></Button>
           </div>
         );
       })}
@@ -413,55 +383,43 @@ function MedicalCard({ profile, setProfile }) {
       {!showForm
         ? (
           <>
-            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add medical certificate</button>
+            <AddButton onClick={() => setShowForm(true)}>+ Add medical certificate</AddButton>
             <SaveStatus saving={saving} savedAt={savedAt} error={error} />
           </>
         )
         : (
-          <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+          <div style={css.addPanel}>
             <div style={css.formRow}>
-              <div>
-                <label style={css.label}>Medical class</label>
-                <select style={css.select} value={form.medicalClass} onChange={(e) => setForm((f) => ({ ...f, medicalClass: e.target.value }))}>
-                  <SelectOptions options={MEDICAL_CLASSES} />
-                </select>
-              </div>
-              <div>
-                <label style={css.label}>Issuing authority</label>
-                <select style={css.select} value={form.issuingAuthority} onChange={(e) => setForm((f) => ({ ...f, issuingAuthority: e.target.value }))}>
-                  <SelectOptions options={AUTHORITIES} />
-                </select>
-              </div>
-              <div>
-                <label style={css.label}>Issue date</label>
-                <input style={css.input} type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
-              </div>
-              <div>
-                <label style={css.label}>Expiry date</label>
-                <input style={css.input} type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
-              </div>
+              <Input as="select" label="Medical class" value={form.medicalClass} onChange={(e) => setForm((f) => ({ ...f, medicalClass: e.target.value }))}>
+                <SelectOptions options={MEDICAL_CLASSES} />
+              </Input>
+              <Input as="select" label="Issuing authority" value={form.issuingAuthority} onChange={(e) => setForm((f) => ({ ...f, issuingAuthority: e.target.value }))}>
+                <SelectOptions options={AUTHORITIES} />
+              </Input>
+              <Input label="Issue date" type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} error={dateErr.issueDate} />
+              <Input label="Expiry date" type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} error={dateErr.expiryDate} />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
-              <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+            <div style={formActions}>
+              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button onClick={handleAdd} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
               <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
-    </div>
+    </Card>
   );
 }
 
-function TypeRatingsCard({ profile, setProfile }) {
+function TypeRatingsCard({ profile, setProfile, confirmDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [aircraftType, setAircraftType] = useState('');
   const [hoursOnType, setHoursOnType] = useState('');
+  const [typeErr, setTypeErr] = useState(false);
   const { saving, savedAt, error, run } = useSave();
 
   const handleAdd = () => {
-    if (!aircraftType.trim()) return alert('Please enter an aircraft type.');
+    if (!aircraftType.trim()) { setTypeErr(true); return; }
+    setTypeErr(false);
     run(async () => {
       const { data } = await profileApi.addRating({
         aircraftType: aircraftType.toUpperCase(),
@@ -476,9 +434,9 @@ function TypeRatingsCard({ profile, setProfile }) {
   };
 
   return (
-    <div style={css.card}>
+    <Card style={{ padding: 28 }}>
       <div style={css.cardHeader}>
-        <Plane size={22} color="#00B4D8" />
+        <Plane size={22} style={{ color: 'var(--accent)' }} />
         <div>
           <div style={css.cardTitle}>Aircraft Type Ratings</div>
           <div style={css.cardSubtitle}>Aircraft you are rated to fly</div>
@@ -488,62 +446,56 @@ function TypeRatingsCard({ profile, setProfile }) {
       {(!profile?.ratings?.length) && <div style={css.emptyNote}>No type ratings added.</div>}
 
       {profile?.ratings?.map((r) => (
-          <div key={r.id} style={css.item}>
-            <div>
-              <div style={css.itemTitle}>
-                {r.aircraftType}
-                {r.issuingAuthority && <span style={{ color: '#7A8CA0', fontWeight: 400 }}> — {r.issuingAuthority}</span>}
-              </div>
-              {(r.capacity || r.hoursOnType > 0) && (
-                <div style={css.itemSub}>
-                  {r.capacity && <span>{r.capacity}</span>}
-                  {r.capacity && r.hoursOnType > 0 && <span> · </span>}
-                  {r.hoursOnType > 0 && <span style={{ color: '#00B4D8', fontWeight: 600 }}>{r.hoursOnType.toLocaleString()} hrs on type</span>}
-                </div>
-              )}
+        <div key={r.id} style={css.item}>
+          <div>
+            <div style={css.itemTitle}>
+              {r.aircraftType}
+              {r.issuingAuthority && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> — {r.issuingAuthority}</span>}
             </div>
-            <button style={css.deleteBtn} onClick={async () => {
-              if (!window.confirm('Remove this type rating?')) return;
-              await profileApi.deleteRating(r.id);
-              setProfile((p) => ({ ...p, ratings: p.ratings.filter((rt) => rt.id !== r.id) }));
-            }}><Trash2 size={15} /></button>
+            {(r.capacity || r.hoursOnType > 0) && (
+              <div style={css.itemSub}>
+                {r.capacity && <span>{r.capacity}</span>}
+                {r.capacity && r.hoursOnType > 0 && <span> · </span>}
+                {r.hoursOnType > 0 && <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{r.hoursOnType.toLocaleString()} hrs on type</span>}
+              </div>
+            )}
           </div>
-        )
-      )}
+          <Button variant="ghost" style={{ padding: 6, color: SEM.red }} onClick={() => confirmDelete('type rating', async () => {
+            await profileApi.deleteRating(r.id);
+            setProfile((p) => ({ ...p, ratings: p.ratings.filter((rt) => rt.id !== r.id) }));
+          })}><Trash2 size={15} /></Button>
+        </div>
+      ))}
 
       {!showForm
         ? (
           <>
-            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add type rating</button>
+            <AddButton onClick={() => setShowForm(true)}>+ Add type rating</AddButton>
             <SaveStatus saving={saving} savedAt={savedAt} error={error} />
           </>
         )
         : (
-          <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+          <div style={css.addPanel}>
             <div style={css.formRow}>
               <div>
-                <label style={css.label}>Aircraft type</label>
-                <AircraftCombobox value={aircraftType} onChange={setAircraftType} />
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Aircraft type</label>
+                <AircraftCombobox value={aircraftType} onChange={(v) => { setAircraftType(v); if (typeErr) setTypeErr(false); }} light inputStyle={typeErr ? { borderColor: SEM.red } : undefined} />
+                {typeErr && <div style={css.fieldErr}>Required</div>}
               </div>
-              <div>
-                <label style={css.label}>Hours on Type</label>
-                <input style={css.input} type="number" min="0" step="0.1" value={hoursOnType} onChange={(e) => setHoursOnType(e.target.value)} placeholder="0.0" />
-              </div>
+              <Input label="Hours on Type" type="number" min="0" step="0.1" value={hoursOnType} onChange={(e) => setHoursOnType(e.target.value)} placeholder="0.0" />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
-              <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+            <div style={formActions}>
+              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button onClick={handleAdd} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
               <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
-    </div>
+    </Card>
   );
 }
 
-function EnglishProficiencyCard() {
+function EnglishProficiencyCard({ confirmDelete }) {
   const [items, setItems] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ level: 'Level 4', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
@@ -561,18 +513,12 @@ function EnglishProficiencyCard() {
     setForm({ level: 'Level 4', endorsementNumber: '', issueDate: '', expiryDate: '', noExpiry: false });
   });
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this English proficiency record?')) return;
-    await profileApi.deleteELP(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  };
-
-  const levelColors = { 'Level 4': '#F39C12', 'Level 5': '#00B4D8', 'Level 6': '#2ECC71' };
+  const elpVariant = (level) => (level === 'Level 4' ? 'warning' : level === 'Level 5' ? 'info' : 'success');
 
   return (
-    <div style={{ ...css.cardFull, marginTop: 24 }}>
+    <Card style={{ padding: 28, marginTop: 24 }}>
       <div style={css.cardHeader}>
-        <MessageSquare size={22} color="#00B4D8" />
+        <MessageSquare size={22} style={{ color: 'var(--accent)' }} />
         <div>
           <div style={css.cardTitle}>English Language Proficiency</div>
           <div style={css.cardSubtitle}>ICAO ELP — required for all international operations</div>
@@ -583,86 +529,66 @@ function EnglishProficiencyCard() {
         <div style={css.emptyNote}>No ELP record added. ICAO Level 4 minimum is required by most airlines.</div>
       )}
 
-      {items.map((item) => {
-        const color = levelColors[item.level] || '#7A8CA0';
-        return (
-          <div key={item.id} style={css.item}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{
-                  background: `${color}20`, border: `1px solid ${color}40`,
-                  color, borderRadius: 6, padding: '3px 10px',
-                  fontSize: 13, fontWeight: 800,
-                }}>
-                  ICAO {item.level}
-                </span>
-                {item.level === 'Level 6' && (
-                  <span style={{ color: '#2ECC71', fontSize: 12, fontWeight: 700 }}>Expert — No expiry</span>
-                )}
-              </div>
-              <div style={{ ...css.itemSub, marginTop: 6 }}>
-                {item.endorsementNumber && `#${item.endorsementNumber}`}
-                {item.issueDate && ` · Issued ${new Date(item.issueDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`}
-                {item.expiryDate && <ExpiryBadge dateStr={item.expiryDate} />}
-                {item.noExpiry && item.level !== 'Level 6' && <span style={{ color: '#2ECC71', fontSize: 12, fontWeight: 600 }}> · No expiry</span>}
-              </div>
+      {items.map((item) => (
+        <div key={item.id} style={css.item}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Badge variant={elpVariant(item.level)}>ICAO {item.level}</Badge>
+              {item.level === 'Level 6' && (
+                <span style={{ color: SEM.green, fontSize: 12, fontWeight: 700 }}>Expert — No expiry</span>
+              )}
             </div>
-            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}><Trash2 size={15} /></button>
+            <div style={{ ...css.itemSub, marginTop: 6 }}>
+              {item.endorsementNumber && `#${item.endorsementNumber}`}
+              {item.issueDate && ` · Issued ${new Date(item.issueDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`}
+              {item.expiryDate && <ExpiryBadge dateStr={item.expiryDate} />}
+              {item.noExpiry && item.level !== 'Level 6' && <span style={{ color: SEM.green, fontSize: 12, fontWeight: 600 }}> · No expiry</span>}
+            </div>
           </div>
-        );
-      })}
+          <Button variant="ghost" style={{ padding: 6, color: SEM.red }} onClick={() => confirmDelete('ELP record', async () => {
+            await profileApi.deleteELP(item.id);
+            setItems((prev) => prev.filter((i) => i.id !== item.id));
+          })}><Trash2 size={15} /></Button>
+        </div>
+      ))}
 
       {!showForm ? (
         <>
-          <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add ELP record</button>
+          <AddButton onClick={() => setShowForm(true)}>+ Add ELP record</AddButton>
           <SaveStatus saving={saving} savedAt={savedAt} error={error} />
         </>
       ) : (
-        <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+        <div style={css.addPanel}>
           <div style={css.formRow}>
-            <div>
-              <label style={css.label}>Proficiency Level</label>
-              <select style={css.select} value={form.level} onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}>
-                <option value="Level 4">ICAO Level 4 — Operational</option>
-                <option value="Level 5">ICAO Level 5 — Extended</option>
-                <option value="Level 6">ICAO Level 6 — Expert (no expiry)</option>
-              </select>
-            </div>
-            <div>
-              <label style={css.label}>Endorsement / Certificate #</label>
-              <input style={css.input} value={form.endorsementNumber} onChange={(e) => setForm((f) => ({ ...f, endorsementNumber: e.target.value }))} placeholder="Optional" />
-            </div>
-            <div>
-              <label style={css.label}>Issue Date</label>
-              <input style={css.input} type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
-            </div>
+            <Input as="select" label="Proficiency Level" value={form.level} onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}>
+              <option value="Level 4">ICAO Level 4 — Operational</option>
+              <option value="Level 5">ICAO Level 5 — Extended</option>
+              <option value="Level 6">ICAO Level 6 — Expert (no expiry)</option>
+            </Input>
+            <Input label="Endorsement / Certificate #" value={form.endorsementNumber} onChange={(e) => setForm((f) => ({ ...f, endorsementNumber: e.target.value }))} placeholder="Optional" />
+            <Input label="Issue Date" type="date" value={form.issueDate} onChange={(e) => setForm((f) => ({ ...f, issueDate: e.target.value }))} />
             {form.level !== 'Level 6' && (
               <>
-                <div>
-                  <label style={css.label}>Expiry Date</label>
-                  <input style={{ ...css.input, opacity: form.noExpiry ? 0.4 : 1 }} type="date" value={form.expiryDate} disabled={form.noExpiry} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
-                </div>
+                <Input label="Expiry Date" type="date" value={form.expiryDate} disabled={form.noExpiry} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} style={{ opacity: form.noExpiry ? 0.4 : 1 }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 24 }}>
-                  <input type="checkbox" id="elpNoExpiry" checked={form.noExpiry} onChange={(e) => setForm((f) => ({ ...f, noExpiry: e.target.checked }))} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                  <label htmlFor="elpNoExpiry" style={{ color: '#C0CDE0', fontSize: 13, cursor: 'pointer' }}>No expiry</label>
+                  <input type="checkbox" id="elpNoExpiry" checked={form.noExpiry} onChange={(e) => setForm((f) => ({ ...f, noExpiry: e.target.checked }))} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent)' }} />
+                  <label htmlFor="elpNoExpiry" style={{ color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>No expiry</label>
                 </div>
               </>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
-            <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
-            <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
+          <div style={{ ...formActions, marginTop: 4 }}>
+            <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button onClick={handleAdd} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
             <SaveStatus saving={saving} savedAt={savedAt} error={error} />
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
-function RecurrentTrainingCard() {
+function RecurrentTrainingCard({ confirmDelete }) {
   const [items, setItems] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -672,6 +598,7 @@ function RecurrentTrainingCard() {
     expiryDate: '',
     remarks: '',
   });
+  const [dateErr, setDateErr] = useState(false);
   const { saving, savedAt, error, run } = useSave();
 
   useEffect(() => {
@@ -679,7 +606,8 @@ function RecurrentTrainingCard() {
   }, []);
 
   const handleAdd = () => {
-    if (!form.completionDate) return alert('Please enter a completion date.');
+    if (!form.completionDate) { setDateErr(true); return; }
+    setDateErr(false);
     run(async () => {
       const payload = {
         trainingType: form.trainingType,
@@ -695,16 +623,10 @@ function RecurrentTrainingCard() {
     });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this training record?')) return;
-    await profileApi.deleteRecurrent(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  };
-
   return (
-    <div style={{ ...css.cardFull, marginBottom: 24 }}>
+    <Card style={{ padding: 28, marginBottom: 24 }}>
       <div style={css.cardHeader}>
-        <RefreshCw size={22} color="#00B4D8" />
+        <RefreshCw size={22} style={{ color: 'var(--accent)' }} />
         <div>
           <div style={css.cardTitle}>Recurrent Training</div>
           <div style={css.cardSubtitle}>Track your mandatory recurrent training</div>
@@ -717,14 +639,7 @@ function RecurrentTrainingCard() {
 
       {items.map((item) => {
         const days = daysUntil(item.expiryDate);
-        const expiryWarningColor = days !== null && days < 0
-          ? '#FF4757'
-          : days !== null && days < 30
-            ? '#FF4757'
-            : days !== null && days < 90
-              ? '#F0A500'
-              : null;
-
+        const expiryWarningColor = days !== null && days < 0 ? SEM.red : days !== null && days < 30 ? SEM.red : days !== null && days < 90 ? SEM.amber : null;
         return (
           <div key={item.id} style={css.item}>
             <div>
@@ -740,14 +655,17 @@ function RecurrentTrainingCard() {
                 {item.provider && <span>{item.provider} · </span>}
                 Completed: {new Date(item.completionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 {item.expiryDate && (
-                  <span style={{ color: expiryWarningColor || '#7A8CA0' }}>
+                  <span style={{ color: expiryWarningColor || 'var(--text-secondary)' }}>
                     {' · Exp '}{new Date(item.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                 )}
                 {item.remarks && <span> · {item.remarks}</span>}
               </div>
             </div>
-            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}><Trash2 size={15} /></button>
+            <Button variant="ghost" style={{ padding: 6, color: SEM.red }} onClick={() => confirmDelete('recurrent training record', async () => {
+              await profileApi.deleteRecurrent(item.id);
+              setItems((prev) => prev.filter((i) => i.id !== item.id));
+            })}><Trash2 size={15} /></Button>
           </div>
         );
       })}
@@ -755,50 +673,35 @@ function RecurrentTrainingCard() {
       {!showForm
         ? (
           <>
-            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add recurrent training</button>
+            <AddButton onClick={() => setShowForm(true)}>+ Add recurrent training</AddButton>
             <SaveStatus saving={saving} savedAt={savedAt} error={error} />
           </>
         )
         : (
-          <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+          <div style={css.addPanel}>
             <div style={css.formRow}>
-              <div>
-                <label style={css.label}>Training Type</label>
-                <select style={css.select} value={form.trainingType} onChange={(e) => setForm((f) => ({ ...f, trainingType: e.target.value }))}>
-                  <SelectOptions options={RECURRENT_TYPES} />
-                </select>
-              </div>
-              <div>
-                <label style={css.label}>Provider</label>
-                <input style={css.input} value={form.provider} onChange={(e) => setForm((f) => ({ ...f, provider: e.target.value }))} placeholder="Training organisation" />
-              </div>
-              <div>
-                <label style={css.label}>Completion Date</label>
-                <input style={css.input} type="date" value={form.completionDate} onChange={(e) => setForm((f) => ({ ...f, completionDate: e.target.value }))} />
-              </div>
-              <div>
-                <label style={css.label}>Expiry Date (optional)</label>
-                <input style={css.input} type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
-              </div>
+              <Input as="select" label="Training Type" value={form.trainingType} onChange={(e) => setForm((f) => ({ ...f, trainingType: e.target.value }))}>
+                <SelectOptions options={RECURRENT_TYPES} />
+              </Input>
+              <Input label="Provider" value={form.provider} onChange={(e) => setForm((f) => ({ ...f, provider: e.target.value }))} placeholder="Training organisation" />
+              <Input label="Completion Date" type="date" value={form.completionDate} onChange={(e) => setForm((f) => ({ ...f, completionDate: e.target.value }))} error={dateErr ? 'Required' : undefined} />
+              <Input label="Expiry Date (optional)" type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={css.label}>Remarks</label>
-              <input style={css.input} value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))} placeholder="Optional notes" />
+              <Input label="Remarks" value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))} placeholder="Optional notes" />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
-              <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+            <div style={formActions}>
+              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button onClick={handleAdd} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
               <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
-    </div>
+    </Card>
   );
 }
 
-function RightToWorkCard() {
+function RightToWorkCard({ confirmDelete }) {
   const [items, setItems] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -808,6 +711,7 @@ function RightToWorkCard() {
     expiryDate: '',
     noExpiry: false,
   });
+  const [countryErr, setCountryErr] = useState(false);
   const { saving, savedAt, error, run } = useSave();
 
   useEffect(() => {
@@ -815,7 +719,8 @@ function RightToWorkCard() {
   }, []);
 
   const handleAdd = () => {
-    if (!form.country.trim()) return alert('Please enter a country.');
+    if (!form.country.trim()) { setCountryErr(true); return; }
+    setCountryErr(false);
     run(async () => {
       const payload = {
         country: form.country,
@@ -831,16 +736,10 @@ function RightToWorkCard() {
     });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this right-to-work document?')) return;
-    await profileApi.deleteRTW(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  };
-
   return (
-    <div style={css.cardFull}>
+    <Card style={{ padding: 28, marginBottom: 24 }}>
       <div style={css.cardHeader}>
-        <Globe size={22} color="#00B4D8" />
+        <Globe size={22} style={{ color: 'var(--accent)' }} />
         <div>
           <div style={css.cardTitle}>Right to Work</div>
           <div style={css.cardSubtitle}>Countries where you have the right to work</div>
@@ -853,14 +752,7 @@ function RightToWorkCard() {
 
       {items.map((item) => {
         const days = item.noExpiry ? null : daysUntil(item.expiryDate);
-        const expiryWarningColor = days !== null && days < 0
-          ? '#FF4757'
-          : days !== null && days < 30
-            ? '#FF4757'
-            : days !== null && days < 90
-              ? '#F0A500'
-              : null;
-
+        const expiryWarningColor = days !== null && days < 0 ? SEM.red : days !== null && days < 30 ? SEM.red : days !== null && days < 90 ? SEM.amber : null;
         return (
           <div key={item.id} style={css.item}>
             <div>
@@ -876,15 +768,18 @@ function RightToWorkCard() {
                 {item.documentType}
                 {item.documentNumber && <span> · #{item.documentNumber}</span>}
                 {item.noExpiry
-                  ? <span style={{ color: '#2ECC71' }}> · No expiry</span>
+                  ? <span style={{ color: SEM.green }}> · No expiry</span>
                   : item.expiryDate && (
-                    <span style={{ color: expiryWarningColor || '#7A8CA0' }}>
+                    <span style={{ color: expiryWarningColor || 'var(--text-secondary)' }}>
                       {' · Exp '}{new Date(item.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
                   )}
               </div>
             </div>
-            <button style={css.deleteBtn} onClick={() => handleDelete(item.id)}><Trash2 size={15} /></button>
+            <Button variant="ghost" style={{ padding: 6, color: SEM.red }} onClick={() => confirmDelete('right-to-work entry', async () => {
+              await profileApi.deleteRTW(item.id);
+              setItems((prev) => prev.filter((i) => i.id !== item.id));
+            })}><Trash2 size={15} /></Button>
           </div>
         );
       })}
@@ -892,58 +787,32 @@ function RightToWorkCard() {
       {!showForm
         ? (
           <>
-            <button style={css.addBtn} onClick={() => setShowForm(true)}>+ Add document</button>
+            <AddButton onClick={() => setShowForm(true)}>+ Add document</AddButton>
             <SaveStatus saving={saving} savedAt={savedAt} error={error} />
           </>
         )
         : (
-          <div style={{ marginTop: 14, background: '#0A2040', borderRadius: 10, padding: 16 }}>
+          <div style={css.addPanel}>
             <div style={css.formRow}>
-              <div>
-                <label style={css.label}>Country</label>
-                <input style={css.input} value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))} placeholder="e.g. United Arab Emirates" />
-              </div>
-              <div>
-                <label style={css.label}>Document Type</label>
-                <select style={css.select} value={form.documentType} onChange={(e) => setForm((f) => ({ ...f, documentType: e.target.value }))}>
-                  <SelectOptions options={RTW_DOC_TYPES} />
-                </select>
-              </div>
-              <div>
-                <label style={css.label}>Document Number (optional)</label>
-                <input style={css.input} value={form.documentNumber} onChange={(e) => setForm((f) => ({ ...f, documentNumber: e.target.value }))} placeholder="Optional" />
-              </div>
-              <div>
-                <label style={css.label}>Expiry Date (optional)</label>
-                <input
-                  style={{ ...css.input, opacity: form.noExpiry ? 0.4 : 1 }}
-                  type="date"
-                  value={form.expiryDate}
-                  disabled={form.noExpiry}
-                  onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))}
-                />
-              </div>
+              <Input label="Country" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))} placeholder="e.g. United Arab Emirates" error={countryErr ? 'Required' : undefined} />
+              <Input as="select" label="Document Type" value={form.documentType} onChange={(e) => setForm((f) => ({ ...f, documentType: e.target.value }))}>
+                <SelectOptions options={RTW_DOC_TYPES} />
+              </Input>
+              <Input label="Document Number (optional)" value={form.documentNumber} onChange={(e) => setForm((f) => ({ ...f, documentNumber: e.target.value }))} placeholder="Optional" />
+              <Input label="Expiry Date (optional)" type="date" value={form.expiryDate} disabled={form.noExpiry} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} style={{ opacity: form.noExpiry ? 0.4 : 1 }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <input
-                type="checkbox"
-                id="noExpiry"
-                checked={form.noExpiry}
-                onChange={(e) => setForm((f) => ({ ...f, noExpiry: e.target.checked, expiryDate: e.target.checked ? '' : f.expiryDate }))}
-                style={{ width: 16, height: 16, cursor: 'pointer' }}
-              />
-              <label htmlFor="noExpiry" style={{ color: '#C0CDE0', fontSize: 13, cursor: 'pointer' }}>No expiry</label>
+              <input type="checkbox" id="noExpiry" checked={form.noExpiry} onChange={(e) => setForm((f) => ({ ...f, noExpiry: e.target.checked, expiryDate: e.target.checked ? '' : f.expiryDate }))} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent)' }} />
+              <label htmlFor="noExpiry" style={{ color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>No expiry</label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button style={css.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
-              <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleAdd} disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+            <div style={formActions}>
+              <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button onClick={handleAdd} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
               <SaveStatus saving={saving} savedAt={savedAt} error={error} />
             </div>
           </div>
         )}
-    </div>
+    </Card>
   );
 }
 
@@ -954,7 +823,10 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [personalForm, setPersonalForm] = useState(null);
   const [savedSnapshot, setSavedSnapshot] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null); // { label, fn }
   const { saving: personalSaving, savedAt: personalSavedAt, error: personalError, run: personalRun } = useSave();
+
+  const confirmDelete = (label, fn) => setPendingDelete({ label, fn });
 
   useEffect(() => {
     Promise.all([
@@ -991,17 +863,20 @@ export default function Profile() {
     setSavedSnapshot({ ...personalForm });
   });
 
-  if (loading) return <div style={{ color: '#7A8CA0', textAlign: 'center', padding: 80 }}>Loading your profile...</div>;
+  if (loading) return <LightPage><div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: 80 }}>Loading your profile...</div></LightPage>;
 
   return (
-    <div>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Profile</h1>
+      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Your career record — keep it current.</p>
+
       {/* Flight Experience Totals */}
       <FlightTotalsCard totals={totals} />
 
       {/* Personal info */}
-      <div style={css.cardFull}>
+      <Card style={{ padding: 28, marginBottom: 24 }}>
         <div style={css.cardHeader}>
-          <User size={22} color="#00B4D8" />
+          <User size={22} style={{ color: 'var(--accent)' }} />
           <div>
             <div style={css.cardTitle}>Personal Information</div>
             <div style={css.cardSubtitle}>Basic details on your account</div>
@@ -1018,111 +893,80 @@ export default function Profile() {
                 { k: 'country',   label: 'Country' },
                 { k: 'city',      label: 'City' },
               ].map(({ k, label }) => (
-                <div key={k}>
-                  <label style={css.label}>{label}</label>
-                  <input
-                    style={css.input}
-                    value={personalForm[k] || ''}
-                    onChange={(e) => setPersonalForm((f) => ({ ...f, [k]: e.target.value }))}
-                    placeholder={label}
-                  />
-                </div>
+                <Input key={k} label={label} value={personalForm[k] || ''} onChange={(e) => setPersonalForm((f) => ({ ...f, [k]: e.target.value }))} placeholder={label} />
               ))}
-              <div>
-                <label style={css.label}>Education</label>
-                <select
-                  style={{ ...css.input, cursor: 'pointer' }}
-                  value={personalForm.education || ''}
-                  onChange={(e) => setPersonalForm((f) => ({ ...f, education: e.target.value || null }))}
-                >
-                  <option value="">Not specified</option>
-                  <option value="high_school">High School / GED</option>
-                  <option value="technical">Technical / Vocational</option>
-                  <option value="bachelor">Bachelor's Degree</option>
-                  <option value="masters">Master's Degree</option>
-                  <option value="doctorate">Doctorate</option>
-                </select>
-              </div>
-              <div>
-                <label style={css.label}>Role</label>
-                <select
-                  style={{ ...css.input, cursor: 'pointer' }}
-                  value={personalForm.role || ''}
-                  onChange={(e) => setPersonalForm((f) => ({ ...f, role: e.target.value || '' }))}
-                >
-                  <option value="">Not specified</option>
-                  <option value="FIRST_OFFICER">First Officer</option>
-                  <option value="CAPTAIN">Captain</option>
-                </select>
-              </div>
+              <Input as="select" label="Education" value={personalForm.education || ''} onChange={(e) => setPersonalForm((f) => ({ ...f, education: e.target.value || null }))}>
+                <option value="">Not specified</option>
+                <option value="high_school">High School / GED</option>
+                <option value="technical">Technical / Vocational</option>
+                <option value="bachelor">Bachelor's Degree</option>
+                <option value="masters">Master's Degree</option>
+                <option value="doctorate">Doctorate</option>
+              </Input>
+              <Input as="select" label="Role" value={personalForm.role || ''} onChange={(e) => setPersonalForm((f) => ({ ...f, role: e.target.value || '' }))}>
+                <option value="">Not specified</option>
+                <option value="FIRST_OFFICER">First Officer</option>
+                <option value="CAPTAIN">Captain</option>
+              </Input>
             </div>
 
             {/* Passport */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#4A6080', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 }}>
                 Passport
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
+                <Input label="Passport Number" value={personalForm.passportNumber || ''} onChange={(e) => setPersonalForm((f) => ({ ...f, passportNumber: e.target.value }))} placeholder="e.g. A12345678" />
                 <div>
-                  <label style={css.label}>Passport Number</label>
-                  <input
-                    style={css.input}
-                    value={personalForm.passportNumber || ''}
-                    onChange={(e) => setPersonalForm((f) => ({ ...f, passportNumber: e.target.value }))}
-                    placeholder="e.g. A12345678"
-                  />
-                </div>
-                <div>
-                  <label style={css.label}>Passport Expiry</label>
-                  <input
-                    type="date"
-                    style={css.input}
-                    value={personalForm.passportExpiry || ''}
-                    onChange={(e) => setPersonalForm((f) => ({ ...f, passportExpiry: e.target.value }))}
-                  />
-                  <div style={{ fontSize: 11, color: '#4A6080', marginTop: 4 }}>
-                    Used for expiry alerts
-                  </div>
+                  <Input label="Passport Expiry" type="date" value={personalForm.passportExpiry || ''} onChange={(e) => setPersonalForm((f) => ({ ...f, passportExpiry: e.target.value }))} />
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Used for expiry alerts</div>
                 </div>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <button
-                style={{ ...css.saveBtn, opacity: personalSaving ? 0.6 : 1 }}
-                onClick={savePersonal}
-                disabled={personalSaving}
-              >
+              <Button onClick={savePersonal} disabled={personalSaving}>
                 {personalSaving ? 'Saving...' : 'Save Changes'}
-              </button>
+              </Button>
               {isDirty && !personalSaving && (
-                <span style={{ color: '#F0A500', fontSize: 13, fontWeight: 600 }}>● Unsaved changes</span>
+                <span style={{ color: SEM.amber, fontSize: 13, fontWeight: 600 }}>● Unsaved changes</span>
               )}
               <SaveStatus saving={personalSaving} savedAt={personalSavedAt} error={personalError} />
             </div>
           </>
         )}
-      </div>
+      </Card>
 
       {/* Licences and Medical in a two-column grid */}
       <div style={css.grid}>
-        <LicencesCard profile={profile} setProfile={setProfile} />
-        <MedicalCard profile={profile} setProfile={setProfile} />
+        <LicencesCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />
+        <MedicalCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />
       </div>
 
       {/* Type Ratings */}
       <div style={{ marginTop: 24, marginBottom: 24 }}>
-        <TypeRatingsCard profile={profile} setProfile={setProfile} />
+        <TypeRatingsCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />
       </div>
 
       {/* English Language Proficiency */}
-      <EnglishProficiencyCard />
+      <EnglishProficiencyCard confirmDelete={confirmDelete} />
 
       {/* Recurrent Training */}
-      <RecurrentTrainingCard />
+      <RecurrentTrainingCard confirmDelete={confirmDelete} />
 
       {/* Right to Work */}
-      <RightToWorkCard />
-    </div>
+      <RightToWorkCard confirmDelete={confirmDelete} />
+
+      {/* Single page-level delete confirmation (replaces 6 window.confirm) */}
+      <Modal isOpen={!!pendingDelete} onClose={() => setPendingDelete(null)} title={pendingDelete ? `Delete ${pendingDelete.label}?` : ''}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 0 }}>
+          This permanently removes the record and can't be undone.
+        </p>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <Button variant="danger" onClick={() => { const fn = pendingDelete.fn; setPendingDelete(null); fn(); }}>Delete</Button>
+          <Button variant="ghost" onClick={() => setPendingDelete(null)}>Cancel</Button>
+        </div>
+      </Modal>
+    </LightPage>
   );
 }

@@ -114,9 +114,14 @@ function getVisible(query) {
     .filter((g) => g.items.length > 0);
 }
 
-export default function AircraftCombobox({ value, onChange, inputStyle }) {
+// `light` (default false) opts into the editorial-light theme (mirrors the
+// <Input> primitive palette + accent focus ring + light dropdown). Dark callers
+// (Logbook, EmployerJobForm) are unaffected by the default. FOLLOW-UP: remove
+// this prop and collapse to a single light style once those pages migrate.
+export default function AircraftCombobox({ value, onChange, inputStyle, light = false }) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
+  const [focused, setFocused] = useState(false);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
   const listRef = useRef(null);
@@ -173,10 +178,17 @@ export default function AircraftCombobox({ value, onChange, inputStyle }) {
     el?.scrollIntoView({ block: 'nearest' });
   }, [highlighted]);
 
+  const t = light
+    ? { inputBg: 'var(--surface)', inputBorder: 'var(--border)', inputBorderFocus: 'var(--accent)', inputColor: 'var(--text-primary)', focusShadow: '0 0 0 3px rgba(0,63,136,0.08)', ddBg: 'var(--surface)', ddBorder: 'var(--border)', ddShadow: '0 8px 24px rgba(15,20,25,0.12)', groupColor: 'var(--accent)', groupBorder: 'var(--border)', itemColor: 'var(--text-primary)', itemHlColor: 'var(--accent)', itemHlBg: 'rgba(0,63,136,0.08)', noMatch: 'var(--text-secondary)', otherColor: 'var(--text-secondary)', otherHlColor: 'var(--accent)', otherHlBg: 'rgba(0,63,136,0.08)', otherBorder: 'var(--border)' }
+    : { inputBg: '#1B2B4B', inputBorder: '#243050', inputBorderFocus: '#243050', inputColor: '#fff', focusShadow: 'none', ddBg: '#0D1E35', ddBorder: '#243050', ddShadow: '0 8px 24px rgba(0,0,0,0.5)', groupColor: '#00B4D8', groupBorder: '#1E3050', itemColor: '#C8D8E8', itemHlColor: '#fff', itemHlBg: '#1B3560', noMatch: '#4A6080', otherColor: '#7A8CA0', otherHlColor: '#fff', otherHlBg: '#1B3560', otherBorder: '#1E3050' };
+
   const baseInput = {
-    width: '100%', background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14,
+    width: '100%', background: t.inputBg,
+    border: `1px solid ${light && focused ? t.inputBorderFocus : t.inputBorder}`,
+    borderRadius: 8, padding: '11px 12px', color: t.inputColor, fontSize: 14,
     outline: 'none', boxSizing: 'border-box',
+    boxShadow: light && focused ? t.focusShadow : 'none',
+    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
   };
 
   return (
@@ -185,7 +197,8 @@ export default function AircraftCombobox({ value, onChange, inputStyle }) {
         ref={inputRef}
         value={value || ''}
         onChange={(e) => { onChange(e.target.value); setOpen(true); setHighlighted(-1); }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => { setOpen(true); setFocused(true); }}
+        onBlur={() => setFocused(false)}
         onKeyDown={handleKeyDown}
         placeholder="e.g. B737, A320, C172"
         autoComplete="off"
@@ -196,12 +209,12 @@ export default function AircraftCombobox({ value, onChange, inputStyle }) {
           ref={listRef}
           style={{
             position: 'absolute', zIndex: 1000, top: 'calc(100% + 4px)', left: 0, right: 0,
-            background: '#0D1E35', border: '1px solid #243050', borderRadius: 8,
-            maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            background: t.ddBg, border: `1px solid ${t.ddBorder}`, borderRadius: 8,
+            maxHeight: 260, overflowY: 'auto', boxShadow: t.ddShadow,
           }}
         >
           {visible.length === 0 && (
-            <div style={{ padding: '10px 14px', color: '#4A6080', fontSize: 13, fontStyle: 'italic' }}>
+            <div style={{ padding: '10px 14px', color: t.noMatch, fontSize: 13, fontStyle: 'italic' }}>
               No match — type to use custom value
             </div>
           )}
@@ -214,9 +227,9 @@ export default function AircraftCombobox({ value, onChange, inputStyle }) {
                   {group.items[0] === item && (
                     <div style={{
                       padding: '6px 14px 2px',
-                      fontSize: 10, fontWeight: 700, color: '#00B4D8',
+                      fontSize: 10, fontWeight: 700, color: t.groupColor,
                       textTransform: 'uppercase', letterSpacing: 0.8,
-                      borderTop: flatItems.indexOf(group.items[0]) > 0 ? '1px solid #1E3050' : 'none',
+                      borderTop: flatItems.indexOf(group.items[0]) > 0 ? `1px solid ${t.groupBorder}` : 'none',
                     }}>
                       {group.group}
                     </div>
@@ -227,8 +240,8 @@ export default function AircraftCombobox({ value, onChange, inputStyle }) {
                     onMouseEnter={() => setHighlighted(idx)}
                     style={{
                       padding: '8px 14px', fontSize: 14, cursor: 'pointer',
-                      color: isHl ? '#fff' : '#C8D8E8',
-                      background: isHl ? '#1B3560' : 'transparent',
+                      color: isHl ? t.itemHlColor : t.itemColor,
+                      background: isHl ? t.itemHlBg : 'transparent',
                     }}
                   >
                     {item}
@@ -244,9 +257,9 @@ export default function AircraftCombobox({ value, onChange, inputStyle }) {
             onMouseEnter={() => setHighlighted(flatItems.length)}
             style={{
               padding: '8px 14px', fontSize: 13, cursor: 'pointer', fontStyle: 'italic',
-              color: highlighted === flatItems.length ? '#fff' : '#7A8CA0',
-              background: highlighted === flatItems.length ? '#1B3560' : 'transparent',
-              borderTop: '1px solid #1E3050',
+              color: highlighted === flatItems.length ? t.otherHlColor : t.otherColor,
+              background: highlighted === flatItems.length ? t.otherHlBg : 'transparent',
+              borderTop: `1px solid ${t.otherBorder}`,
             }}
           >
             Other (specify)
