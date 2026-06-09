@@ -2,6 +2,12 @@ import React, { useState, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronUp, Upload, FileText, Table2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { flightLogApi } from '../services/api';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { Input, Button } from './primitives';
+
+// Semantic status colors remapped to light-AA shades (meaning preserved):
+//   dark #2ECC71 → #166534 (ok), #F39C12/#C89A4A → #92400E (warn/duplicate),
+//   #FF4757/#FF6B6B → #991B1B (error). Matches the Badge palette.
+const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
 
 // ─── Field label map (for mapping dropdowns) ─────────────────────────────────
 const FIELD_LABELS = {
@@ -89,61 +95,53 @@ function formatBlock(fields) {
   return '—';
 }
 
-// ─── Inline styles ────────────────────────────────────────────────────────────
+// ─── Inline styles (editorial-light) ──────────────────────────────────────────
 const css = {
   overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+    position: 'fixed', inset: 0, background: 'rgba(15,20,25,0.5)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     zIndex: 1000, padding: 12,
   },
+  // Bespoke wide modal (820 > the 480 <Modal> primitive — recolored to light)
   modal: {
-    background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 20,
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
     width: '100%', maxWidth: 820, maxHeight: '92dvh',
     display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    fontFamily: 'var(--font-body)', boxShadow: '0 20px 60px rgba(15,20,25,0.25)',
   },
   header: {
-    padding: '20px 24px 16px', borderBottom: '1px solid #1E3050',
+    padding: '20px 24px 16px', borderBottom: '1px solid var(--border)',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
   },
-  title: { fontSize: 18, fontWeight: 800, color: '#fff' },
+  title: { fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)' },
   body: { flex: 1, overflowY: 'auto', padding: '20px 24px' },
   footer: {
-    padding: '16px 24px', borderTop: '1px solid #1E3050',
+    padding: '16px 24px', borderTop: '1px solid var(--border)',
     display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0,
   },
-  cancelBtn: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 10,
-    padding: '11px 20px', color: '#7A8CA0', fontWeight: 600, fontSize: 14, cursor: 'pointer',
-  },
-  primaryBtn: (disabled) => ({
-    background: disabled ? '#1B2B4B' : 'linear-gradient(135deg, #00B4D8, #0077A8)',
-    border: 'none', borderRadius: 10, padding: '11px 22px',
-    color: disabled ? '#4A6080' : '#fff', fontWeight: 700, fontSize: 14,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-  }),
   formatCard: (active) => ({
-    flex: 1, padding: '20px 16px', borderRadius: 14, cursor: 'pointer', textAlign: 'center',
-    background: active ? 'rgba(0,180,216,0.1)' : '#1B2B4B',
-    border: `2px solid ${active ? '#00B4D8' : '#243050'}`,
+    flex: 1, padding: '20px 16px', borderRadius: 12, cursor: 'pointer', textAlign: 'center',
+    background: active ? 'rgba(0,63,136,0.06)' : 'var(--bg)',
+    border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
     transition: 'all 0.15s',
   }),
   dropZone: (drag) => ({
-    border: `2px dashed ${drag ? '#00B4D8' : '#243050'}`,
-    borderRadius: 14, padding: '48px 24px', textAlign: 'center',
-    background: drag ? 'rgba(0,180,216,0.06)' : '#1B2B4B',
+    border: `2px dashed ${drag ? 'var(--accent)' : 'var(--border)'}`,
+    borderRadius: 12, padding: '48px 24px', textAlign: 'center',
+    background: drag ? 'rgba(0,63,136,0.04)' : 'var(--bg)',
     cursor: 'pointer', transition: 'all 0.15s',
   }),
   errorBanner: {
-    background: '#2D1A1A', border: '1px solid #5C2626', borderRadius: 8,
-    padding: '10px 14px', color: '#FF6B6B', fontSize: 13, marginBottom: 16,
+    background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8,
+    padding: '10px 14px', color: '#991B1B', fontSize: 13, marginBottom: 16,
   },
   statsBar: {
     display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center',
-    padding: '12px 16px', background: '#0A1628', borderRadius: 10, marginBottom: 16,
+    padding: '12px 16px', background: 'var(--bg)', borderRadius: 10, marginBottom: 16,
     fontSize: 13,
   },
   mappingSection: {
-    background: '#0A1628', border: '1px solid #1E3050', borderRadius: 10, marginBottom: 16,
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 16,
   },
   mappingHeader: {
     display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
@@ -152,17 +150,12 @@ const css = {
   mappingBody: { padding: '0 16px 16px' },
   tableWrap: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   th: {
-    fontSize: 11, fontWeight: 700, color: '#4A6080', textTransform: 'uppercase',
+    fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase',
     letterSpacing: 0.5, padding: '0 12px 8px', textAlign: 'left', whiteSpace: 'nowrap',
   },
-  td: { padding: '10px 12px', background: '#0A1628', fontSize: 13, color: '#fff', whiteSpace: 'nowrap' },
-  tdFirst: { borderLeft: '1px solid #1E3050', borderRadius: '8px 0 0 8px', paddingLeft: 14 },
-  tdLast:  { borderRight: '1px solid #1E3050', borderRadius: '0 8px 8px 0', paddingRight: 14 },
-  select: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 6,
-    padding: '7px 10px', color: '#fff', fontSize: 13, outline: 'none', cursor: 'pointer',
-    width: '100%',
-  },
+  td: { padding: '10px 12px', background: 'var(--surface)', fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'nowrap' },
+  tdFirst: { borderLeft: '1px solid var(--border)', borderRadius: '8px 0 0 8px', paddingLeft: 14 },
+  tdLast:  { borderRight: '1px solid var(--border)', borderRadius: '0 8px 8px 0', paddingRight: 14 },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -260,7 +253,7 @@ export default function ImportModal({ onClose, onImportDone }) {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div style={css.overlay}>
+    <div className="app-light" style={css.overlay}>
       <div style={css.modal}>
         {/* Header */}
         <div style={css.header}>
@@ -269,7 +262,8 @@ export default function ImportModal({ onClose, onImportDone }) {
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#7A8CA0', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}
+            aria-label="Close"
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}
           >
             ×
           </button>
@@ -281,7 +275,7 @@ export default function ImportModal({ onClose, onImportDone }) {
           {/* ── Step: source (format picker) ── */}
           {step === 'source' && (
             <>
-              <div style={{ fontSize: 14, color: '#7A8CA0', marginBottom: 20 }}>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>
                 Choose the file format to import from.
               </div>
               <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
@@ -290,23 +284,23 @@ export default function ImportModal({ onClose, onImportDone }) {
                   onClick={() => setFormat('csv')}
                   role="button"
                 >
-                  <FileText size={28} color={format === 'csv' ? '#00B4D8' : '#4A6080'} style={{ marginBottom: 8 }} />
-                  <div style={{ fontWeight: 700, color: '#fff', marginBottom: 4 }}>CSV</div>
-                  <div style={{ fontSize: 12, color: '#7A8CA0' }}>Comma-separated values</div>
+                  <FileText size={28} color={format === 'csv' ? 'var(--accent)' : 'var(--text-secondary)'} style={{ marginBottom: 8 }} />
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>CSV</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Comma-separated values</div>
                 </div>
                 <div
                   style={css.formatCard(format === 'xlsx')}
                   onClick={() => setFormat('xlsx')}
                   role="button"
                 >
-                  <Table2 size={28} color={format === 'xlsx' ? '#00B4D8' : '#4A6080'} style={{ marginBottom: 8 }} />
-                  <div style={{ fontWeight: 700, color: '#fff', marginBottom: 4 }}>Excel</div>
-                  <div style={{ fontSize: 12, color: '#7A8CA0' }}>.xlsx spreadsheet</div>
+                  <Table2 size={28} color={format === 'xlsx' ? 'var(--accent)' : 'var(--text-secondary)'} style={{ marginBottom: 8 }} />
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Excel</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>.xlsx spreadsheet</div>
                 </div>
               </div>
 
               {format === 'xlsx' && (
-                <div style={{ background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8, padding: '10px 14px', color: '#7A8CA0', fontSize: 13, marginBottom: 20 }}>
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-secondary)', fontSize: 13, marginBottom: 20 }}>
                   Excel (.xlsx) support is coming soon. Please export your file as CSV for now.
                 </div>
               )}
@@ -320,11 +314,11 @@ export default function ImportModal({ onClose, onImportDone }) {
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload size={32} color="#4A6080" style={{ marginBottom: 12 }} />
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#D0E8F8', marginBottom: 6 }}>
+                  <Upload size={32} color="var(--text-secondary)" style={{ marginBottom: 12 }} />
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
                     {isMobile ? 'Tap to browse' : 'Drop your CSV here, or click to browse'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#4A6080' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     .csv files only · max 10 MB · max 500 rows
                   </div>
                   <input
@@ -338,7 +332,7 @@ export default function ImportModal({ onClose, onImportDone }) {
               )}
 
               {uploading && (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: '#7A8CA0', fontSize: 14 }}>
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)', fontSize: 14 }}>
                   Parsing file…
                 </div>
               )}
@@ -354,32 +348,32 @@ export default function ImportModal({ onClose, onImportDone }) {
 
               {/* Stats bar */}
               <div style={css.statsBar}>
-                <span style={{ color: '#2ECC71', fontWeight: 700 }}>
+                <span style={{ color: SEM.green, fontWeight: 700 }}>
                   ✓ {validRows.length} ready
                 </span>
                 {duplicateRows.length > 0 && (
-                  <span style={{ color: '#F39C12', fontWeight: 700 }}>
+                  <span style={{ color: SEM.amber, fontWeight: 700 }}>
                     ⚠ {duplicateRows.length} {duplicateRows.length === 1 ? 'duplicate' : 'duplicates'}
                   </span>
                 )}
                 {errorRows.length > 0 && (
-                  <span style={{ color: '#FF4757', fontWeight: 700 }}>
+                  <span style={{ color: SEM.red, fontWeight: 700 }}>
                     ✗ {errorRows.length} {errorRows.length === 1 ? 'error' : 'errors'}
                   </span>
                 )}
-                <span style={{ color: '#4A6080', marginLeft: 'auto', fontSize: 12 }}>
+                <span style={{ color: 'var(--text-secondary)', marginLeft: 'auto', fontSize: 12 }}>
                   {parsedData.rawRows.length} rows parsed from file
                 </span>
               </div>
 
               {/* Include duplicates checkbox — only shown when duplicates exist */}
               {duplicateRows.length > 0 && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#7A8CA0', cursor: 'pointer', marginBottom: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 12 }}>
                   <input
                     type="checkbox"
                     checked={includeDuplicates}
                     onChange={e => setIncludeDuplicates(e.target.checked)}
-                    style={{ accentColor: '#00B4D8', width: 15, height: 15 }}
+                    style={{ accentColor: 'var(--accent)', width: 15, height: 15 }}
                   />
                   Include duplicates in import ({duplicateRows.length} flight{duplicateRows.length !== 1 ? 's' : ''} already in your logbook)
                 </label>
@@ -389,21 +383,21 @@ export default function ImportModal({ onClose, onImportDone }) {
               <div style={css.mappingSection}>
                 <div style={css.mappingHeader} onClick={() => setMappingOpen(v => !v)}>
                   {datesMapped ? (
-                    <CheckCircle2 size={15} color="#2ECC71" />
+                    <CheckCircle2 size={15} color={SEM.green} />
                   ) : (
-                    <AlertTriangle size={15} color="#F39C12" />
+                    <AlertTriangle size={15} color={SEM.amber} />
                   )}
-                  <span style={{ fontSize: 13, fontWeight: 600, color: datesMapped ? '#2ECC71' : '#F39C12', flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: datesMapped ? SEM.green : SEM.amber, flex: 1 }}>
                     {datesMapped
                       ? `Column mapping — ${Object.keys(effectiveMapping).length} fields detected`
                       : 'Column mapping — date column not detected (required)'}
                   </span>
-                  {mappingOpen ? <ChevronUp size={14} color="#4A6080" /> : <ChevronDown size={14} color="#4A6080" />}
+                  {mappingOpen ? <ChevronUp size={14} color="var(--text-secondary)" /> : <ChevronDown size={14} color="var(--text-secondary)" />}
                 </div>
 
                 {mappingOpen && (
                   <div style={css.mappingBody}>
-                    <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
                       Map each field to a column from your file. Leave blank to skip.
                     </div>
                     <div style={{
@@ -412,24 +406,21 @@ export default function ImportModal({ onClose, onImportDone }) {
                       gap: 10,
                     }}>
                       {Object.entries(FIELD_LABELS).map(([field, label]) => {
-                        const isRequired = REQUIRED_FIELDS.includes(field);
                         const current = effectiveMapping[field] || '';
                         return (
-                          <div key={field}>
-                            <label style={{ display: 'block', fontSize: 11, color: isRequired ? '#F39C12' : '#7A8CA0', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                              {label}
-                            </label>
-                            <select
-                              value={current}
-                              onChange={(e) => setUserMapping(m => ({ ...m, [field]: e.target.value || undefined }))}
-                              style={css.select}
-                            >
-                              <option value="">(not mapped)</option>
-                              {parsedData.headers.map(h => (
-                                <option key={h} value={h}>{h}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <Input
+                            key={field}
+                            as="select"
+                            label={label}
+                            value={current}
+                            onChange={(e) => setUserMapping(m => ({ ...m, [field]: e.target.value || undefined }))}
+                            style={{ fontSize: 13, padding: '8px 10px' }}
+                          >
+                            <option value="">(not mapped)</option>
+                            {parsedData.headers.map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </Input>
                         );
                       })}
                     </div>
@@ -456,10 +447,10 @@ export default function ImportModal({ onClose, onImportDone }) {
                       const isDup = !isErr && row.duplicate;
                       const rowStyle = {
                         ...css.td,
-                        borderTop: '1px solid #1B2B4B',
-                        borderBottom: '1px solid #1B2B4B',
-                        background: isErr ? 'rgba(255,71,87,0.05)' : isDup ? 'rgba(243,156,18,0.04)' : '#0A1628',
-                        color: isErr ? '#FF6B6B' : isDup ? '#C89A4A' : '#fff',
+                        borderTop: '1px solid var(--border)',
+                        borderBottom: '1px solid var(--border)',
+                        background: isErr ? '#FEF2F2' : isDup ? '#FFFBEB' : 'var(--surface)',
+                        color: isErr ? SEM.red : isDup ? SEM.amber : 'var(--text-primary)',
                       };
                       const cols = previewCols.map((col, ci) => {
                         let content = '';
@@ -476,9 +467,9 @@ export default function ImportModal({ onClose, onImportDone }) {
                               ...(ci === 0 ? css.tdFirst : {}),
                               ...(ci === previewCols.length - 1 && errorRows.length === 0 ? css.tdLast : {}),
                               color: col === 'status'
-                                ? (isErr ? '#FF4757' : isDup ? '#F39C12' : '#2ECC71')
+                                ? (isErr ? SEM.red : isDup ? SEM.amber : SEM.green)
                                 : col === 'route'
-                                ? (isDup ? '#C89A4A' : '#D0E8F8')
+                                ? (isDup ? SEM.amber : 'var(--text-primary)')
                                 : rowStyle.color,
                               fontWeight: col === 'status' ? 800 : col === 'route' ? 700 : 400,
                             }}
@@ -489,7 +480,7 @@ export default function ImportModal({ onClose, onImportDone }) {
                       });
                       if (errorRows.length > 0) {
                         cols.push(
-                          <td key="err" style={{ ...rowStyle, ...css.tdLast, fontSize: 12, color: '#FF4757' }}>
+                          <td key="err" style={{ ...rowStyle, ...css.tdLast, fontSize: 12, color: SEM.red }}>
                             {row.error || ''}
                           </td>
                         );
@@ -499,14 +490,14 @@ export default function ImportModal({ onClose, onImportDone }) {
                   </tbody>
                 </table>
                 {displayRows.length > 200 && (
-                  <div style={{ padding: '10px 0', fontSize: 12, color: '#4A6080', textAlign: 'center' }}>
+                  <div style={{ padding: '10px 0', fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>
                     Showing first 200 of {displayRows.length} rows.
                   </div>
                 )}
               </div>
 
               {!datesMapped && (
-                <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(243,156,18,0.1)', border: '1px solid rgba(243,156,18,0.3)', borderRadius: 8, fontSize: 13, color: '#F39C12' }}>
+                <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(146,64,14,0.08)', border: '1px solid rgba(146,64,14,0.3)', borderRadius: 8, fontSize: 13, color: SEM.amber }}>
                   The date column is required. Expand "Column mapping" above and map it before importing.
                 </div>
               )}
@@ -516,16 +507,16 @@ export default function ImportModal({ onClose, onImportDone }) {
           {/* ── Step: done ── */}
           {step === 'done' && result && (
             <div style={{ textAlign: 'center', padding: '32px 0 16px' }}>
-              <CheckCircle2 size={52} color="#2ECC71" style={{ marginBottom: 16 }} />
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 8 }}>
+              <CheckCircle2 size={52} color={SEM.green} style={{ marginBottom: 16 }} />
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>
                 {result.imported} {result.imported === 1 ? 'flight' : 'flights'} imported
               </div>
               {result.skipped > 0 && (
-                <div style={{ fontSize: 14, color: '#7A8CA0', marginBottom: 4 }}>
+                <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>
                   {result.skipped} {result.skipped === 1 ? 'row' : 'rows'} had errors and were skipped.
                 </div>
               )}
-              <div style={{ fontSize: 13, color: '#4A6080', marginTop: 8 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8 }}>
                 Your logbook has been updated.
               </div>
             </div>
@@ -536,27 +527,26 @@ export default function ImportModal({ onClose, onImportDone }) {
         {/* Footer */}
         <div style={css.footer}>
           {step === 'done' ? (
-            <button style={css.primaryBtn(false)} onClick={onClose}>Done</button>
+            <Button onClick={onClose}>Done</Button>
           ) : step === 'source' ? (
-            <button style={css.cancelBtn} onClick={onClose}>Cancel</button>
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
           ) : (
             <>
-              <button
-                style={{ ...css.cancelBtn, ...(step === 'confirming' ? { opacity: 0.45, cursor: 'not-allowed' } : {}) }}
+              <Button
+                variant="secondary"
                 onClick={step !== 'confirming' ? () => { setStep('source'); setParsedData(null); setError(''); setUserMapping({}); } : undefined}
                 disabled={step === 'confirming'}
               >
                 ← Back
-              </button>
-              <button
-                style={css.primaryBtn(!datesMapped || toImportRows.length === 0 || step === 'confirming')}
+              </Button>
+              <Button
                 onClick={handleConfirm}
                 disabled={!datesMapped || toImportRows.length === 0 || step === 'confirming'}
               >
                 {step === 'confirming'
                   ? 'Importing…'
                   : `Import ${toImportRows.length} ${toImportRows.length === 1 ? 'Flight' : 'Flights'}`}
-              </button>
+              </Button>
             </>
           )}
         </div>

@@ -10,6 +10,12 @@ import { setLogs, setTotals, addLog, removeLog } from '../store';
 import AIRPORTS from '../data/airports.json';
 import ImportModal from '../components/ImportModal';
 import AircraftCombobox from '../components/AircraftCombobox';
+import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
+
+// Semantic status colors remapped to light-AA shades (meaning preserved):
+//   dark #00C864/#2ECC71 → #166534 (ok/current), #F39C12 → #92400E (warn),
+//   #FF4757/#FF6B6B → #991B1B (not-current/error). Matches the Badge palette.
+const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
 
 const css = {
   totalsGrid: {
@@ -17,119 +23,63 @@ const css = {
     gap: 14, marginBottom: 20,
   },
   totalCard: {
-    background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 14,
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
     padding: '18px 16px', textAlign: 'center',
   },
-  totalValue: { fontSize: 26, fontWeight: 800, color: '#00B4D8', marginBottom: 4 },
-  totalLabel: { fontSize: 11, color: '#4A6080', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+  totalValue: { fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginBottom: 4 },
+  totalLabel: { fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  searchBar: {
-    width: '100%', background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 10, padding: '12px 16px', color: '#fff', fontSize: 14,
-    outline: 'none', marginBottom: 20,
-  },
   currencyCard: {
-    background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 14,
-    padding: '18px 22px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap',
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
+    padding: '18px 22px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
   },
-  currencyTitle: { fontSize: 13, fontWeight: 700, color: '#7A8CA0', textTransform: 'uppercase', letterSpacing: 0.6, marginRight: 8 },
-  pillCurrent: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: 'rgba(0,200,100,0.12)', border: '1px solid rgba(0,200,100,0.35)',
-    borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700, color: '#00C864',
-  },
-  pillNotCurrent: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: 'rgba(255,71,87,0.12)', border: '1px solid rgba(255,71,87,0.35)',
-    borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700, color: '#FF4757',
-  },
+  currencyTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.6, marginRight: 8 },
 
   toolbar: { display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' },
-  addBtn: {
-    background: 'linear-gradient(135deg, #00B4D8, #0077A8)',
-    border: 'none', borderRadius: 10, padding: '11px 20px',
-    color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-  },
-  importBtn: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 10,
-    padding: '11px 20px', color: '#7A8CA0', fontWeight: 600, fontSize: 14, cursor: 'pointer',
-  },
-
-  searchInput: {
-    flex: 1, background: '#0D1E35', border: '1px solid #1E3050',
-    borderRadius: 10, padding: '11px 16px', color: '#fff', fontSize: 14,
-    outline: 'none', maxWidth: 420,
-  },
 
   table: { width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' },
   th: {
-    fontSize: 11, fontWeight: 700, color: '#4A6080',
+    fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
     textTransform: 'uppercase', letterSpacing: 0.5,
     padding: '0 14px 8px', textAlign: 'left',
   },
   td: {
-    padding: '14px', background: '#0D1E35', fontSize: 14, color: '#fff',
-    borderTop: '1px solid #1E3050', borderBottom: '1px solid #1E3050',
+    padding: '14px', fontSize: 14, color: 'var(--text-primary)',
+    borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)',
   },
-  tdFirst: { borderLeft: '1px solid #1E3050', borderRadius: '10px 0 0 10px', paddingLeft: 18 },
-  tdLast: { borderRight: '1px solid #1E3050', borderRadius: '0 10px 10px 0', paddingRight: 18 },
-  deleteBtn: {
-    background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer',
-    padding: '8px 6px', display: 'inline-flex', alignItems: 'center',
-  },
-  editBtn: {
-    background: 'none', border: 'none', color: '#00B4D8', cursor: 'pointer',
-    padding: '8px 6px', display: 'inline-flex', alignItems: 'center',
-  },
-  cloneBtn: {
-    background: 'none', border: 'none', color: '#7A8CA0', cursor: 'pointer',
-    padding: '8px 6px', display: 'inline-flex', alignItems: 'center',
-  },
-  hours: { color: '#00B4D8', fontWeight: 700 },
-  route: { color: '#7A8CA0', fontSize: 12, marginTop: 2 },
-  routeMain: { fontSize: 15, fontWeight: 800, color: '#D0E8F8', letterSpacing: 0.2 },
-  routeArrow: { color: '#00B4D8', margin: '0 5px' },
-  emptyRow: { textAlign: 'center', padding: '60px 0', color: '#4A6080' },
+  tdFirst: { borderLeft: '1px solid var(--border)', borderRadius: '10px 0 0 10px', paddingLeft: 18 },
+  tdLast: { borderRight: '1px solid var(--border)', borderRadius: '0 10px 10px 0', paddingRight: 18 },
+  hours: { color: 'var(--accent)', fontWeight: 700 },
+  route: { color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 },
+  routeMain: { fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: 0.2 },
+  routeArrow: { color: 'var(--accent)', margin: '0 5px' },
+  emptyRow: { textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)' },
 
-  // Modal
+  // Modal (bespoke — wider than the 480 <Modal> primitive; recolored to light)
   overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+    position: 'fixed', inset: 0, background: 'rgba(15,20,25,0.5)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     zIndex: 1000, padding: 12,
   },
   modal: {
-    background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 20,
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
     padding: '24px 20px', maxWidth: 680, width: '100%', maxHeight: '90vh', overflowY: 'auto',
   },
-  modalTitle: { fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 24 },
+  modalTitle: { fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 24 },
   formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 16 },
   formFull: { gridColumn: '1 / -1' },
-  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#7A8CA0', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-  hint: { fontSize: 11, color: '#4A6080', fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6 },
-  input: {
-    width: '100%', background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 8, padding: '11px 12px', color: '#fff', fontSize: 14, outline: 'none',
-  },
+  label: { display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 },
   readOnlyField: {
-    width: '100%', background: '#0A1628', border: '1px solid #1E3050',
-    borderRadius: 8, padding: '11px 12px', color: '#7A8CA0', fontSize: 14, cursor: 'not-allowed',
+    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+    borderRadius: 8, padding: '11px 12px', color: 'var(--text-secondary)', fontSize: 14, boxSizing: 'border-box',
   },
   readOnlyBlue: {
-    width: '100%', background: '#0A1628', border: '1px solid rgba(0,180,216,0.35)',
-    borderRadius: 8, padding: '11px 12px', color: '#00B4D8', fontSize: 14,
-    fontWeight: 700, cursor: 'not-allowed',
+    width: '100%', background: 'var(--bg)', border: '1px solid rgba(0,63,136,0.35)',
+    borderRadius: 8, padding: '11px 12px', color: 'var(--accent)', fontSize: 14,
+    fontWeight: 700, boxSizing: 'border-box',
   },
-  sectionTitle: { fontSize: 13, fontWeight: 700, color: '#00B4D8', marginBottom: 12, marginTop: 4 },
-  saveBtn: {
-    background: 'linear-gradient(135deg, #00B4D8, #0077A8)',
-    border: 'none', borderRadius: 10, padding: '13px 28px',
-    color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer',
-  },
-  cancelBtn: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 10,
-    padding: '13px 24px', color: '#7A8CA0', fontWeight: 600, fontSize: 15, cursor: 'pointer',
-    marginRight: 12,
-  },
+  sectionTitle: { fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12, marginTop: 4 },
+  errorBanner: { background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#991B1B', fontSize: 13, marginBottom: 16 },
 };
 
 const TAIL_PREFIXES = ['', 'A6-', 'N', 'G-', 'OE-', 'D-', 'F-', 'HB-', 'TC-', 'SU-', 'AP-', 'VT-', '7T-', 'HL', 'B-', 'JA', 'VH-', 'ZS-', 'C-', 'OY-', 'SE-', 'LN-', 'OH-', 'PH-', 'CS-', 'EC-', 'EI-', 'TS-', 'CN-', 'EP-'];
@@ -236,9 +186,13 @@ function formFromLog(log) {
 function Field({ value, onChange, label, hint, span, type = 'text' }) {
   return (
     <div style={span === 'full' ? css.formFull : {}}>
-      <label style={css.label}>{label}{hint && <span style={css.hint}>{hint}</span>}</label>
-      <input style={css.input} type={type} value={value} onChange={onChange}
-        placeholder={hint?.replace('e.g. ', '') || ''} />
+      <Input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={hint?.replace('e.g. ', '') || ''}
+        label={<>{label}{hint && <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>{hint}</span>}</>}
+      />
     </div>
   );
 }
@@ -250,14 +204,14 @@ function TimeField({ value, onChange, label }) {
     else setErr('');
   };
   return (
-    <div>
-      <label style={css.label}>{label}<span style={css.hint}>HH:MM UTC</span></label>
-      <input
-        style={{ ...css.input, ...(err ? { borderColor: '#FF4757' } : {}) }}
-        type="time" value={value} onChange={onChange} onBlur={validate}
-      />
-      {err && <div style={{ color: '#FF4757', fontSize: 11, marginTop: 3 }}>{err}</div>}
-    </div>
+    <Input
+      type="time"
+      value={value}
+      onChange={onChange}
+      onBlur={validate}
+      error={err || undefined}
+      label={<>{label}<span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>HH:MM UTC</span></>}
+    />
   );
 }
 
@@ -359,14 +313,10 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
   };
 
   return (
-    <div style={css.overlay}>
+    <div className="app-light" style={css.overlay}>
       <div style={css.modal}>
         <div style={css.modalTitle}>{title || 'Log a Flight'}</div>
-        {error && (
-          <div style={{ background: '#2D1A1A', border: '1px solid #5C2626', borderRadius: 8, padding: '10px 14px', color: '#FF6B6B', fontSize: 13, marginBottom: 16 }}>
-            {error}
-          </div>
-        )}
+        {error && <div style={css.errorBanner}>{error}</div>}
 
         {legs.map((leg, idx) => {
           const set = (k) => setLegField(idx, k);
@@ -381,14 +331,11 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
             <div key={idx}>
               {legs.length > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#00B4D8' }}>Leg {idx + 1}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)' }}>Leg {idx + 1}</div>
                   {idx > 0 && (
-                    <button
-                      onClick={() => removeLeg(idx)}
-                      style={{ background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
+                    <Button variant="ghost" onClick={() => removeLeg(idx)} style={{ padding: '4px 8px', fontSize: 13, color: SEM.red, gap: 4 }}>
                       <Trash2 size={13} /> Remove leg
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
@@ -402,20 +349,25 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                   <AircraftCombobox
                     value={leg.aircraftType}
                     onChange={(v) => set('aircraftType')({ target: { value: v } })}
+                    light
                   />
                 </div>
                 <div>
                   <label style={css.label}>Tail Number (Registration)</label>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <select value={leg.tailPrefix} onChange={set('tailPrefix')} style={{ ...css.input, width: 90, padding: '11px 6px', flexShrink: 0 }}>
-                      {TAIL_PREFIXES.map((p) => <option key={p} value={p}>{p || 'Prefix'}</option>)}
-                    </select>
-                    <input style={{ ...css.input, flex: 1 }} value={leg.registration} onChange={set('registration')} placeholder="EKA, 123AB..." />
+                    <div style={{ width: 96, flexShrink: 0 }}>
+                      <Input as="select" value={leg.tailPrefix} onChange={set('tailPrefix')}>
+                        {TAIL_PREFIXES.map((p) => <option key={p} value={p}>{p || 'Prefix'}</option>)}
+                      </Input>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Input value={leg.registration} onChange={set('registration')} placeholder="EKA, 123AB..." />
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
                   <div style={{ flex: 1 }}><Field value={leg.departure} onChange={set('departure')} label="From" hint="e.g. OMDB" /></div>
-                  <div style={{ paddingBottom: 10, color: '#4A6080', fontSize: 18 }}>&#x2192;</div>
+                  <div style={{ paddingBottom: 10, color: 'var(--text-secondary)', fontSize: 18 }}>&#x2192;</div>
                   <div style={{ flex: 1 }}><Field value={leg.arrival} onChange={set('arrival')} label="To" hint="e.g. EGLL" /></div>
                 </div>
                 <Field value={leg.picName} onChange={set('picName')} label="Pilot in Command" hint="e.g. Capt. Al Rashid" />
@@ -429,7 +381,7 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                 <TimeField value={leg.landingTime} onChange={set('landingTime')} label="Landing" />
                 <TimeField value={leg.onBlocksTime} onChange={set('onBlocksTime')} label="On Blocks *" />
                 <div>
-                  <label style={css.label}>Block Time<span style={css.hint}>auto-computed</span></label>
+                  <label style={css.label}>Block Time<span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>auto-computed</span></label>
                   <div style={derived.blockTime !== null ? css.readOnlyBlue : css.readOnlyField}>
                     {derived.blockTime !== null ? `${derived.blockTime.toFixed(2)} hrs` : 'Enter off / on blocks'}
                   </div>
@@ -441,11 +393,11 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                 {derived.computedNight !== null ? (
                   <>
                     <div>
-                      <label style={css.label}>Night Time<span style={css.hint}>civil twilight, auto</span></label>
+                      <label style={css.label}>Night Time<span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>civil twilight, auto</span></label>
                       <div style={css.readOnlyBlue}>{derived.nightHours.toFixed(2)} hrs</div>
                     </div>
                     <div>
-                      <label style={css.label}>Day Time<span style={css.hint}>auto-computed</span></label>
+                      <label style={css.label}>Day Time<span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>auto-computed</span></label>
                       <div style={css.readOnlyField}>
                         {derived.dayHours !== null ? `${derived.dayHours.toFixed(2)} hrs` : '—'}
                       </div>
@@ -455,12 +407,12 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                   <>
                     <Field value={leg.nightTime} onChange={set('nightTime')} label="Night Time" hint="manual entry" type="number" />
                     {airportsEntered && !airportsKnown && (
-                      <div style={{ gridColumn: '1 / -1', fontSize: 11, color: '#4A6080', marginTop: -8, padding: '6px 10px', background: '#0A1628', borderRadius: 6 }}>
+                      <div style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--text-secondary)', marginTop: -8, padding: '6px 10px', background: 'var(--bg)', borderRadius: 6 }}>
                         Airport not in database — enter night time manually. Auto-calc requires departure and arrival ICAO codes.
                       </div>
                     )}
                     {!airportsEntered && (
-                      <div style={{ gridColumn: '1 / -1', fontSize: 11, color: '#4A6080', marginTop: -8 }}>
+                      <div style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--text-secondary)', marginTop: -8 }}>
                         Fill in takeoff, landing, departure (From), and arrival (To) ICAO codes to auto-calculate.
                       </div>
                     )}
@@ -470,7 +422,7 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
 
               <div style={css.sectionTitle}>
                 Flight Hours
-                <span style={{ fontSize: 11, color: '#4A6080', fontWeight: 400, marginLeft: 8 }}>decimals — 1h 30m = 1.5</span>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 8 }}>decimals — 1h 30m = 1.5</span>
               </div>
               <div style={css.formGrid}>
                 <Field value={leg.picTime} onChange={set('picTime')} label="PIC (Captain)" type="number" />
@@ -490,17 +442,18 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={css.label}>Remarks</label>
-                <textarea
-                  style={{ ...css.input, height: 70, resize: 'vertical', fontFamily: 'inherit' }}
+                <Input
+                  as="textarea"
+                  label="Remarks"
                   value={leg.remarks}
                   onChange={set('remarks')}
                   placeholder="Any notes about this flight..."
+                  style={{ height: 70, resize: 'vertical' }}
                 />
               </div>
 
               {idx < legs.length - 1 && (
-                <div style={{ borderTop: '1px solid #1E3050', margin: '4px 0 28px' }} />
+                <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 28px' }} />
               )}
             </div>
           );
@@ -510,8 +463,8 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
           <button
             onClick={addLeg}
             style={{
-              width: '100%', background: 'transparent', border: '1px dashed #00B4D8',
-              borderRadius: 10, padding: '11px', color: '#00B4D8',
+              width: '100%', background: 'rgba(0,63,136,0.04)', border: '1px dashed var(--accent)',
+              borderRadius: 10, padding: '11px', color: 'var(--accent)',
               fontWeight: 600, fontSize: 14, cursor: 'pointer', marginBottom: 24,
             }}
           >
@@ -519,11 +472,11 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
           </button>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button style={css.cancelBtn} onClick={onClose}>Cancel</button>
-          <button style={{ ...css.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : legs.length > 1 ? `Save ${legs.length} Legs` : 'Save Flight'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -541,6 +494,8 @@ export default function Logbook() {
   const [expandedDuties, setExpandedDuties] = useState(new Set());
   const [cfHover, setCfHover] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [hoverRow, setHoverRow] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null); // { label, fn }
 
   const toggleDuty = (id) => setExpandedDuties((prev) => {
     const next = new Set(prev);
@@ -646,11 +601,10 @@ export default function Logbook() {
     return groups;
   }, [filteredLogs]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this flight from your logbook?')) return;
-    await flightLogApi.delete(id);
-    dispatch(removeLog(id));
-  };
+  const handleDelete = (id) => setPendingDelete({
+    label: 'flight',
+    fn: async () => { await flightLogApi.delete(id); dispatch(removeLog(id)); },
+  });
 
   const handleSaveNew = async (payload) => {
     const { data } = await flightLogApi.create(payload);
@@ -694,7 +648,6 @@ export default function Logbook() {
     try {
       const { data } = await profileApi.updateCarryForward(payload);
       setCarryForward(data ?? {});
-      // Refresh totals so the cards reflect the new carry-forward
       const totalsRes = await profileApi.getTotals();
       dispatch(setTotals(totalsRes.data));
       setCarryForwardSaved(true);
@@ -705,20 +658,22 @@ export default function Logbook() {
   };
 
   const totalWithCarry = (key) => (totals?.[key] || 0).toFixed(1);
-
   const cloneInitial = cloneFlight ? { ...cloneFlight, date: '' } : null;
-
   const cfHasSavedData = CF_NUMERIC_KEYS.some((k) => (carryForward[k] || 0) > 0);
+  const rowBg = (id) => (hoverRow === id ? 'rgba(0,63,136,0.04)' : 'var(--surface)');
 
   return (
-    <div>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Logbook</h1>
+      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Hours flown, sectors logged, currency tracked.</p>
+
       <div style={css.totalsGrid}>
         {TOTALS_DISPLAY.map(({ key, label }) => (
           <div key={key} style={css.totalCard}>
             <div style={css.totalValue}>{totalWithCarry(key)}</div>
             <div style={css.totalLabel}>{label}</div>
             {carryForward[key] > 0 && (
-              <div style={{ fontSize: 10, color: '#4A6080', marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>
                 +{carryForward[key].toFixed(1)} carry-fwd
               </div>
             )}
@@ -736,63 +691,43 @@ export default function Logbook() {
           onMouseEnter={() => setCfHover(true)}
           onMouseLeave={() => setCfHover(false)}
           style={{
-            background: '#0D1E35',
-            border: `1px solid ${cfHover ? '#00B4D8' : 'rgba(0,180,216,0.25)'}`,
-            borderRadius: 10,
-            padding: '12px 18px',
-            color: '#D0E8F8',
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            width: '100%',
-            textAlign: 'left',
+            background: 'var(--surface)',
+            border: `1px solid ${cfHover ? 'var(--accent)' : 'var(--border)'}`,
+            borderRadius: 10, padding: '12px 18px', color: 'var(--text-primary)',
+            fontWeight: 600, fontSize: 14, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
             transition: 'border-color 0.15s',
           }}
         >
-          <Clock size={15} color="#00B4D8" />
+          <Clock size={15} style={{ color: 'var(--accent)' }} />
           Previous / carry-forward hours
-          {cfHasSavedData && (
-            <span style={{ background: '#00B4D820', border: '1px solid #00B4D840', color: '#00B4D8', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>
-              active
-            </span>
-          )}
+          {cfHasSavedData && <Badge variant="info">active</Badge>}
           <ChevronDown
             size={14}
-            color="#4A6080"
-            style={{ marginLeft: 'auto', transform: showCarryForward ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+            style={{ marginLeft: 'auto', color: 'var(--text-secondary)', transform: showCarryForward ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
           />
         </button>
 
         {showCarryForward && (
-          <div style={{ background: '#0D1E35', border: '1px solid #1E3050', borderRadius: '0 0 10px 10px', borderTop: 'none', padding: 20 }}>
-            <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 14 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0 0 10px 10px', borderTop: 'none', padding: 20 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
               Enter hours from your previous logbooks. These are added to the totals above.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
               {TOTALS_DISPLAY.map(({ key, label }) => (
-                <div key={key}>
-                  <label style={{ display: 'block', fontSize: 11, color: '#7A8CA0', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</label>
-                  <input
-                    type="number" min="0" step="0.1"
-                    style={{ width: '100%', background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                    value={carryForwardForm[key] ?? ''}
-                    onChange={(e) => setCarryForwardForm((f) => ({ ...f, [key]: e.target.value }))}
-                    placeholder="0.0"
-                  />
-                </div>
+                <Input
+                  key={key}
+                  type="number" min="0" step="0.1"
+                  label={label}
+                  value={carryForwardForm[key] ?? ''}
+                  onChange={(e) => setCarryForwardForm((f) => ({ ...f, [key]: e.target.value }))}
+                  placeholder="0.0"
+                />
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16 }}>
-              <button
-                onClick={saveCarryForward}
-                style={{ background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 8, padding: '10px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
-              >
-                Save
-              </button>
-              {carryForwardSaved && <span style={{ color: '#2ECC71', fontSize: 13, fontWeight: 600 }}>&#x2713; Saved</span>}
+              <Button onClick={saveCarryForward}>Save</Button>
+              {carryForwardSaved && <span style={{ color: SEM.green, fontSize: 13, fontWeight: 600 }}>&#x2713; Saved</span>}
             </div>
           </div>
         )}
@@ -801,37 +736,30 @@ export default function Logbook() {
       {/* Currency card */}
       <div style={css.currencyCard}>
         <span style={css.currencyTitle}>Currency (90 days)</span>
-        <span style={currency.dayCurrent ? css.pillCurrent : css.pillNotCurrent}>
-          {currency.dayCurrent ? '✓ Day Current' : '✕ Day Not Current'}
-        </span>
-        <span style={currency.nightCurrent ? css.pillCurrent : css.pillNotCurrent}>
-          {currency.nightCurrent ? '✓ Night Current' : '✕ Night Not Current'}
-        </span>
+        <Badge variant={currency.dayCurrent ? 'success' : 'error'}>{currency.dayCurrent ? '✓ Day Current' : '✕ Day Not Current'}</Badge>
+        <Badge variant={currency.nightCurrent ? 'success' : 'error'}>{currency.nightCurrent ? '✓ Night Current' : '✕ Night Not Current'}</Badge>
       </div>
 
       <div style={css.toolbar}>
-        <button style={css.addBtn} onClick={() => setShowModal(true)}>+ Log a Flight</button>
-        <button
-          style={{ ...css.importBtn, display: 'inline-flex', alignItems: 'center', gap: 7 }}
-          onClick={() => setShowImport(true)}
-        >
+        <Button onClick={() => setShowModal(true)}>+ Log a Flight</Button>
+        <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}>
           <Upload size={14} /> Import
-        </button>
-        <span style={{ color: '#4A6080', fontSize: 13, marginLeft: 'auto' }}>
+        </Button>
+        <span style={{ color: 'var(--text-secondary)', fontSize: 13, marginLeft: 'auto' }}>
           {groupedRows.length} {groupedRows.length !== logs.length ? `entries (${logs.length} sectors)` : 'flights'}
         </span>
       </div>
 
-      <input
-        style={css.searchBar}
+      <Input
         type="text"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by aircraft, registration, or airport..."
+        style={{ marginBottom: 20 }}
       />
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#7A8CA0' }}>Loading your logbook...</div>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>Loading your logbook...</div>
       ) : (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%' }}>
           <table style={{ ...css.table, minWidth: 700 }}>
@@ -855,16 +783,17 @@ export default function Logbook() {
                   const displayBlock = blockHrs !== null
                     ? `${blockHrs.toFixed(1)}h`
                     : (log.totalTime > 0 ? `${log.totalTime.toFixed(1)}h` : '—');
+                  const bg = rowBg(log.id);
                   return (
-                    <tr key={log.id}>
-                      <td style={{ ...css.td, ...css.tdFirst, color: '#7A8CA0', fontSize: 12 }}>
+                    <tr key={log.id} onMouseEnter={() => setHoverRow(log.id)} onMouseLeave={() => setHoverRow(null)}>
+                      <td style={{ ...css.td, background: bg, ...css.tdFirst, color: 'var(--text-secondary)', fontSize: 12 }}>
                         {new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td style={css.td}>
+                      <td style={{ ...css.td, background: bg }}>
                         <div style={{ fontWeight: 600 }}>{log.aircraftType}</div>
                         {log.registration && <div style={css.route}>{log.registration}</div>}
                       </td>
-                      <td style={css.td}>
+                      <td style={{ ...css.td, background: bg }}>
                         {log.departure || log.arrival ? (
                           <div style={css.routeMain}>
                             {log.departure}
@@ -872,19 +801,19 @@ export default function Logbook() {
                             {log.arrival}
                           </div>
                         ) : (
-                          <span style={{ color: '#4A6080' }}>&#x2014;</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>&#x2014;</span>
                         )}
                       </td>
-                      <td style={{ ...css.td, ...css.hours }}>{displayBlock}</td>
-                      <td style={css.td}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
-                      <td style={css.td}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
-                      <td style={css.td}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
-                      <td style={css.td}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
-                      <td style={css.td}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
-                      <td style={{ ...css.td, ...css.tdLast, whiteSpace: 'nowrap' }}>
-                        <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></button>
-                        <button style={css.cloneBtn} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={14} /></button>
-                        <button style={css.deleteBtn} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={14} /></button>
+                      <td style={{ ...css.td, background: bg, ...css.hours }}>{displayBlock}</td>
+                      <td style={{ ...css.td, background: bg }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, background: bg }}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, background: bg }}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, background: bg }}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, background: bg }}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
+                      <td style={{ ...css.td, background: bg, ...css.tdLast, whiteSpace: 'nowrap' }}>
+                        <Button variant="ghost" style={{ padding: '6px', color: 'var(--accent)' }} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></Button>
+                        <Button variant="ghost" style={{ padding: '6px', color: 'var(--text-secondary)' }} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={14} /></Button>
+                        <Button variant="ghost" style={{ padding: '6px', color: SEM.red }} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={14} /></Button>
                       </td>
                     </tr>
                   );
@@ -905,37 +834,36 @@ export default function Logbook() {
                 const totalNight   = legs.reduce((s, l) => s + (l.nightTime || 0), 0);
                 const totalLdg     = legs.reduce((s, l) => s + (l.landingsDay || 0) + (l.landingsNight || 0), 0);
                 const isExpanded   = expandedDuties.has(dutyId);
+                const bg = rowBg(dutyId);
 
                 return (
                   <React.Fragment key={dutyId}>
-                    <tr onClick={() => toggleDuty(dutyId)} style={{ cursor: 'pointer' }}>
-                      <td style={{ ...css.td, ...css.tdFirst, color: '#7A8CA0', fontSize: 12 }}>
+                    <tr onClick={() => toggleDuty(dutyId)} onMouseEnter={() => setHoverRow(dutyId)} onMouseLeave={() => setHoverRow(null)} style={{ cursor: 'pointer' }}>
+                      <td style={{ ...css.td, background: bg, ...css.tdFirst, color: 'var(--text-secondary)', fontSize: 12 }}>
                         {new Date(first.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td style={css.td}>
+                      <td style={{ ...css.td, background: bg }}>
                         <div style={{ fontWeight: 600 }}>{first.aircraftType}</div>
                         {first.registration && <div style={css.route}>{first.registration}</div>}
-                        <span style={{ fontSize: 10, fontWeight: 800, color: '#00B4D8', background: 'rgba(0,180,216,0.12)', borderRadius: 6, padding: '2px 7px', display: 'inline-block', marginTop: 4 }}>
-                          {legs.length} sectors
-                        </span>
+                        <span style={{ display: 'inline-block', marginTop: 4 }}><Badge variant="info">{legs.length} sectors</Badge></span>
                       </td>
-                      <td style={css.td}>
+                      <td style={{ ...css.td, background: bg }}>
                         <div style={css.routeMain}>
                           {first.departure || '?'}
                           <span style={css.routeArrow}>&#x2192;</span>
                           {last.arrival || '?'}
                         </div>
-                        <div style={{ fontSize: 11, color: '#4A6080', marginTop: 3 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 3 }}>
                           {legs.map((l) => `${l.departure || '?'}→${l.arrival || '?'}`).join(' · ')}
                         </div>
                       </td>
-                      <td style={{ ...css.td, ...css.hours }}>{dutyBlock}</td>
-                      <td style={css.td}>{totalPic > 0 ? totalPic.toFixed(1) : '—'}</td>
-                      <td style={css.td}>{totalMulti > 0 ? totalMulti.toFixed(1) : '—'}</td>
-                      <td style={css.td}>{totalTurbine > 0 ? totalTurbine.toFixed(1) : '—'}</td>
-                      <td style={css.td}>{totalNight > 0 ? totalNight.toFixed(1) : '—'}</td>
-                      <td style={css.td}>{totalLdg}</td>
-                      <td style={{ ...css.td, ...css.tdLast, color: '#7A8CA0' }}>
+                      <td style={{ ...css.td, background: bg, ...css.hours }}>{dutyBlock}</td>
+                      <td style={{ ...css.td, background: bg }}>{totalPic > 0 ? totalPic.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, background: bg }}>{totalMulti > 0 ? totalMulti.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, background: bg }}>{totalTurbine > 0 ? totalTurbine.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, background: bg }}>{totalNight > 0 ? totalNight.toFixed(1) : '—'}</td>
+                      <td style={{ ...css.td, background: bg }}>{totalLdg}</td>
+                      <td style={{ ...css.td, background: bg, ...css.tdLast, color: 'var(--text-secondary)' }}>
                         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </td>
                     </tr>
@@ -943,28 +871,28 @@ export default function Logbook() {
                       const legBlock = blockTimeFromTimes(log.offBlocksTime, log.onBlocksTime);
                       const legBlockDisplay = legBlock !== null ? `${legBlock.toFixed(1)}h` : (log.totalTime > 0 ? `${log.totalTime.toFixed(1)}h` : '—');
                       return (
-                        <tr key={log.id} style={{ opacity: 0.9 }}>
-                          <td style={{ ...css.td, ...css.tdFirst, color: '#4A6080', fontSize: 11, paddingLeft: 28 }}>
+                        <tr key={log.id}>
+                          <td style={{ ...css.td, background: 'var(--bg)', ...css.tdFirst, color: 'var(--text-secondary)', fontSize: 11, paddingLeft: 28 }}>
                             Leg {idx + 1}
                           </td>
-                          <td style={{ ...css.td, color: '#4A6080', fontSize: 12 }}>—</td>
-                          <td style={css.td}>
+                          <td style={{ ...css.td, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 12 }}>—</td>
+                          <td style={{ ...css.td, background: 'var(--bg)' }}>
                             <div style={css.routeMain}>
                               {log.departure}
                               <span style={css.routeArrow}>&#x2192;</span>
                               {log.arrival}
                             </div>
                           </td>
-                          <td style={{ ...css.td, ...css.hours, fontSize: 13 }}>{legBlockDisplay}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
-                          <td style={{ ...css.td, fontSize: 13 }}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
-                          <td style={{ ...css.td, ...css.tdLast, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
-                            <button style={css.editBtn} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></button>
-                            <button style={css.cloneBtn} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={14} /></button>
-                            <button style={css.deleteBtn} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={14} /></button>
+                          <td style={{ ...css.td, background: 'var(--bg)', ...css.hours, fontSize: 13 }}>{legBlockDisplay}</td>
+                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
+                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
+                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
+                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
+                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
+                          <td style={{ ...css.td, background: 'var(--bg)', ...css.tdLast, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" style={{ padding: '6px', color: 'var(--accent)' }} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></Button>
+                            <Button variant="ghost" style={{ padding: '6px', color: 'var(--text-secondary)' }} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={14} /></Button>
+                            <Button variant="ghost" style={{ padding: '6px', color: SEM.red }} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={14} /></Button>
                           </td>
                         </tr>
                       );
@@ -978,52 +906,42 @@ export default function Logbook() {
       )}
 
       {showModal && (
-        <AddFlightModal
-          onClose={() => setShowModal(false)}
-          onSave={handleSaveNew}
-          onSaveBulk={handleSaveBulk}
-          title="Log a Flight"
-        />
+        <AddFlightModal onClose={() => setShowModal(false)} onSave={handleSaveNew} onSaveBulk={handleSaveBulk} title="Log a Flight" />
       )}
-
       {editFlight && (
-        <AddFlightModal
-          onClose={() => setEditFlight(null)}
-          onSave={handleSaveEdit}
-          initial={editFlight}
-          title="Edit Flight"
-        />
+        <AddFlightModal onClose={() => setEditFlight(null)} onSave={handleSaveEdit} initial={editFlight} title="Edit Flight" />
       )}
-
       {cloneFlight && (
-        <AddFlightModal
-          onClose={() => setCloneFlight(null)}
-          onSave={handleSaveClone}
-          initial={cloneInitial}
-          title="Clone Flight"
-        />
+        <AddFlightModal onClose={() => setCloneFlight(null)} onSave={handleSaveClone} initial={cloneInitial} title="Clone Flight" />
+      )}
+      {showImport && (
+        <ImportModal onClose={() => setShowImport(false)} onImportDone={fetchData} />
       )}
 
-      {showImport && (
-        <ImportModal
-          onClose={() => setShowImport(false)}
-          onImportDone={fetchData}
-        />
-      )}
+      {/* Delete confirmation (replaces window.confirm) */}
+      <Modal isOpen={!!pendingDelete} onClose={() => setPendingDelete(null)} title="Delete flight?">
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 0 }}>
+          Remove this flight from your logbook? This can't be undone.
+        </p>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <Button variant="danger" onClick={() => { const fn = pendingDelete.fn; setPendingDelete(null); fn(); }}>Delete</Button>
+          <Button variant="ghost" onClick={() => setPendingDelete(null)}>Cancel</Button>
+        </div>
+      </Modal>
 
       {migrationToast && (
         <div style={{
           position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
-          background: '#0D1E35', border: '1px solid rgba(46,204,113,0.5)',
+          background: 'var(--surface)', border: `1px solid ${SEM.green}`,
           borderRadius: 12, padding: '14px 22px',
           display: 'flex', alignItems: 'center', gap: 10,
-          boxShadow: '0 4px 24px rgba(0,0,0,0.4)', zIndex: 9999,
-          color: '#2ECC71', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
+          boxShadow: '0 4px 24px rgba(15,20,25,0.15)', zIndex: 9999,
+          color: SEM.green, fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
         }}>
           <CheckCircle2 size={18} />
           Carry-forward hours saved to your account.
         </div>
       )}
-    </div>
+    </LightPage>
   );
 }
