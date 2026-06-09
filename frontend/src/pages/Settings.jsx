@@ -165,7 +165,7 @@ export default function Settings() {
     }
     setPasswordLoading(true);
     try {
-      await api.post('/api/auth/change-password', { currentPassword, newPassword });
+      await api.patch('/auth/change-password', { currentPassword, newPassword });
       setPasswordMsg('Password changed successfully.');
       setCurrentPassword('');
       setNewPassword('');
@@ -257,7 +257,7 @@ export default function Settings() {
   // (window.confirm → <Modal>).
   async function confirmDelete() {
     try {
-      await api.delete('/api/auth/account');
+      await api.delete('/auth/account');
       dispatch(logout());
       navigate('/login');
     } catch (err) {
