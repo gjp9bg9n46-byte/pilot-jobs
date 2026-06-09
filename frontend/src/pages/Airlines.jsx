@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { airlineApi } from '../services/api';
+import { LightPage, Input, Button, Badge } from '../components/primitives';
 
 const REGIONS = ['Europe', 'Americas', 'Asia-Pacific', 'Middle East', 'Africa'];
 const HIRING_STATUSES = [
@@ -15,32 +16,22 @@ const SORT_OPTIONS = [
   { value: 'hiringStatus', label: 'Hiring Status'  },
 ];
 
-function hiringBadge(status) {
+// Recruitment status → semantic Badge variant (page-local; also in AirlineDetail.
+// Dedupe to a shared helper at a 3rd consumer.)
+function hiringMeta(status) {
   const map = {
-    ACTIVELY_HIRING: { label: 'Actively Hiring', color: '#2ECC71', bg: 'rgba(46,204,113,0.12)' },
-    OCCASIONAL:      { label: 'Occasional',       color: '#F39C12', bg: 'rgba(243,156,18,0.12)' },
-    PAUSED:          { label: 'Paused',            color: '#E74C3C', bg: 'rgba(231,76,60,0.12)'  },
-    UNKNOWN:         { label: 'Unknown',           color: '#7A8CA0', bg: 'rgba(122,140,160,0.12)' },
+    ACTIVELY_HIRING: { label: 'Actively Hiring', variant: 'success' },
+    OCCASIONAL:      { label: 'Occasional',      variant: 'warning' },
+    PAUSED:          { label: 'Paused',          variant: 'error'   },
+    UNKNOWN:         { label: 'Unknown',         variant: 'neutral' },
   };
   return map[status] || map.UNKNOWN;
 }
 
 const S = {
-  page: { padding: '0 0 40px' },
   controls: {
     display: 'flex', flexWrap: 'wrap', gap: 10,
     marginBottom: 24, alignItems: 'center',
-  },
-  search: {
-    flex: '1 1 200px', minWidth: 0,
-    padding: '10px 14px', borderRadius: 10,
-    background: '#0D1E35', border: '1px solid #1E3050',
-    color: '#fff', fontSize: 14, outline: 'none',
-  },
-  select: {
-    padding: '10px 12px', borderRadius: 10,
-    background: '#0D1E35', border: '1px solid #1E3050',
-    color: '#7A8CA0', fontSize: 13, cursor: 'pointer', outline: 'none',
   },
   grid: {
     display: 'grid',
@@ -48,36 +39,25 @@ const S = {
     gap: 14,
   },
   card: {
-    background: '#0D1E35', border: '1px solid #1E3050',
-    borderRadius: 14, padding: '18px 20px',
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 12, padding: '18px 20px',
     cursor: 'pointer', transition: 'border-color 0.15s',
     display: 'flex', flexDirection: 'column', gap: 10,
   },
   cardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  airlineName: { fontSize: 15, fontWeight: 700, color: '#fff', lineHeight: 1.3 },
+  airlineName: { fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 },
   iata: {
-    fontSize: 11, fontWeight: 800, color: '#00B4D8',
-    background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.2)',
+    fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+    fontFamily: 'var(--font-mono)',
+    background: 'rgba(0,63,136,0.08)', border: '1px solid rgba(0,63,136,0.2)',
     borderRadius: 6, padding: '2px 7px', flexShrink: 0,
   },
-  meta: { fontSize: 12, color: '#7A8CA0', display: 'flex', gap: 10, flexWrap: 'wrap' },
-  badge: (color, bg) => ({
-    fontSize: 11, fontWeight: 700, color, background: bg,
-    border: `1px solid ${color}40`, borderRadius: 6, padding: '2px 8px',
-    display: 'inline-block',
-  }),
+  meta: { fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 10, flexWrap: 'wrap' },
   pager: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     marginTop: 24, gap: 12, flexWrap: 'wrap',
   },
-  pagerBtn: (disabled) => ({
-    padding: '8px 18px', borderRadius: 8,
-    background: disabled ? '#0D1E35' : '#1B2B4B',
-    border: '1px solid #1E3050',
-    color: disabled ? '#2A3C55' : '#7A8CA0',
-    fontSize: 13, fontWeight: 600, cursor: disabled ? 'default' : 'pointer',
-  }),
-  empty: { textAlign: 'center', color: '#4A6080', padding: '60px 20px', fontSize: 14 },
+  empty: { textAlign: 'center', color: 'var(--text-secondary)', padding: '60px 20px', fontSize: 14 },
 };
 
 export default function Airlines() {
@@ -112,29 +92,35 @@ export default function Airlines() {
   useEffect(() => { setPage(1); }, [q, region, hiringStatus, sort]);
 
   return (
-    <div style={S.page}>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Airlines</h1>
+      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Who's hiring, what they fly, what they pay.</p>
+
       <div style={S.controls}>
-        <input
-          style={S.search}
-          placeholder="Search airlines…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <select style={S.select} value={region} onChange={(e) => setRegion(e.target.value)}>
-          <option value="">All Regions</option>
-          {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
-        <select style={S.select} value={hiringStatus} onChange={(e) => setHiringStatus(e.target.value)}>
-          <option value="">All Statuses</option>
-          {HIRING_STATUSES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
-        </select>
-        <select style={S.select} value={sort} onChange={(e) => setSort(e.target.value)}>
-          {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+          <Input placeholder="Search airlines…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <div style={{ flex: '0 0 auto', minWidth: 150 }}>
+          <Input as="select" value={region} onChange={(e) => setRegion(e.target.value)} style={{ fontSize: 13 }}>
+            <option value="">All Regions</option>
+            {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          </Input>
+        </div>
+        <div style={{ flex: '0 0 auto', minWidth: 150 }}>
+          <Input as="select" value={hiringStatus} onChange={(e) => setHiringStatus(e.target.value)} style={{ fontSize: 13 }}>
+            <option value="">All Statuses</option>
+            {HIRING_STATUSES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+          </Input>
+        </div>
+        <div style={{ flex: '0 0 auto', minWidth: 150 }}>
+          <Input as="select" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13 }}>
+            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Input>
+        </div>
       </div>
 
       {!loading && data.total > 0 && (
-        <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
           {data.total} airline{data.total !== 1 ? 's' : ''}
         </div>
       )}
@@ -146,14 +132,14 @@ export default function Airlines() {
       ) : (
         <div style={S.grid}>
           {data.items.map((airline) => {
-            const badge = hiringBadge(airline.hiringStatus);
+            const badge = hiringMeta(airline.hiringStatus);
             return (
               <div
                 key={airline.id}
                 style={S.card}
                 onClick={() => navigate(`/airlines/${airline.id}`)}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#2A3C55'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1E3050'}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
               >
                 <div style={S.cardHeader}>
                   <div style={S.airlineName}>{airline.name}</div>
@@ -168,7 +154,7 @@ export default function Airlines() {
                   )}
                 </div>
                 <div>
-                  <span style={S.badge(badge.color, badge.bg)}>{badge.label}</span>
+                  <Badge variant={badge.variant}>{badge.label}</Badge>
                 </div>
               </div>
             );
@@ -178,25 +164,17 @@ export default function Airlines() {
 
       {data.totalPages > 1 && (
         <div style={S.pager}>
-          <button
-            style={S.pagerBtn(page <= 1)}
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
+          <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             ← Previous
-          </button>
-          <span style={{ fontSize: 13, color: '#4A6080' }}>
+          </Button>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
             Page {data.page} of {data.totalPages}
           </span>
-          <button
-            style={S.pagerBtn(page >= data.totalPages)}
-            disabled={page >= data.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
+          <Button variant="secondary" disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)}>
             Next →
-          </button>
+          </Button>
         </div>
       )}
-    </div>
+    </LightPage>
   );
 }
