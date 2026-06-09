@@ -5,7 +5,14 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 // Dialog with backdrop. Centered card on desktop, bottom-sheet below 640px.
 // isOpen={false} renders nothing. Entrance fade+scale via mount state (no
 // keyframes). Closes on backdrop click, Escape, and the X button.
-export default function Modal({ isOpen, onClose, title, children }) {
+//
+// `size` sets the desktop max-width — three sizes; pick the smallest that fits
+// the content: sm (480) for confirms, md (680) for detail views/forms, lg (960)
+// for data-heavy panels. Default sm keeps all existing callers unchanged. The
+// mobile bottom-sheet (<640px, full-width) is identical across every size.
+const SIZE_MAP = { sm: 480, md: 680, lg: 960 };
+
+export default function Modal({ isOpen, onClose, title, size = 'sm', children }) {
   const isMobile = useIsMobile(640);
   const cardRef = useRef(null);
   const [show, setShow] = useState(false);
@@ -52,7 +59,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
     background: 'var(--surface)',
     color: 'var(--text-primary)',
     width: isMobile ? '100%' : '100%',
-    maxWidth: isMobile ? '100%' : 480,
+    maxWidth: isMobile ? '100%' : (SIZE_MAP[size] ?? SIZE_MAP.sm),
     maxHeight: isMobile ? '90vh' : '85vh',
     overflowY: 'auto',
     borderRadius: isMobile ? '14px 14px 0 0' : 8,

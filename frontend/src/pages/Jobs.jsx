@@ -9,6 +9,12 @@ import {
 } from 'lucide-react';
 import { jobApi, profileApi, airlineApi } from '../services/api';
 import { setJobs } from '../store';
+import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
+
+// Semantic status colors remapped to light-AA shades (meaning preserved):
+//   dark #2ECC71 → #166534 (match/ok), #F39C12 → #92400E (partial/warn),
+//   #E74C3C/#FF4757 → #991B1B (miss/error). Matches the Badge palette.
+const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
 
 // ─── Airline cache — fetched once per session, Map keyed by lowercase name ────
 let _airlineCache = null;
@@ -176,29 +182,19 @@ function computeMatchCount(job, profile, totals) {
 function MatchCountBadge({ matched, total, hideIfEmpty = false }) {
   if (total === 0) {
     if (hideIfEmpty) return null;
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', background: '#1B2B3B', border: '1px solid #243050', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 600, color: '#4A6080' }}>
-        No requirements specified
-      </span>
-    );
+    return <Badge variant="neutral">No requirements specified</Badge>;
   }
   const full = matched === total;
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center',
-      background: full ? '#0D2B1A' : '#2B1F0A',
-      border: `1px solid ${full ? '#1A4A2A' : '#4A3A1A'}`,
-      borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700,
-      color: full ? '#2ECC71' : '#F39C12',
-    }}>
+    <Badge variant={full ? 'success' : 'warning'} style={{ fontWeight: 700 }}>
       {matched}/{total} requirements matched
-    </span>
+    </Badge>
   );
 }
 
 function PlaneSave({ saved, size = 18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={saved ? '#00B4D8' : 'none'} stroke={saved ? '#00B4D8' : '#90A4BC'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={saved ? 'var(--accent)' : 'none'} stroke={saved ? 'var(--accent)' : 'var(--text-secondary)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       {/* Top-down commercial airplane silhouette */}
       <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 12 2a1.5 1.5 0 0 0-1.5 1.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
     </svg>
@@ -246,11 +242,12 @@ const SORT_OPTIONS = [
   { value: 'deadline', label: 'Deadline' },
 ];
 
+// Match-score tiers → Badge variants (Excellent green / Great blue / Good amber)
 function matchLabel(score) {
   if (!score) return null;
-  if (score >= 90) return { text: 'Excellent Match', bg: '#0D2B1A', color: '#2ECC71', border: '#1A4A2A' };
-  if (score >= 75) return { text: 'Great Match',     bg: '#0A2540', color: '#00B4D8', border: '#1A3A5A' };
-  if (score >= 60) return { text: 'Good Match',      bg: '#2B1F0A', color: '#F39C12', border: '#4A3A1A' };
+  if (score >= 90) return { text: 'Excellent Match', variant: 'success' };
+  if (score >= 75) return { text: 'Great Match',     variant: 'info' };
+  if (score >= 60) return { text: 'Good Match',      variant: 'warning' };
   return null;
 }
 
@@ -281,137 +278,78 @@ function formatSalary(job, compact = false) {
 }
 
 const css = {
-  page: {},
   topBar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
-  search: {
-    flex: 1, minWidth: 200, background: '#1B2B4B', border: '1px solid #243050',
-    borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none',
-    fontFamily: 'Inter, sans-serif',
-  },
-  select: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 10,
-    padding: '12px 14px', color: '#fff', fontSize: 14, outline: 'none', cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
-  },
-  refreshBtn: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 10,
-    padding: '12px 18px', color: '#7A8CA0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
-  },
-  filtersBtn: (active, count) => ({
-    background: active ? '#0A2540' : '#1B2B4B',
-    border: `1px solid ${active ? '#00B4D8' : '#243050'}`,
-    borderRadius: 10,
-    padding: '12px 18px', color: active ? '#00B4D8' : '#7A8CA0', fontSize: 14,
-    fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-    fontFamily: 'Inter, sans-serif',
-    position: 'relative',
+  // Toggle-style buttons (Filters, Qualified-only) — Phase-4/6 accent-tinted active pattern
+  toggleBtn: (active) => ({
+    background: active ? 'rgba(0,63,136,0.06)' : 'var(--surface)',
+    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+    borderRadius: 4, padding: '11px 16px',
+    color: active ? 'var(--accent)' : 'var(--text-secondary)',
+    fontSize: 14, fontWeight: 500, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', gap: 8,
+    fontFamily: 'var(--font-body)', position: 'relative', whiteSpace: 'nowrap',
   }),
   filtersBadge: {
-    background: '#00B4D8', color: '#0A1628', borderRadius: '50%',
+    background: 'var(--accent)', color: '#fff', borderRadius: '50%',
     width: 18, height: 18, display: 'inline-flex', alignItems: 'center',
     justifyContent: 'center', fontSize: 11, fontWeight: 800,
   },
-  qualifiedBtn: (active) => ({
-    background: active ? '#0D2B1A' : '#1B2B4B',
-    border: `1px solid ${active ? '#2ECC71' : '#243050'}`,
-    borderRadius: 20,
-    padding: '10px 16px', color: active ? '#2ECC71' : '#7A8CA0', fontSize: 13,
-    fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-    fontFamily: 'Inter, sans-serif',
-  }),
-  count: { color: '#4A6080', fontSize: 13, alignSelf: 'center', whiteSpace: 'nowrap' },
-  filterPanel: {
-    background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 14,
-    padding: 24, marginTop: 16, marginBottom: 20,
-  },
+  count: { color: 'var(--text-secondary)', fontSize: 13, alignSelf: 'center', whiteSpace: 'nowrap' },
   filterGrid: {
     display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16,
   },
-  filterField: { display: 'flex', flexDirection: 'column', gap: 6 },
-  filterLabel: { fontSize: 11, color: '#7A8CA0', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' },
-  filterInput: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8,
-    padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none',
-    fontFamily: 'Inter, sans-serif',
-  },
-  filterSelect: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8,
-    padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none', cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
-  },
   filterActions: { display: 'flex', gap: 12, marginTop: 20, justifyContent: 'flex-end' },
-  clearBtn: {
-    background: 'transparent', border: '1px solid #243050', borderRadius: 8,
-    padding: '10px 18px', color: '#7A8CA0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
-  },
-  applyBtn: {
-    background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 8,
-    padding: '10px 22px', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
-  },
-  toolbar: { display: 'flex', gap: 16, marginBottom: 28, flexWrap: 'wrap', alignItems: 'center' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: 20 },
   card: {
-    background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16,
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
     padding: '24px 72px 24px 24px', display: 'flex', flexDirection: 'column', gap: 12,
     transition: 'border-color 0.2s, transform 0.15s', cursor: 'pointer',
     position: 'relative',
   },
-  cardHover: { borderColor: '#00B4D8', transform: 'translateY(-2px)' },
+  cardHover: { borderColor: 'var(--accent)', transform: 'translateY(-2px)' },
   cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
-  title: { fontSize: 16, fontWeight: 700, color: '#fff', lineHeight: 1.4 },
-  airline: { fontSize: 14, color: '#00B4D8', fontWeight: 600 },
-  postedAgo: { fontSize: 12, color: '#7A8CA0', marginTop: 2 },
-  // Understated neutral badge — kept visually identical to JobPreviewCard so the
-  // employer's live preview matches the real card. Only for sourcePlatform EMPLOYER_DIRECT.
+  title: { fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 },
+  airline: { fontSize: 14, color: 'var(--accent)', fontWeight: 600 },
+  postedAgo: { fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 },
+  // Understated neutral badge — kept visually consistent so the employer's live
+  // preview matches the real card. Only for sourcePlatform EMPLOYER_DIRECT.
   employerBadge: {
     display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start',
-    fontSize: 10.5, fontWeight: 600, color: '#9FB0C4',
-    background: '#16263F', border: '1px solid #2A3A55', borderRadius: 5,
+    fontSize: 10.5, fontWeight: 600, color: 'var(--text-secondary)',
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 5,
     padding: '3px 8px', letterSpacing: 0.2, whiteSpace: 'nowrap', marginTop: 4,
   },
   authorityBadge: {
-    background: '#0A2040', border: '1px solid #1E3050', borderRadius: 6,
-    padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#00B4D8', whiteSpace: 'nowrap',
+    background: 'rgba(0,63,136,0.06)', border: '1px solid var(--border)', borderRadius: 6,
+    padding: '4px 10px', fontSize: 11, fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap',
+  },
+  rolePill: {
+    fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'rgba(0,63,136,0.08)',
+    border: '1px solid rgba(0,63,136,0.25)', borderRadius: 5, padding: '2px 7px',
+    letterSpacing: 0.3, whiteSpace: 'nowrap',
   },
   heartBtn: {
     position: 'absolute', top: '50%', transform: 'translateY(-50%)', right: 16,
     background: 'none', border: 'none', cursor: 'pointer', padding: 4, lineHeight: 1, zIndex: 1,
   },
   metaRow: { display: 'flex', gap: 20, flexWrap: 'wrap' },
-  meta: { fontSize: 12, color: '#7A8CA0', display: 'flex', alignItems: 'center', gap: 5 },
+  meta: { fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 },
   reqs: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 },
   req: {
-    background: '#1B2B4B', borderRadius: 6, padding: '4px 10px',
-    fontSize: 11, color: '#7A8CA0', fontWeight: 500,
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px',
+    fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500,
   },
-  matchBadge: (m) => ({
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: m.bg, border: `1px solid ${m.border}`, borderRadius: 8,
-    padding: '6px 12px', fontSize: 12, fontWeight: 700, color: m.color,
-  }),
-  viewBtn: {
-    marginTop: 'auto', background: 'transparent', border: '1px solid #243050',
-    borderRadius: 8, padding: '10px 0', color: '#7A8CA0', fontSize: 13,
-    fontWeight: 600, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s',
+  // Salary → warning Badge palette (amber-on-light)
+  salary: {
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6,
+    padding: '4px 10px', fontSize: 11, fontWeight: 700, color: SEM.amber,
   },
-  empty: { textAlign: 'center', padding: '80px 0', color: '#4A6080' },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: 700, color: '#7A8CA0', marginBottom: 8 },
+  empty: { textAlign: 'center', padding: '80px 0', color: 'var(--text-secondary)' },
+  emptyIcon: { marginBottom: 16 },
+  emptyTitle: { fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 },
   emptyText: { fontSize: 14, lineHeight: 1.6 },
-  loading: { textAlign: 'center', padding: '80px 0', color: '#00B4D8', fontSize: 15 },
-  modal: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    zIndex: 1000, padding: 24,
-  },
-  modalCard: {
-    background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 20,
-    padding: 36, maxWidth: 640, width: '100%', maxHeight: '85vh',
-    overflowY: 'auto', position: 'relative',
-  },
+  loading: { textAlign: 'center', padding: '80px 0', color: 'var(--accent)', fontSize: 15 },
 };
 
 const REQ_ICON_MAP = {
@@ -433,20 +371,20 @@ function ReqRow({ req }) {
   const isMatch = req.matched;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid #1B2B3B', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
       <div style={{ flexShrink: 0 }}>
         {isMatch
-          ? <CheckCircle size={16} color="#2ECC71" />
-          : <XCircle    size={16} color="#E74C3C" />}
+          ? <CheckCircle size={16} color={SEM.green} />
+          : <XCircle    size={16} color={SEM.red} />}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 80, color: '#7A8CA0', fontSize: 12, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 80, color: 'var(--text-secondary)', fontSize: 12, flexShrink: 0 }}>
         {icon}
         <span>{req.label}</span>
       </div>
-      <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: isMatch ? '#fff' : '#C0402A', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: isMatch ? 'var(--text-primary)' : SEM.red, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
         {req.reqValue}
       </div>
-      <div style={{ fontSize: 12, color: isMatch ? '#2ECC71' : '#7A8CA0', textAlign: 'right', minWidth: 0, flexShrink: 1, overflowWrap: 'break-word' }}>
+      <div style={{ fontSize: 12, color: isMatch ? SEM.green : 'var(--text-secondary)', textAlign: 'right', minWidth: 0, flexShrink: 1, overflowWrap: 'break-word' }}>
         {req.pilotValue ?? 'Not on profile'}
       </div>
     </div>
@@ -455,11 +393,9 @@ function ReqRow({ req }) {
 
 function JobModal({ job, onClose, pilotProfile, pilotTotals, airlineMap }) {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  if (!job) return null;
-  const airlineMatch = airlineMap?.get(job.company?.toLowerCase().trim());
+  const airlineMatch = job ? airlineMap?.get(job.company?.toLowerCase().trim()) : null;
 
-  const matchCount = pilotProfile && pilotTotals
+  const matchCount = job && pilotProfile && pilotTotals
     ? computeMatchCount(job, pilotProfile, pilotTotals)
     : null;
 
@@ -467,118 +403,109 @@ function JobModal({ job, onClose, pilotProfile, pilotTotals, airlineMap }) {
   const hasReqs = matchCount && matchCount.total > 0;
 
   // Extra non-matched fields shown in info grid (location only — hours are now in requirements)
-  const extraFields = [
+  const extraFields = job ? [
     job.location && ['Location', job.location, <MapPin size={11} />],
-  ].filter(Boolean);
+  ].filter(Boolean) : [];
 
   return (
-    <div style={{ ...css.modal, padding: isMobile ? 8 : 24 }} onClick={onClose}>
-      <div style={{ ...css.modalCard, padding: isMobile ? '20px 16px' : 36 }} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#7A8CA0', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
-        <div style={{ fontSize: 11, color: '#00B4D8', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>JOB DETAILS</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>{job.title}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: formatSalary(job) ? 6 : (matchCount ? 10 : 20) }}>
-          <span style={{ fontSize: 15, color: '#00B4D8', fontWeight: 600 }}>{job.company}</span>
-          {airlineMatch && (
-            <button
-              onClick={() => { onClose(); navigate(`/airlines/${airlineMatch.id}`); }}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: '#00B4D8', fontWeight: 600, opacity: 0.8, whiteSpace: 'nowrap', textDecoration: 'underline', textUnderlineOffset: 3 }}
-            >
-              View factfile →
-            </button>
+    <Modal isOpen={!!job} onClose={onClose} size="md" title={job?.title}>
+      {job && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: formatSalary(job) ? 6 : (matchCount ? 10 : 20) }}>
+            <span style={{ fontSize: 15, color: 'var(--accent)', fontWeight: 600 }}>{job.company}</span>
+            {airlineMatch && (
+              <button
+                onClick={() => { onClose(); navigate(`/airlines/${airlineMatch.id}`); }}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: 'var(--accent)', fontWeight: 600, opacity: 0.8, whiteSpace: 'nowrap', textDecoration: 'underline', textUnderlineOffset: 3 }}
+              >
+                View factfile →
+              </button>
+            )}
+          </div>
+          {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
+            <div style={{ ...css.employerBadge, fontSize: 12, padding: '4px 10px', marginTop: 0, marginBottom: 16 }}>Posted directly by employer</div>
           )}
-        </div>
-        {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
-          <div style={{ ...css.employerBadge, fontSize: 12, padding: '4px 10px', marginTop: 0, marginBottom: 16 }}>Posted directly by employer</div>
-        )}
-        {formatSalary(job) && (
-          <div style={{ marginBottom: matchCount ? 10 : 18 }}>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              background: '#1C1500', border: '1px solid #3D2C00',
-              borderRadius: 8, padding: '5px 12px',
-              fontSize: 13, fontWeight: 700, color: '#F59E0B',
-            }}>
-              $ {formatSalary(job)}
-            </span>
-          </div>
-        )}
-        {matchCount && (
-          <div style={{ marginBottom: 16 }}>
-            <MatchCountBadge matched={matchCount.matched} total={matchCount.total} hideIfEmpty={false} />
-          </div>
-        )}
-
-        {hasReqs ? (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: '#7A8CA0', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 }}>Requirements</div>
-            <div style={{ background: '#111D2B', borderRadius: 10, padding: '0 12px' }}>
-              {matchCount.requirements.map((r) => <ReqRow key={r.label} req={r} />)}
+          {formatSalary(job) && (
+            <div style={{ marginBottom: matchCount ? 10 : 18 }}>
+              <span style={{ ...css.salary, fontSize: 13, padding: '5px 12px' }}>$ {formatSalary(job)}</span>
             </div>
+          )}
+          {matchCount && (
+            <div style={{ marginBottom: 16 }}>
+              <MatchCountBadge matched={matchCount.matched} total={matchCount.total} hideIfEmpty={false} />
+            </div>
+          )}
 
-            {missing.length > 0 && (
-              <div style={{ marginTop: 12, padding: '10px 14px', background: '#2B1A1A', border: '1px solid #4A2A2A', borderRadius: 10 }}>
-                <div style={{ fontSize: 11, color: '#E74C3C', fontWeight: 700, marginBottom: 6 }}>WHAT YOU&apos;RE MISSING</div>
-                {missing.map((r) => (
-                  <div key={r.label} style={{ fontSize: 12, color: '#C07070', marginBottom: 3 }}>
-                    • {r.label}: {r.reqValue}{r.pilotValue ? ` (you have: ${r.pilotValue})` : ''}
-                  </div>
-                ))}
+          {hasReqs ? (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 }}>Requirements</div>
+              <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0 12px' }}>
+                {matchCount.requirements.map((r) => <ReqRow key={r.label} req={r} />)}
               </div>
-            )}
 
-            {extraFields.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
-                {extraFields.map(([label, val, icon]) => (
-                  <div key={label} style={{ background: '#1B2B4B', borderRadius: 8, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 11, color: '#4A6080', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4 }}>{icon}{label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{val}</div>
-                  </div>
-                ))}
+              {missing.length > 0 && (
+                <div style={{ marginTop: 12, padding: '10px 14px', background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8 }}>
+                  <div style={{ fontSize: 11, color: SEM.red, fontWeight: 700, marginBottom: 6 }}>WHAT YOU&apos;RE MISSING</div>
+                  {missing.map((r) => (
+                    <div key={r.label} style={{ fontSize: 12, color: SEM.red, marginBottom: 3 }}>
+                      • {r.label}: {r.reqValue}{r.pilotValue ? ` (you have: ${r.pilotValue})` : ''}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {extraFields.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+                  {extraFields.map(([label, val, icon]) => (
+                    <div key={label} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4 }}>{icon}{label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : matchCount ? (
+            <div style={{ marginBottom: 20, padding: '12px 16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+              No structured requirements specified for this job.
+            </div>
+          ) : null}
+
+          {job.description ? (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+                Job Description
               </div>
-            )}
-          </div>
-        ) : matchCount ? (
-          <div style={{ marginBottom: 20, padding: '12px 16px', background: '#1B2B3B', border: '1px solid #243050', borderRadius: 10, fontSize: 13, color: '#7A8CA0' }}>
-            No structured requirements specified for this job.
-          </div>
-        ) : null}
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                {job.description}
+              </div>
+            </div>
+          ) : null}
 
-        {job.description ? (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, color: '#7A8CA0', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
-              Job Description
+          {job.notes ? (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
+                Notes / Benefits
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
+                {job.notes}
+              </div>
             </div>
-            <div style={{ fontSize: 13, color: '#A0B4C8', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-              {job.description}
-            </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {job.notes ? (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, color: '#7A8CA0', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
-              Notes / Benefits
-            </div>
-            <div style={{ fontSize: 13, color: '#A0B4C8', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: '#111D2B', borderRadius: 10, padding: '12px 14px' }}>
-              {job.notes}
-            </div>
-          </div>
-        ) : null}
-
-        <a
-          href={job.applyUrl} target="_blank" rel="noreferrer"
-          style={{
-            display: 'block', textAlign: 'center',
-            background: 'linear-gradient(135deg, #00B4D8, #0077A8)',
-            color: '#fff', padding: '14px', borderRadius: 10,
-            fontWeight: 700, fontSize: 16, textDecoration: 'none',
-          }}
-        >
-          View Full Posting &amp; Apply →
-        </a>
-      </div>
-    </div>
+          <a
+            href={job.applyUrl} target="_blank" rel="noreferrer"
+            style={{
+              display: 'block', textAlign: 'center',
+              background: 'var(--accent)', color: '#fff', padding: '14px', borderRadius: 4,
+              fontWeight: 500, fontSize: 16, textDecoration: 'none', fontFamily: 'var(--font-body)',
+            }}
+          >
+            View Full Posting &amp; Apply →
+          </a>
+        </>
+      )}
+    </Modal>
   );
 }
 
@@ -724,15 +651,20 @@ export default function Jobs() {
   );
 
   return (
-    <div style={css.page}>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Jobs</h1>
+      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Cockpit roles, filtered to your profile.</p>
+
       {/* Top bar */}
       <div style={css.topBar}>
-        <input
-          style={css.search} placeholder="Search by airline, aircraft, or country..."
-          value={search} onChange={(e) => setSearch(e.target.value)}
-        />
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <Input
+            placeholder="Search by airline, aircraft, or country..."
+            value={search} onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         <button
-          style={css.filtersBtn(filtersOpen || activeFilterCount > 0, activeFilterCount)}
+          style={css.toggleBtn(filtersOpen || activeFilterCount > 0)}
           onClick={filtersOpen ? closeFilters : openFilters}
         >
           <SlidersHorizontal size={15} /> Filters
@@ -741,110 +673,60 @@ export default function Jobs() {
           )}
         </button>
         <button
-          style={css.qualifiedBtn(qualifiedOnly)}
+          style={css.toggleBtn(qualifiedOnly)}
           onClick={() => setQualifiedOnly((v) => !v)}
         >
           {qualifiedOnly ? '✓ ' : ''}Qualified only
         </button>
-        <select
-          style={css.select}
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-        >
-          {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
-        <button style={css.refreshBtn} onClick={fetchJobs}>↻ Refresh</button>
+        <div>
+          <Input as="select" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
+            {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </Input>
+        </div>
+        <Button variant="secondary" onClick={fetchJobs}>↻ Refresh</Button>
         <span style={css.count}>{filtered.length} of {total} jobs</span>
       </div>
 
       {/* Filter panel */}
       {filtersOpen && (
-        <div style={css.filterPanel}>
+        <Card style={{ marginTop: 16, marginBottom: 20 }}>
           <div style={css.filterGrid}>
-            <div style={css.filterField}>
-              <label style={css.filterLabel}>Authority</label>
-              <select
-                style={css.filterSelect}
-                value={pendingAuthority}
-                onChange={(e) => setPendingAuthority(e.target.value)}
-              >
-                {AUTHORITIES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
-              </select>
-            </div>
-            <div style={css.filterField}>
-              <label style={css.filterLabel}>Aircraft Type</label>
-              <input
-                style={css.filterInput}
-                placeholder="e.g. Boeing 737"
-                value={pendingAircraftType}
-                onChange={(e) => setPendingAircraftType(e.target.value)}
-              />
-            </div>
-            <div style={css.filterField}>
-              <label style={css.filterLabel}>Role</label>
-              <select
-                style={css.filterSelect}
-                value={pendingRole}
-                onChange={(e) => setPendingRole(e.target.value)}
-              >
-                {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </div>
-            <div style={css.filterField}>
-              <label style={css.filterLabel}>Contract Type</label>
-              <select
-                style={css.filterSelect}
-                value={pendingContractType}
-                onChange={(e) => setPendingContractType(e.target.value)}
-              >
-                {CONTRACT_TYPES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
-            </div>
-            <div style={css.filterField}>
-              <label style={css.filterLabel}>Posted Within</label>
-              <select
-                style={css.filterSelect}
-                value={pendingPostedWithin}
-                onChange={(e) => setPendingPostedWithin(e.target.value)}
-              >
-                {POSTED_WITHIN.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
-            </div>
-            <div style={css.filterField}>
-              <label style={css.filterLabel}>Min Salary</label>
-              <input
-                type="number"
-                style={css.filterInput}
-                placeholder="e.g. 80000"
-                value={pendingMinSalary}
-                onChange={(e) => setPendingMinSalary(e.target.value)}
-              />
-            </div>
+            <Input as="select" label="Authority" value={pendingAuthority} onChange={(e) => setPendingAuthority(e.target.value)}>
+              {AUTHORITIES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+            </Input>
+            <Input label="Aircraft Type" placeholder="e.g. Boeing 737" value={pendingAircraftType} onChange={(e) => setPendingAircraftType(e.target.value)} />
+            <Input as="select" label="Role" value={pendingRole} onChange={(e) => setPendingRole(e.target.value)}>
+              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </Input>
+            <Input as="select" label="Contract Type" value={pendingContractType} onChange={(e) => setPendingContractType(e.target.value)}>
+              {CONTRACT_TYPES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </Input>
+            <Input as="select" label="Posted Within" value={pendingPostedWithin} onChange={(e) => setPendingPostedWithin(e.target.value)}>
+              {POSTED_WITHIN.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </Input>
+            <Input type="number" label="Min Salary" placeholder="e.g. 80000" value={pendingMinSalary} onChange={(e) => setPendingMinSalary(e.target.value)} />
           </div>
           <div style={css.filterActions}>
-            <button style={css.clearBtn} onClick={clearAll}>Clear All</button>
-            <button style={css.applyBtn} onClick={applyFilters}>Apply Filters</button>
+            <Button variant="ghost" onClick={clearAll}>Clear All</Button>
+            <Button onClick={applyFilters}>Apply Filters</Button>
           </div>
-        </div>
+        </Card>
       )}
 
       {loading ? (
         <div style={css.loading}>Loading jobs from around the world...</div>
       ) : error ? (
         <div style={css.empty}>
-          <div style={css.emptyIcon}><AlertTriangle size={48} color="#F39C12" /></div>
+          <div style={css.emptyIcon}><AlertTriangle size={48} color={SEM.amber} /></div>
           <div style={css.emptyTitle}>Could not load jobs</div>
           <div style={css.emptyText}>{error}</div>
-          <button
-            onClick={fetchJobs}
-            style={{ marginTop: 20, background: '#00B4D8', border: 'none', borderRadius: 8, padding: '10px 24px', color: '#0A1628', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}
-          >
-            Retry
-          </button>
+          <div style={{ marginTop: 20 }}>
+            <Button onClick={fetchJobs}>Retry</Button>
+          </div>
         </div>
       ) : filtered.length === 0 ? (
         <div style={css.empty}>
-          <div style={css.emptyIcon}><Search size={48} color="#4A6080" /></div>
+          <div style={css.emptyIcon}><Search size={48} color="var(--text-secondary)" /></div>
           <div style={css.emptyTitle}>No jobs found</div>
           <div style={css.emptyText}>Try adjusting your search or filters.<br />New jobs are scraped every 6 hours.</div>
         </div>
@@ -855,10 +737,10 @@ export default function Jobs() {
             (pilotTotals.totalTime ?? 0) === 0 &&
             (pilotProfile.certificates?.length ?? 0) === 0 &&
             (pilotProfile.ratings?.length ?? 0) === 0 && (
-            <div style={{ marginBottom: 16, padding: '10px 16px', background: '#1B2B1A', border: '1px solid #2A4A2A', borderRadius: 10, fontSize: 13, color: '#7AB87A', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={14} color="#7AB87A" />
+            <div style={{ marginBottom: 16, padding: '10px 16px', background: '#DCFCE7', border: '1px solid #BBF7D0', borderRadius: 8, fontSize: 13, color: SEM.green, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={14} color={SEM.green} />
               Complete your profile to improve job matching →{' '}
-              <a href="/profile" style={{ color: '#2ECC71', fontWeight: 700, textDecoration: 'none' }}>Go to Profile</a>
+              <a href="/profile" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Go to Profile</a>
             </div>
           )}
 
@@ -892,7 +774,7 @@ export default function Jobs() {
                   <div style={css.cardTop}>
                     <div style={css.title}>{job.title}</div>
                     {job.role && (
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#00B4D8', background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.25)', borderRadius: 5, padding: '2px 7px', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
+                      <div style={css.rolePill}>
                         {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
                       </div>
                     )}
@@ -929,37 +811,25 @@ export default function Jobs() {
 
                   {formatSalary(job, true) && (
                     <div>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        background: '#1C1500', border: '1px solid #3D2C00',
-                        borderRadius: 6, padding: '4px 10px',
-                        fontSize: 11, fontWeight: 700, color: '#F59E0B',
-                      }}>
-                        $ {formatSalary(job, true)}
-                      </span>
+                      <span style={css.salary}>$ {formatSalary(job, true)}</span>
                     </div>
                   )}
 
-                  {match && <div style={css.matchBadge(match)}>✓ {match.text}</div>}
-                  {matchCount && <MatchCountBadge matched={matchCount.matched} total={matchCount.total} />}
+                  {match && <span style={{ alignSelf: 'flex-start' }}><Badge variant={match.variant} style={{ fontWeight: 700 }}>✓ {match.text}</Badge></span>}
+                  {matchCount && <span style={{ alignSelf: 'flex-start' }}><MatchCountBadge matched={matchCount.matched} total={matchCount.total} /></span>}
 
                   {airlineMatch && (
                     <div
                       onClick={(e) => { e.stopPropagation(); navigate(`/airlines/${airlineMatch.id}`); }}
-                      style={{ fontSize: 12, color: '#00B4D8', cursor: 'pointer', fontWeight: 600, opacity: 0.85, marginTop: 2 }}
+                      style={{ fontSize: 12, color: 'var(--accent)', cursor: 'pointer', fontWeight: 600, opacity: 0.85, marginTop: 2 }}
                     >
                       View {airlineMatch.name} factfile →
                     </div>
                   )}
 
-                  <button
-                    style={{
-                      ...css.viewBtn,
-                      ...(isHover ? { borderColor: '#00B4D8', color: '#00B4D8' } : {}),
-                    }}
-                  >
-                    View Details →
-                  </button>
+                  <div style={{ marginTop: 'auto' }}>
+                    <Button variant="secondary" style={{ width: '100%' }}>View Details →</Button>
+                  </div>
                 </div>
               );
             })}
@@ -974,6 +844,6 @@ export default function Jobs() {
         pilotTotals={pilotTotals}
         airlineMap={airlineMap}
       />
-    </div>
+    </LightPage>
   );
 }
