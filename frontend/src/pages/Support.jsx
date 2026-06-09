@@ -1,32 +1,5 @@
 import React, { useState } from 'react';
-
-const css = {
-  card: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 28, marginBottom: 24 },
-  title: { fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 4 },
-  subtitle: { fontSize: 13, color: '#4A6080', marginBottom: 20 },
-  faqItem: { borderBottom: '1px solid #1E3050', paddingBottom: 0 },
-  faqQ: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '16px 0', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#fff',
-  },
-  faqA: { fontSize: 13, color: '#7A8CA0', lineHeight: 1.7, paddingBottom: 16 },
-  linkRow: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '14px 0', borderBottom: '1px solid #1B2B4B',
-  },
-  linkLabel: { fontSize: 14, fontWeight: 600, color: '#fff' },
-  linkSub: { fontSize: 12, color: '#7A8CA0', marginTop: 2 },
-  linkBtn: {
-    background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8,
-    padding: '7px 16px', color: '#00B4D8', fontSize: 13, fontWeight: 600,
-    cursor: 'pointer', textDecoration: 'none', display: 'inline-block',
-  },
-  badge: {
-    background: 'rgba(0,180,216,0.12)', border: '1px solid rgba(0,180,216,0.3)',
-    color: '#00B4D8', borderRadius: 20, fontSize: 11, fontWeight: 700,
-    padding: '3px 10px', letterSpacing: 0.3,
-  },
-};
+import { LightPage, Card, Badge } from '../components/primitives';
 
 const FAQS = [
   {
@@ -79,70 +52,109 @@ const FAQS = [
   },
 ];
 
+const CONTACTS = [
+  { label: 'General Support', sub: 'Questions, bugs, account issues', href: 'mailto:support@cockpithire.com', btn: 'Email us' },
+  { label: 'Report a Job Listing', sub: 'Outdated, inaccurate, or suspicious posting', href: 'mailto:listings@cockpithire.com', btn: 'Report' },
+  { label: 'Partnership Enquiries', sub: 'Airlines, flight schools, and aviation businesses', href: 'mailto:partnerships@cockpithire.com', btn: 'Get in touch' },
+];
+
+const ABOUT = [
+  { label: 'Platform', sub: 'Web application', badge: 'Beta', variant: 'info' },
+  { label: 'Mobile App', sub: 'iOS & Android', badge: 'Coming soon', variant: 'neutral' },
+  { label: 'Data Sources', sub: 'Airline career boards, ATC portals, aviation job boards', badge: null },
+];
+
+const css = {
+  cardTitle: { fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 4 },
+  cardSub: { fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 },
+  linkRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 0', borderBottom: '1px solid var(--border)' },
+  linkLabel: { fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' },
+  linkSub: { fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 },
+};
+
 function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={css.faqItem}>
-      <div style={css.faqQ} onClick={() => setOpen((v) => !v)}>
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
+      <div
+        onClick={() => setOpen((v) => !v)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '16px 0', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}
+      >
         {q}
-        <span style={{ color: '#00B4D8', fontSize: 18, lineHeight: 1 }}>{open ? '−' : '+'}</span>
+        <span style={{ color: 'var(--accent)', fontSize: 18, lineHeight: 1, flexShrink: 0 }}>{open ? '−' : '+'}</span>
       </div>
-      {open && <div style={css.faqA}>{a}</div>}
+      {open && <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, paddingBottom: 16 }}>{a}</div>}
     </div>
+  );
+}
+
+// mailto contact styled to match Button variant="secondary" tokens (border → accent on hover)
+function ContactLink({ href, children }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <a
+      href={href}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ display: 'inline-block', flexShrink: 0, background: 'var(--surface)', border: `1px solid ${hover ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '10px 16px', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, textDecoration: 'none', whiteSpace: 'nowrap', transition: 'border-color 0.15s ease' }}
+    >
+      {children}
+    </a>
   );
 }
 
 export default function Support() {
   return (
-    <div>
-      {/* FAQ */}
-      <div style={css.card}>
-        <div style={css.title}>Frequently Asked Questions</div>
-        <div style={css.subtitle}>Answers to the most common questions about CockpitHire.</div>
-        {FAQS.map((item) => <FaqItem key={item.q} q={item.q} a={item.a} />)}
-      </div>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>
+          Support
+        </h1>
+        <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>
+          Help, contact, and what we're building.
+        </p>
 
-      {/* Contact */}
-      <div style={css.card}>
-        <div style={css.title}>Contact & Feedback</div>
-        <div style={css.subtitle}>We read every message — usually reply within 24 hours.</div>
-        <div>
-          {[
-            { label: 'General Support', sub: 'Questions, bugs, account issues', href: 'mailto:support@cockpithire.com', btn: 'Email us' },
-            { label: 'Report a Job Listing', sub: 'Outdated, inaccurate, or suspicious posting', href: 'mailto:listings@cockpithire.com', btn: 'Report' },
-            { label: 'Partnership Enquiries', sub: 'Airlines, flight schools, and aviation businesses', href: 'mailto:partnerships@cockpithire.com', btn: 'Get in touch' },
-          ].map((item) => (
-            <div key={item.label} style={css.linkRow}>
-              <div>
-                <div style={css.linkLabel}>{item.label}</div>
-                <div style={css.linkSub}>{item.sub}</div>
-              </div>
-              <a href={item.href} style={css.linkBtn}>{item.btn}</a>
-            </div>
-          ))}
-        </div>
-      </div>
+        {/* FAQ */}
+        <Card style={{ padding: 28, marginBottom: 24 }}>
+          <div style={css.cardTitle}>Frequently Asked Questions</div>
+          <div style={css.cardSub}>Answers to the most common questions about CockpitHire.</div>
+          {FAQS.map((item) => <FaqItem key={item.q} q={item.q} a={item.a} />)}
+        </Card>
 
-      {/* App info */}
-      <div style={css.card}>
-        <div style={css.title}>About CockpitHire</div>
-        <div style={css.subtitle}>Platform information and version details.</div>
-        <div>
-          {[
-            { label: 'Platform', sub: 'Web application', badge: 'Beta' },
-            { label: 'Mobile App', sub: 'iOS & Android', badge: 'Coming soon' },
-            { label: 'Data Sources', sub: 'Airline career boards, ATC portals, aviation job boards', badge: null },
-          ].map((item) => (
-            <div key={item.label} style={{ ...css.linkRow, alignItems: 'flex-start' }}>
-              <div>
-                <div style={css.linkLabel}>{item.label}</div>
-                <div style={css.linkSub}>{item.sub}</div>
+        {/* Contact */}
+        <Card style={{ padding: 28, marginBottom: 24 }}>
+          <div style={css.cardTitle}>Contact &amp; Feedback</div>
+          <div style={css.cardSub}>We read every message — usually reply within 24 hours.</div>
+          <div>
+            {CONTACTS.map((item) => (
+              <div key={item.label} style={css.linkRow}>
+                <div>
+                  <div style={css.linkLabel}>{item.label}</div>
+                  <div style={css.linkSub}>{item.sub}</div>
+                </div>
+                <ContactLink href={item.href}>{item.btn}</ContactLink>
               </div>
-              {item.badge && <span style={css.badge}>{item.badge}</span>}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* App info */}
+        <Card style={{ padding: 28, marginBottom: 24 }}>
+          <div style={css.cardTitle}>About CockpitHire</div>
+          <div style={css.cardSub}>Platform information and version details.</div>
+          <div>
+            {ABOUT.map((item) => (
+              <div key={item.label} style={{ ...css.linkRow, alignItems: 'flex-start' }}>
+                <div>
+                  <div style={css.linkLabel}>{item.label}</div>
+                  <div style={css.linkSub}>{item.sub}</div>
+                </div>
+                {item.badge && <Badge variant={item.variant}>{item.badge}</Badge>}
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
-    </div>
+    </LightPage>
   );
 }
