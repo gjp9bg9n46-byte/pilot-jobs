@@ -3,44 +3,44 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { employerApi } from '../../services/employerApi';
 import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { Badge, Button, Modal } from '../../components/primitives';
 
 const TYPE_LABEL = { AIRLINE: 'Airline', CHARTER: 'Charter', CARGO: 'Cargo', EMS: 'EMS / Air Ambulance', FLIGHT_SCHOOL: 'Flight School', CORPORATE: 'Corporate', RECRUITER: 'Recruiter / Agency', OTHER: 'Other' };
 const ROLE_LABEL = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor', FLIGHT_ENGINEER: 'Flight Engineer' };
-const STATUS_COLOR = { ACTIVE: ['#34D399', 'rgba(52,211,153,0.12)'], EXPIRED: ['#7A8CA0', 'rgba(122,140,160,0.12)'], FILLED: ['#F59E0B', 'rgba(245,158,11,0.12)'], PENDING_REVIEW: ['#60A5FA', 'rgba(96,165,250,0.12)'] };
+// Job status → semantic Badge variant
+const JOB_STATUS_VARIANT = { ACTIVE: 'success', EXPIRED: 'neutral', FILLED: 'warning', PENDING_REVIEW: 'info' };
+// Employer account status → semantic Badge variant
+const ACCT_STATUS_VARIANT = { APPROVED: 'success', PENDING: 'info', REJECTED: 'error', SUSPENDED: 'error' };
 
 const css = {
-  page: { minHeight: '100vh', background: '#0A1628', paddingBottom: 64 },
-  header: { background: '#0D1E35', borderBottom: '1px solid #1E3050', padding: '16px 0' },
+  page: { minHeight: '100vh', background: 'var(--bg)', paddingBottom: 64, fontFamily: 'var(--font-body)' },
+  header: { background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 0' },
   headerIn: { maxWidth: 1000, margin: '0 auto', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
-  brand: { fontSize: 20, fontWeight: 800, color: '#00B4D8' },
-  co: { color: '#C0CDE0', fontSize: 15, fontWeight: 600 },
-  badge: (c) => ({ display: 'inline-block', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999, letterSpacing: 0.4, color: c[0], background: c[1], border: `1px solid ${c[0]}55` }),
+  brand: { fontSize: 19, fontWeight: 700, color: 'var(--accent)' },
+  co: { color: 'var(--text-primary)', fontSize: 15, fontWeight: 600 },
   hRight: { display: 'flex', alignItems: 'center', gap: 16 },
-  navlink: { color: '#7A8CA0', fontSize: 14, fontWeight: 600, textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none' },
+  navlink: { color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', fontFamily: 'var(--font-body)' },
   wrap: { maxWidth: 1000, margin: '0 auto', padding: '24px 20px' },
-  toast: { background: 'rgba(52,211,153,0.12)', border: '1px solid #34D39955', color: '#34D399', borderRadius: 10, padding: '12px 16px', marginBottom: 20, fontWeight: 600, fontSize: 14 },
-  banner: { background: '#2A2410', border: '1px solid #5C5026', color: '#E0C24A', borderRadius: 10, padding: '14px 16px', marginBottom: 20, fontSize: 14 },
-  profileCard: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 22, marginBottom: 26 },
+  toast: { background: '#DCFCE7', border: '1px solid #BBF7D0', color: '#166534', borderRadius: 6, padding: '12px 16px', marginBottom: 20, fontWeight: 600, fontSize: 14 },
+  banner: { background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', borderRadius: 6, padding: '14px 16px', marginBottom: 20, fontSize: 14 },
+  profileCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 22, marginBottom: 26 },
   pcTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' },
-  pcName: { fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 4 },
-  pcMeta: { color: '#7A8CA0', fontSize: 14 },
+  pcName: { fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 },
+  pcMeta: { color: 'var(--text-secondary)', fontSize: 14 },
   pcGrid: { display: 'flex', flexWrap: 'wrap', gap: '8px 28px', marginTop: 14 },
-  pcItem: { fontSize: 13 }, pcK: { color: '#6B7A90' }, pcV: { color: '#C0CDE0', fontWeight: 600 },
-  editBtn: { background: 'transparent', border: '1px solid #2A3A55', borderRadius: 9, padding: '9px 14px', color: '#C0CDE0', fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' },
+  pcItem: { fontSize: 13 }, pcK: { color: 'var(--text-secondary)' }, pcV: { color: 'var(--text-primary)', fontWeight: 600 },
+  editBtn: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '9px 14px', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', fontFamily: 'var(--font-body)' },
   jobsHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' },
-  jobsTitle: { fontSize: 18, fontWeight: 800, color: '#fff' },
-  postBtn: { background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 10, padding: '11px 18px', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' },
+  jobsTitle: { fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' },
+  postBtn: { background: 'var(--accent)', border: 'none', borderRadius: 4, padding: '11px 18px', color: '#fff', fontSize: 15, fontWeight: 500, cursor: 'pointer', textDecoration: 'none', fontFamily: 'var(--font-body)' },
   postBtnOff: { opacity: 0.4, pointerEvents: 'none' },
-  jobCard: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 12, padding: 16, marginBottom: 12 },
+  jobCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 12 },
   jcTop: { display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' },
-  jcTitle: { fontSize: 16, fontWeight: 700, color: '#fff' },
-  jcMeta: { color: '#7A8CA0', fontSize: 13, marginTop: 4, display: 'flex', gap: 14, flexWrap: 'wrap' },
+  jcTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' },
+  jcMeta: { color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, display: 'flex', gap: 14, flexWrap: 'wrap' },
   actions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' },
-  act: { border: '1px solid #2A3A55', background: '#16263F', borderRadius: 8, padding: '7px 13px', color: '#C0CDE0', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' },
-  actDanger: { border: '1px solid #5C2626', background: '#2D1A1A', color: '#FF8A8A' },
-  empty: { background: '#0D1E35', border: '1px dashed #243050', borderRadius: 12, padding: '36px 20px', textAlign: 'center', color: '#7A8CA0' },
-  modalBg: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
-  modal: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 14, padding: 24, maxWidth: 400, width: '100%' },
+  act: { border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 6, padding: '7px 13px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', fontFamily: 'var(--font-body)' },
+  empty: { background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 8, padding: '36px 20px', textAlign: 'center', color: 'var(--text-secondary)' },
 };
 
 export default function EmployerDashboard() {
@@ -73,40 +73,37 @@ export default function EmployerDashboard() {
 
   if (!employer) return null;
 
-  const JobRow = ({ j }) => {
-    const sc = STATUS_COLOR[j.status] || STATUS_COLOR.EXPIRED;
-    return (
-      <div style={css.jobCard}>
-        <div style={css.jcTop}>
-          <div>
-            <div style={css.jcTitle}>{j.title}</div>
-            <div style={css.jcMeta}>
-              {j.role && <span>{ROLE_LABEL[j.role] || j.role}</span>}
-              <span>📍 {j.location || '—'}</span>
-              <span>{new Date(j.postedAt).toLocaleDateString()}</span>
-            </div>
+  const JobRow = ({ j }) => (
+    <div style={css.jobCard}>
+      <div style={css.jcTop}>
+        <div>
+          <div style={css.jcTitle}>{j.title}</div>
+          <div style={css.jcMeta}>
+            {j.role && <span>{ROLE_LABEL[j.role] || j.role}</span>}
+            <span>📍 {j.location || '—'}</span>
+            <span>{new Date(j.postedAt).toLocaleDateString()}</span>
           </div>
-          <span style={css.badge(sc)}>{j.status}</span>
         </div>
-        {approved && (
-          <div style={css.actions}>
-            <Link to={`/employer/jobs/${j.id}/edit`} style={css.act}>Edit</Link>
-            {j.status === 'EXPIRED' && <button style={css.act} disabled={busy} onClick={() => handleRepost(j.id)}>Repost</button>}
-            {j.status === 'ACTIVE' && <button style={{ ...css.act, ...css.actDanger }} disabled={busy} onClick={() => setConfirmDel(j)}>Delete</button>}
-          </div>
-        )}
+        <Badge variant={JOB_STATUS_VARIANT[j.status] || 'neutral'}>{j.status}</Badge>
       </div>
-    );
-  };
+      {approved && (
+        <div style={css.actions}>
+          <Link to={`/employer/jobs/${j.id}/edit`} style={css.act}>Edit</Link>
+          {j.status === 'EXPIRED' && <Button variant="secondary" style={{ padding: '7px 13px', fontSize: 13 }} disabled={busy} onClick={() => handleRepost(j.id)}>Repost</Button>}
+          {j.status === 'ACTIVE' && <Button variant="danger" style={{ padding: '7px 13px', fontSize: 13 }} disabled={busy} onClick={() => setConfirmDel(j)}>Delete</Button>}
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div style={css.page}>
+    <div className="app-b2b" style={css.page}>
       <div style={css.header}>
         <div style={css.headerIn}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={css.brand}>✈ CockpitHire</span>
             <span style={css.co}>{employer.companyName}</span>
-            <span style={css.badge(approved ? STATUS_COLOR.ACTIVE : STATUS_COLOR.FILLED)}>{status}</span>
+            <Badge variant={ACCT_STATUS_VARIANT[status] || 'neutral'}>{status}</Badge>
           </div>
           <div style={css.hRight}>
             <Link to="/employer/profile" style={css.navlink}>Edit Profile</Link>
@@ -129,7 +126,7 @@ export default function EmployerDashboard() {
             <Link to="/employer/profile" style={css.editBtn}>Edit profile</Link>
           </div>
           <div style={css.pcGrid}>
-            {employer.website && <div style={css.pcItem}><span style={css.pcK}>Website: </span><a href={employer.website} target="_blank" rel="noreferrer" style={{ ...css.pcV, color: '#00B4D8' }}>{employer.website}</a></div>}
+            {employer.website && <div style={css.pcItem}><span style={css.pcK}>Website: </span><a href={employer.website} target="_blank" rel="noreferrer" style={{ ...css.pcV, color: 'var(--accent)' }}>{employer.website}</a></div>}
             <div style={css.pcItem}><span style={css.pcK}>Verified contributors: </span><span style={css.pcV}>0</span></div>
           </div>
         </div>
@@ -139,26 +136,23 @@ export default function EmployerDashboard() {
           <Link to="/employer/jobs/new" style={{ ...css.postBtn, ...(approved ? {} : css.postBtnOff) }}>+ Post New Job</Link>
         </div>
 
-        {jobs === null ? <div style={{ color: '#7A8CA0' }}>Loading jobs…</div>
+        {jobs === null ? <div style={{ color: 'var(--text-secondary)' }}>Loading jobs…</div>
           : jobs.length === 0 ? (
             <div style={css.empty}>
-              You haven't posted any jobs yet.{approved && <> <Link to="/employer/jobs/new" style={{ color: '#00B4D8', fontWeight: 600 }}>Post your first job →</Link></>}
+              You haven't posted any jobs yet.{approved && <> <Link to="/employer/jobs/new" style={{ color: 'var(--accent)', fontWeight: 600 }}>Post your first job →</Link></>}
             </div>
           ) : jobs.map((j) => <JobRow key={j.id} j={j} />)}
       </div>
 
-      {confirmDel && (
-        <div style={css.modalBg} onClick={() => setConfirmDel(null)}>
-          <div style={css.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: '#fff', marginBottom: 10 }}>Delete this job?</div>
-            <div style={{ color: '#A8B6CC', fontSize: 14, marginBottom: 20 }}>"{confirmDel.title}" will be set to EXPIRED and removed from the public Jobs page. You can repost it later.</div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button style={css.act} onClick={() => setConfirmDel(null)}>Cancel</button>
-              <button style={{ ...css.act, ...css.actDanger }} disabled={busy} onClick={handleDelete}>{busy ? 'Deleting…' : 'Delete'}</button>
-            </div>
-          </div>
+      <Modal isOpen={!!confirmDel} onClose={() => setConfirmDel(null)} title="Delete this job?">
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 0 }}>
+          “{confirmDel?.title}” will be set to EXPIRED and removed from the public Jobs page. You can repost it later.
+        </p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+          <Button variant="ghost" onClick={() => setConfirmDel(null)}>Cancel</Button>
+          <Button variant="danger" disabled={busy} onClick={handleDelete}>{busy ? 'Deleting…' : 'Delete'}</Button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

@@ -1,24 +1,25 @@
 import React from 'react';
 
 // Visual mirror of the public Jobs.jsx card (kept self-contained — no pilot
-// imports). Includes the "Posted directly by employer" badge that step (h)
-// will formally add to the live Jobs page, so the employer sees the final look.
+// imports). Uses var() tokens so the JobForm can wrap it in an .app-light
+// island and render it in the WARM pilot palette (WYSIWYG of pilot output),
+// regardless of the surrounding cool .app-b2b employer scope.
 const ROLE_LABEL = { CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' };
 
 const css = {
-  card: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 14, padding: 18, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 380 },
+  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 380, fontFamily: 'var(--font-body)' },
   top: { display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' },
-  title: { fontSize: 17, fontWeight: 700, color: '#fff', flex: 1, lineHeight: 1.3 },
-  roleBadge: { fontSize: 10, fontWeight: 700, color: '#00B4D8', background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.25)', borderRadius: 5, padding: '2px 7px', letterSpacing: 0.3, whiteSpace: 'nowrap' },
-  authBadge: { fontSize: 10, fontWeight: 700, color: '#A8B6CC', background: '#16263F', border: '1px solid #243050', borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap' },
+  title: { fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', flex: 1, lineHeight: 1.3 },
+  roleBadge: { fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'rgba(0,63,136,0.08)', border: '1px solid rgba(0,63,136,0.25)', borderRadius: 5, padding: '2px 7px', letterSpacing: 0.3, whiteSpace: 'nowrap' },
+  authBadge: { fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap' },
   // Identical to css.employerBadge in Jobs.jsx so the preview matches the real card.
-  employerBadge: { display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', fontSize: 10.5, fontWeight: 600, color: '#9FB0C4', background: '#16263F', border: '1px solid #2A3A55', borderRadius: 5, padding: '3px 8px', letterSpacing: 0.2, whiteSpace: 'nowrap' },
-  airline: { fontSize: 14, color: '#00B4D8', fontWeight: 600 },
-  metaRow: { display: 'flex', flexWrap: 'wrap', gap: 12, color: '#7A8CA0', fontSize: 12 },
+  employerBadge: { display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', fontSize: 10.5, fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 5, padding: '3px 8px', letterSpacing: 0.2, whiteSpace: 'nowrap' },
+  airline: { fontSize: 14, color: 'var(--accent)', fontWeight: 600 },
+  metaRow: { display: 'flex', flexWrap: 'wrap', gap: 12, color: 'var(--text-secondary)', fontSize: 12 },
   reqs: { display: 'flex', flexWrap: 'wrap', gap: 6 },
-  req: { fontSize: 11, color: '#C8D8E8', background: '#16263F', border: '1px solid #243050', borderRadius: 5, padding: '3px 8px' },
-  salary: { display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', background: '#1C1500', border: '1px solid #3D2C00', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#F59E0B' },
-  empty: { color: '#4A6080', fontSize: 13, fontStyle: 'italic' },
+  req: { fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 5, padding: '3px 8px' },
+  salary: { display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400E' },
+  empty: { color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic' },
 };
 
 function fmtSalary(j) {
@@ -42,7 +43,7 @@ export default function JobPreviewCard({ job, company }) {
       </div>
       <div>
         <div style={css.airline}>{company || 'Your company'}</div>
-        <div style={{ color: '#7A8CA0', fontSize: 12 }}>Posted just now</div>
+        <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Posted just now</div>
       </div>
       <div style={css.metaRow}>
         <span>📍 {job.location?.trim() || 'Location'}</span>

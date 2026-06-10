@@ -5,6 +5,7 @@ import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import AircraftCombobox from '../../components/AircraftCombobox';
 import JobPreviewCard from './JobPreviewCard';
+import { Input, Button } from '../../components/primitives';
 
 const ROLES = [['', '—'], ['CAPTAIN', 'Captain'], ['FIRST_OFFICER', 'First Officer'], ['INSTRUCTOR', 'Instructor']];
 // Backend whitelist (employerJobController VALID_CONTRACT_TYPES) — NOT the Airline enum.
@@ -26,36 +27,36 @@ const HOUR_FIELDS = [
 
 const DESC_MAX = 10000;
 
+// Warm pilot palette for the "Live preview" island (WYSIWYG of pilot output)
+// inside the cool .app-b2b form. Mirrors :root / .app-light token values.
+const WARM = { '--bg': '#F8F6F1', '--surface': '#FFFFFF', '--border': '#E5E1D8', '--text-primary': '#0F1419', '--text-secondary': '#5A5F66', '--accent': '#003F88', '--accent-hover': '#002B5C' };
+
 const css = {
-  page: { minHeight: '100vh', background: '#0A1628', padding: '24px 0 64px' },
+  page: { minHeight: '100vh', background: 'var(--bg)', padding: '24px 0 64px', fontFamily: 'var(--font-body)' },
   wrap: { maxWidth: 1100, margin: '0 auto', padding: '0 20px' },
   top: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 },
-  h1: { fontSize: 24, fontWeight: 800, color: '#fff' },
-  back: { color: '#7A8CA0', fontSize: 14, textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none' },
+  h1: { fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' },
+  back: { color: 'var(--text-secondary)', fontSize: 14, textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', fontFamily: 'var(--font-body)' },
   grid: { display: 'grid', gridTemplateColumns: '1fr 400px', gap: 28, alignItems: 'start' },
-  gridMobile: { display: 'block' },
-  card: { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 16, padding: 24 },
-  section: { fontSize: 13, fontWeight: 700, color: '#00B4D8', textTransform: 'uppercase', letterSpacing: 0.6, margin: '22px 0 12px' },
-  label: { display: 'block', color: '#C0CDE0', fontSize: 13, fontWeight: 600, marginBottom: 7 },
-  input: { width: '100%', background: '#1B2B4B', border: '1px solid #243050', borderRadius: 9, padding: '11px 13px', color: '#fff', fontSize: 16, outline: 'none', boxSizing: 'border-box' },
-  textarea: { width: '100%', background: '#1B2B4B', border: '1px solid #243050', borderRadius: 9, padding: '11px 13px', color: '#fff', fontSize: 16, outline: 'none', boxSizing: 'border-box', minHeight: 140, resize: 'vertical', fontFamily: 'inherit' },
+  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 24 },
+  section: { fontSize: 13, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.6, margin: '22px 0 12px' },
   field: { marginBottom: 16 },
   row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
   row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 },
-  hint: { color: '#6B7A90', fontSize: 12, marginTop: 5 },
-  err: { color: '#FF6B6B', fontSize: 12, marginTop: 5 },
+  label: { display: 'block', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 6 },
+  hint: { color: 'var(--text-secondary)', fontSize: 12, marginTop: 5 },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  chip: { display: 'inline-flex', alignItems: 'center', gap: 6, background: '#16263F', border: '1px solid #243050', borderRadius: 6, padding: '4px 9px', color: '#C8D8E8', fontSize: 13 },
-  chipX: { cursor: 'pointer', color: '#7A8CA0', fontWeight: 700 },
+  chip: { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 9px', color: 'var(--text-primary)', fontSize: 13 },
+  chipX: { cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 700 },
   multi: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  pill: (on) => ({ cursor: 'pointer', userSelect: 'none', fontSize: 13, fontWeight: 600, padding: '7px 12px', borderRadius: 8, border: '1px solid ' + (on ? '#00B4D8' : '#243050'), background: on ? 'rgba(0,180,216,0.12)' : '#16263F', color: on ? '#00B4D8' : '#A8B6CC' }),
-  check: { display: 'flex', alignItems: 'center', gap: 9, color: '#C0CDE0', fontSize: 14, cursor: 'pointer' },
-  submit: { background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 10, padding: '14px 22px', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer' },
-  banner: { background: '#2D1A1A', border: '1px solid #5C2626', borderRadius: 8, padding: '12px 14px', color: '#FF6B6B', fontSize: 13, marginBottom: 18 },
+  pill: (on) => ({ cursor: 'pointer', userSelect: 'none', fontSize: 13, fontWeight: 600, padding: '7px 12px', borderRadius: 6, border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border)'), background: on ? 'rgba(0,63,136,0.08)' : 'var(--surface)', color: on ? 'var(--accent)' : 'var(--text-secondary)' }),
+  check: { display: 'flex', alignItems: 'center', gap: 9, color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer' },
+  banner: { background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 6, padding: '12px 14px', color: '#991B1B', fontSize: 13, marginBottom: 18 },
   previewWrap: { position: 'sticky', top: 24 },
-  previewLabel: { fontSize: 12, fontWeight: 700, color: '#7A8CA0', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 },
+  previewLabel: { fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 },
+  previewIsland: { background: 'var(--bg)', borderRadius: 12, padding: 16 },
   tabs: { display: 'flex', gap: 8, marginBottom: 16 },
-  tab: (on) => ({ flex: 1, textAlign: 'center', padding: '10px', borderRadius: 9, cursor: 'pointer', fontWeight: 700, fontSize: 14, background: on ? '#0D1E35' : 'transparent', border: '1px solid ' + (on ? '#00B4D8' : '#243050'), color: on ? '#00B4D8' : '#7A8CA0' }),
+  tab: (on) => ({ flex: 1, textAlign: 'center', padding: '10px', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 14, background: on ? 'rgba(0,63,136,0.08)' : 'transparent', border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border)'), color: on ? 'var(--accent)' : 'var(--text-secondary)' }),
 };
 
 const EMPTY = {
@@ -185,14 +186,18 @@ export default function EmployerJobForm() {
     } finally { setLoading(false); }
   };
 
-  if (loadingJob) return <div style={{ ...css.page, color: '#7A8CA0', textAlign: 'center', paddingTop: 80 }}>Loading…</div>;
+  if (loadingJob) return <div className="app-b2b" style={{ ...css.page, color: 'var(--text-secondary)', textAlign: 'center', paddingTop: 80 }}>Loading…</div>;
 
-  const Err = ({ k }) => errors[k] ? <div style={css.err}>{errors[k]}</div> : null;
   const numField = (k, label) => (
     <div style={css.field} key={k}>
-      <label style={css.label}>{label}</label>
-      <input style={css.input} type="number" min="0" value={form[k]} onChange={set(k)} placeholder="—" />
-      <Err k={k} />
+      <Input label={label} type="number" min="0" value={form[k]} onChange={set(k)} placeholder="—" error={errors[k]} />
+    </div>
+  );
+  const selField = (k, label, options) => (
+    <div style={css.field}>
+      <Input as="select" label={label} value={form[k]} onChange={set(k)} error={errors[k]}>
+        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </Input>
     </div>
   );
 
@@ -202,54 +207,38 @@ export default function EmployerJobForm() {
 
       <div style={{ ...css.section, marginTop: 0 }}>Basic info</div>
       <div style={css.field}>
-        <label style={css.label}>Title *</label>
-        <input style={css.input} value={form.title} onChange={set('title')} placeholder="e.g. Captain — Citation CJ3" maxLength={200} autoFocus />
-        <Err k="title" />
+        <Input label="Title *" value={form.title} onChange={set('title')} placeholder="e.g. Captain — Citation CJ3" maxLength={200} autoFocus error={errors.title} />
       </div>
       <div style={css.row2}>
-        <div style={css.field}>
-          <label style={css.label}>Role</label>
-          <select style={css.input} value={form.role} onChange={set('role')}>{ROLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-        </div>
-        <div style={css.field}>
-          <label style={css.label}>Contract Type</label>
-          <select style={css.input} value={form.contractType} onChange={set('contractType')}>{CONTRACT_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-        </div>
+        {selField('role', 'Role', ROLES)}
+        {selField('contractType', 'Contract Type', CONTRACT_TYPES)}
       </div>
       <div style={css.row2}>
-        <div style={css.field}>
-          <label style={css.label}>Location</label>
-          <input style={css.input} value={form.location} onChange={set('location')} placeholder="e.g. Lisbon, PT" />
-        </div>
-        <div style={css.field}>
-          <label style={css.label}>Country</label>
-          <input style={css.input} value={form.country} onChange={set('country')} placeholder="e.g. Portugal" />
-        </div>
+        <div style={css.field}><Input label="Location" value={form.location} onChange={set('location')} placeholder="e.g. Lisbon, PT" /></div>
+        <div style={css.field}><Input label="Country" value={form.country} onChange={set('country')} placeholder="e.g. Portugal" /></div>
       </div>
 
       <div style={css.section}>Description *</div>
       <div style={css.field}>
-        <textarea style={css.textarea} value={form.description} onChange={set('description')} maxLength={DESC_MAX}
-          placeholder="Describe the role, requirements, schedule, and any details applicants need." />
+        <Input as="textarea" value={form.description} onChange={set('description')} maxLength={DESC_MAX} error={errors.description}
+          placeholder="Describe the role, requirements, schedule, and any details applicants need." style={{ minHeight: 140 }} />
         <div style={css.hint}>{form.description.length.toLocaleString()}/{DESC_MAX.toLocaleString()} · Plain text, not rich text.</div>
-        <Err k="description" />
       </div>
 
       <div style={css.section}>Apply URL *</div>
       <div style={css.field}>
-        <input style={css.input} value={form.applyUrl} onChange={set('applyUrl')} placeholder="https://your-careers-page.com/apply" />
+        <Input value={form.applyUrl} onChange={set('applyUrl')} placeholder="https://your-careers-page.com/apply" error={errors.applyUrl} />
         <div style={css.hint}>Where pilots will apply — the "Apply" button on the job card links here.</div>
-        <Err k="applyUrl" />
       </div>
 
       <div style={css.section}>Salary (optional)</div>
       <div style={css.row2}>
-        <div style={css.field}><label style={css.label}>Minimum</label><input style={css.input} type="number" min="0" value={form.salaryMin} onChange={set('salaryMin')} placeholder="—" /></div>
-        <div style={css.field}><label style={css.label}>Maximum</label><input style={css.input} type="number" min="0" value={form.salaryMax} onChange={set('salaryMax')} placeholder="—" /><Err k="salaryMax" /></div>
+        <div style={css.field}><Input label="Minimum" type="number" min="0" value={form.salaryMin} onChange={set('salaryMin')} placeholder="—" /></div>
+        <div style={css.field}><Input label="Maximum" type="number" min="0" value={form.salaryMax} onChange={set('salaryMax')} placeholder="—" error={errors.salaryMax} /></div>
       </div>
       <div style={css.row2}>
-        <div style={css.field}><label style={css.label}>Currency</label><select style={css.input} value={form.salaryCurrency} onChange={set('salaryCurrency')}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
-        <div style={css.field}><label style={css.label}>Period</label><select style={css.input} value={form.salaryPeriod} onChange={set('salaryPeriod')}>{PERIODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+        {selField('salaryCurrency', 'Currency', CURRENCIES.map((c) => [c, c]))}
+        {selField('salaryPeriod', 'Period', PERIODS)}
       </div>
 
       <div style={css.section}>Requirements (all optional)</div>
@@ -264,8 +253,8 @@ export default function EmployerJobForm() {
       <div style={css.field}>
         <label style={css.label}>Aircraft types</label>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}><AircraftCombobox value={aircraftInput} onChange={setAircraftInput} inputStyle={{ fontSize: 16, padding: '11px 13px' }} /></div>
-          <button type="button" style={{ ...css.submit, padding: '11px 16px', fontSize: 14 }} onClick={addAircraft}>Add</button>
+          <div style={{ flex: 1 }}><AircraftCombobox value={aircraftInput} onChange={setAircraftInput} light inputStyle={{ fontSize: 16, padding: '11px 13px' }} /></div>
+          <Button type="button" onClick={addAircraft} style={{ padding: '11px 16px', fontSize: 14 }}>Add</Button>
         </div>
         {form.reqAircraftTypes.length > 0 && (
           <div style={css.chips}>{form.reqAircraftTypes.map((a) => <span key={a} style={css.chip}>{a}<span style={css.chipX} onClick={() => toggleArr('reqAircraftTypes', a)}>×</span></span>)}</div>
@@ -273,32 +262,36 @@ export default function EmployerJobForm() {
       </div>
       <div style={css.row3}>{HOUR_FIELDS.map(([k, l]) => numField(k, l))}</div>
       <div style={css.row3}>
-        <div style={css.field}><label style={css.label}>Medical class</label><select style={css.input} value={form.reqMedicalClass} onChange={set('reqMedicalClass')}>{MEDICAL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-        <div style={css.field}><label style={css.label}>Education</label><select style={css.input} value={form.reqEducation} onChange={set('reqEducation')}>{EDUCATION.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-        <div style={css.field}><label style={css.label}>Work authorization</label><select style={css.input} value={form.reqWorkAuthorization} onChange={set('reqWorkAuthorization')}>{WORKAUTH.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+        {selField('reqMedicalClass', 'Medical class', MEDICAL)}
+        {selField('reqEducation', 'Education', EDUCATION)}
+        {selField('reqWorkAuthorization', 'Work authorization', WORKAUTH)}
       </div>
       <div style={css.row2}>
-        <div style={css.field}><label style={css.label}>English level</label><select style={css.input} value={form.reqEnglishLevel} onChange={set('reqEnglishLevel')}>{ENGLISH.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+        {selField('reqEnglishLevel', 'English level', ENGLISH)}
         <div style={{ ...css.field, display: 'flex', alignItems: 'center', paddingTop: 26 }}>
-          <label style={css.check}><input type="checkbox" checked={form.reqWillingToRelocate} onChange={(e) => setForm((f) => ({ ...f, reqWillingToRelocate: e.target.checked }))} /> Willing to relocate required</label>
+          <label style={css.check}><input type="checkbox" checked={form.reqWillingToRelocate} onChange={(e) => setForm((f) => ({ ...f, reqWillingToRelocate: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> Willing to relocate required</label>
         </div>
       </div>
 
-      <button style={{ ...css.submit, width: '100%', marginTop: 14, opacity: loading ? 0.6 : 1 }} disabled={loading}>
+      <Button type="submit" disabled={loading} style={{ width: '100%', marginTop: 14, padding: '14px 22px', fontSize: 16 }}>
         {loading ? 'Saving…' : (isEdit ? 'Save Changes' : 'Post Job')}
-      </button>
+      </Button>
     </form>
   );
 
   const previewCol = (
     <div style={css.previewWrap}>
       <div style={css.previewLabel}>Live preview — how pilots will see it</div>
-      <JobPreviewCard job={previewJob} company={employer?.companyName} />
+      {/* Warm pilot-palette island: the preview shows actual (warm) pilot output,
+          not the cool employer chrome around it. */}
+      <div className="app-light" style={{ ...WARM, ...css.previewIsland }}>
+        <JobPreviewCard job={previewJob} company={employer?.companyName} />
+      </div>
     </div>
   );
 
   return (
-    <div style={css.page}>
+    <div className="app-b2b" style={css.page}>
       <div style={css.wrap}>
         <div style={css.top}>
           <div style={css.h1}>{isEdit ? 'Edit Job' : 'Post New Job'}</div>

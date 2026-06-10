@@ -24,6 +24,28 @@
   color: var(--text-primary);
 }
 
+/* Cool-operator B2B identity (Phase 14) — employer portal only. Overrides the
+   surface/text/border tokens to a cooler neutral ("software dashboard") palette
+   while keeping the brand navy --accent + the semantic Badge colors. Employer
+   page roots opt in via className="app-b2b"; the shared primitives
+   (Input/Button/Badge/Modal) reference these vars, so they cascade into the
+   cool look automatically. Employer headers use --font-body (Inter), not
+   Fraunces. A nested element that re-declares the warm vars inline (e.g. the
+   JobPreviewCard "pilot view" island) renders warm regardless of this scope. */
+.app-b2b {
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --text-primary: #16191D;
+  --text-secondary: #5B6470;
+  --border: #E2E4E8;
+  --accent: #003F88;
+  --accent-hover: #002B5C;
+  background: var(--bg);
+  color: var(--text-primary);
+}
+.app-b2b .nav-link:hover { background: rgba(0, 63, 136, 0.05); }
+.app-b2b .icon-button:hover { background: rgba(0, 63, 136, 0.05); }
+
 /* Chrome hover utilities (migrated shared shell). Inline styles can't express
    :hover, so chrome elements use these classes. IMPORTANT: do not set the
    corresponding inline property (background for nav-link/icon-button, color for
