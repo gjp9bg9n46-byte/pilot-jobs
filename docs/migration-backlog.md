@@ -111,6 +111,15 @@ deferred so each phase stays presentation-only and tightly scoped.
   Pre-existing, unrelated to migration. (Compounds the earlier missing-password
   500 already logged.)
 
+## CV Builder (Phase 13) — pre-existing, do NOT fix this phase
+
+- **Selected template is not persisted.** `template` is local component state and
+  is omitted from the `cvApi.update` PUT payload (`{education, languages, skills,
+  other, accentColor, summary}`); `getData` never restores it. So a pilot who
+  picks "Final" gets "Approach" back on reload. `accentColor` IS persisted, so
+  the gap is template-only. Pre-existing, presentation migration did not touch
+  the save payload.
+
 ## Settings notification preferences (product + backend)
 
 - **`PUT /api/.../preferences` 500 — schema mismatch.** Open since Phase 6
