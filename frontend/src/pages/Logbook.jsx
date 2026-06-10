@@ -55,17 +55,7 @@ const css = {
   routeArrow: { color: 'var(--accent)', margin: '0 5px' },
   emptyRow: { textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)' },
 
-  // Modal (bespoke — wider than the 480 <Modal> primitive; recolored to light)
-  overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(15,20,25,0.5)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    zIndex: 1000, padding: 12,
-  },
-  modal: {
-    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
-    padding: '24px 20px', maxWidth: 680, width: '100%', maxHeight: '90vh', overflowY: 'auto',
-  },
-  modalTitle: { fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 24 },
+  // AddFlightModal now uses the <Modal size="md"> primitive (bespoke overlay retired).
   formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 16 },
   formFull: { gridColumn: '1 / -1' },
   label: { display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 },
@@ -313,9 +303,7 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
   };
 
   return (
-    <div className="app-light" style={css.overlay}>
-      <div style={css.modal}>
-        <div style={css.modalTitle}>{title || 'Log a Flight'}</div>
+    <Modal isOpen onClose={onClose} title={title || 'Log a Flight'} size="md">
         {error && <div style={css.errorBanner}>{error}</div>}
 
         {legs.map((leg, idx) => {
@@ -477,8 +465,7 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
             {saving ? 'Saving...' : legs.length > 1 ? `Save ${legs.length} Legs` : 'Save Flight'}
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronUp, Upload, FileText, Table2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { flightLogApi } from '../services/api';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { Input, Button } from './primitives';
+import { Input, Button, Modal } from './primitives';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
 //   dark #2ECC71 → #166534 (ok), #F39C12/#C89A4A → #92400E (warn/duplicate),
@@ -95,26 +95,9 @@ function formatBlock(fields) {
   return '—';
 }
 
-// ─── Inline styles (editorial-light) ──────────────────────────────────────────
+// ─── Inline styles ─── (overlay/modal/header/title/body retired — now uses the
+// <Modal size="lg"> primitive for backdrop, title, X, scroll-lock, focus, escape)
 const css = {
-  overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(15,20,25,0.5)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    zIndex: 1000, padding: 12,
-  },
-  // Bespoke wide modal (820 > the 480 <Modal> primitive — recolored to light)
-  modal: {
-    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
-    width: '100%', maxWidth: 820, maxHeight: '92dvh',
-    display: 'flex', flexDirection: 'column', overflow: 'hidden',
-    fontFamily: 'var(--font-body)', boxShadow: '0 20px 60px rgba(15,20,25,0.25)',
-  },
-  header: {
-    padding: '20px 24px 16px', borderBottom: '1px solid var(--border)',
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
-  },
-  title: { fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)' },
-  body: { flex: 1, overflowY: 'auto', padding: '20px 24px' },
   footer: {
     padding: '16px 24px', borderTop: '1px solid var(--border)',
     display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0,
@@ -253,24 +236,8 @@ export default function ImportModal({ onClose, onImportDone }) {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="app-light" style={css.overlay}>
-      <div style={css.modal}>
-        {/* Header */}
-        <div style={css.header}>
-          <div style={css.title}>
-            {step === 'done' ? 'Import Complete' : 'Import Flights'}
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Body */}
-        <div style={css.body}>
+    <Modal isOpen onClose={onClose} title={step === 'done' ? 'Import Complete' : 'Import Flights'} size="lg">
+        <div>
 
           {/* ── Step: source (format picker) ── */}
           {step === 'source' && (
@@ -525,7 +492,7 @@ export default function ImportModal({ onClose, onImportDone }) {
         </div>{/* end body */}
 
         {/* Footer */}
-        <div style={css.footer}>
+        <div style={{ ...css.footer, paddingLeft: 0, paddingRight: 0, marginTop: 4 }}>
           {step === 'done' ? (
             <Button onClick={onClose}>Done</Button>
           ) : step === 'source' ? (
@@ -550,7 +517,6 @@ export default function ImportModal({ onClose, onImportDone }) {
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
