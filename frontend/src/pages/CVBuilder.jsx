@@ -5,6 +5,7 @@ import { cvApi } from '../services/api';
 import TemplateApproach from '../components/cv/TemplateApproach';
 import TemplateFinal from '../components/cv/TemplateFinal';
 import { ACCENT_PALETTE, DEFAULT_ACCENT } from '../components/cv/accentPalette';
+import { LightPage, Input } from '../components/primitives';
 
 // ─── Inline styles ────────────────────────────────────────────────────────────
 const css = {
@@ -24,133 +25,128 @@ const css = {
   previewPaneStacked: {
     height: 720, marginTop: 28,
     display: 'flex', flexDirection: 'column',
-    borderRadius: 14, overflow: 'hidden',
-    border: '1px solid #1E3050',
+    borderRadius: 12, overflow: 'hidden',
+    border: '1px solid var(--border)',
   },
+  // Preview CONTAINER chrome (cream backdrop; the iframe inside renders the PDF)
   previewFrame: {
     flex: 1, display: 'flex', flexDirection: 'column',
-    border: '1px solid #1E3050', borderRadius: 12, overflow: 'hidden',
-    background: '#0A1628', position: 'relative',
+    border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden',
+    background: 'var(--bg)', position: 'relative',
   },
   previewFrameStacked: {
     flex: 1, display: 'flex', flexDirection: 'column',
-    background: '#0A1628', position: 'relative',
+    background: 'var(--bg)', position: 'relative',
   },
   previewHeader: {
-    padding: '10px 16px', background: '#0D1E35', borderBottom: '1px solid #1E3050',
+    padding: '10px 16px', background: 'var(--surface)', borderBottom: '1px solid var(--border)',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     flexShrink: 0,
   },
   previewPlaceholder: {
     flex: 1, display: 'flex', flexDirection: 'column',
     alignItems: 'center', justifyContent: 'center',
-    color: '#4A6080', gap: 12,
+    color: 'var(--text-secondary)', gap: 12,
   },
   previewUpdatingBadge: {
     position: 'absolute', top: 8, right: 8, zIndex: 10,
-    background: 'rgba(13,30,53,0.9)', border: '1px solid #1E3050', borderRadius: 8,
-    padding: '4px 10px', fontSize: 11, color: '#7A8CA0', fontWeight: 600,
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+    padding: '4px 10px', fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600,
   },
   // Mobile tab bar
   tabBar: {
     display: 'flex', marginBottom: 16,
-    background: '#0D1E35', borderRadius: 10, padding: 3,
-    border: '1px solid #1E3050',
+    background: 'var(--surface)', borderRadius: 10, padding: 3,
+    border: '1px solid var(--border)',
   },
   tabBtn: (active) => ({
     flex: 1, padding: '8px 12px', borderRadius: 8,
-    background: active ? '#1B2B4B' : 'transparent',
+    background: active ? 'rgba(0,63,136,0.06)' : 'transparent',
     border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-    color: active ? '#fff' : '#4A6080', transition: 'all 0.15s',
+    color: active ? 'var(--accent)' : 'var(--text-secondary)', transition: 'all 0.15s',
   }),
   // Auto-fill badges
   badgeFromProfile: {
-    fontSize: 11, fontWeight: 600, color: '#2ECC71',
-    background: 'rgba(46,204,113,0.1)', border: '1px solid rgba(46,204,113,0.25)',
+    fontSize: 11, fontWeight: 600, color: '#166534',
+    background: '#DCFCE7', border: '1px solid #BBF7D0',
     borderRadius: 8, padding: '2px 8px', marginRight: 8, whiteSpace: 'nowrap',
   },
   badgeCustom: {
-    fontSize: 11, fontWeight: 600, color: '#F39C12',
-    background: 'rgba(243,156,18,0.1)', border: '1px solid rgba(243,156,18,0.25)',
+    fontSize: 11, fontWeight: 600, color: '#92400E',
+    background: '#FEF3C7', border: '1px solid #FDE68A',
     borderRadius: 8, padding: '2px 8px', marginRight: 8,
     display: 'inline-flex', alignItems: 'center', gap: 4,
   },
   badgeResetBtn: {
     background: 'none', border: 'none', cursor: 'pointer',
-    color: '#F39C12', fontWeight: 600, fontSize: 11, padding: 0,
+    color: '#92400E', fontWeight: 600, fontSize: 11, padding: 0,
     textDecoration: 'underline', lineHeight: 1,
   },
   page:        { maxWidth: 960, margin: '0 auto' },
-  heading:     { fontSize: 13, fontWeight: 800, color: '#fff', marginBottom: 4 },
-  sub:         { fontSize: 13, color: '#7A8CA0', marginBottom: 28 },
+  heading:     { fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 },
+  sub:         { fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 },
   // Template cards
   tmplGrid:    { display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap' },
   tmplCard:    (active) => ({
-    flex: '1 1 200px', padding: '0 0 16px', borderRadius: 16, cursor: 'pointer',
-    border: `2px solid ${active ? '#00B4D8' : '#1E3050'}`,
-    background: active ? 'rgba(0,180,216,0.06)' : '#0D1E35',
+    flex: '1 1 200px', padding: '0 0 16px', borderRadius: 12, cursor: 'pointer',
+    border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+    background: active ? 'rgba(0,63,136,0.06)' : 'var(--surface)',
     transition: 'all 0.15s', overflow: 'hidden',
   }),
-  tmplThumb:   { height: 120, display: 'flex', overflow: 'hidden', borderRadius: '14px 14px 0 0', marginBottom: 10 },
-  tmplLabel:   { padding: '0 14px', fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 2 },
-  tmplDesc:    { padding: '0 14px', fontSize: 11, color: '#7A8CA0' },
-  activeCheck: { padding: '0 14px', marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#00B4D8', fontWeight: 600 },
+  tmplThumb:   { height: 120, display: 'flex', overflow: 'hidden', borderRadius: '10px 10px 0 0', marginBottom: 10 },
+  tmplLabel:   { padding: '0 14px', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 },
+  tmplDesc:    { padding: '0 14px', fontSize: 11, color: 'var(--text-secondary)' },
+  activeCheck: { padding: '0 14px', marginTop: 5, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--accent)', fontWeight: 600 },
   // Download bar
-  dlBar:       { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 14, padding: '14px 20px', marginBottom: 28 },
-  dlBarText:   { fontSize: 13, color: '#7A8CA0' },
+  dlBar:       { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 20px', marginBottom: 28 },
+  dlBarText:   { fontSize: 13, color: 'var(--text-secondary)' },
   dlBtn:       (disabled) => ({
-    background: disabled ? '#1B2B4B' : 'linear-gradient(135deg, #00B4D8, #0077A8)',
-    border: 'none', borderRadius: 10, padding: '10px 22px',
-    color: disabled ? '#4A6080' : '#fff', fontWeight: 700, fontSize: 14,
+    background: disabled ? 'var(--border)' : 'var(--accent)',
+    border: 'none', borderRadius: 4, padding: '10px 22px',
+    color: disabled ? 'var(--text-secondary)' : '#fff', fontWeight: 500, fontSize: 14,
     cursor: disabled ? 'not-allowed' : 'pointer', textDecoration: 'none',
     display: 'inline-flex', alignItems: 'center', gap: 7,
   }),
-  saveStatus:  { fontSize: 12, color: '#4A6080', marginLeft: 8 },
+  saveStatus:  { fontSize: 12, color: 'var(--text-secondary)', marginLeft: 8 },
   // Section accordion
-  accordion:   { background: '#0D1E35', border: '1px solid #1E3050', borderRadius: 14, marginBottom: 12, overflow: 'hidden' },
+  accordion:   { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 12, overflow: 'hidden' },
   accHeader:   { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', cursor: 'pointer', userSelect: 'none' },
-  accTitle:    { fontSize: 14, fontWeight: 700, color: '#fff', flex: 1 },
-  accBadge:    { background: 'rgba(0,180,216,0.15)', color: '#00B4D8', fontSize: 12, fontWeight: 700, padding: '1px 8px', borderRadius: 10 },
+  accTitle:    { fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', flex: 1 },
+  accBadge:    { background: 'rgba(0,63,136,0.08)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, padding: '1px 8px', borderRadius: 10 },
   accBody:     { padding: '0 20px 20px' },
   // Read-only info rows
   infoGrid:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '6px 16px' },
-  infoRow:     { display: 'flex', flexDirection: 'column', padding: '6px 0', borderBottom: '1px solid #1B2B4B' },
-  infoLabel:   { fontSize: 11, color: '#4A6080', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
-  infoValue:   { fontSize: 13, color: '#fff' },
+  infoRow:     { display: 'flex', flexDirection: 'column', padding: '6px 0', borderBottom: '1px solid var(--border)' },
+  infoLabel:   { fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
+  infoValue:   { fontSize: 13, color: 'var(--text-primary)' },
   // Badges
   badgeRow:    { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  badge:       (color) => ({ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.3)`, borderRadius: 8, padding: '5px 10px', fontSize: 12, color: '#fff' }),
+  badge:       () => ({ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 10px', fontSize: 12, color: 'var(--text-primary)' }),
   // Editable list
-  listItem:    { display: 'flex', alignItems: 'flex-start', gap: 10, background: '#0A1628', borderRadius: 10, padding: '12px 14px', marginBottom: 8 },
+  listItem:    { display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--bg)', borderRadius: 10, padding: '12px 14px', marginBottom: 8 },
   listItemFields: { flex: 1, display: 'grid', gap: 8 },
-  deleteBtn:   { background: 'none', border: 'none', cursor: 'pointer', color: '#4A6080', padding: 4, borderRadius: 6, flexShrink: 0 },
-  addBtn:      { display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,180,216,0.08)', border: '1px dashed rgba(0,180,216,0.3)', borderRadius: 10, padding: '9px 14px', cursor: 'pointer', color: '#00B4D8', fontSize: 13, fontWeight: 600, marginTop: 4 },
-  // Form inputs
-  input:       { background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' },
-  textarea:    { background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: 80 },
-  inputLabel:  { fontSize: 11, color: '#4A6080', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  deleteBtn:   { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, borderRadius: 6, flexShrink: 0 },
+  addBtn:      { display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,63,136,0.06)', border: '1px dashed rgba(0,63,136,0.3)', borderRadius: 10, padding: '9px 14px', cursor: 'pointer', color: 'var(--accent)', fontSize: 13, fontWeight: 600, marginTop: 4 },
   // Skill tags
   skillsWrap:  { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  skillTag:    { display: 'flex', alignItems: 'center', gap: 5, background: '#0A1628', border: '1px solid #243050', borderRadius: 20, padding: '4px 10px 4px 12px', fontSize: 13, color: '#fff' },
-  skillTagDel: { background: 'none', border: 'none', cursor: 'pointer', color: '#4A6080', fontSize: 14, padding: 0, lineHeight: 1 },
-  skillInput:  { background: '#1B2B4B', border: '1px solid #243050', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', minWidth: 160 },
+  skillTag:    { display: 'flex', alignItems: 'center', gap: 5, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, padding: '4px 10px 4px 12px', fontSize: 13, color: 'var(--text-primary)' },
+  skillTagDel: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 14, padding: 0, lineHeight: 1 },
   // Totals table
   totalsTable: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8, marginTop: 4 },
-  totalCell:   { background: '#0A1628', borderRadius: 10, padding: '10px 12px', textAlign: 'center' },
-  totalVal:    { fontSize: 16, fontWeight: 800, color: '#00B4D8' },
-  totalLabel:  { fontSize: 11, color: '#4A6080', marginTop: 2 },
-  // Accent colour picker
+  totalCell:   { background: 'var(--bg)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' },
+  totalVal:    { fontSize: 16, fontWeight: 800, color: 'var(--accent)' },
+  totalLabel:  { fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 },
+  // Accent colour picker — swatch FILL stays the palette hex (frozen); only the
+  // selected-ring chrome is editorial (cream gap + accent ring, reads on cream).
   swatchRow:   { display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 28 },
   swatchWrap:  { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
   swatchCircle:(active, hex) => ({
     width: 44, height: 44, borderRadius: '50%', background: hex,
     cursor: 'pointer', border: 'none', padding: 0,
-    outline: active ? `3px solid ${hex}` : 'none',
-    outlineOffset: active ? 3 : 0,
-    boxShadow: active ? `0 0 0 5px rgba(255,255,255,0.25)` : 'none',
+    boxShadow: active ? '0 0 0 3px var(--bg), 0 0 0 5px var(--accent)' : 'none',
     transition: 'all 0.12s',
   }),
-  swatchLabel: { fontSize: 10, color: '#4A6080', fontWeight: 600, whiteSpace: 'nowrap' },
+  swatchLabel: { fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' },
 };
 
 // ─── Template thumbnail components (HTML preview) ────────────────────────────
@@ -224,12 +220,12 @@ function Accordion({ title, badge, defaultOpen = false, warning = false, headerE
     <div style={css.accordion}>
       <div style={css.accHeader} onClick={() => setOpen(v => !v)}>
         {warning
-          ? <AlertTriangle size={15} color="#F39C12" />
-          : <CheckCircle2 size={15} color="#2ECC71" />}
+          ? <AlertTriangle size={15} color="#92400E" />
+          : <CheckCircle2 size={15} color="#166534" />}
         <span style={css.accTitle}>{title}</span>
         {headerExtra}
         {badge != null && <span style={css.accBadge}>{badge}</span>}
-        {open ? <ChevronUp size={15} color="#4A6080" /> : <ChevronDown size={15} color="#4A6080" />}
+        {open ? <ChevronUp size={15} color="var(--text-secondary)" /> : <ChevronDown size={15} color="var(--text-secondary)" />}
       </div>
       {open && <div style={css.accBody}>{children}</div>}
     </div>
@@ -239,16 +235,13 @@ function Accordion({ title, badge, defaultOpen = false, warning = false, headerE
 // ─── Labelled input ───────────────────────────────────────────────────────────
 function Field({ label, value, onChange, placeholder, type = 'text' }) {
   return (
-    <div>
-      <div style={css.inputLabel}>{label}</div>
-      <input
-        type={type}
-        value={value ?? ''}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={css.input}
-      />
-    </div>
+    <Input
+      label={label}
+      type={type}
+      value={value ?? ''}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+    />
   );
 }
 
@@ -442,10 +435,10 @@ export default function CVBuilder() {
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '—';
 
   if (loading) return (
-    <div style={{ textAlign: 'center', paddingTop: 80, color: '#7A8CA0' }}>Loading your CV data…</div>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}><div style={{ textAlign: 'center', paddingTop: 80, color: 'var(--text-secondary)' }}>Loading your CV data…</div></LightPage>
   );
   if (!serverData) return (
-    <div style={{ textAlign: 'center', paddingTop: 80, color: '#FF6B6B' }}>Could not load CV data. Please refresh.</div>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}><div style={{ textAlign: 'center', paddingTop: 80, color: '#991B1B' }}>Could not load CV data. Please refresh.</div></LightPage>
   );
 
   const { pilot, certificates, ratings, medicals, training, rtw, totals, recency, aircraftTypes } = serverData;
@@ -480,11 +473,11 @@ export default function CVBuilder() {
   const previewInner = (
     <>
       <div style={css.previewHeader}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#7A8CA0', letterSpacing: 0.3 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: 0.3 }}>
           Live Preview
         </span>
         {pdfInstanceHasUrl && showUpdatingBadge && (
-          <span style={{ fontSize: 11, color: '#4A6080' }}>Updating…</span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Updating…</span>
         )}
       </div>
 
@@ -498,12 +491,12 @@ export default function CVBuilder() {
         {!pdfInstanceHasUrl && (
           <div style={{
             position: 'absolute', inset: 0, zIndex: 2,
-            background: '#0A1628',
+            background: 'var(--bg)',
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', gap: 12,
           }}>
-            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '3px solid #1B2B4B', borderTopColor: '#00B4D8', animation: 'uc-spin 0.8s linear infinite' }} />
-            <span style={{ fontSize: 13, color: '#4A6080' }}>Generating preview…</span>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '3px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'uc-spin 0.8s linear infinite' }} />
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Generating preview…</span>
           </div>
         )}
 
@@ -518,11 +511,11 @@ export default function CVBuilder() {
   // ── Editor content ───────────────────────────────────────────────────────────
   const editorContent = (
     <>
-      <div style={css.heading}>CV Builder</div>
+      <h1 style={css.heading}>CV Builder</h1>
       <div style={css.sub}>Build and download a professional pilot CV from your profile and logbook data.</div>
 
       {/* ── Template selector ── */}
-      <div style={{ fontSize: 12, color: '#4A6080', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Choose a template</div>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Choose a template</div>
       <div style={css.tmplGrid}>
         {[
           { id: 'approach', label: 'Approach', desc: 'Two-column · navy sidebar · traditional', Thumb: ThumbApproach },
@@ -543,7 +536,7 @@ export default function CVBuilder() {
 
       {/* ── Colour Theme ── */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 12, color: '#4A6080', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Colour Theme</div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Colour Theme</div>
         <div style={css.swatchRow}>
           {ACCENT_PALETTE.map(({ name, hex }) => (
             <div key={hex} style={css.swatchWrap}>
@@ -561,7 +554,7 @@ export default function CVBuilder() {
       {/* ── Download bar ── */}
       <div style={css.dlBar}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 2 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
             {template === 'approach' ? 'Approach Template' : 'Final Template'}
           </div>
           <div style={css.dlBarText}>
@@ -572,8 +565,8 @@ export default function CVBuilder() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {saveStatus === 'saving' && <span style={css.saveStatus}>Saving…</span>}
-          {saveStatus === 'saved'  && <span style={{ ...css.saveStatus, color: '#2ECC71' }}>Saved</span>}
-          {saveStatus === 'error'  && <span style={{ ...css.saveStatus, color: '#FF6B6B' }}>Save failed</span>}
+          {saveStatus === 'saved'  && <span style={{ ...css.saveStatus, color: '#166534' }}>Saved</span>}
+          {saveStatus === 'error'  && <span style={{ ...css.saveStatus, color: '#991B1B' }}>Save failed</span>}
           {PdfDoc && (
             <PDFDownloadLink document={PdfDoc} fileName={fileName} style={css.dlBtn(false)}>
               {({ loading: pdfLoading }) => (
@@ -595,23 +588,23 @@ export default function CVBuilder() {
           const over = summary.length > 800;
           return (
             <>
-              <textarea
+              <Input
+                as="textarea"
                 value={summary}
                 onChange={(e) => updateSummary(e.target.value)}
                 rows={5}
                 placeholder="Airline transport pilot with 2,400+ hours across A320 and B737 fleets. EU and UK work authorisation. Seeking long-haul First Officer position with a major carrier."
                 style={{
-                  ...css.textarea,
                   minHeight: 100,
                   fontSize: isMobileLayout ? 16 : 13,
-                  borderColor: over ? '#F39C12' : '#243050',
+                  ...(over ? { borderColor: '#92400E' } : null),
                 }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, flexWrap: 'wrap', gap: 4 }}>
-                <span style={{ fontSize: 11, color: '#4A6080' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                   Appears at the top of your CV. Keep it concise — recruiters scan the first 5 seconds.
                 </span>
-                <span style={{ fontSize: 11, color: over ? '#F39C12' : '#4A6080', fontWeight: over ? 600 : 400, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 11, color: over ? '#92400E' : 'var(--text-secondary)', fontWeight: over ? 600 : 400, whiteSpace: 'nowrap' }}>
                   {summary.length} / 800
                 </span>
               </div>
@@ -637,8 +630,8 @@ export default function CVBuilder() {
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 8, fontSize: 12, color: '#4A6080' }}>
-          Edit personal details on the <a href="/profile" style={{ color: '#00B4D8' }}>Profile page</a>.
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+          Edit personal details on the <a href="/profile" style={{ color: 'var(--accent)' }}>Profile page</a>.
           Personal info always appears as entered in your profile (v1 — not overridable here).
         </div>
       </Accordion>
@@ -661,27 +654,27 @@ export default function CVBuilder() {
             style={{
               width: 110, height: 110, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
               border: photoUrl
-                ? '2.5px solid #00B4D8'
-                : `2px dashed ${dragging ? '#00B4D8' : 'rgba(0,180,216,0.35)'}`,
-              background: photoUrl ? 'transparent' : dragging ? 'rgba(0,180,216,0.12)' : 'rgba(0,180,216,0.04)',
+                ? '2.5px solid var(--accent)'
+                : `2px dashed ${dragging ? 'var(--accent)' : 'rgba(0,63,136,0.35)'}`,
+              background: photoUrl ? 'transparent' : dragging ? 'rgba(0,63,136,0.12)' : 'rgba(0,63,136,0.04)',
               cursor: photoLoading || photoUrl ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.15s',
             }}
           >
             {photoLoading ? (
-              <div style={{ width: 26, height: 26, borderRadius: '50%', border: '3px solid #1B2B4B', borderTopColor: '#00B4D8', animation: 'uc-spin 0.8s linear infinite' }} />
+              <div style={{ width: 26, height: 26, borderRadius: '50%', border: '3px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'uc-spin 0.8s linear infinite' }} />
             ) : photoUrl ? (
               <img src={photoUrl} alt="Headshot" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <Upload size={22} color="rgba(0,180,216,0.5)" />
+              <Upload size={22} color="rgba(0,63,136,0.5)" />
             )}
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
             {photoUrl ? (
               <>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#2ECC71', marginBottom: 4 }}>Photo uploaded</div>
-                <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#166534', marginBottom: 4 }}>Photo uploaded</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
                   Appears as a circular headshot on your CV. Upload again to replace it.
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -691,7 +684,7 @@ export default function CVBuilder() {
                   <button
                     onClick={handlePhotoDelete}
                     disabled={photoLoading}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10, padding: '8px 14px', cursor: photoLoading ? 'not-allowed' : 'pointer', color: '#FF6B6B', fontSize: 13, fontWeight: 600 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 10, padding: '8px 14px', cursor: photoLoading ? 'not-allowed' : 'pointer', color: '#991B1B', fontSize: 13, fontWeight: 600 }}
                   >
                     <Trash2 size={13} /> {photoLoading ? 'Removing…' : 'Remove'}
                   </button>
@@ -699,11 +692,11 @@ export default function CVBuilder() {
               </>
             ) : (
               <>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 4 }}>Add a headshot</div>
-                <div style={{ fontSize: 12, color: '#7A8CA0', marginBottom: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Add a headshot</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
                   Optional. Appears as a circular photo on your CV.
                 </div>
-                <div style={{ fontSize: 11, color: '#4A6080', marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 14 }}>
                   JPEG · PNG · WebP &nbsp;·&nbsp; Min 200×200 px &nbsp;·&nbsp; Max 5 MB
                 </div>
                 <button onClick={() => fileInputRef.current?.click()} disabled={photoLoading} style={css.addBtn}>
@@ -712,7 +705,7 @@ export default function CVBuilder() {
               </>
             )}
             {photoError && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#FF6B6B', marginTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#991B1B', marginTop: 10 }}>
                 <AlertTriangle size={12} /> {photoError}
               </div>
             )}
@@ -739,37 +732,37 @@ export default function CVBuilder() {
           ))}
         </div>
         {(recency?.hours90d > 0 || recency?.hours12m > 0) && (
-          <div style={{ display: 'flex', gap: 20, marginTop: 12, paddingTop: 12, borderTop: '1px solid #1B2B4B', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 20, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
             {recency.hours90d > 0 && (
               <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#00B4D8' }}>{fmt(recency.hours90d)}h</div>
-                <div style={{ fontSize: 11, color: '#4A6080' }}>Last 90 days</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)' }}>{fmt(recency.hours90d)}h</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Last 90 days</div>
               </div>
             )}
             {recency.hours12m > 0 && (
               <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#00B4D8' }}>{fmt(recency.hours12m)}h</div>
-                <div style={{ fontSize: 11, color: '#4A6080' }}>Last 12 months</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)' }}>{fmt(recency.hours12m)}h</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Last 12 months</div>
               </div>
             )}
             {recency.sectors90 > 0 && (
               <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#00B4D8' }}>{recency.sectors90}</div>
-                <div style={{ fontSize: 11, color: '#4A6080' }}>Takeoffs / Sectors (90d)</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)' }}>{recency.sectors90}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Takeoffs / Sectors (90d)</div>
               </div>
             )}
             {(recency.landingsDay90 > 0 || recency.landingsNight90 > 0) && (
               <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#00B4D8' }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)' }}>
                   {(recency.landingsDay90 ?? 0) + (recency.landingsNight90 ?? 0)}
                 </div>
-                <div style={{ fontSize: 11, color: '#4A6080' }}>Landings (90 days)</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Landings (90 days)</div>
               </div>
             )}
           </div>
         )}
-        <div style={{ marginTop: 8, fontSize: 12, color: '#4A6080' }}>
-          Hours are aggregated from your <a href="/logbook" style={{ color: '#00B4D8' }}>Logbook</a>.
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+          Hours are aggregated from your <a href="/logbook" style={{ color: 'var(--accent)' }}>Logbook</a>.
         </div>
       </Accordion>
 
@@ -778,12 +771,12 @@ export default function CVBuilder() {
         {medicals?.map((m, i) => (
           <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{m.medicalClass.replace('_', ' ')} — {m.issuingAuthority}</div>
-              <div style={{ fontSize: 12, color: '#2ECC71' }}>Valid to {fmtDate(m.expiryDate)}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{m.medicalClass.replace('_', ' ')} — {m.issuingAuthority}</div>
+              <div style={{ fontSize: 12, color: '#166534' }}>Valid to {fmtDate(m.expiryDate)}</div>
             </div>
           </div>
         ))}
-        {!medicals?.length && <div style={{ fontSize: 13, color: '#4A6080' }}>No medical records added yet.</div>}
+        {!medicals?.length && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>No medical records added yet.</div>}
       </Accordion>
 
       {/* Licences (read-only from profile) */}
@@ -791,8 +784,8 @@ export default function CVBuilder() {
         {certificates?.filter(c => c.type !== 'ELP').map((c, i) => (
           <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{c.type} — {c.issuingAuthority}</div>
-              <div style={{ fontSize: 12, color: '#7A8CA0' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{c.type} — {c.issuingAuthority}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 {c.certificateNumber ? `#${c.certificateNumber}` : ''}
                 {c.certificateNumber && c.expiryDate ? ' · ' : ''}
                 {c.expiryDate ? `Expires ${fmtDate(c.expiryDate)}` : 'No expiry'}
@@ -801,8 +794,8 @@ export default function CVBuilder() {
           </div>
         ))}
         {!certificates?.filter(c => c.type !== 'ELP').length && (
-          <div style={{ fontSize: 13, color: '#4A6080' }}>
-            No licences added yet. Add them on the <a href="/profile" style={{ color: '#00B4D8' }}>Profile page</a>.
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            No licences added yet. Add them on the <a href="/profile" style={{ color: 'var(--accent)' }}>Profile page</a>.
           </div>
         )}
       </Accordion>
@@ -812,8 +805,8 @@ export default function CVBuilder() {
         {ratings?.map((r, i) => (
           <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{r.aircraftType} — {r.issuingAuthority}</div>
-              <div style={{ fontSize: 12, color: '#7A8CA0' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{r.aircraftType} — {r.issuingAuthority}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 {r.capacity || r.category}
                 {r.hoursOnType ? ` · ${fmt(r.hoursOnType)}h on type` : ''}
                 {r.expiryDate ? ` · Expires ${fmtDate(r.expiryDate)}` : ''}
@@ -822,8 +815,8 @@ export default function CVBuilder() {
           </div>
         ))}
         {!ratings?.length && (
-          <div style={{ fontSize: 13, color: '#4A6080' }}>
-            No type ratings added yet. Add them on the <a href="/profile" style={{ color: '#00B4D8' }}>Profile page</a>.
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            No type ratings added yet. Add them on the <a href="/profile" style={{ color: 'var(--accent)' }}>Profile page</a>.
           </div>
         )}
       </Accordion>
@@ -833,8 +826,8 @@ export default function CVBuilder() {
         {rtw?.map((r, i) => (
           <div key={i} style={{ ...css.listItem, marginBottom: 6 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{r.country}</div>
-              <div style={{ fontSize: 12, color: '#7A8CA0' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{r.country}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 {r.documentType}
                 {r.documentNumber ? ` · #${r.documentNumber}` : ''}
                 {r.expiresAt ? ` · Expires ${fmtDate(new Date(r.expiresAt))}` : ' · No expiry'}
@@ -843,8 +836,8 @@ export default function CVBuilder() {
           </div>
         ))}
         {!rtw?.length && (
-          <div style={{ fontSize: 13, color: '#4A6080' }}>
-            No right-to-work documents added yet. Add them on the <a href="/profile" style={{ color: '#00B4D8' }}>Profile page</a>.
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            No right-to-work documents added yet. Add them on the <a href="/profile" style={{ color: 'var(--accent)' }}>Profile page</a>.
           </div>
         )}
       </Accordion>
@@ -881,7 +874,7 @@ export default function CVBuilder() {
         defaultOpen={languages.length === 0}
         warning={languages.length === 0}
       >
-        <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
           English ICAO level is pulled from your ELP certificate automatically. Add other languages here.
         </div>
         {languages.map((l, i) => (
@@ -907,7 +900,7 @@ export default function CVBuilder() {
         defaultOpen={skills.length === 0}
         warning={skills.length === 0}
       >
-        <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 10 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
           Add relevant skills, qualifications, and competencies — e.g. CRM, RVSM, ETOPS, FMS, TCAS.
         </div>
         <div style={css.skillsWrap}>
@@ -918,20 +911,21 @@ export default function CVBuilder() {
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            value={skillInput}
-            onChange={e => setSkillInput(e.target.value)}
-            onKeyDown={e => {
-              if ((e.key === 'Enter' || e.key === ',') && skillInput.trim()) {
-                e.preventDefault();
-                updateSkills([...skills, skillInput.trim()]);
-                setSkillInput('');
-              }
-            }}
-            placeholder="Type a skill and press Enter"
-            style={css.skillInput}
-          />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <Input
+              value={skillInput}
+              onChange={e => setSkillInput(e.target.value)}
+              onKeyDown={e => {
+                if ((e.key === 'Enter' || e.key === ',') && skillInput.trim()) {
+                  e.preventDefault();
+                  updateSkills([...skills, skillInput.trim()]);
+                  setSkillInput('');
+                }
+              }}
+              placeholder="Type a skill and press Enter"
+            />
+          </div>
           <button
             style={{ ...css.addBtn, marginTop: 0, padding: '8px 14px' }}
             onClick={() => { if (skillInput.trim()) { updateSkills([...skills, skillInput.trim()]); setSkillInput(''); } }}
@@ -943,22 +937,21 @@ export default function CVBuilder() {
 
       {/* ─── Editable: Other sections ── */}
       <Accordion title="Custom Sections" badge={other.length || null} defaultOpen={false}>
-        <div style={{ fontSize: 12, color: '#4A6080', marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
           Add any other sections — e.g. Awards, Publications, Volunteer Work.
         </div>
         {other.map((sec, i) => (
           <div key={i} style={css.listItem}>
             <div style={{ ...css.listItemFields, gridTemplateColumns: '1fr' }}>
               <Field label="Section Title" value={sec.title} onChange={v => updateOther(other.map((x,j) => j===i ? {...x, title: v} : x))} placeholder="e.g. Awards & Recognition" />
-              <div>
-                <div style={css.inputLabel}>Content</div>
-                <textarea
-                  value={sec.content ?? ''}
-                  onChange={e => updateOther(other.map((x,j) => j===i ? {...x, content: e.target.value} : x))}
-                  placeholder="Describe this section…"
-                  style={css.textarea}
-                />
-              </div>
+              <Input
+                as="textarea"
+                label="Content"
+                value={sec.content ?? ''}
+                onChange={e => updateOther(other.map((x,j) => j===i ? {...x, content: e.target.value} : x))}
+                placeholder="Describe this section…"
+                style={{ minHeight: 80 }}
+              />
             </div>
             <button style={css.deleteBtn} onClick={() => updateOther(other.filter((_,j) => j!==i))}>
               <Trash2 size={15} />
@@ -974,7 +967,7 @@ export default function CVBuilder() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       <style>{`@keyframes uc-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* ─── Desktop split (≥1024px): editor left 58%, preview right sticky ─── */}
@@ -1016,10 +1009,10 @@ export default function CVBuilder() {
               reliability issues with blob URLs in iframes. */}
           {activeTab === 'preview' && (
             <div style={{ textAlign: 'center', padding: '48px 0 32px' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
                 Open PDF to preview
               </div>
-              <div style={{ fontSize: 13, color: '#7A8CA0', marginBottom: 24 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
                 Tap the button below to generate and open your CV as a PDF.
               </div>
               {PdfDoc && (
@@ -1037,13 +1030,13 @@ export default function CVBuilder() {
                   }
                 </PDFDownloadLink>
               )}
-              <div style={{ fontSize: 11, color: '#4A6080', marginTop: 16 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 16 }}>
                 Opens in a new tab — save or share from there.
               </div>
             </div>
           )}
         </div>
       )}
-    </>
+    </LightPage>
   );
 }
