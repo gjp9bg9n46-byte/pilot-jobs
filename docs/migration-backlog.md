@@ -13,17 +13,18 @@ deferred so each phase stays presentation-only and tightly scoped.
   retrofit Logbook `AddFlightModal` (→ `md`) and `ImportModal` (→ `lg`) off
   their bespoke overlays onto `<Modal size>`.
 
-- **Retrofit bespoke overlays onto `<Modal size>`.** `AddFlightModal` (680px)
-  and `ImportModal` (820px) still use bespoke recolored fixed overlays. Now that
-  `<Modal size>` exists, migrate both in a dedicated primitive-consolidation
-  commit after Phase 10 ships clean. Verify focus/escape/backdrop/scroll-lock
-  parity.
+- **✅ RESOLVED (primitive consolidation) — Retrofit bespoke overlays onto
+  `<Modal size>`.** `AddFlightModal` → `<Modal size="md">` (680), `ImportModal`
+  → `<Modal size="lg">` (960); bespoke overlay/modal/header css retired. The
+  primitive now owns backdrop, title+X, focus, scroll-lock, escape +
+  backdrop-click close, and the mobile bottom-sheet. Verified e2e (multi-/single-
+  leg save; CSV upload→preview→confirm; focus/escape/backdrop/mobile parity).
 
-- **Collapse `AircraftCombobox` `light` prop.** Additive `light` prop (Phase 8)
-  is still theme-split because `EmployerJobForm.jsx` remains dark. Once the
-  employer job form migrates, remove the `light` prop + the `t` dark/light
-  branch, collapse to a single light style, and drop `light` from all callers
-  (Profile, Logbook). As of Phase 9, Logbook passes `light` and renders correctly.
+- **✅ RESOLVED (primitive consolidation) — Collapse `AircraftCombobox` `light`
+  prop.** Prop + dark style branch removed; single token-based style adapts to
+  warm `.app-light` and cool `.app-b2b` automatically. `light={true}` dropped
+  from all three call sites (Profile, Logbook, EmployerJobForm). Verified on all
+  three surfaces.
 
 ## Latent backend (log only — do not fix during migration)
 
