@@ -120,6 +120,22 @@ deferred so each phase stays presentation-only and tightly scoped.
   the gap is template-only. Pre-existing, presentation migration did not touch
   the save payload.
 
+## Employer portal (Phase 14)
+
+- **✅ AircraftCombobox `light` prop — ready to collapse.** Phase 14 flipped the
+  last dark consumer (EmployerJobForm → `light`). The prop now has ZERO dark
+  consumers (Logbook/Profile/EmployerJobForm all pass `light`). Queued follow-up
+  (separate mechanical commit): remove the `light` prop + the `t` dark/light
+  branch in AircraftCombobox.jsx, collapse to a single light style, drop `light`
+  from all three call sites.
+
+- **Pre-existing: EmployerJobForm preview sticky releases past its cell.** The
+  live-preview column is `position:sticky, top:24` inside a grid with
+  `alignItems:start`, so its cell is content-height (~one screen). The preview
+  unpins once scrolled past that — pre-existing (structure preserved verbatim by
+  the migration, not a regression). Fix if desired: drop `alignItems:start` on
+  that grid or give the preview cell full row height.
+
 ## Settings notification preferences (product + backend)
 
 - **`PUT /api/.../preferences` 500 — schema mismatch.** Open since Phase 6
