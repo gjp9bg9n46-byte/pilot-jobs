@@ -6,7 +6,7 @@ import '../styles/landing-tokens.css';
 
 // ── Content (copy preserved verbatim from the previous landing) ──────────────
 const FEATURES = [
-  { icon: RefreshCw,    title: 'Always-fresh listings',    body: 'We scrape Lever, Greenhouse, and direct airline career boards every 6 hours and deduplicate across sources — no stale postings, no duplicates.', photo: 'feature-fresh.webp' },
+  { icon: RefreshCw,    title: 'Always-fresh listings',    body: 'We scrape Lever, Greenhouse, and direct airline career boards daily and deduplicate across sources — no stale postings, no duplicates.', photo: 'feature-fresh.webp' },
   { icon: Target,       title: 'Matched to your ratings',  body: 'Enter your certificates (ATPL, CPL), total hours, PIC time, aircraft type ratings, and issuing authority. We surface only the jobs you meet the minimums for.', photo: 'feature-ratings.webp' },
   { icon: Bell,         title: 'Instant push alerts',      body: 'New job that matches your profile? You get a push notification within minutes of it hitting the board — before the rush of applicants.', photo: null },
   { icon: ClipboardList, title: 'Digital logbook',         body: 'Log flights directly in the app. Import from ForeFlight CSV or manual entry. Your totals update in real-time and power the matching engine.', photo: null },
@@ -99,13 +99,18 @@ export default function Landing() {
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, []);
 
+  // Hero/CTA copy uses the live airline count; fall back to a sane default while
+  // /api/stats is in flight so we never render "0 airlines".
+  const airlineCount = (Number.isFinite(stats?.airlinesCount) && stats.airlinesCount > 0)
+    ? stats.airlinesCount : 185;
+
+  const freshness = stats ? freshnessLabel(stats.lastScrapedAt) : null; // cadence word | null
   const statEntries = stats ? [
     Number.isFinite(stats.airlinesCount) && stats.airlinesCount > 0
       ? { num: String(stats.airlinesCount), label: 'Airlines tracked', amber: true } : null,
     Number.isFinite(stats.fleetProfilesCount) && stats.fleetProfilesCount > 0
       ? { num: String(stats.fleetProfilesCount), label: 'With detailed fleets' } : null,
-    freshnessLabel(stats.lastScrapedAt)
-      ? { num: 'Daily', label: 'Data refreshed' } : null,
+    freshness ? { num: freshness, label: 'Data refreshed' } : null,
   ].filter(Boolean) : [];
 
   // ── Type scale (desktop / mobile ~0.65× on display sizes) ─────────────────
@@ -252,7 +257,7 @@ export default function Landing() {
           <Reveal style={{ maxWidth: 680 }}>
             <div style={css.eyebrow}>Airline factfiles</div>
             <h2 style={{ ...css.h2, marginTop: 14 }}>Research before you apply</h2>
-            <p style={{ ...css.lead, marginTop: 18 }}>Fleet, hubs, hiring status, and pilot insights for 185 airlines worldwide. Updated by pilots who actually fly them.</p>
+            <p style={{ ...css.lead, marginTop: 18 }}>Fleet, hubs, hiring status, and pilot insights for {airlineCount} airlines worldwide. Updated by pilots who actually fly them.</p>
           </Reveal>
           <Reveal>
             <img src="/screenshot-hero.webp" alt="CockpitHire airline factfile — Emirates fleet breakdown" style={css.shotFrame} loading="lazy" />
@@ -268,7 +273,7 @@ export default function Landing() {
               <Reveal key={a.id} className="card" style={css.ffCardOuter}>
                 <Link to={`/airlines/${a.id}`} style={css.ffCardLink}>
                   <div style={css.ffTop}>
-                    <img src={`https://flagcdn.com/w40/${a.iso}.png`} srcSet={`https://flagcdn.com/w80/${a.iso}.png 2x`} alt={a.country} style={css.flag} loading="lazy" width="28" height="21" />
+                    <img src={`https://flagcdn.com/w40/${a.iso}.png`} srcSet={`https://flagcdn.com/w80/${a.iso}.png 2x`} alt="" style={css.flag} loading="lazy" width="28" height="21" />
                     <span style={css.ffName}>{a.name}</span>
                   </div>
                   <div style={css.ffCountry}>{a.country}</div>
@@ -278,7 +283,7 @@ export default function Landing() {
             ))}
           </div>
           <div style={{ marginTop: 40 }}>
-            <Link to="/airlines" className="btn-primary" style={css.btnPrimary}>Browse 185 airlines →</Link>
+            <Link to="/airlines" className="btn-primary" style={css.btnPrimary}>Browse {airlineCount} airlines →</Link>
           </div>
         </div>
       </section>
@@ -298,7 +303,7 @@ export default function Landing() {
         <div style={css.container}>
           <Reveal style={css.employerCard}>
             <h2 style={css.employerH}>Are you an airline, charter operator, or flight school?</h2>
-            <p style={css.employerSub}>Post pilot openings directly to our community. Free in 2026.</p>
+            <p style={css.employerSub}>Post pilot openings directly to our community.</p>
             <Link to="/employer/register" className="btn-primary" style={css.btnPrimary}>Apply to post jobs →</Link>
           </Reveal>
         </div>

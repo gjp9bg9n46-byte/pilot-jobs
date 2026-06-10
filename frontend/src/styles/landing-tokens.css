@@ -22,6 +22,17 @@
 .landing-root .ls-link { transition: color 0.2s ease; }
 .landing-root .ls-link:hover { color: var(--accent); }
 
+/* Keyboard focus ring (quality sweep #9): accent outline on every interactive
+   element. Every clickable on the landing is a link (.btn-primary CTAs, factfile
+   card links, .ls-link footer links, footer mailto, the wordmark) — there are no
+   <button>s — so a single anchor rule covers all of them. Feature cards are
+   static (no link), so they need no focus style. */
+.landing-root a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Hero contrast hardening (quality sweep #8): a diagonal scrim darkens the
    top-left — where the transparent-nav wordmark sits — LAYERED on top of the
    existing bottom-heavy heroScrim div (which keeps the bottom-left headline

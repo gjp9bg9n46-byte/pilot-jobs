@@ -4,6 +4,42 @@ Tickets surfaced during the editorial-light migration. These are **not** bugs
 introduced by the migration — they are pre-existing issues or follow-ups
 deferred so each phase stays presentation-only and tightly scoped.
 
+## Quality sweep — Landing
+
+Findings from the Landing (`/`) quality audit. The "fix-now" batch (stats wiring,
+cadence copy, employer CTA, focus-visible ring, alt cleanup, freshness helper)
+shipped; the items below were deferred.
+
+- **#1 Footer About / Privacy / Terms are dead links (`href="#"`).** Navigate
+  nowhere (jump to top). Privacy Policy + Terms are **legal exposure** for a
+  product handling pilot PII; About needs content. Deferred per user — needs real
+  destinations/pages before code.
+- **#3 Hardcoded factfile fleet stats will drift.** `FACTFILES`
+  (Emirates/Lufthansa/Delta) hardcodes fleet strings (e.g. "117 777-300ER · 116
+  A380-800") that diverge from the live factfile data the cards link to. Fetch
+  from the same source, or mark as illustrative.
+- **#6 Unverified capability claims in feature copy** — verify each is true:
+  - "Instant push alerts … within minutes" — confirm push delivery is actually live.
+  - "Import from ForeFlight CSV" — the importer is generic column-mapped CSV;
+    confirm ForeFlight-specific support vs generic.
+  - `SOURCES` chips (Shield AI, Joby, Wisk, Ameriflight, "+ more added weekly") —
+    confirm each is actively monitored.
+- **#10 "Daily" in the 56px JetBrains Mono numeral slot.** The third data-strip
+  stat renders the word "Daily" in a slot styled for digits — reads awkwardly
+  beside "185"/"175". Typographic decision deferred.
+- **#11 Logged-in pilot at `/` sees the full Landing** (no redirect to `/jobs`).
+  Defensible (public marketing page; CTAs route correctly via `/login`→`/jobs`).
+  Noted, not actioned.
+- **#12(b) "+ more added weekly" styled as a source chip** among real source
+  names — label/data ambiguity.
+- **#12(c) ✈ emoji wordmark** glyph renders inconsistently across platforms
+  (system-wide nit; consistent with the rest of the app).
+- **#12(d) Three routes to `/login`** (nav CTA, hero CTA, footer "Web App") — not
+  a problem, just noted.
+- **#15 + #16 Three feature card photos pending sourcing** (Phase A in flight):
+  Always-fresh listings (replace), Instant push alerts (add), Digital logbook
+  (add). Ship in a follow-up commit once candidates are picked.
+
 ## Primitives / follow-ups
 
 - **✅ RESOLVED (Phase 10) — `<Modal>` `size` prop.** Additive `size` prop
