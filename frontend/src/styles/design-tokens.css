@@ -40,6 +40,10 @@
   --border: #E2E4E8;
   --accent: #003F88;
   --accent-hover: #002B5C;
+  /* Cool-operator uses Inter for everything, no editorial serif — collapse the
+     display font to body so shared primitives (e.g. Modal titles) render Inter
+     inside this scope too. The warm preview island re-declares its own vars. */
+  --font-display: var(--font-body);
   background: var(--bg);
   color: var(--text-primary);
 }
