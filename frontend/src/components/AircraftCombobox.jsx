@@ -114,11 +114,13 @@ function getVisible(query) {
     .filter((g) => g.items.length > 0);
 }
 
-// `light` (default false) opts into the editorial-light theme (mirrors the
-// <Input> primitive palette + accent focus ring + light dropdown). Dark callers
-// (Logbook, EmployerJobForm) are unaffected by the default. FOLLOW-UP: remove
-// this prop and collapse to a single light style once those pages migrate.
-export default function AircraftCombobox({ value, onChange, inputStyle, light = false }) {
+// Single light style (token-based): mirrors the <Input> primitive palette +
+// accent focus ring + light dropdown. Uses var(--surface)/var(--accent)/etc., so
+// it adapts to whatever token scope it renders in — warm .app-light (Profile,
+// Logbook) or cool .app-b2b (EmployerJobForm) — automatically. The former
+// additive `light` prop + dark branch were removed post-Phase-14 (zero dark
+// consumers remained).
+export default function AircraftCombobox({ value, onChange, inputStyle }) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   const [focused, setFocused] = useState(false);
@@ -178,16 +180,14 @@ export default function AircraftCombobox({ value, onChange, inputStyle, light = 
     el?.scrollIntoView({ block: 'nearest' });
   }, [highlighted]);
 
-  const t = light
-    ? { inputBg: 'var(--surface)', inputBorder: 'var(--border)', inputBorderFocus: 'var(--accent)', inputColor: 'var(--text-primary)', focusShadow: '0 0 0 3px rgba(0,63,136,0.08)', ddBg: 'var(--surface)', ddBorder: 'var(--border)', ddShadow: '0 8px 24px rgba(15,20,25,0.12)', groupColor: 'var(--accent)', groupBorder: 'var(--border)', itemColor: 'var(--text-primary)', itemHlColor: 'var(--accent)', itemHlBg: 'rgba(0,63,136,0.08)', noMatch: 'var(--text-secondary)', otherColor: 'var(--text-secondary)', otherHlColor: 'var(--accent)', otherHlBg: 'rgba(0,63,136,0.08)', otherBorder: 'var(--border)' }
-    : { inputBg: '#1B2B4B', inputBorder: '#243050', inputBorderFocus: '#243050', inputColor: '#fff', focusShadow: 'none', ddBg: '#0D1E35', ddBorder: '#243050', ddShadow: '0 8px 24px rgba(0,0,0,0.5)', groupColor: '#00B4D8', groupBorder: '#1E3050', itemColor: '#C8D8E8', itemHlColor: '#fff', itemHlBg: '#1B3560', noMatch: '#4A6080', otherColor: '#7A8CA0', otherHlColor: '#fff', otherHlBg: '#1B3560', otherBorder: '#1E3050' };
+  const t = { inputBg: 'var(--surface)', inputBorder: 'var(--border)', inputBorderFocus: 'var(--accent)', inputColor: 'var(--text-primary)', focusShadow: '0 0 0 3px rgba(0,63,136,0.08)', ddBg: 'var(--surface)', ddBorder: 'var(--border)', ddShadow: '0 8px 24px rgba(15,20,25,0.12)', groupColor: 'var(--accent)', groupBorder: 'var(--border)', itemColor: 'var(--text-primary)', itemHlColor: 'var(--accent)', itemHlBg: 'rgba(0,63,136,0.08)', noMatch: 'var(--text-secondary)', otherColor: 'var(--text-secondary)', otherHlColor: 'var(--accent)', otherHlBg: 'rgba(0,63,136,0.08)', otherBorder: 'var(--border)' };
 
   const baseInput = {
     width: '100%', background: t.inputBg,
-    border: `1px solid ${light && focused ? t.inputBorderFocus : t.inputBorder}`,
+    border: `1px solid ${focused ? t.inputBorderFocus : t.inputBorder}`,
     borderRadius: 8, padding: '11px 12px', color: t.inputColor, fontSize: 14,
     outline: 'none', boxSizing: 'border-box',
-    boxShadow: light && focused ? t.focusShadow : 'none',
+    boxShadow: focused ? t.focusShadow : 'none',
     transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
   };
 

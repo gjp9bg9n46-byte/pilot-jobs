@@ -255,7 +255,7 @@ export default function EmployerJobForm() {
       <div style={css.field}>
         <label style={css.label}>Aircraft types</label>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}><AircraftCombobox value={aircraftInput} onChange={setAircraftInput} light inputStyle={{ fontSize: 16, padding: '11px 13px' }} /></div>
+          <div style={{ flex: 1 }}><AircraftCombobox value={aircraftInput} onChange={setAircraftInput} inputStyle={{ fontSize: 16, padding: '11px 13px' }} /></div>
           <Button type="button" onClick={addAircraft} style={{ padding: '11px 16px', fontSize: 14 }}>Add</Button>
         </div>
         {form.reqAircraftTypes.length > 0 && (

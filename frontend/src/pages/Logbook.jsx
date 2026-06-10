@@ -349,7 +349,6 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                   <AircraftCombobox
                     value={leg.aircraftType}
                     onChange={(v) => set('aircraftType')({ target: { value: v } })}
-                    light
                   />
                 </div>
                 <div>

@@ -479,7 +479,7 @@ function TypeRatingsCard({ profile, setProfile, confirmDelete }) {
             <div style={css.formRow}>
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Aircraft type</label>
-                <AircraftCombobox value={aircraftType} onChange={(v) => { setAircraftType(v); if (typeErr) setTypeErr(false); }} light inputStyle={typeErr ? { borderColor: SEM.red } : undefined} />
+                <AircraftCombobox value={aircraftType} onChange={(v) => { setAircraftType(v); if (typeErr) setTypeErr(false); }} inputStyle={typeErr ? { borderColor: SEM.red } : undefined} />
                 {typeErr && <div style={css.fieldErr}>Required</div>}
               </div>
               <Input label="Hours on Type" type="number" min="0" step="0.1" value={hoursOnType} onChange={(e) => setHoursOnType(e.target.value)} placeholder="0.0" />
