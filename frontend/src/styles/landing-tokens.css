@@ -22,6 +22,29 @@
 .landing-root .ls-link { transition: color 0.2s ease; }
 .landing-root .ls-link:hover { color: var(--accent); }
 
+/* Hero contrast hardening (quality sweep #8): a diagonal scrim darkens the
+   top-left — where the transparent-nav wordmark sits — LAYERED on top of the
+   existing bottom-heavy heroScrim div (which keeps the bottom-left headline
+   legible). z-index 1 puts it above the image + scrim but below heroContent
+   (z-index 2). pointer-events:none so it never eats clicks. css.hero is
+   position:relative, so ::before positions against the <header>. */
+.landing-root .hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.30) 40%,
+    rgba(0, 0, 0, 0) 70%
+  );
+}
+.landing-root .hero-headline {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
 /* One-time fade-in on scroll (IntersectionObserver toggles .is-visible) */
 .landing-root .reveal {
   opacity: 0;

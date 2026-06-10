@@ -197,11 +197,11 @@ export default function Landing() {
       </nav>
 
       {/* 2 — Hero */}
-      <header style={css.hero}>
+      <header className="hero" style={css.hero}>
         <img src="/landing-photos/hero.webp" alt="Airliner taxiing on the runway at sunrise" style={css.heroImg} loading="eager" />
         <div style={css.heroScrim} />
         <div style={css.heroContent}>
-          <h1 style={css.heroH1}>Your next command,<br />matched to your licence</h1>
+          <h1 className="hero-headline" style={css.heroH1}>Your next command,<br />matched to your licence</h1>
           <p style={css.heroSub}>Filtered by your ratings, hours, and authority. No noise.</p>
           <Link to="/login" className="btn-primary" style={css.btnPrimary}>Open the Web App</Link>
         </div>
