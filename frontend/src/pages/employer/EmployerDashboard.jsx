@@ -4,6 +4,7 @@ import { employerApi } from '../../services/employerApi';
 import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Badge, Button, Modal } from '../../components/primitives';
+import { useBodyBackground } from '../../hooks/useBodyBackground';
 
 const TYPE_LABEL = { AIRLINE: 'Airline', CHARTER: 'Charter', CARGO: 'Cargo', EMS: 'EMS / Air Ambulance', FLIGHT_SCHOOL: 'Flight School', CORPORATE: 'Corporate', RECRUITER: 'Recruiter / Agency', OTHER: 'Other' };
 const ROLE_LABEL = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor', FLIGHT_ENGINEER: 'Flight Engineer' };
@@ -52,6 +53,7 @@ export default function EmployerDashboard() {
   const [toast, setToast] = useState(location.state?.toast || '');
   const [confirmDel, setConfirmDel] = useState(null);
   const [busy, setBusy] = useState(false);
+  useBodyBackground('#F3F4F6');
 
   const approved = status === 'APPROVED';
 

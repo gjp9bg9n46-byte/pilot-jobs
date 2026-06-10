@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Badge, Button } from '../../components/primitives';
+import { useBodyBackground } from '../../hooks/useBodyBackground';
 
 // Minimal placeholder for REJECTED / SUSPENDED employers (full pages are out of
 // scope for step e). Shows the status + reason and a logout button.
@@ -26,6 +27,7 @@ export default function EmployerStatusNotice({ kind }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const copy = COPY[kind] || COPY.rejected;
+  useBodyBackground('#F3F4F6');
 
   const handleLogout = () => { logout(); navigate('/employer/login'); };
   if (!employer) return null;

@@ -4,6 +4,7 @@ import { employerApi } from '../../services/employerApi';
 import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Input, Button, Badge } from '../../components/primitives';
+import { useBodyBackground } from '../../hooks/useBodyBackground';
 
 const COMPANY_TYPES = [['AIRLINE', 'Airline'], ['CHARTER', 'Charter'], ['CARGO', 'Cargo'], ['EMS', 'EMS / Air Ambulance'], ['FLIGHT_SCHOOL', 'Flight School'], ['CORPORATE', 'Corporate / Business Aviation'], ['RECRUITER', 'Recruiter / Agency'], ['OTHER', 'Other']];
 const DESC_MAX = 5000;
@@ -37,6 +38,7 @@ export default function EmployerProfile() {
   const [errors, setErrors] = useState({});
   const [banner, setBanner] = useState('');
   const [loading, setLoading] = useState(false);
+  useBodyBackground('#F3F4F6');
 
   if (!employer) return null;
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));

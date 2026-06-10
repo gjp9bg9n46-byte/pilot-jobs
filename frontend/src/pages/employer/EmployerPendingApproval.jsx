@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Badge, Button } from '../../components/primitives';
+import { useBodyBackground } from '../../hooks/useBodyBackground';
 
 const COMPANY_TYPE_LABEL = {
   AIRLINE: 'Airline', CHARTER: 'Charter', CARGO: 'Cargo', EMS: 'EMS / Air Ambulance',
@@ -27,6 +28,7 @@ export default function EmployerPendingApproval() {
   const { employer, logout } = useEmployerAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  useBodyBackground('#F3F4F6');
 
   const handleLogout = () => { logout(); navigate('/employer/login'); };
 

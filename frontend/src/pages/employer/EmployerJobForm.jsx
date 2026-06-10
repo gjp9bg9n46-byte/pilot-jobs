@@ -6,6 +6,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import AircraftCombobox from '../../components/AircraftCombobox';
 import JobPreviewCard from './JobPreviewCard';
 import { Input, Button } from '../../components/primitives';
+import { useBodyBackground } from '../../hooks/useBodyBackground';
 
 const ROLES = [['', '—'], ['CAPTAIN', 'Captain'], ['FIRST_OFFICER', 'First Officer'], ['INSTRUCTOR', 'Instructor']];
 // Backend whitelist (employerJobController VALID_CONTRACT_TYPES) — NOT the Airline enum.
@@ -82,6 +83,7 @@ export default function EmployerJobForm() {
   const [loading, setLoading] = useState(false);
   const [loadingJob, setLoadingJob] = useState(isEdit);
   const [tab, setTab] = useState('form'); // mobile: form | preview
+  useBodyBackground('#F3F4F6');
 
   // Edit: load the job from the employer's own list, redirect if not theirs.
   useEffect(() => {
