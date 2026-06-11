@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Target, Bell, ClipboardList, Globe, Lock } from 'lucide-react';
+import { RefreshCw, Target, Globe, Lock } from 'lucide-react';
 import { useIsMobile } from '../hooks/useIsMobile';
 import '../styles/landing-tokens.css';
 
@@ -8,8 +8,8 @@ import '../styles/landing-tokens.css';
 const FEATURES = [
   { icon: RefreshCw,    title: 'Always-fresh listings',    body: 'We scrape Lever, Greenhouse, and direct airline career boards daily and deduplicate across sources — no stale postings, no duplicates.', photo: 'feature-fresh.webp' },
   { icon: Target,       title: 'Matched to your ratings',  body: 'Enter your certificates (ATPL, CPL), total hours, PIC time, aircraft type ratings, and issuing authority. We surface only the jobs you meet the minimums for.', photo: 'feature-ratings.webp' },
-  { icon: Bell,         title: 'Instant push alerts',      body: 'New job that matches your profile? You get a push notification within minutes of it hitting the board — before the rush of applicants.', photo: null },
-  { icon: ClipboardList, title: 'Digital logbook',         body: 'Log flights directly in the app. Import from ForeFlight CSV or manual entry. Your totals update in real-time and power the matching engine.', photo: null },
+  { title: 'Instant push alerts',      body: 'New job that matches your profile? You get a push notification within minutes of it hitting the board — before the rush of applicants.', photo: 'feature-alerts.webp' },
+  { title: 'Digital logbook',         body: 'Log flights directly in the app. Import from ForeFlight CSV or manual entry. Your totals update in real-time and power the matching engine.', photo: 'feature-logbook.webp' },
   { icon: Globe,        title: 'Global coverage',          body: 'Jobs across FAA, EASA, GCAA, CAAC, and CASA authorities. Regional airlines, flag carriers, cargo operators, and eVTOL companies.', photo: 'feature-coverage.webp' },
   { icon: Lock,         title: 'Private by default',       body: 'Your profile is invisible until you choose to share it. Anonymous browsing mode lets you research jobs without leaving a trace.', photo: 'feature-private.webp' },
 ];
