@@ -318,7 +318,9 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 {/* Match score — editorial typographic lockup (no ring/fill/border) */}
                 <div style={{ textAlign: 'right', minWidth: isMobile ? 64 : 80 }}>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: isMobile ? 26 : 32, fontWeight: 600, color: m.color, lineHeight: 1 }}>
-                    {Math.round(alert.matchScore)}%
+                    {/* Interim clamp — computeAlertScore is un-normalised (max 135); proper
+                        fix normalises server-side (backlog item C). Cap display at 100 meanwhile. */}
+                    {Math.min(Math.round(alert.matchScore), 100)}%
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: m.color, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4 }}>
                     {m.label}

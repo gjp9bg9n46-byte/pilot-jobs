@@ -135,8 +135,11 @@ subtitle copy) shipped in its own commit. Remaining:
   adopt the dynamic-`maxScore` normalization the sibling `computeMatchScore`
   already uses (`Math.min(Math.round((score / maxScore) * 100), 100)`,
   [matchingService.js:305](../backend/src/services/matchingService.js#L305)) — a
-  cap alone would hide the bug and distort meaning. Self-heals on the next
-  `run-match` after deploy. Touches **protected backend** (`matchingService.js`)
+  cap alone would hide the bug and distort meaning. **Interim shipped:** the
+  Alerts badge now clamps the *display* with `Math.min(Math.round(score), 100)`
+  so >100% no longer shows to users — but the stored score is still un-normalised,
+  so this is cosmetic only and the real fix below still stands. Self-heals on the
+  next `run-match` after deploy. Touches **protected backend** (`matchingService.js`)
   — bundle with the matching backend session alongside Jobs #1 (server-side
   relevance), Login #5 (password reset + Resend), and the Alerts saved-search
   schema fix.
