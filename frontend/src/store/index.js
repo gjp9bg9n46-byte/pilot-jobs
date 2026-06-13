@@ -28,6 +28,10 @@ const jobsSlice = createSlice({
       const a = state.alerts.find((x) => x.id === payload);
       if (a) a.readAt = new Date().toISOString();
     },
+    markAllAlertsRead: (state) => {
+      const now = new Date().toISOString();
+      state.alerts.forEach((a) => { if (!a.readAt) a.readAt = now; });
+    },
   },
 });
 
@@ -43,7 +47,7 @@ const logbookSlice = createSlice({
 });
 
 export const { setAuth, logout, setPilot } = authSlice.actions;
-export const { setJobs, setAlerts, markAlertRead } = jobsSlice.actions;
+export const { setJobs, setAlerts, markAlertRead, markAllAlertsRead } = jobsSlice.actions;
 export const { setLogs, setTotals, addLog, removeLog } = logbookSlice.actions;
 
 export const store = configureStore({

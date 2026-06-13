@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { MapPin, Building2, Search, Trash2, Bell, Pencil, Rocket, Play, Pause } from 'lucide-react';
+import { MapPin, Building2, Search, Trash2, Bell, Pencil, Rocket, Play, Pause, AlertTriangle } from 'lucide-react';
 import { jobApi } from '../services/api';
-import { setAlerts, markAlertRead } from '../store';
+import { setAlerts, markAlertRead, markAllAlertsRead } from '../store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { LightPage, Input, Button, Badge, Modal } from '../components/primitives';
 
@@ -32,11 +32,13 @@ function pillColor(key, structured) {
   return { color: 'var(--text-secondary)', bg: 'var(--bg)' };
 }
 
+// Match tier → label + semantic color (Phase-8 light-AA palette). The badge is
+// now a pure typographic lockup (no ring/fill/border) — only color + label used.
 function matchStyle(score) {
-  if (score >= 90) return { label: 'Excellent Match', color: SEM.green, bg: '#DCFCE7', border: SEM.green };
-  if (score >= 75) return { label: 'Great Match',     color: '#1E40AF', bg: '#DBEAFE', border: '#1E40AF' };
-  if (score >= 60) return { label: 'Good Match',      color: SEM.amber, bg: '#FEF3C7', border: SEM.amber };
-  return              { label: 'Partial Match',    color: 'var(--text-secondary)', bg: 'var(--bg)', border: 'var(--border)' };
+  if (score >= 90) return { label: 'Excellent Match', color: '#166534' };
+  if (score >= 75) return { label: 'Great Match',     color: '#1E40AF' };
+  if (score >= 60) return { label: 'Good Match',      color: '#92400E' };
+  return              { label: 'Partial Match',    color: '#374151' };
 }
 
 const AUTHORITIES = [
@@ -165,7 +167,10 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
 
   const handleMarkAll = async () => {
     setMarkingAll(true);
-    try { await jobApi.markAllAlertsRead(); } finally { setMarkingAll(false); }
+    try {
+      await jobApi.markAllAlertsRead();
+      dispatch(markAllAlertsRead());
+    } finally { setMarkingAll(false); }
   };
 
   const chips = [
@@ -196,7 +201,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
             </button>
           ))}
         </div>
-        <Input as="select" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px' }}>
+        <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px' }}>
           <option value="newest">Newest</option>
           <option value="score">Best Match</option>
           <option value="deadline">Deadline</option>
@@ -300,27 +305,24 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                   );
                 })()}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16, flexShrink: 0 }}>
                 <button
                   onClick={(e) => handleSaveToggle(e, alert.job?.id)}
-                  title={savedMap[alert.job?.id] ? 'Unsave' : 'Save job'}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1 }}
+                  title={savedMap[alert.job?.id] ? 'Unsave job' : 'Save job'}
+                  aria-label={savedMap[alert.job?.id] ? 'Unsave job' : 'Save job'}
+                  aria-pressed={!!savedMap[alert.job?.id]}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, lineHeight: 1 }}
                 >
-                  <PlaneSave saved={savedMap[alert.job?.id]} />
+                  <PlaneSave saved={savedMap[alert.job?.id]} size={28} />
                 </button>
-                <div style={{ textAlign: 'center', minWidth: isMobile ? 60 : 90 }}>
-                  <div style={{
-                    width: isMobile ? 52 : 68, height: isMobile ? 52 : 68, borderRadius: '50%',
-                    border: `3px solid ${m.color}`, background: m.bg,
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px',
-                  }}>
-                    <div style={{ fontSize: isMobile ? 14 : 18, fontWeight: 800, color: m.color, lineHeight: 1 }}>
-                      {Math.round(alert.matchScore)}%
-                    </div>
-                    <div style={{ fontSize: 8, color: m.color, fontWeight: 700, marginTop: 2 }}>MATCH</div>
+                {/* Match score — editorial typographic lockup (no ring/fill/border) */}
+                <div style={{ textAlign: 'right', minWidth: isMobile ? 64 : 80 }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: isMobile ? 26 : 32, fontWeight: 600, color: m.color, lineHeight: 1 }}>
+                    {Math.round(alert.matchScore)}%
                   </div>
-                  {!isMobile && <div style={{ fontSize: 11, color: m.color, fontWeight: 700 }}>{m.label}</div>}
+                  <div style={{ fontSize: 11, fontWeight: 600, color: m.color, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4 }}>
+                    {m.label}
+                  </div>
                 </div>
               </div>
             </div>
@@ -405,7 +407,7 @@ function SavedSearchesTab() {
     <div>
       {/* Header row */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
-        <Button onClick={() => setModal('new')}>+ New Alert</Button>
+        <Button onClick={() => setModal('new')}>+ New Saved Search</Button>
       </div>
 
       {loading && (
@@ -530,7 +532,8 @@ export default function Alerts() {
   const alerts = useSelector((s) => s.jobs.alerts);
   const isMobile = useIsMobile();
   const [tab, setTab] = useState('matches');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // start true so the empty state never flashes before the first load settles
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('newest');
   const matchTriggered = useRef(false);
@@ -539,8 +542,10 @@ export default function Alerts() {
 
   const loadAlerts = React.useCallback((f, s) => {
     setLoading(true);
+    setError(null);
     return jobApi.getAlerts({ filter: f, sort: s })
       .then(({ data }) => dispatch(setAlerts(data.alerts ?? [])))
+      .catch((err) => setError(err?.response?.data?.error || err?.message || 'Failed to load alerts'))
       .finally(() => setLoading(false));
   }, [dispatch]);
 
@@ -596,7 +601,7 @@ export default function Alerts() {
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       {/* Page header */}
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Alerts</h1>
-      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Cockpit roles, the moment they post.</p>
+      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Cockpit roles, matched to your profile.</p>
 
       {/* Tab pills */}
       <div style={{
@@ -611,7 +616,16 @@ export default function Alerts() {
       {tab === 'matches' && (
         loading
           ? <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: 60 }}>Loading your alerts…</div>
-          : <MatchesTab alerts={alerts} dispatch={dispatch} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} onRefresh={() => loadAlerts(filter, sort)} isMobile={isMobile} />
+          : error
+            ? (
+              <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-secondary)' }}>
+                <div style={{ marginBottom: 16 }}><AlertTriangle size={48} color={SEM.amber} /></div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Could not load alerts</div>
+                <div style={{ fontSize: 14, lineHeight: 1.6 }}>{error}</div>
+                <div style={{ marginTop: 20 }}><Button onClick={() => loadAlerts(filter, sort)}>Retry</Button></div>
+              </div>
+            )
+            : <MatchesTab alerts={alerts} dispatch={dispatch} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} onRefresh={() => loadAlerts(filter, sort)} isMobile={isMobile} />
       )}
       {tab === 'savedSearches' && <SavedSearchesTab />}
       {tab === 'applications'  && <ApplicationsTab />}

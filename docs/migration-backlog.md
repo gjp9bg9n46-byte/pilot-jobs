@@ -118,6 +118,53 @@ URL-state sync (filter changes still produce no query params); no pagination
 (still `limit:1000`; 19 jobs live); client/server match duplication (resolves
 with #1).
 
+## Quality sweep — Alerts
+
+From page audit #4 (`/alerts`). The "fix-now" batch (PlaneSave size 18→28,
+match-badge typographic lockup [item B], mark-all-read store fix, empty-flash
+fix, Matches-tab error+Retry, a11y labels, "+ New Saved Search" terminology,
+subtitle copy) shipped in its own commit. Remaining:
+
+- **Item C — Normalize `computeAlertScore` (HIGH PRIORITY — backend matching
+  session).** Alerts display a raw additive points total (max **135**), never
+  normalized: the base criteria sum to 100 even when the job doesn't specify them
+  (the `else` branches award full points), then up to +35 of "new criteria"
+  bonuses are added with **no matching denominator** → pilots score 110–135%
+  (reproduced live at **110%** on a job with `workAuthorization: matched`). It's
+  a real stored value (`JobMatch.matchScore`), not a display artifact. **Fix:**
+  adopt the dynamic-`maxScore` normalization the sibling `computeMatchScore`
+  already uses (`Math.min(Math.round((score / maxScore) * 100), 100)`,
+  [matchingService.js:305](../backend/src/services/matchingService.js#L305)) — a
+  cap alone would hide the bug and distort meaning. Self-heals on the next
+  `run-match` after deploy. Touches **protected backend** (`matchingService.js`)
+  — bundle with the matching backend session alongside Jobs #1 (server-side
+  relevance), Login #5 (password reset + Resend), and the Alerts saved-search
+  schema fix.
+- **#4 Filter chips + tab pills lack ARIA.** All/Unread/Saved/Dismissed chips and
+  the Matches/Saved Searches/Applications pills are plain `<button>`s with
+  color-only active state. Add `role="tab"`/`aria-selected` on the tab pills and
+  `aria-pressed` on the filter chips.
+- **#8 Saved-search create gives no error feedback.** Beyond the schema mismatch
+  itself, `handleSave` swallows the error → the modal stays open silently and the
+  Save button re-enables with no message. Bundle with the backend schema fix in
+  one coordinated frontend+backend change (same session).
+- **#9 "Dismissed" filter empty-state.** The chip filters server-side, but no
+  dismiss action is visible on cards in this UI. Investigate: is dismiss a
+  supported action that's just hidden, or vestigial? If unsupported, hide the
+  chip; if supported, surface the action.
+
+Resolved (no action this sweep): Applications tab is an intentional "coming soon"
+placeholder; filter/sort survive tab switches (parent state).
+
+Still open (pre-existing, verified this sweep — not re-logged): saved-search
+schema mismatch (**worse than previously known** — create 400s into a dead-end
+with zero user feedback; pairs with #8); `triggerMatch()` on every mount;
+`savedMap` not server-hydrated (confirmed save→reload resets 1→0, and it also
+resets on tab switch — **Jobs handles this correctly via `j.isSaved`, so Alerts
+is the outlier; the fix pattern already exists**); saved-search response-shape
+guess (`data.searches ?? data ?? []`); PlaneSave duplicated (Jobs + Alerts) —
+**now also a size mismatch** (Jobs 36px / Alerts 28px) for the eventual dedup.
+
 ## Primitives / follow-ups
 
 - **✅ RESOLVED (Phase 10) — `<Modal>` `size` prop.** Additive `size` prop
