@@ -10,13 +10,13 @@ import { Card, Input } from '../../components/primitives';
 const DEST_FOR = { PENDING: '/employer/pending-approval', APPROVED: '/employer/dashboard', REJECTED: '/employer/rejected', SUSPENDED: '/employer/suspended' };
 
 const PILOT_FIELDS = [
-  { name: 'firstName', label: 'First Name', required: true, half: true },
-  { name: 'lastName', label: 'Last Name', half: true },
-  { name: 'email', label: 'Email Address', type: 'email', required: true, full: true },
-  { name: 'password', label: 'Password', type: 'password', required: true, hint: 'Min. 8 characters', full: true },
-  { name: 'country', label: 'Country', half: true },
-  { name: 'city', label: 'City', half: true },
-  { name: 'phone', label: 'Phone (optional)', type: 'tel', half: true },
+  { name: 'firstName', label: 'First Name', required: true, half: true, ac: 'given-name' },
+  { name: 'lastName', label: 'Last Name', half: true, ac: 'family-name' },
+  { name: 'email', label: 'Email Address', type: 'email', required: true, full: true, ac: 'email' },
+  { name: 'password', label: 'Password', type: 'password', required: true, hint: 'Min. 8 characters', full: true, ac: 'new-password' },
+  { name: 'country', label: 'Country', half: true, ac: 'country-name' },
+  { name: 'city', label: 'City', half: true, ac: 'address-level2' },
+  { name: 'phone', label: 'Phone (optional)', type: 'tel', half: true, ac: 'tel' },
 ];
 const PILOT_INIT = { firstName: '', lastName: '', email: '', password: '', country: '', city: '', phone: '' };
 
@@ -85,6 +85,7 @@ export default function Register() {
 
   const submitPilot = async () => {
     if (!form.firstName || !form.email || !form.password) { setError('Please fill in all required fields.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError('Enter a valid email address.'); return; }
     if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     setLoading(true);
     try {
@@ -92,7 +93,9 @@ export default function Register() {
       dispatch(setAuth({ token: data.token, pilot: data.pilot }));
       navigate('/profile');
     } catch (err) {
-      setError(err.response?.data?.error || 'Could not create account. Try again.');
+      if (!err.response) setError("Couldn't reach the server — check your connection and try again.");
+      else if (Array.isArray(err.response.data?.errors) && err.response.data.errors.length) setError(err.response.data.errors[0].msg || 'Please check your details and try again.');
+      else setError(err.response.data?.error || 'Could not create account. Try again.');
     } finally { setLoading(false); }
   };
 
@@ -126,6 +129,7 @@ export default function Register() {
       await employerRegister(payload);
       navigate('/employer/pending-approval');
     } catch (err) {
+      if (!err.response) { setError("Couldn't reach the server — check your connection and try again."); return; }
       const status = err.response?.status;
       if (status === 409) setError('An employer account already exists for this email. Try logging in.');
       else if (status === 400 && Array.isArray(err.response?.data?.errors)) {
@@ -148,15 +152,17 @@ export default function Register() {
           <button type="button" style={css.seg(mode === 'employer')} onClick={() => switchMode('employer')}>Employer</button>
         </div>
 
-        {error && <div style={css.error}>{error}</div>}
+        {error && <div style={css.error} role="alert">{error}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
           {mode === 'pilot' ? (
             <div style={{ ...css.grid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
-              {PILOT_FIELDS.map(({ name, label, type = 'text', required, half, full, hint }) => (
+              {PILOT_FIELDS.map(({ name, label, type = 'text', required, half, full, hint, ac }, i) => (
                 <div key={name} style={(isMobile || full || !half) ? css.full : undefined}>
                   <Input
                     type={type}
+                    autoComplete={ac}
+                    autoFocus={i === 0}
                     value={form[name]}
                     onChange={set(name)}
                     placeholder={label.replace(' (optional)', '')}
@@ -167,26 +173,26 @@ export default function Register() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <Input label={<>Company Name<span style={css.reqMark}>*</span></>} value={form.companyName} onChange={set('companyName')} placeholder="e.g. Skyline Charter" error={fieldErrors.companyName} />
+              <Input label={<>Company Name<span style={css.reqMark}>*</span></>} autoComplete="organization" autoFocus value={form.companyName} onChange={set('companyName')} placeholder="e.g. Skyline Charter" error={fieldErrors.companyName} />
               <Input as="select" label={<>Company Type<span style={css.reqMark}>*</span></>} value={form.companyType} onChange={set('companyType')} error={fieldErrors.companyType}>
                 <option value="">Select a type…</option>
                 {COMPANY_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </Input>
               <div style={{ ...css.grid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
-                <Input label={<>Country<span style={css.reqMark}>*</span></>} value={form.country} onChange={set('country')} placeholder="e.g. Portugal" error={fieldErrors.country} />
-                <Input label="Headquarters City" value={form.headquartersCity} onChange={set('headquartersCity')} placeholder="e.g. Lisbon" />
+                <Input label={<>Country<span style={css.reqMark}>*</span></>} autoComplete="country-name" value={form.country} onChange={set('country')} placeholder="e.g. Portugal" error={fieldErrors.country} />
+                <Input label="Headquarters City" autoComplete="address-level2" value={form.headquartersCity} onChange={set('headquartersCity')} placeholder="e.g. Lisbon" />
               </div>
-              <Input label="Website" value={form.website} onChange={set('website')} placeholder="https://example.com" error={fieldErrors.website} />
+              <Input label="Website" autoComplete="url" value={form.website} onChange={set('website')} placeholder="https://example.com" error={fieldErrors.website} />
               <div>
                 <Input as="textarea" rows={3} label="Description" value={form.description} onChange={set('description')} maxLength={DESC_MAX} placeholder="Tell pilots about your operation (optional)." error={fieldErrors.description} />
                 <div style={css.hint}>{form.description.length}/{DESC_MAX}</div>
               </div>
-              <Input label={<>Contact Name<span style={css.reqMark}>*</span></>} value={form.contactName} onChange={set('contactName')} placeholder="Your full name" error={fieldErrors.contactName} />
-              <Input label={<>Contact Email<span style={css.reqMark}>*</span></>} type="email" value={form.contactEmail} onChange={set('contactEmail')} placeholder="you@company.com" error={fieldErrors.contactEmail} />
-              <Input label="Contact Phone" value={form.contactPhone} onChange={set('contactPhone')} placeholder="+1 555 0100" />
+              <Input label={<>Contact Name<span style={css.reqMark}>*</span></>} autoComplete="name" value={form.contactName} onChange={set('contactName')} placeholder="Your full name" error={fieldErrors.contactName} />
+              <Input label={<>Contact Email<span style={css.reqMark}>*</span></>} type="email" autoComplete="email" value={form.contactEmail} onChange={set('contactEmail')} placeholder="you@company.com" error={fieldErrors.contactEmail} />
+              <Input label="Contact Phone" autoComplete="tel" value={form.contactPhone} onChange={set('contactPhone')} placeholder="+1 555 0100" />
               <div style={{ ...css.grid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>
-                <Input label={<>Password<span style={css.reqMark}>*</span></>} type="password" value={form.password} onChange={set('password')} placeholder="••••••••" error={fieldErrors.password} />
-                <Input label={<>Confirm Password<span style={css.reqMark}>*</span></>} type="password" value={form.confirmPassword} onChange={set('confirmPassword')} placeholder="••••••••" error={fieldErrors.confirmPassword} />
+                <Input label={<>Password<span style={css.reqMark}>*</span></>} type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder="••••••••" error={fieldErrors.password} />
+                <Input label={<>Confirm Password<span style={css.reqMark}>*</span></>} type="password" autoComplete="new-password" value={form.confirmPassword} onChange={set('confirmPassword')} placeholder="••••••••" error={fieldErrors.confirmPassword} />
               </div>
             </div>
           )}

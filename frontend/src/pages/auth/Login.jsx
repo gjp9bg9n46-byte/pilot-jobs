@@ -78,7 +78,8 @@ export default function Login() {
         navigate('/jobs');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid credentials');
+      if (!err.response) setError("Couldn't reach the server — check your connection and try again.");
+      else setError(err.response?.data?.error || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
@@ -95,12 +96,12 @@ export default function Login() {
           <button type="button" style={css.seg(mode === 'employer')} onClick={() => switchMode('employer')}>Employer</button>
         </div>
 
-        {error && <div style={css.error}>{error}</div>}
+        {error && <div style={css.error} role="alert">{error}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <Input label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={mode === 'employer' ? 'you@company.com' : 'your@email.com'} autoFocus />
-            <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+            <Input label="Email address" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={mode === 'employer' ? 'you@company.com' : 'your@email.com'} autoFocus />
+            <Input label="Password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           </div>
           <button style={{ ...css.btn, opacity: loading ? 0.6 : 1 }} disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In →'}

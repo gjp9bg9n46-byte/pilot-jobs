@@ -53,7 +53,7 @@ const Input = forwardRef(function Input(
         {children}
       </Tag>
       {error && (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#991B1B', marginTop: 6 }}>
+        <div aria-live="polite" style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#991B1B', marginTop: 6 }}>
           {error}
         </div>
       )}

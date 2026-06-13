@@ -40,6 +40,37 @@ shipped; the items below were deferred.
   Always-fresh listings (replace), Instant push alerts (add), Digital logbook
   (add). Ship in a follow-up commit once candidates are picked.
 
+## Quality sweep — Login + Register
+
+From page audit #2 (`/login`, `/register`). The "fix-now" batch (network-error
+copy, pilot `errors[]` parsing + client email check, `role="alert"` /
+`aria-live` a11y, per-field `autoComplete`, Register first-field autofocus)
+shipped in its own commit. Remaining:
+
+- **#5 No password-reset flow (HIGH PRIORITY).** No "Forgot password?" link, no
+  `/auth/forgot-password` endpoint, no reset-token generation/validation, no
+  email send. Needs its own session — pairs naturally with Resend integration
+  since both need transactional-email infra. Anyone who forgets a password is
+  locked out today.
+- **#6 No email verification on pilot signup (normal).** Account goes live
+  immediately with an unverified address. Lower urgency — a real, reachable
+  email is already required for job alerts, and verification adds signup friction.
+- **#7 No password show/hide toggle** on any password field (Login + both
+  Register modes). Standard affordance; cuts typos on the `noValidate` forms.
+- **#8 Pilot register validation is banner-only,** inconsistent with employer
+  mode which sets per-field `fieldErrors`. Move pilot to per-field errors for parity.
+- **#11 No `:focus-visible` ring** on the custom segmented Pilot/Employer toggle,
+  the submit `<button>`s, or footer links (these are real `<button>`/`<Link>`,
+  unlike Landing's all-anchor case). Add an accent outline rule.
+- **#12b body-bg restore is hardcoded** to `#0A1628` on unmount in Login/Register
+  (Landing saves/restores the previous value). Brittle if the app default
+  changes, harmless today. Adopt the save/restore pattern.
+- **#12c No scroll-to-first-error** on the long employer register form — if a
+  field below the fold fails, both banner and field error can be off-screen.
+
+Resolved (no action): **#9** no loading spinner (text feedback is sufficient);
+**#10** pilot has no confirm-password field (intentional — lighter pilot signup).
+
 ## Primitives / follow-ups
 
 - **✅ RESOLVED (Phase 10) — `<Modal>` `size` prop.** Additive `size` prop
