@@ -71,6 +71,53 @@ shipped in its own commit. Remaining:
 Resolved (no action): **#9** no loading spinner (text feedback is sufficient);
 **#10** pilot has no confirm-password field (intentional — lighter pilot signup).
 
+## Quality sweep — Jobs
+
+From page audit #3 (`/jobs`). The "fix-now" batch (search placeholder copy,
+a11y labels on sort/search/save, profile-notice info treatment, cadence copy,
+min-salary null-hiding) shipped in its own commit. Remaining:
+
+- **#1 Wire server-side relevance / match-score into the `/jobs` list endpoint
+  (HIGH PRIORITY).** The list response carries no per-pilot `matchScore` (0/19
+  live jobs), which is the root cause of three separate symptoms: the "Most
+  Relevant" sort is a silent no-op (`jobController.getJobs` has no `relevant`
+  case → falls through to `postedAt desc`, identical to "Newest"); the card
+  `matchLabel(job.matchScore)` badge is dead code (#3); and it overlaps the
+  existing client/server match-duplication item below. Touches **protected
+  backend files** (`jobController`, `matchingService`) — needs its own
+  audit→plan→implement→verify session after the audit cycle. Landing this also
+  turns the min-salary null-handling (#2, shipped as a client guard) into a
+  clean product decision and lets the client-side `computeMatchCount`
+  duplication retire.
+- **#3 Dead card match-score badge.** `matchLabel(job.matchScore)` never renders
+  because the list endpoint omits `matchScore`. Resolves automatically when #1
+  lands (or remove the badge if #1 is deferred indefinitely).
+- **#7 Card-level click + factfile cross-link are mouse-only.** The "View
+  {airline} factfile →" shortcut is a `<div onClick>` (no role/tabindex/keydown)
+  — the real a11y gap; make it a real `<button>`/link. The card-level click is
+  acceptable as-is since the focusable "View Details" button covers keyboard users.
+- **#9 No clear (×) affordance on the search field.** Clearing requires manual
+  select-all + delete. Touches the `<Input>` primitive — note as a potential
+  primitive enhancement (clearable variant).
+- **#10 "Clear All" only resets pending filter values, not applied filters.**
+  Clicking Clear All then closing the panel without Apply leaves the applied
+  filters (and the badge count) active — confusing. Clarify semantics (auto-apply
+  on Clear All, or relabel).
+- **#11 Min Salary filter is currency-naive.** No `salaryCurrency` awareness; a
+  single numeric threshold across mixed currencies drifts once non-USD jobs land
+  (all USD today).
+
+Resolved (no action): **#12** Qualified-only defaults ON for new pilots
+(intentional — coherent with the profile-completion nudge); **#13** no loading
+skeleton (consistent with the app-wide text-feedback pattern).
+
+Still open (pre-existing, verified this sweep — not re-logged): `filtered`
+null-field crash (latent — the scraper writes empty strings, not nulls, so it
+doesn't fire today, but one true `null` location would still crash search);
+URL-state sync (filter changes still produce no query params); no pagination
+(still `limit:1000`; 19 jobs live); client/server match duplication (resolves
+with #1).
+
 ## Primitives / follow-ups
 
 - **✅ RESOLVED (Phase 10) — `<Modal>` `size` prop.** Additive `size` prop

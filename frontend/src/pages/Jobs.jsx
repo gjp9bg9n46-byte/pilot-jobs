@@ -5,7 +5,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import {
   MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
   Shield, Search, SlidersHorizontal, AlertTriangle, X,
-  CheckCircle, XCircle, Minus, GraduationCap, Globe, Languages,
+  CheckCircle, XCircle, Minus, GraduationCap, Globe, Languages, Info,
 } from 'lucide-react';
 import { jobApi, profileApi, airlineApi } from '../services/api';
 import { setJobs } from '../store';
@@ -643,12 +643,19 @@ export default function Jobs() {
     }
   };
 
-  const filtered = jobs.filter(
-    (j) =>
+  const minSalaryNum = Number(minSalary) || 0;
+  const filtered = jobs.filter((j) => {
+    const matchesSearch =
       j.title.toLowerCase().includes(search.toLowerCase()) ||
       j.company.toLowerCase().includes(search.toLowerCase()) ||
-      j.location.toLowerCase().includes(search.toLowerCase())
-  );
+      j.location.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+    // Min-salary: the server lets jobs with no listed salary pass the salaryMin
+    // filter, which makes the control feel broken (#2 quality sweep). When a min
+    // is set, hide jobs that have no salary to filter against.
+    if (minSalaryNum > 0 && j.salaryMin == null) return false;
+    return true;
+  });
 
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
@@ -659,7 +666,8 @@ export default function Jobs() {
       <div style={css.topBar}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <Input
-            placeholder="Search by airline, aircraft, or country..."
+            placeholder="Search by title, airline, or location..."
+            aria-label="Search jobs"
             value={search} onChange={(e) => setSearch(e.target.value)}
           />
         </div>
@@ -679,7 +687,7 @@ export default function Jobs() {
           {qualifiedOnly ? '✓ ' : ''}Qualified only
         </button>
         <div>
-          <Input as="select" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
+          <Input as="select" aria-label="Sort jobs" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
             {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </Input>
         </div>
@@ -728,7 +736,7 @@ export default function Jobs() {
         <div style={css.empty}>
           <div style={css.emptyIcon}><Search size={48} color="var(--text-secondary)" /></div>
           <div style={css.emptyTitle}>No jobs found</div>
-          <div style={css.emptyText}>Try adjusting your search or filters.<br />New jobs are scraped every 6 hours.</div>
+          <div style={css.emptyText}>Try adjusting your search or filters.<br />New jobs added daily.</div>
         </div>
       ) : (
         <>
@@ -737,8 +745,8 @@ export default function Jobs() {
             (pilotTotals.totalTime ?? 0) === 0 &&
             (pilotProfile.certificates?.length ?? 0) === 0 &&
             (pilotProfile.ratings?.length ?? 0) === 0 && (
-            <div style={{ marginBottom: 16, padding: '10px 16px', background: '#DCFCE7', border: '1px solid #BBF7D0', borderRadius: 8, fontSize: 13, color: SEM.green, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={14} color={SEM.green} />
+            <div style={{ marginBottom: 16, padding: '10px 16px', background: '#DBEAFE', border: '1px solid #BFDBFE', borderRadius: 8, fontSize: 13, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Info size={14} color="#1E40AF" />
               Complete your profile to improve job matching →{' '}
               <a href="/profile" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Go to Profile</a>
             </div>
@@ -767,6 +775,8 @@ export default function Jobs() {
                     style={css.heartBtn}
                     onClick={(e) => handleSaveToggle(e, job.id)}
                     title={isSaved ? 'Unsave job' : 'Save job'}
+                    aria-label={isSaved ? 'Unsave job' : 'Save job'}
+                    aria-pressed={isSaved}
                   >
                     <PlaneSave saved={isSaved} size={36} />
                   </button>
