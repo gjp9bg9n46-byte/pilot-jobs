@@ -175,11 +175,12 @@ CRUD work, inline validation fires with no `alert()`, delete modal mechanics
 solid, backend↔frontend schema aligned). The "fix-now" batch (education-clear
 backend fix, Medical expiry-warning band) shipped in its own commit. Remaining:
 
-- **#3 AircraftCombobox `aria-label`/`id` passthrough.** The component signature
-  is `({ value, onChange, inputStyle })` — it accepts no `id` or `aria-label`, so
-  the Type Ratings `<label>Aircraft type</label>` can't be linked to the input
-  (the input's placeholder gives partial context only). Small primitive
-  enhancement: add `id` + `aria-label` props passed through to the inner `<input>`.
+- **✅ RESOLVED (Airlines Expansion Session 1) — #3 AircraftCombobox
+  `aria-label`/`id` passthrough.** The component now accepts `id` + `ariaLabel`
+  props passed through to the inner `<input>` (additive, backward-compatible).
+  Used by the new fleet editor in AirlineContribute. The Profile Type Ratings
+  call site can now adopt `ariaLabel="Aircraft type"` in a trivial follow-up to
+  fully close its label association.
 - **#4 SaveStatus + dirty indicator not announced to screen readers.** "● Unsaved
   changes" and "✓ Saved HH:MM" / "⚠ Save failed" are colored text with no
   `aria-live` (shared across all 7 cards). Wrap `SaveStatus` in
@@ -281,6 +282,19 @@ aria-labels, toast `role="alert"`) shipped in its own commit. Remaining:
   (Aircraft / In Service / On Order / Retired) have no `scope`, weakening the
   screen-reader association between the numeric cells and their headers. Add
   `scope="col"` to each.
+
+## Airlines Expansion — Session 1 (fleet editability) — follow-ups
+
+Shipped: structured `fleetDetail` editor in AirlineContribute (add/edit/remove
+rows: aircraft + in-service/on-order/retired), full-replace diff carried through
+contribution → moderator approval → `airline.fleetDetail`, minimal plain-text
+moderator diff renderer, AircraftCombobox `id`/`ariaLabel` passthrough. Remaining:
+
+- **Rich fleetDetail diff styling in AdminModeration (low priority).** The
+  moderator render is currently minimal plain text (Removed/Added/Changed lines).
+  A polished version could colour added rows green / removed red / changed amber
+  and lay them out as a compact before→after table. Cosmetic only — the data and
+  the readable diff already work. Defer until the moderator UI gets broader love.
 
 In-flight (NOT backlog — actively planned): **#7 list cards have no
 logos/avatars.** User picked real logos; now in scope for the **Airlines
