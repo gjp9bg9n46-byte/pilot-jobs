@@ -168,6 +168,42 @@ is the outlier; the fix pattern already exists**); saved-search response-shape
 guess (`data.searches ?? data ?? []`); PlaneSave duplicated (Jobs + Alerts) —
 **now also a size mismatch** (Jobs 36px / Alerts 28px) for the eventual dedup.
 
+## Quality sweep — Profile
+
+From page audit #5 (`/profile`). The page audited clean overall (all 8 cards +
+CRUD work, inline validation fires with no `alert()`, delete modal mechanics
+solid, backend↔frontend schema aligned). The "fix-now" batch (education-clear
+backend fix, Medical expiry-warning band) shipped in its own commit. Remaining:
+
+- **#3 AircraftCombobox `aria-label`/`id` passthrough.** The component signature
+  is `({ value, onChange, inputStyle })` — it accepts no `id` or `aria-label`, so
+  the Type Ratings `<label>Aircraft type</label>` can't be linked to the input
+  (the input's placeholder gives partial context only). Small primitive
+  enhancement: add `id` + `aria-label` props passed through to the inner `<input>`.
+- **#4 SaveStatus + dirty indicator not announced to screen readers.** "● Unsaved
+  changes" and "✓ Saved HH:MM" / "⚠ Save failed" are colored text with no
+  `aria-live` (shared across all 7 cards). Wrap `SaveStatus` in
+  `aria-live="polite"`; mark the decorative "●" `aria-hidden`.
+- **#5 Per-card empty-state flash (ELP / Recurrent / RTW).** These cards init
+  `items = []` and render "No … records" until their own `GET` resolves, so a
+  pilot with records sees a brief empty flash. Add a loaded-once guard per card.
+- **#6 Delete failure is silent.** `confirmDelete` closes the modal then runs
+  `fn()`; if the delete API throws, the `setState` filter never runs and nothing
+  surfaces. Add a catch + small error feedback (reuse the `SaveStatus` error
+  pattern).
+- **#7 [BUNDLE WITH MATCHING SESSION] Type ratings hardcode
+  `category: 'Multi-Engine'`.** Every rating added via the form is stored with
+  `category: 'Multi-Engine'` regardless of aircraft (a C172 single gets
+  "Multi-Engine"). Not surfaced in the card display today (it uses `capacity`),
+  but matching may consume `category` in future — fix the stored value (derive
+  from the selected aircraft; AircraftCombobox likely knows the engine class)
+  **before** matching starts depending on it. Logged for the matching backend
+  session alongside the other matching/data-correctness items.
+
+Resolved (no action): **#8** Save-button label inconsistency ("Save Changes" vs
+"Save") — minor; **#9** one-click default licence creation — defensible
+(licences legitimately have optional dates).
+
 ## Primitives / follow-ups
 
 - **✅ RESOLVED (Phase 10) — `<Modal>` `size` prop.** Additive `size` prop

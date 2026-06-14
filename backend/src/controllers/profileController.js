@@ -46,7 +46,7 @@ exports.updateProfile = async (req, res, next) => {
         passportNumber, passportExpiry: passportExpiry ? new Date(passportExpiry) : undefined,
         emergencyContactName, emergencyContactPhone,
         willingToRelocate, isInstructor, isExaminer,
-        education: education || undefined,
+        education: education === null ? null : (education || undefined),
         role: role || null,
       },
     });

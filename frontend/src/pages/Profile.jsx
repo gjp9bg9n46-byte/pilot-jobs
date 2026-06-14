@@ -362,13 +362,17 @@ function MedicalCard({ profile, setProfile, confirmDelete }) {
         const mc = MEDICAL_CLASSES.find((m) => m.value === med.medicalClass);
         const expiry = new Date(med.expiryDate);
         const expired = expiry < new Date();
+        // Same expiry band as Licences: amber <90d, red <30d (ExpiryBadge owns the countdown text).
+        const days = daysUntil(med.expiryDate);
+        const expiryColor = days !== null && days < 90 ? (days < 30 ? SEM.red : SEM.amber) : null;
         return (
           <div key={med.id} style={css.item}>
             <div>
               <div style={css.itemTitle}>{mc?.label || med.medicalClass}</div>
               <div style={css.itemSub}>
-                <span style={{ color: expired ? SEM.red : SEM.green }}>
+                <span style={{ color: expired ? SEM.red : (expiryColor || SEM.green) }}>
                   {expired ? '⚠ Expired' : 'Valid until'} {expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {!expired && <ExpiryBadge dateStr={med.expiryDate} />}
                 </span>
               </div>
             </div>
