@@ -323,7 +323,7 @@ export default function AirlineContribute() {
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       <div style={S.page}>
-        {toast && <div style={S.toastWrap}>{toast}</div>}
+        {toast && <div style={S.toastWrap} role="alert">{toast}</div>}
 
         <button style={S.back} onClick={() => navigate(`/airlines/${id}`)}>
           ← Back to {airline.name}
@@ -368,8 +368,8 @@ export default function AirlineContribute() {
             <div style={S.field}>
               <label style={S.label}>Captain — Min / Max</label>
               <div style={S.payGrid}>
-                <Input error={fieldErrors.captainMin} value={form.captainMin ?? ''} onChange={(e) => set('captainMin', e.target.value)} placeholder="Min (e.g. 90000)" type="number" min="0" />
-                <Input error={fieldErrors.captainMax} value={form.captainMax ?? ''} onChange={(e) => set('captainMax', e.target.value)} placeholder="Max (e.g. 150000)" type="number" min="0" />
+                <Input aria-label="Captain pay minimum" error={fieldErrors.captainMin} value={form.captainMin ?? ''} onChange={(e) => set('captainMin', e.target.value)} placeholder="Min (e.g. 90000)" type="number" min="0" />
+                <Input aria-label="Captain pay maximum" error={fieldErrors.captainMax} value={form.captainMax ?? ''} onChange={(e) => set('captainMax', e.target.value)} placeholder="Max (e.g. 150000)" type="number" min="0" />
               </div>
               <Hint>Gross annual salary range (or monthly — set Period accordingly).</Hint>
             </div>
@@ -377,16 +377,16 @@ export default function AirlineContribute() {
             <div style={S.field}>
               <label style={S.label}>Captain — Currency / Period</label>
               <div style={S.payGrid}>
-                <Input value={form.captainCurrency ?? ''} onChange={(e) => set('captainCurrency', e.target.value)} placeholder="Currency (e.g. EUR)" maxLength={4} />
-                <Input value={form.captainPeriod ?? ''} onChange={(e) => set('captainPeriod', e.target.value)} placeholder="Period (e.g. year)" />
+                <Input aria-label="Captain pay currency" value={form.captainCurrency ?? ''} onChange={(e) => set('captainCurrency', e.target.value)} placeholder="Currency (e.g. EUR)" maxLength={4} />
+                <Input aria-label="Captain pay period" value={form.captainPeriod ?? ''} onChange={(e) => set('captainPeriod', e.target.value)} placeholder="Period (e.g. year)" />
               </div>
             </div>
 
             <div style={S.field}>
               <label style={S.label}>First Officer — Min / Max</label>
               <div style={S.payGrid}>
-                <Input error={fieldErrors.foMin} value={form.foMin ?? ''} onChange={(e) => set('foMin', e.target.value)} placeholder="Min" type="number" min="0" />
-                <Input error={fieldErrors.foMax} value={form.foMax ?? ''} onChange={(e) => set('foMax', e.target.value)} placeholder="Max" type="number" min="0" />
+                <Input aria-label="First Officer pay minimum" error={fieldErrors.foMin} value={form.foMin ?? ''} onChange={(e) => set('foMin', e.target.value)} placeholder="Min" type="number" min="0" />
+                <Input aria-label="First Officer pay maximum" error={fieldErrors.foMax} value={form.foMax ?? ''} onChange={(e) => set('foMax', e.target.value)} placeholder="Max" type="number" min="0" />
               </div>
               <Hint>Gross salary range for FO.</Hint>
             </div>
@@ -394,8 +394,8 @@ export default function AirlineContribute() {
             <div style={S.field}>
               <label style={S.label}>First Officer — Currency / Period</label>
               <div style={S.payGrid}>
-                <Input value={form.foCurrency ?? ''} onChange={(e) => set('foCurrency', e.target.value)} placeholder="Currency (e.g. EUR)" maxLength={4} />
-                <Input value={form.foPeriod ?? ''} onChange={(e) => set('foPeriod', e.target.value)} placeholder="Period (e.g. year)" />
+                <Input aria-label="First Officer pay currency" value={form.foCurrency ?? ''} onChange={(e) => set('foCurrency', e.target.value)} placeholder="Currency (e.g. EUR)" maxLength={4} />
+                <Input aria-label="First Officer pay period" value={form.foPeriod ?? ''} onChange={(e) => set('foPeriod', e.target.value)} placeholder="Period (e.g. year)" />
               </div>
             </div>
           </div>

@@ -98,22 +98,22 @@ export default function Airlines() {
 
       <div style={S.controls}>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <Input placeholder="Search airlines…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input placeholder="Search airlines…" aria-label="Search airlines" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div style={{ flex: '0 0 auto', minWidth: 150 }}>
-          <Input as="select" value={region} onChange={(e) => setRegion(e.target.value)} style={{ fontSize: 13 }}>
+          <Input as="select" aria-label="Filter by region" value={region} onChange={(e) => setRegion(e.target.value)} style={{ fontSize: 13 }}>
             <option value="">All Regions</option>
             {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
           </Input>
         </div>
         <div style={{ flex: '0 0 auto', minWidth: 150 }}>
-          <Input as="select" value={hiringStatus} onChange={(e) => setHiringStatus(e.target.value)} style={{ fontSize: 13 }}>
+          <Input as="select" aria-label="Filter by hiring status" value={hiringStatus} onChange={(e) => setHiringStatus(e.target.value)} style={{ fontSize: 13 }}>
             <option value="">All Statuses</option>
             {HIRING_STATUSES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
           </Input>
         </div>
         <div style={{ flex: '0 0 auto', minWidth: 150 }}>
-          <Input as="select" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13 }}>
+          <Input as="select" aria-label="Sort airlines" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13 }}>
             {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </Input>
         </div>
@@ -137,7 +137,13 @@ export default function Airlines() {
               <div
                 key={airline.id}
                 style={S.card}
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${airline.name} factfile`}
                 onClick={() => navigate(`/airlines/${airline.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/airlines/${airline.id}`); }
+                }}
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
               >

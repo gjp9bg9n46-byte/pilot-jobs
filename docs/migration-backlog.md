@@ -261,6 +261,39 @@ selection not persisted** (see "CV Builder (Phase 13)" below) — confirmed live
 switch to Final → reload → reverts to Approach; needs a backend `template` schema
 field, so it stays a dedicated change, not a sweep one-liner.
 
+## Quality sweep — Airlines
+
+From page audit #8 (`/airlines`, `/airlines/:id`, `/airlines/:id/contribute` +
+PublicLayout). The surface family audited very healthy — dual-shell renders light
+in both Layout and PublicLayout, contribute pre-fill passes the populated-state
+calibration, the full contribution flow works (201 → success → redirect), and
+detail renders correctly for populated + minimal airlines with no NaN leak. The
+"fix-now" batch (list-card keyboard, list aria-labels, contribute pay-input
+aria-labels, toast `role="alert"`) shipped in its own commit. Remaining:
+
+- **#5 `relativeDate` / contributor-count unguarded against null.**
+  `relativeDate(airline.lastUpdatedAt)` returns "NaN … ago" for a null/invalid
+  date, and "Submitted by {verifiedContributors} pilots" prints "undefined" if
+  that field is ever null. **Latent today** (0/100 airlines have either null),
+  but a future scraped/contributed row without them renders visibly broken. Add
+  defensive guards: `if (!d) return 'recently'` and `?? 0` on the count.
+- **#6 Fleet table `<th>` lacks `scope="col"`.** The FleetBlock column headers
+  (Aircraft / In Service / On Order / Retired) have no `scope`, weakening the
+  screen-reader association between the numeric cells and their headers. Add
+  `scope="col"` to each.
+
+In-flight (NOT backlog — actively planned): **#7 list cards have no
+logos/avatars.** User picked real logos; now in scope for the **Airlines
+Expansion Project (Sessions 2–3)** of the post-sweep plan — a data + design
+feature, tracked there rather than deferred here.
+
+Still open (pre-existing, verified this sweep — not re-logged): **/jobs?q= link
+ignored** (URL-state cluster — resolves when Jobs URL-state lands); **list search
+has no debounce**; **fleet data corrections + HQ granularity** (long-deferred data
+work); **AirlineContribution FK-cascade bug** — `DELETE /auth/account` returns 500
+once a pilot has a contribution (missing `onDelete: Cascade`), orphaning the
+account; belongs to the **backend cluster**, not this sweep.
+
 ## Primitives / follow-ups
 
 - **✅ RESOLVED (Phase 10) — `<Modal>` `size` prop.** Additive `size` prop
