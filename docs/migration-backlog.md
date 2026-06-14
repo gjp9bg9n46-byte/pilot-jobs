@@ -204,6 +204,36 @@ Resolved (no action): **#8** Save-button label inconsistency ("Save Changes" vs
 "Save") — minor; **#9** one-click default licence creation — defensible
 (licences legitimately have optional dates).
 
+## Quality sweep — Logbook
+
+From page audit #6 (`/logbook`). The page audited very healthy — all CRUD
+(add/edit/clone/delete), multi-leg bulk, grouping/expand, block + night
+autocompute, search, and the full CSV import flow work end-to-end. The "fix-now"
+batch (AircraftCombobox Escape stopPropagation, night-currency threshold →3,
+totals tile mono on Logbook + Profile, negative-hour `min="0"` guards) shipped in
+its own commit. Remaining:
+
+- **#4 Search fragments multi-leg duties.** `filteredLogs` filters individual
+  legs, then `groupedRows` groups the survivors by `dutyId` — a search matching
+  only some legs of a duty renders partial sectors with wrong block/PIC/night
+  totals. Fix: group whole duties first, then filter (match a duty if any leg
+  matches, keep all its legs). Low frequency.
+- **#6 Multi-leg duty expand/collapse is mouse-only.** The duty summary row is a
+  `<tr onClick={toggleDuty}>` with no `role`/`tabindex`/`onKeyDown`, and the
+  chevron is a plain `<td>`. Make the chevron a real `<button>` with keyboard
+  support so keyboard users can expand duties.
+- **#7 a11y batch.** (a) Logbook search input has placeholder only — add
+  `aria-label="Search logbook"` (same pattern as Jobs/Alerts). (b) ImportModal
+  format cards (CSV/Excel) and the drop zone are `<div role="button">` /
+  `<div onClick>` with no `tabindex`/keyboard handler — keyboard users can't pick
+  a format or open the file browser; add `tabindex={0}` + Enter/Space `onKeyDown`.
+- **#9 ImportModal Excel card is a dead-end.** Selecting "Excel" shows
+  "coming soon — export as CSV" with no drop zone. Disable the card visually
+  (greyed, non-selectable) with a "Coming soon" badge until `.xlsx` ships.
+
+Resolved (no action): **#8** new-pilot wall of "0.0" totals tiles — defensible
+(the Logbook is where totals live).
+
 ## Primitives / follow-ups
 
 - **✅ RESOLVED (Phase 10) — `<Modal>` `size` prop.** Additive `size` prop

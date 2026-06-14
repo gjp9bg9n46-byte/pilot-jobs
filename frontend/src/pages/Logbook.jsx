@@ -26,7 +26,7 @@ const css = {
     background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
     padding: '18px 16px', textAlign: 'center',
   },
-  totalValue: { fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginBottom: 4 },
+  totalValue: { fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums', fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginBottom: 4 },
   totalLabel: { fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
 
   currencyCard: {
@@ -173,11 +173,12 @@ function formFromLog(log) {
   };
 }
 
-function Field({ value, onChange, label, hint, span, type = 'text' }) {
+function Field({ value, onChange, label, hint, span, type = 'text', min }) {
   return (
     <div style={span === 'full' ? css.formFull : {}}>
       <Input
         type={type}
+        min={min}
         value={value}
         onChange={onChange}
         placeholder={hint?.replace('e.g. ', '') || ''}
@@ -392,7 +393,7 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                   </>
                 ) : (
                   <>
-                    <Field value={leg.nightTime} onChange={set('nightTime')} label="Night Time" hint="manual entry" type="number" />
+                    <Field value={leg.nightTime} onChange={set('nightTime')} label="Night Time" hint="manual entry" type="number" min="0" />
                     {airportsEntered && !airportsKnown && (
                       <div style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--text-secondary)', marginTop: -8, padding: '6px 10px', background: 'var(--bg)', borderRadius: 6 }}>
                         Airport not in database — enter night time manually. Auto-calc requires departure and arrival ICAO codes.
@@ -412,20 +413,20 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 8 }}>decimals — 1h 30m = 1.5</span>
               </div>
               <div style={css.formGrid}>
-                <Field value={leg.picTime} onChange={set('picTime')} label="PIC (Captain)" type="number" />
-                <Field value={leg.sicTime} onChange={set('sicTime')} label="SIC (Co-pilot)" type="number" />
-                <Field value={leg.multiEngineTime} onChange={set('multiEngineTime')} label="Multi-Engine" type="number" />
-                <Field value={leg.turbineTime} onChange={set('turbineTime')} label="Turbine" hint="jet + turboprop" type="number" />
-                <Field value={leg.jetTime} onChange={set('jetTime')} label="Jet" hint="subset of turbine — jet engines only" type="number" />
-                <Field value={leg.crossCountryTime} onChange={set('crossCountryTime')} label="Cross-Country" type="number" />
-                <Field value={leg.instrumentActualTime} onChange={set('instrumentActualTime')} label="IFR Actual (IMC)" type="number" />
-                <Field value={leg.instrumentSimTime} onChange={set('instrumentSimTime')} label="IFR Sim (FNPT/SIM)" type="number" />
+                <Field value={leg.picTime} onChange={set('picTime')} label="PIC (Captain)" type="number" min="0" />
+                <Field value={leg.sicTime} onChange={set('sicTime')} label="SIC (Co-pilot)" type="number" min="0" />
+                <Field value={leg.multiEngineTime} onChange={set('multiEngineTime')} label="Multi-Engine" type="number" min="0" />
+                <Field value={leg.turbineTime} onChange={set('turbineTime')} label="Turbine" hint="jet + turboprop" type="number" min="0" />
+                <Field value={leg.jetTime} onChange={set('jetTime')} label="Jet" hint="subset of turbine — jet engines only" type="number" min="0" />
+                <Field value={leg.crossCountryTime} onChange={set('crossCountryTime')} label="Cross-Country" type="number" min="0" />
+                <Field value={leg.instrumentActualTime} onChange={set('instrumentActualTime')} label="IFR Actual (IMC)" type="number" min="0" />
+                <Field value={leg.instrumentSimTime} onChange={set('instrumentSimTime')} label="IFR Sim (FNPT/SIM)" type="number" min="0" />
               </div>
 
               <div style={css.sectionTitle}>Landings</div>
               <div style={css.formGrid}>
-                <Field value={leg.landingsDay} onChange={set('landingsDay')} label="Day Landings" type="number" />
-                <Field value={leg.landingsNight} onChange={set('landingsNight')} label="Night Landings" type="number" />
+                <Field value={leg.landingsDay} onChange={set('landingsDay')} label="Day Landings" type="number" min="0" />
+                <Field value={leg.landingsNight} onChange={set('landingsNight')} label="Night Landings" type="number" min="0" />
               </div>
 
               <div style={{ marginBottom: 24 }}>
@@ -554,7 +555,10 @@ export default function Logbook() {
         nightLandings += parseInt(log.landingsNight) || 0;
       }
     }
-    return { dayCurrent: dayLandings >= 3, nightCurrent: nightLandings >= 1 };
+    // Simplified universal floor: 3 landings in 90 days, matching the day
+    // threshold. NOT full FAA/EASA recency — real currency is authority-specific
+    // and time-windowed (night = full-stop landings in the night period, etc.).
+    return { dayCurrent: dayLandings >= 3, nightCurrent: nightLandings >= 3 };
   }, [logs]);
 
   const filteredLogs = useMemo(() => {

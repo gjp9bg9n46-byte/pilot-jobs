@@ -143,7 +143,10 @@ export default function AircraftCombobox({ value, onChange, inputStyle }) {
       if (e.key === 'ArrowDown' || e.key === 'Enter') { setOpen(true); setHighlighted(0); }
       return;
     }
-    if (e.key === 'Escape') { setOpen(false); setHighlighted(-1); return; }
+    // Dropdown is open here (the !open branch returned above). Swallow Escape so
+    // it only closes the dropdown — without this it bubbles to a parent Modal's
+    // Escape handler and closes the whole modal, losing the form (Logbook/Profile).
+    if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); setHighlighted(-1); return; }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHighlighted((h) => Math.min(h + 1, totalOptions - 1));
