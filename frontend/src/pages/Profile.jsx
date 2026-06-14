@@ -171,14 +171,17 @@ function AddButton({ children, onClick }) {
 const formActions = { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' };
 
 function FlightTotalsCard({ totals }) {
+  // Keys must match GET /profile/totals (the same `…Time` names Logbook reads).
+  // Earlier `totalHours`/`picHours`/… never matched the API, so every lookup was
+  // undefined and the card showed the empty note permanently (pre-existing bug).
   const stats = [
-    { key: 'totalHours',    label: 'Total Hours' },
-    { key: 'picHours',      label: 'PIC Hours' },
-    { key: 'sicHours',      label: 'SIC Hours' },
-    { key: 'multiEngine',   label: 'Multi-Engine' },
-    { key: 'turbine',       label: 'Turbine' },
-    { key: 'night',         label: 'Night' },
-    { key: 'instrument',    label: 'Instrument' },
+    { key: 'totalTime',       label: 'Total Hours' },
+    { key: 'picTime',         label: 'PIC Hours' },
+    { key: 'sicTime',         label: 'SIC Hours' },
+    { key: 'multiEngineTime', label: 'Multi-Engine' },
+    { key: 'turbineTime',     label: 'Turbine' },
+    { key: 'nightTime',       label: 'Night' },
+    { key: 'instrumentTime',  label: 'Instrument' },
   ];
 
   const allZero = !totals || stats.every((s) => !totals[s.key] || totals[s.key] === 0);
