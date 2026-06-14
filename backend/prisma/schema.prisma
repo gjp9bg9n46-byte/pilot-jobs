@@ -491,6 +491,9 @@ model Airline {
   bases                String[]
   fleet                String[]
   fleetDetail          Json?                // [{ type, inService:int|null, ordered:int|null, retired:int|null }] — enriched; `fleet` kept for fallback/community
+  logoUrl              String?              // self-hosted logo URL (Session 3 populates)
+  domain               String?              // official website domain (Session 3)
+  logoSource           String?              // WIKIDATA | WIKIPEDIA | null — audit trail (Session 3)
   hiringStatus         HiringStatus         @default(UNKNOWN)
   hiringFrequency      HiringFrequency      @default(UNKNOWN)
   payRanges            Json?
