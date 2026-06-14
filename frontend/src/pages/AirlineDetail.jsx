@@ -233,7 +233,7 @@ export default function AirlineDetail() {
         <div style={S.hero}>
           <div style={S.heroTop}>
             <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', minWidth: 0 }}>
-              <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} box={narrow ? 44 : 56} font={narrow ? 15 : 17} />
+              <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} box={narrow ? 44 : 56} maxW={narrow ? 72 : 96} font={narrow ? 15 : 17} />
               <div style={{ minWidth: 0 }}>
               <div style={S.heroName}>{airline.name}</div>
               <div style={S.heroCodes}>

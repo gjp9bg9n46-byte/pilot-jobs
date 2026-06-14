@@ -152,7 +152,7 @@ export default function Airlines() {
               >
                 <div style={S.cardHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-                    <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} box={isMobile ? 36 : 44} font={isMobile ? 12 : 13} />
+                    <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} box={isMobile ? 36 : 44} maxW={isMobile ? 52 : 64} font={isMobile ? 12 : 13} />
                     <div style={S.airlineName}>{airline.name}</div>
                   </div>
                   {airline.iataCode && <div style={S.iata}>{airline.iataCode}</div>}

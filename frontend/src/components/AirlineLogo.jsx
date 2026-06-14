@@ -1,13 +1,14 @@
 import React from 'react';
 
 // Airline logo with initials fallback (shared by the Airlines list card + the
-// AirlineDetail hero, so the fallback treatment stays identical).
-//   - logoUrl present → self-hosted logo, object-fit:contain on a bordered white box.
-//   - logoUrl null     → neutral circle with the IATA code (or first 2 letters of
-//                        name) in JetBrains Mono. No per-airline colour hashing.
-// `box` = outer dimension (px); `font` = initials font-size (px). Callers pass the
-// card vs hero vs mobile sizes.
-export default function AirlineLogo({ logoUrl, iataCode, name, box = 44, font = 13 }) {
+// AirlineDetail hero, so the treatment stays identical).
+//   - logoUrl present → self-hosted logo on a bordered white box that is
+//     HEIGHT-fixed and WIDTH-auto (capped at maxW), so wide wordmark logos
+//     (Qantas, Singapore, Delta…) don't get squished into a square.
+//   - logoUrl null     → a fixed SQUARE box × box neutral circle with the IATA
+//     code (or first 2 letters of name) in JetBrains Mono. No colour hashing.
+// `box` = fixed height (px); `maxW` = max logo width (px); `font` = initials size.
+export default function AirlineLogo({ logoUrl, iataCode, name, box = 44, maxW = 64, font = 13 }) {
   const initials = (iataCode && iataCode.slice(0, 2).toUpperCase())
     || ((name || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase())
     || '—';
@@ -15,16 +16,16 @@ export default function AirlineLogo({ logoUrl, iataCode, name, box = 44, font = 
   if (logoUrl) {
     return (
       <div style={{
-        width: box, height: box, flexShrink: 0,
+        height: box, maxWidth: maxW, flexShrink: 0,
         borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         padding: 4, boxSizing: 'border-box',
       }}>
         <img
           src={logoUrl}
           alt={`${name} logo`}
           loading="lazy"
-          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+          style={{ maxHeight: box - 8, maxWidth: maxW - 8, objectFit: 'contain', display: 'block' }}
         />
       </div>
     );
