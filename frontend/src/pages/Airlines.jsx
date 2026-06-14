@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { airlineApi } from '../services/api';
+import { useIsMobile } from '../hooks/useIsMobile';
+import AirlineLogo from '../components/AirlineLogo';
 import { LightPage, Input, Button, Badge } from '../components/primitives';
 
 const REGIONS = ['Europe', 'Americas', 'Asia-Pacific', 'Middle East', 'Africa'];
@@ -62,6 +64,7 @@ const S = {
 
 export default function Airlines() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [q, setQ]                     = useState('');
   const [region, setRegion]           = useState('');
   const [hiringStatus, setHiringStatus] = useState('');
@@ -148,7 +151,10 @@ export default function Airlines() {
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
               >
                 <div style={S.cardHeader}>
-                  <div style={S.airlineName}>{airline.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                    <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} box={isMobile ? 36 : 44} font={isMobile ? 12 : 13} />
+                    <div style={S.airlineName}>{airline.name}</div>
+                  </div>
                   {airline.iataCode && <div style={S.iata}>{airline.iataCode}</div>}
                 </div>
                 <div style={S.meta}>

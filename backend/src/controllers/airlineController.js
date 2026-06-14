@@ -93,7 +93,7 @@ const LIST_SELECT = {
   id: true, name: true, iataCode: true, icaoCode: true,
   country: true, region: true, headquarters: true,
   hiringStatus: true, hiringFrequency: true, contractType: true,
-  bases: true, fleet: true,
+  bases: true, fleet: true, logoUrl: true,
   verifiedContributors: true, lastUpdatedAt: true, createdAt: true,
 };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { airlineApi } from '../services/api';
+import AirlineLogo from '../components/AirlineLogo';
 import { LightPage, Badge, Button } from '../components/primitives';
 
 const EMPTY = (
@@ -199,6 +200,7 @@ function FleetBlock({ detail }) {
 export default function AirlineDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const narrow = useNarrow();
   const isAuthed = useSelector((s) => !!s.auth.token);
   const [airline, setAirline] = useState(null);
   const [jobCount, setJobCount] = useState(null);
@@ -230,7 +232,9 @@ export default function AirlineDetail() {
         {/* Hero */}
         <div style={S.hero}>
           <div style={S.heroTop}>
-            <div>
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', minWidth: 0 }}>
+              <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} box={narrow ? 44 : 56} font={narrow ? 15 : 17} />
+              <div style={{ minWidth: 0 }}>
               <div style={S.heroName}>{airline.name}</div>
               <div style={S.heroCodes}>
                 {airline.iataCode && <span style={S.codeChip(true)}>IATA: {airline.iataCode}</span>}
@@ -241,6 +245,7 @@ export default function AirlineDetail() {
                 <span>·</span>
                 <span>{airline.region}</span>
                 {airline.headquarters && <><span>·</span><span>{airline.headquarters}</span></>}
+              </div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
