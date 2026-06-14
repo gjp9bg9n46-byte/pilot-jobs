@@ -120,7 +120,7 @@ function getVisible(query) {
 // Logbook) or cool .app-b2b (EmployerJobForm) — automatically. The former
 // additive `light` prop + dark branch were removed post-Phase-14 (zero dark
 // consumers remained).
-export default function AircraftCombobox({ value, onChange, inputStyle }) {
+export default function AircraftCombobox({ value, onChange, inputStyle, id, ariaLabel }) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   const [focused, setFocused] = useState(false);
@@ -198,6 +198,8 @@ export default function AircraftCombobox({ value, onChange, inputStyle }) {
     <div ref={containerRef} style={{ position: 'relative' }}>
       <input
         ref={inputRef}
+        id={id}
+        aria-label={ariaLabel}
         value={value || ''}
         onChange={(e) => { onChange(e.target.value); setOpen(true); setHighlighted(-1); }}
         onFocus={() => { setOpen(true); setFocused(true); }}

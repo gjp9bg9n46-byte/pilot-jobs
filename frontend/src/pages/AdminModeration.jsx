@@ -7,6 +7,7 @@ const FIELD_LABELS = {
   description:         'Description',
   bases:               'Bases',
   fleet:               'Fleet',
+  fleetDetail:         'Fleet (detailed)',
   hiringStatus:        'Hiring Status',
   hiringFrequency:     'Hiring Frequency',
   payRanges:           'Pay Ranges',
@@ -48,8 +49,41 @@ function ContributorTag({ ctx }) {
   return <span style={{ fontSize: 11, color: '#7A8CA0' }}>{parts.join(' · ')}</span>;
 }
 
+// Minimal readable diff for the structured fleetDetail array, matched by `type`.
+function fleetDetailLines(before, after) {
+  const b = Array.isArray(before) ? before : [];
+  const a = Array.isArray(after)  ? after  : [];
+  const bm = Object.fromEntries(b.map((r) => [r.type, r]));
+  const am = Object.fromEntries(a.map((r) => [r.type, r]));
+  const c = (v) => (v == null ? '—' : v);
+  const lines = [];
+  for (const r of b) if (!(r.type in am)) lines.push(`Removed: ${r.type} (was ${c(r.inService)} in service)`);
+  for (const r of a) if (!(r.type in bm)) lines.push(`Added: ${r.type} (${c(r.inService)} in service / ${c(r.ordered)} on order / ${c(r.retired)} retired)`);
+  for (const r of a) {
+    const o = bm[r.type];
+    if (!o) continue;
+    const parts = [];
+    if ((o.inService ?? null) !== (r.inService ?? null)) parts.push(`in service ${c(o.inService)} → ${c(r.inService)}`);
+    if ((o.ordered   ?? null) !== (r.ordered   ?? null)) parts.push(`on order ${c(o.ordered)} → ${c(r.ordered)}`);
+    if ((o.retired   ?? null) !== (r.retired   ?? null)) parts.push(`retired ${c(o.retired)} → ${c(r.retired)}`);
+    if (parts.length) lines.push(`Changed: ${r.type} (${parts.join(', ')})`);
+  }
+  return lines;
+}
+
 function DiffRow({ field, airline, proposed }) {
   const current = airline[field];
+  if (field === 'fleetDetail') {
+    const lines = fleetDetailLines(current, proposed);
+    return (
+      <div style={{ borderBottom: '1px solid #1B2B4B', padding: '8px 0' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#4A6080', marginBottom: 4 }}>Fleet (detailed)</div>
+        {lines.length === 0
+          ? <div style={{ fontSize: 12, color: '#4A6080', fontStyle: 'italic' }}>No effective changes</div>
+          : lines.map((l, i) => <div key={i} style={{ fontSize: 13, color: '#C8D8E8', lineHeight: 1.6 }}>{l}</div>)}
+      </div>
+    );
+  }
   return (
     <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1B2B4B', padding: '8px 0', flexWrap: 'wrap' }}>
       <div style={{ width: 160, flexShrink: 0, fontSize: 12, fontWeight: 700, color: '#4A6080', paddingTop: 1 }}>

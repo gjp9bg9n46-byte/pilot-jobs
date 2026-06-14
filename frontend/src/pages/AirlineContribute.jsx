@@ -2,6 +2,21 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { airlineApi } from '../services/api';
 import { LightPage, Input, Button } from '../components/primitives';
+import AircraftCombobox from '../components/AircraftCombobox';
+
+// Seed the structured fleet editor: prefer fleetDetail; otherwise lift the flat
+// fleet[] into rows with empty counts (lets a contributor enrich it into fleetDetail).
+const seedFleet = (a) => {
+  if (a?.fleetDetail?.length) {
+    return a.fleetDetail.map((r) => ({
+      type: r.type ?? '',
+      inService: r.inService != null ? String(r.inService) : '',
+      ordered:   r.ordered   != null ? String(r.ordered)   : '',
+      retired:   r.retired   != null ? String(r.retired)   : '',
+    }));
+  }
+  return (a?.fleet || []).map((type) => ({ type, inService: '', ordered: '', retired: '' }));
+};
 
 const HIRING_STATUSES = [
   { value: 'ACTIVELY_HIRING', label: 'Actively Hiring' },
@@ -35,7 +50,7 @@ function initForm(a) {
   return {
     headquarters:        a.headquarters        ?? '',
     description:         a.description         ?? '',
-    fleet:               arrToText(a.fleet),
+    fleetDetail:         seedFleet(a),
     bases:               arrToText(a.bases),
     hiringStatus:        a.hiringStatus        ?? '',
     hiringFrequency:     a.hiringFrequency     ?? '',
@@ -97,7 +112,6 @@ function buildDiff(form, airline) {
   str('rosterPattern',       'rosterPattern');
   str('simType',             'simType');
   str('notes',               'notes');
-  arr('fleet',               'fleet');
   arr('bases',               'bases');
   arr('workAuthRequired',    'workAuthRequired');
   arr('interviewStages',     'interviewStages');
@@ -133,6 +147,26 @@ function buildDiff(form, airline) {
 
   if (JSON.stringify(newPay) !== JSON.stringify(origPay)) {
     changes.payRanges = newPay;
+  }
+
+  // Fleet — structured rows → full-replace fleetDetail (+ keep flat fleet in sync)
+  const toNum = (s) => {
+    const t = (s ?? '').toString().trim();
+    if (t === '') return null;
+    const n = parseInt(t, 10);
+    return Number.isFinite(n) ? n : null;
+  };
+  const nextDetail = (form.fleetDetail || [])
+    .map((r) => ({ type: (r.type || '').trim(), inService: toNum(r.inService), ordered: toNum(r.ordered), retired: toNum(r.retired) }))
+    .filter((r) => r.type !== '');
+  const curDetail = (airline.fleetDetail || []).map((r) => ({
+    type: r.type, inService: r.inService ?? null, ordered: r.ordered ?? null, retired: r.retired ?? null,
+  }));
+  if (JSON.stringify(nextDetail) !== JSON.stringify(curDetail)) {
+    changes.fleetDetail = nextDetail;
+    const nextFlat = nextDetail.map((r) => r.type);
+    const curFlat = airline.fleet || [];
+    if (JSON.stringify(nextFlat) !== JSON.stringify(curFlat)) changes.fleet = nextFlat;
   }
 
   return changes;
@@ -183,6 +217,23 @@ const S = {
   field: { marginBottom: 16 },
   label: { fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' },
   hint:  { fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 },
+  fleetRow: {
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10,
+    padding: '12px 14px', marginBottom: 8,
+  },
+  fleetRowHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 },
+  fleetRowLabel: { fontSize: 12, fontWeight: 700, color: 'var(--accent)' },
+  fleetRemove: {
+    background: 'none', border: 'none', cursor: 'pointer', color: '#991B1B',
+    fontSize: 16, lineHeight: 1, padding: 4, borderRadius: 6,
+  },
+  fleetCounts: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 8 },
+  fleetAddBtn: {
+    display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4,
+    background: 'rgba(0,63,136,0.06)', border: '1px dashed rgba(0,63,136,0.3)',
+    borderRadius: 10, padding: '9px 14px', cursor: 'pointer',
+    color: 'var(--accent)', fontSize: 13, fontWeight: 600,
+  },
   payGrid: {
     display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
   },
@@ -218,8 +269,17 @@ export default function AirlineContribute() {
   const [loading, setLoading]   = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [fleetError, setFleetError] = useState('');
   const [toast, setToast]       = useState(null);
   const [success, setSuccess]   = useState(false);
+
+  const fleetRows = form.fleetDetail || [];
+  const setFleetRow = (i, key, val) => {
+    setFleetError('');
+    setForm((f) => ({ ...f, fleetDetail: (f.fleetDetail || []).map((r, j) => (j === i ? { ...r, [key]: val } : r)) }));
+  };
+  const addFleetRow = () => setForm((f) => ({ ...f, fleetDetail: [...(f.fleetDetail || []), { type: '', inService: '', ordered: '', retired: '' }] }));
+  const removeFleetRow = (i) => { setFleetError(''); setForm((f) => ({ ...f, fleetDetail: (f.fleetDetail || []).filter((_, j) => j !== i) })); };
 
   useEffect(() => {
     Promise.all([airlineApi.get(id), airlineApi.getMine(id)])
@@ -239,6 +299,23 @@ export default function AirlineContribute() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Fleet validation: a row with counts needs a type; counts must be whole numbers >= 0.
+    const rows = form.fleetDetail || [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const hasCount = ['inService', 'ordered', 'retired'].some((k) => (r[k] ?? '').toString().trim() !== '');
+      if (!(r.type || '').trim()) {
+        if (hasCount) { setFleetError(`Aircraft ${i + 1}: enter an aircraft type, or clear its counts.`); return; }
+        continue; // fully-empty row — dropped on submit
+      }
+      for (const k of ['inService', 'ordered', 'retired']) {
+        const t = (r[k] ?? '').toString().trim();
+        if (t !== '' && !/^\d+$/.test(t)) { setFleetError(`Aircraft ${i + 1}: counts must be whole numbers of 0 or more.`); return; }
+      }
+    }
+    setFleetError('');
+
     const diff = buildDiff(form, airline);
 
     if (Object.keys(diff).length === 0) {
@@ -350,7 +427,33 @@ export default function AirlineContribute() {
             <div style={S.sectionTitle}>Operations</div>
             {inp('headquarters', 'Headquarters', "City or country where the airline's main HQ is located.", { placeholder: 'e.g. Dublin, Ireland' })}
             {ta('description', 'Description', 'A short factual overview of the airline — fleet size, routes, market position.', 4)}
-            {ta('fleet', 'Fleet', 'One aircraft type per line, e.g. Boeing 737-800', 4)}
+
+            {/* Fleet — structured editor (replaces the old free-text list) */}
+            <div style={S.field}>
+              <label style={S.label}>Fleet</label>
+              <div style={S.hint}>Add each aircraft type with its in-service / on-order / retired counts. Leave a count blank if unknown.</div>
+              {fleetRows.map((row, i) => (
+                <div key={i} style={{ ...S.fleetRow, marginTop: i === 0 ? 8 : undefined }}>
+                  <div style={S.fleetRowHead}>
+                    <span style={S.fleetRowLabel}>Aircraft {i + 1}</span>
+                    <button type="button" aria-label={`Remove aircraft ${i + 1}`} style={S.fleetRemove} onClick={() => removeFleetRow(i)}>✕</button>
+                  </div>
+                  <AircraftCombobox
+                    value={row.type}
+                    ariaLabel={`Aircraft ${i + 1} type`}
+                    onChange={(v) => setFleetRow(i, 'type', v)}
+                  />
+                  <div style={S.fleetCounts}>
+                    <Input label="In service" type="number" min="0" value={row.inService} onChange={(e) => setFleetRow(i, 'inService', e.target.value)} placeholder="—" />
+                    <Input label="On order"   type="number" min="0" value={row.ordered}   onChange={(e) => setFleetRow(i, 'ordered', e.target.value)}   placeholder="—" />
+                    <Input label="Retired"    type="number" min="0" value={row.retired}   onChange={(e) => setFleetRow(i, 'retired', e.target.value)}   placeholder="—" />
+                  </div>
+                </div>
+              ))}
+              {fleetError && <div style={{ fontSize: 12, color: '#991B1B', marginTop: 6 }}>{fleetError}</div>}
+              <button type="button" style={S.fleetAddBtn} onClick={addFleetRow}>+ Add aircraft</button>
+            </div>
+
             {ta('bases', 'Bases', 'One base (airport IATA code or city) per line, e.g. DUB', 3)}
             {sel('contractType', 'Contract Type', 'The primary type of employment contract offered.', CONTRACT_TYPES)}
             {inp('rosterPattern', 'Roster Pattern', 'How the duty/off cycle typically works, e.g. "5 on / 4 off".', { placeholder: 'e.g. 5 on / 4 off' })}

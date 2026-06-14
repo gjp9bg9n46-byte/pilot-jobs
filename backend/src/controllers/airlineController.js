@@ -14,6 +14,7 @@ const CONTRIBUTION_FIELD_TYPES = {
   description:        'string',
   bases:              'array',
   fleet:              'array',
+  fleetDetail:        'fleetDetail',
   hiringStatus:       'hiringStatus',
   hiringFrequency:    'hiringFrequency',
   payRanges:          'json',
@@ -69,6 +70,21 @@ function validateContributionField(field, value) {
     case 'region':
       if (!VALID_REGIONS.has(value)) return `'${field}' must be one of: ${[...VALID_REGIONS].join(', ')}`;
       break;
+    case 'fleetDetail': {
+      if (!Array.isArray(value)) return `'${field}' must be an array`;
+      for (const row of value) {
+        if (!row || typeof row !== 'object' || Array.isArray(row)) return `'${field}' rows must be objects`;
+        if (typeof row.type !== 'string' || row.type.trim() === '') return `'${field}' rows require a non-empty 'type'`;
+        for (const k of ['inService', 'ordered', 'retired']) {
+          const v = row[k];
+          if (v == null) continue;
+          if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) {
+            return `'${field}' '${k}' must be a whole number >= 0 or null`;
+          }
+        }
+      }
+      break;
+    }
   }
   return null;
 }

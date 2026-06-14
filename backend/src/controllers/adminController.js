@@ -4,7 +4,7 @@ const prisma = require('../config/database');
 
 // All factfile fields that can be merged from proposedChanges into Airline
 const MERGEABLE_FIELDS = new Set([
-  'headquarters', 'description', 'bases', 'fleet', 'hiringStatus', 'hiringFrequency',
+  'headquarters', 'description', 'bases', 'fleet', 'fleetDetail', 'hiringStatus', 'hiringFrequency',
   'payRanges', 'rosterPattern', 'contractType', 'workAuthRequired', 'avgResponseDays',
   'interviewStages', 'simType', 'upgradeTimeMinYears', 'upgradeTimeMaxYears', 'notes', 'region',
 ]);
@@ -12,7 +12,7 @@ const MERGEABLE_FIELDS = new Set([
 // Airline fields returned alongside each contribution for diff rendering
 const AIRLINE_DIFF_SELECT = {
   id: true, name: true,
-  headquarters: true, description: true, bases: true, fleet: true,
+  headquarters: true, description: true, bases: true, fleet: true, fleetDetail: true,
   hiringStatus: true, hiringFrequency: true, payRanges: true,
   rosterPattern: true, contractType: true, workAuthRequired: true,
   avgResponseDays: true, interviewStages: true, simType: true,
