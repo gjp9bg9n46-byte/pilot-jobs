@@ -1,0 +1,284 @@
+name,iata,icao,country,region
+"Aeroflot",SU,AFL,"Russia",Europe
+"Aeroitalia",XZ,AEZ,"Italy",Europe
+"AeroLogic",3S,BOX,"Germany",Europe
+"Aerotranscargo",F5,ATG,"Moldova",Europe
+"Air Albania",ZB,ABN,"Albania",Europe
+"Air Alsie",6I,MMD,"Denmark",Europe
+"Air Atlanta Europe",CT,AAE,"Malta",Europe
+"Air Atlanta Icelandic",CC,ABD,"Iceland",Europe
+"Air Caraïbes",TX,FWI,"France",Europe
+"Air Cargo Global",UB,CCC,"Slovakia",Europe
+"Air Corsica",XK,CCM,"France",Europe
+"Air Dilijans",RM,NGT,"Armenia",Europe
+"Air Dolomiti",EN,DLA,"Italy",Europe
+"Air Greenland",GL,GRL,"Denmark",Europe
+"Air Hamburg",HH,AHO,"Germany",Europe
+"Aircalin",SB,ACI,"France",Europe
+"AIS Airlines",IS,PNX,"Netherlands",Europe
+"AJet",VF,TKJ,"Turkey",Europe
+"AlbaStar",AP,LAV,"Spain",Europe
+"Alidaunia",D4,LID,"Italy",Europe
+"ALROSA Air Company",6R,DRU,"Russia",Europe
+"Amapola Flyg",HP,APF,"Sweden",Europe
+"ASL Airlines Belgium",3V,TAY,"Ireland",Europe
+"ASL Airlines France",5O,FPO,"France",Europe
+"AtlasGlobal Ukraine",UH,UJX,"Ukraine",Europe
+"Aurigny Air Services",GR,AUR,"United Kingdom",Europe
+"Aurora",HZ,SHU,"Russia",Europe
+"Azerbaijan Airlines",J2,AHY,"Azerbaijan",Europe
+"Azimuth",A4,MUT,"Russia",Europe
+"Azur Air",ZF,KTK,"Russia",Europe
+"Belavia",B2,BRU,"Belarus",Europe
+"BH Air",8H,BGH,"Bulgaria",Europe
+"Central Connect Airlines",3B,JBR,"Czech Republic",Europe
+"Chair Airlines",GM,GSW,"Switzerland",Europe
+"Condor Flugdienst",DE,CFG,"Germany",Europe
+"Corendon Airlines",XC,CAI,"Turkey",Europe
+"Corendon Airlines Europe",XR,CXI,"Malta",Europe
+"Corendon Dutch Airlines",CD,CND,"Netherlands",Europe
+"Cyprus Airways",CY,CYP,"Cyprus",Europe
+"Discover Airlines",4Y,OCN,"Germany",Europe
+"easyJet Europe",EC,EJU,"Austria",Europe
+"EasyJet Switzerland",DS,EZS,"Switzerland",Europe
+"Edelweiss Air",WK,EDW,"Switzerland",Europe
+"Enter Air",E4,ENT,"Poland",Europe
+"EuroAtlantic Airways",YU,MMZ,"Portugal",Europe
+"European Air Charter",H6,BUC,"Bulgaria",Europe
+"European Cargo",SE,URO,"United Kingdom",Europe
+"Eurowings Europe",E6,EWL,"Malta",Europe
+"Evelop Airlines",E9,EVE,"Spain",Europe
+"Ewa Air",ZD,EWR,"France",Europe
+"FlyBosnia",6W,FBS,"Bosnia and Herzegovina",Europe
+"FlyOne",5F,FIA,"Moldova",Europe
+"Freebird Airlines",FH,FHY,"Turkey",Europe
+"French Bee",BF,FBU,"France",Europe
+"Gazprom Avia",4G,GZP,"Russia",Europe
+"Go2Sky",6G,RLX,"Slovakia",Europe
+"Hi Fly",5K,HFY,"Portugal",Europe
+"Hi Fly Malta",5M,HFM,"Malta",Europe
+"HiSky",H7,HYM,"Moldova",Europe
+"Holiday Europe",5Q,HES,"Bulgaria",Europe
+"Iberia Express",I2,IBS,"Spain",Europe
+"Ikar",IK,KAR,"Russia",Europe
+"IrAero",IO,IAE,"Russia",Europe
+"IZair",4I,IZM,"Turkey",Europe
+"Jet Time",JO,JTD,"Denmark",Europe
+"KrasAvia",KI,KRS,"Russia",Europe
+"Lauda Europe Ltd",LW,LDA,"Malta",Europe
+"Level",LL,LVL,"Spain",Europe
+"Lufthansa City Airlines",VL,LHX,"Germany",Europe
+"Marabu Airlines",DI,MBU,"Estonia",Europe
+"Martinair",MP,MPH,"Netherlands",Europe
+"MNG Airlines",MB,MNB,"Turkey",Europe
+"MyWay Airlines",MJ,MYW,"Georgia",Europe
+"Nordavia",5N,AUL,"Russia",Europe
+"Nordic Regional Airlines",N7,FCM,"Finland",Europe
+"Nordwind Airlines",N4,NWS,"Russia",Europe
+"Norse Atlantic Airways",N0,NBT,"Norway",Europe
+"Norwegian Air Sweden",D8,NSZ,"Sweden",Europe
+"Nyxair",OJ,NYX,"Estonia",Europe
+"Olympic Air",OA,OAL,"Greece",Europe
+"Orbest",6O,OBS,"Portugal",Europe
+"People's",PE,PEV,"Switzerland",Europe
+"Plus Ultra Líneas Aéreas",PU,PUE,"Spain",Europe
+"Pobeda",DP,PBD,"Russia",Europe
+"Portugália",NI,PGA,"Portugal",Europe
+"Poste Air Cargo",M4,MSA,"Italy",Europe
+"Private Wings",8W,PWF,"Germany",Europe
+"Rhein-Neckar Air",M2,,"Germany",Europe
+"Rossiya",FV,SDM,"Russia",Europe
+"Severstal Air Company",D2,SSF,"Russia",Europe
+"Silk Way West Airlines",7L,AZG,"Azerbaijan",Europe
+"Sky Alps",BQ,SWU,"Italy",Europe
+"Skyline Express Airlines",QU,UTN,"Ukraine",Europe
+"SkyUp",PQ,SQP,"Ukraine",Europe
+"Smartwings Poland",3Z,TVP,"Poland",Europe
+"St Barth Commuter",PV,SBU,"France",Europe
+"Star Air (Denmark)",S6,SRR,"Denmark",Europe
+"Sunclass Airlines",DK,VKG,"Denmark",Europe
+"Sundair",SR,SDR,"Germany",Europe
+"SunExpress",XQ,SXS,"Turkey",Europe
+"Sylt Air",7E,AWU,"Germany",Europe
+"Tailwind Airlines",TI,TWI,"Turkey",Europe
+"Taimyr Air Company",Y7,TYA,"Russia",Europe
+"Trade Air",C3,TDR,"Croatia",Europe
+"Transavia France",TO,TVF,"France",Europe
+"TUI fly Belgium",TB,JAF,"Belgium",Europe
+"TUI fly Netherlands",OR,TFL,"Netherlands",Europe
+"TUIfly Nordic",6B,BLX,"Denmark",Europe
+"Tus Airways",U8,CYF,"Cyprus",Europe
+"Twin Jet",T7,TJT,"France",Europe
+"Ural Airlines",U6,SVR,"Russia",Europe
+"UTair Aviation",UT,UTA,"Russia",Europe
+"Van Air Europe",V9,VAA,"Czech Republic",Europe
+"Wamos Air",EB,PLM,"Spain",Europe
+"White Airways",WI,WHT,"Portugal",Europe
+"Windrose Airlines",7W,WRC,"Ukraine",Europe
+"Wizz Air Malta",W4,WMT,"Malta",Europe
+"Wizz Air UK",W9,WUK,"United Kingdom",Europe
+"World2Fly",2W,WFL,"Spain",Europe
+"Yanair",YE,ANR,"Ukraine",Europe
+"Aerogaviota",KG,GTV,"Cuba",Americas
+"Aerosucre",6C,KRE,"Colombia",Americas
+"Air Canada Rouge",RV,ROU,"Canada",Americas
+"Air Inuit",3H,AIE,"Canada",Americas
+"Air Sunshine",YI,RSI,"United States",Americas
+"Aloha Air Cargo",KH,AAH,"United States",Americas
+"Alpine Air Express",5A,AIP,"United States",Americas
+"Ameriflight",A8,AMF,"United States",Americas
+"Ameristar Jet Charter",7Z,AJI,"United States",Americas
+"Aserca Airlines",R7,OCA,"Venezuela",Americas
+"Avianca Cargo",QT,TPA,"Colombia",Americas
+"Avianca Costa Rica",LR,LRC,"Costa Rica",Americas
+"Avianca Ecuador",2K,GLG,"Ecuador",Americas
+"Avianca El Salvador",TA,,"El Salvador",Americas
+"Avianca Express",EX,AVR,"Colombia",Americas
+"Avianca Honduras",WC,ISV,"Honduras",Americas
+"Avior Airlines",9V,ROI,"Venezuela",Americas
+"Bering Air",8E,BRG,"United States",Americas
+"Boliviana de Aviación",OB,BOV,"Bolivia",Americas
+"Calm Air",MO,CAV,"Canada",Americas
+"Canadian North",5T,MPE,"Canada",Americas
+"Centurion Air Cargo",WE,CWC,"United States",Americas
+"Clic Air",VE,EFY,"Colombia",Americas
+"Conviasa",V0,VCV,"Venezuela",Americas
+"Cubana de Aviación",CU,CUB,"Cuba",Americas
+"Divi Divi Air",3R,DVR,"Curaçao",Americas
+"Eastern Airlines, LLC",2D,EAL,"United States",Americas
+"EcoJet",8J,ECO,"Bolivia",Americas
+"Elite Airways",7Q,MNU,"United States",Americas
+"Everts Air",5V,VTS,"United States",Americas
+"iAero Airways",Q7,SWQ,"United States",Americas
+"InterCaribbean Airways",JY,IWY,"Turks and Caicos Islands",Americas
+"Jazz Aviation",QK,JZA,"Canada",Americas
+"Kenn Borek Air",4K,KBA,"Canada",Americas
+"LASER Airlines",QL,LER,"Venezuela",Americas
+"LATAM Airlines Colombia",4C,ARE,"Colombia",Americas
+"LATAM Airlines Ecuador",XL,LNE,"Ecuador",Americas
+"LATAM Airlines Paraguay",PZ,LAP,"Paraguay",Americas
+"LATAM Airlines Peru",LP,LPE,"Peru",Americas
+"LATAM Brasil",JJ,TAM,"Brazil",Americas
+"LATAM Cargo Chile",UC,LCO,"Chile",Americas
+"LATAM Cargo Colombia",L7,LAE,"Colombia",Americas
+"Línea Aérea Amaszonas",Z8,AZN,"Bolivia",Americas
+"Líneas Aéreas del Estado (LADE)",5U,LDE,"Argentina",Americas
+"Líneas Aéreas Suramericanas",4L,LAU,"Colombia",Americas
+"MAYAir",5G,MYI,"Mexico",Americas
+"Omni Air International",OY,OAE,"United States",Americas
+"PAL Airlines",PB,PVL,"Canada",Americas
+"PenAir",KS,PEN,"United States",Americas
+"RUTACA Airlines",5R,RUC,"Venezuela",Americas
+"SATENA",9R,NSE,"Colombia",Americas
+"Seaborne Airlines",BB,SBS,"United States",Americas
+"Silver Airways",3M,SIL,"United States",Americas
+"Sol del Paraguay",PI,SGU,"Paraguay",Americas
+"Southern Airways Express",9X,LTD,"United States",Americas
+"Star Perú",2I,SRU,"Peru",Americas
+"Surinam Airways",PY,SLM,"Suriname",Americas
+"Transcarga",T9,TIW,"Venezuela",Americas
+"Viva Air Colombia",VH,VVC,"Colombia",Americas
+"Viva Air Peru",VV,VPE,"Peru",Americas
+"Volaris Costa Rica",Q6,VOC,"Costa Rica",Americas
+"Wasaya Airways",WT,WSG,"Canada",Americas
+"WestJet Encore",WR,WEN,"Canada",Americas
+"Winair",WM,WIA,"Sint Maarten",Americas
+"Wingo",P5,RPB,"Colombia",Americas
+"Aero K",RF,EOK,"South Korea",Asia-Pacific
+"Afghan Jet International",HN,AJA,"Afghanistan",Asia-Pacific
+"Air Busan",BX,ABL,"South Korea",Asia-Pacific
+"Air Do",HD,ADO,"Japan",Asia-Pacific
+"Air Hong Kong",LD,AHK,"People's Republic of China",Asia-Pacific
+"Air Incheon",KJ,AIH,"South Korea",Asia-Pacific
+"Air India Express",IX,AXB,"India",Asia-Pacific
+"Air Japan",NQ,AJX,"Japan",Asia-Pacific
+"Air Koryo",JS,KOR,"North Korea",Asia-Pacific
+"Air Macau",NX,AMU,"People's Republic of China",Asia-Pacific
+"Air Mandalay",6T,AMY,"Myanmar",Asia-Pacific
+"Air Premia",YP,APZ,"South Korea",Asia-Pacific
+"Air Seoul",RS,ASV,"South Korea",Asia-Pacific
+"AirAsia X",D7,XAX,"Malaysia",Asia-Pacific
+"airblue",PA,ABQ,"Pakistan",Asia-Pacific
+"AirSial",PF,SIF,"Pakistan",Asia-Pacific
+"AIX Connect",I5,IAD,"India",Asia-Pacific
+"Akasa Air",QP,AKJ,"India",Asia-Pacific
+"Alliance Airlines",QQ,UTY,"Australia",Asia-Pacific
+"ANA Wings",EH,AKX,"Japan",Asia-Pacific
+"Ariana Afghan Airlines",FG,AFG,"Afghanistan",Asia-Pacific
+"Bangkok Airways",PG,BKP,"Thailand",Asia-Pacific
+"Blue Dart Aviation",BZ,BDA,"India",Asia-Pacific
+"Cebgo",DG,SRQ,"Philippines",Asia-Pacific
+"Chongqing Airlines",OQ,CQN,"People's Republic of China",Asia-Pacific
+"Citilink",QG,CTV,"Indonesia",Asia-Pacific
+"Deccan Charters",DN,DKN,"India",Asia-Pacific
+"Eastar Jet",ZE,ESR,"South Korea",Asia-Pacific
+"Firefly",FY,FFM,"Malaysia",Asia-Pacific
+"Fly91",IC,GOA,"India",Asia-Pacific
+"FlyMe",VP,VQI,"Maldives",Asia-Pacific
+"HK Express",UO,HKE,"People's Republic of China",Asia-Pacific
+"Hokkaido Air System",6L,NTH,"Japan",Asia-Pacific
+"Indonesia AirAsia",QZ,AWQ,"Indonesia",Asia-Pacific
+"J-Air",XM,JLJ,"Japan",Asia-Pacific
+"Japan Air Commuter",JC,JAC,"Japan",Asia-Pacific
+"Japan Transocean Air",NU,JTA,"Japan",Asia-Pacific
+"Jeju Air",7C,JJA,"South Korea",Asia-Pacific
+"Jetstar Asia Airways",3K,JSA,"Singapore",Asia-Pacific
+"Jetstar Japan",GK,JJP,"Japan",Asia-Pacific
+"Kam Air",RQ,KMF,"Afghanistan",Asia-Pacific
+"MIAT Mongolian Airlines",OM,MGL,"Mongolia",Asia-Pacific
+"Mingalar Aviation Services",K7,KBZ,"Myanmar",Asia-Pacific
+"National Jet Express",NC,JTE,"Australia",Asia-Pacific
+"Nippon Cargo Airlines",KZ,NCA,"Japan",Asia-Pacific
+"Nok Air",DD,NOK,"Thailand",Asia-Pacific
+"Oriental Air Bridge",OC,ORC,"Japan",Asia-Pacific
+"Pacific Airlines",BL,PIC,"Vietnam",Asia-Pacific
+"Pakistan International Airlines",PK,PIA,"Pakistan",Asia-Pacific
+"Parata Air",4V,FGW,"South Korea",Asia-Pacific
+"Pelita Air Service",6D,PAS,"Indonesia",Asia-Pacific
+"Philippines AirAsia",Z2,APG,"Philippines",Asia-Pacific
+"Qazaq Air",IQ,QAZ,"Kazakhstan",Asia-Pacific
+"Raya Airways",TH,RMY,"Malaysia",Asia-Pacific
+"Rex Airlines",ZL,RXA,"Australia",Asia-Pacific
+"Saurya Airlines",S1,SAU,"Nepal",Asia-Pacific
+"SCAT Airlines",DV,VSV,"Kazakhstan",Asia-Pacific
+"Serene Air",ER,SEP,"Pakistan",Asia-Pacific
+"SF Airlines",O3,CSS,"People's Republic of China",Asia-Pacific
+"Silk Avia",US,USA,"Uzbekistan",Asia-Pacific
+"Simrik Airlines",SH,RMK,"Nepal",Asia-Pacific
+"Solaseed Air",6J,SNJ,"Japan",Asia-Pacific
+"Somon Air",SZ,SMR,"Tajikistan",Asia-Pacific
+"Spring Airlines Japan",IJ,SJO,"Japan",Asia-Pacific
+"StarFlyer",7G,SFJ,"Japan",Asia-Pacific
+"Starlux Airlines",JX,SJX,"Taiwan",Asia-Pacific
+"T'way Airlines",TW,TWB,"South Korea",Asia-Pacific
+"Tasman Cargo Airlines",HJ,TMN,"Australia",Asia-Pacific
+"Thai AirAsia",FD,AIQ,"Thailand",Asia-Pacific
+"Thai Vietjet Air",VZ,TVJ,"Thailand",Asia-Pacific
+"Toki Air",BV,TOK,"Japan",Asia-Pacific
+"Vanilla Air",JW,VNL,"Japan",Asia-Pacific
+"Vistara",UK,VTI,"India",Asia-Pacific
+"ZIPAIR Tokyo",ZG,TZP,"Japan",Asia-Pacific
+"Arkia",IZ,AIZ,"Israel",Middle East
+"Cham Wings Airlines",6Q,SAW,"Syria",Middle East
+"Felix Airways",FO,FXX,"Yemen",Middle East
+"Fly Baghdad",IF,FBA,"Iraq",Middle East
+"flyadeal",F3,FAD,"Saudi Arabia",Middle East
+"Nesma Airlines",NE,NMA,"Saudi Arabia",Middle East
+"Riyadh International Airlines",RX,RXI,"Saudi Arabia",Middle East
+"Sun d'Or International Airlines",2U,ERO,"Israel",Middle East
+"Wataniya Airways",KW,WAN,"Kuwait",Middle East
+"Wizz Air Abu Dhabi",5W,WAZ,"United Arab Emirates",Middle East
+"Aero Contractors",AJ,NIG,"Nigeria",Africa
+"Air Arabia Egypt",E5,RBG,"Egypt",Africa
+"Air Arabia Maroc",3O,MAC,"Morocco",Africa
+"Cabo Verde Airlines",VR,TCV,"Cape Verde",Africa
+"Eritrean Airlines",B8,ERT,"Eritrea",Africa
+"Interair South Africa",D6,ILN,"South Africa",Africa
+"Libyan Airlines",LN,LAA,"Libya",Africa
+"Mauritania Airlines",L6,MAI,"Mauritania",Africa
+"Nile Air",NP,NIA,"Egypt",Africa
+"Nouvelair",BJ,LBT,"Tunisia",Africa
+"Safarilink Aviation",F2,XLK,"Kenya",Africa
+"STP Airways",8F,STP,"São Tomé and Príncipe",Africa
+"Sudan Airways",SD,SUD,"Sudan",Africa
+"Tunisair Express",UG,TUX,"Tunisia",Africa
