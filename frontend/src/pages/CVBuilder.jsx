@@ -218,7 +218,16 @@ function Accordion({ title, badge, defaultOpen = false, warning = false, headerE
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={css.accordion}>
-      <div style={css.accHeader} onClick={() => setOpen(v => !v)}>
+      <div
+        style={css.accHeader}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen(v => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(v => !v); }
+        }}
+      >
         {warning
           ? <AlertTriangle size={15} color="#92400E" />
           : <CheckCircle2 size={15} color="#166534" />}
@@ -521,7 +530,18 @@ export default function CVBuilder() {
           { id: 'approach', label: 'Approach', desc: 'Two-column · navy sidebar · traditional', Thumb: ThumbApproach },
           { id: 'final',    label: 'Final',    desc: 'Full-width header · modern blocks',       Thumb: ThumbFinal },
         ].map(({ id, label, desc, Thumb }) => (
-          <div key={id} style={css.tmplCard(template === id)} onClick={() => handleTemplateChange(id)}>
+          <div
+            key={id}
+            style={css.tmplCard(template === id)}
+            role="button"
+            tabIndex={0}
+            aria-pressed={template === id}
+            aria-label={`${label} template`}
+            onClick={() => handleTemplateChange(id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTemplateChange(id); }
+            }}
+          >
             <div style={css.tmplThumb}><Thumb /></div>
             <div style={css.tmplLabel}>{label}</div>
             <div style={css.tmplDesc}>{desc}</div>
@@ -544,6 +564,8 @@ export default function CVBuilder() {
                 style={css.swatchCircle(accentColor === hex, hex)}
                 onClick={() => handleAccentChange(hex)}
                 title={name}
+                aria-label={name}
+                aria-pressed={accentColor === hex}
               />
               <span style={css.swatchLabel}>{name}</span>
             </div>
@@ -564,9 +586,11 @@ export default function CVBuilder() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {saveStatus === 'saving' && <span style={css.saveStatus}>Saving…</span>}
-          {saveStatus === 'saved'  && <span style={{ ...css.saveStatus, color: '#166534' }}>Saved</span>}
-          {saveStatus === 'error'  && <span style={{ ...css.saveStatus, color: '#991B1B' }}>Save failed</span>}
+          <span aria-live="polite" style={{ display: 'inline-flex' }}>
+            {saveStatus === 'saving' && <span style={css.saveStatus}>Saving…</span>}
+            {saveStatus === 'saved'  && <span style={{ ...css.saveStatus, color: '#166534' }}>Saved</span>}
+            {saveStatus === 'error'  && <span style={{ ...css.saveStatus, color: '#991B1B' }}>Save failed</span>}
+          </span>
           {PdfDoc && (
             <PDFDownloadLink document={PdfDoc} fileName={fileName} style={css.dlBtn(false)}>
               {({ loading: pdfLoading }) => (
@@ -915,6 +939,7 @@ export default function CVBuilder() {
           <div style={{ flex: 1, minWidth: 160 }}>
             <Input
               value={skillInput}
+              aria-label="Add a skill"
               onChange={e => setSkillInput(e.target.value)}
               onKeyDown={e => {
                 if ((e.key === 'Enter' || e.key === ',') && skillInput.trim()) {

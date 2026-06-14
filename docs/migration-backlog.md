@@ -234,6 +234,33 @@ its own commit. Remaining:
 Resolved (no action): **#8** new-pilot wall of "0.0" totals tiles — defensible
 (the Logbook is where totals live).
 
+## Quality sweep — CV Builder
+
+From page audit #7 (`/cv`, editor chrome only — templates/palette/PDF frozen per
+Phase 13). The page audited very clean: every editable section round-trips, accent
+persists, read-only sections populate, photo upload works (and auto-save doesn't
+wipe it — the PUT `update` clause omits `photoUrl`), empty states render. The
+"fix-now" batch (accordion + template-card keyboard support, save-status
+`aria-live`, swatch `aria-pressed`, skill-input `aria-label`) shipped in its own
+commit. Remaining:
+
+- **#6 Auto-save error has no recovery path.** On a failed save the download bar
+  shows "Save failed" but offers no retry — the only recovery is to keep editing
+  (which reschedules the debounce). If the user stops after an error, the changes
+  are silently unsaved. Add a manual "Retry save" affordance (or retry-on-interval
+  with backoff).
+
+Resolved (no action): **#7** photo upload occasionally 502s (transient
+Uploadcare/gateway hiccup — succeeds on retry; the existing "Upload failed —
+please try again" message handles it; flagged for ops if it recurs); **#8** skills
+allow duplicates + summary over-limit doesn't block save (both minor/advisory);
+**#9** "Saved" status never returns to idle (harmless).
+
+Still open (pre-existing, verified this sweep — not re-logged): **CV template
+selection not persisted** (see "CV Builder (Phase 13)" below) — confirmed live:
+switch to Final → reload → reverts to Approach; needs a backend `template` schema
+field, so it stays a dedicated change, not a sweep one-liner.
+
 ## Primitives / follow-ups
 
 - **✅ RESOLVED (Phase 10) — `<Modal>` `size` prop.** Additive `size` prop
