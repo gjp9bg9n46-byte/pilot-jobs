@@ -297,9 +297,37 @@ moderator diff renderer, AircraftCombobox `id`/`ariaLabel` passthrough. Remainin
   the readable diff already work. Defer until the moderator UI gets broader love.
 
 In-flight (NOT backlog — actively planned): **#7 list cards have no
-logos/avatars.** User picked real logos; now in scope for the **Airlines
-Expansion Project (Sessions 2–3)** of the post-sweep plan — a data + design
-feature, tracked there rather than deferred here.
+logos/avatars.** ✅ DELIVERED in Sessions 2–3 (real logos live on cards + hero,
+initials fallback).
+
+## Airlines Expansion — Sessions 2–3 (500 + logos) — follow-ups
+
+Shipped: 468 airlines (185 + 283 OpenFlights/Wikidata-seeded), `logoUrl`/`domain`/
+`logoSource` columns, logo display (card + hero + initials fallback), and logo
+enrichment to **428/468 (91%)** via the Wikimedia Commons CDN (batched MediaWiki
+`imageinfo` API; `logoSource='WIKIMEDIA_CDN'`). Remaining:
+
+- **Self-host migration (deferred — was the locked storage choice).** Logos are
+  currently **hotlinked** from `upload.wikimedia.org` because the free-tier
+  Uploadcare key didn't persist files at bulk volume (404 on stored UUIDs, then
+  403 rate-limit). The Uploadcare upload helper is **preserved (unused) in
+  `enrich-airline-logos.js`** for a one-switch migration: with a paid Uploadcare
+  plan or S3, re-enable the download→upload path and re-run filtered by
+  `logoSource='WIKIMEDIA_CDN'` to self-host the hotlinked URLs. Hotlinking risk:
+  Wikimedia could rename/remove a file (rare for airline logos) → that one logo
+  404s → contribute-flow `logoUrl` override or the self-host migration fixes it.
+- **Tier 3 (Wikipedia infobox) for the 40 logo misses.** The strict Wikidata v3
+  gate (P31 airline + P154 + not-dissolved) excluded some carriers — notably a
+  cluster of well-known ones: **China Airlines, Garuda Indonesia, China Eastern,
+  China Southern, Hainan, Xiamen Air, Shenzhen Airlines, Thai Airways, SriLankan,
+  Lion Air, Batik Air, SpiceJet, Virgin Australia, Sun Country, Uzbekistan,
+  Viva Aerobus** (+ small/charter: Bristow, Flexjet, Luxaviation, Jet Aviation,
+  GlobeAir, Kalitta, GoJet, Loganair, Endeavor, Eastern Airways, Republic, Juneyao,
+  Precision, Fastjet, Nepal, SalamAir, Spring, Tunisair, Airlink, Air Mauritius,
+  ASKY, FlySafair, DHL/European Air Transport). They render the initials fallback
+  today. A Tier-3 Wikipedia-infobox-logo scrape (the cached `wikipedia-html-cache/`
+  mechanism) would likely recover most majors → ~95%+. Low urgency (fallback is
+  clean); do if you want the big Asian carriers logo'd.
 
 Still open (pre-existing, verified this sweep — not re-logged): **/jobs?q= link
 ignored** (URL-state cluster — resolves when Jobs URL-state lands); **list search
