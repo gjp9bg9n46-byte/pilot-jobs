@@ -38,8 +38,13 @@ export async function fetchAirlineMap() {
   return map;
 }
 
-// Resolve a job's company string to an airline id (or null if unmapped).
-export function resolveAirlineId(map, company) {
+// Resolve a job's company string to an airline { id, name } (or null if unmapped).
+export function resolveAirline(map, company) {
   if (!map || !company) return null;
-  return map.get(normalizeCompany(company))?.id ?? null;
+  return map.get(normalizeCompany(company)) ?? null;
+}
+
+// Convenience: just the id (or null).
+export function resolveAirlineId(map, company) {
+  return resolveAirline(map, company)?.id ?? null;
 }

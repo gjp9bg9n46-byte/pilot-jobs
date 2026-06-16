@@ -7,7 +7,7 @@ import { LightPage, Card, Button } from '../components/primitives';
 import AirlineLogo from '../components/AirlineLogo';
 import MatchScore from '../components/MatchScore';
 import { computeMatchCount, matchLabel, matchStyle, postedAgo, formatSalary } from '../lib/jobMatch';
-import { fetchAirlineMap, resolveAirlineId } from '../lib/airlineLookup';
+import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
 import { MatchCountBadge, ReqRow } from './Jobs';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved) — mirrors Jobs.jsx.
@@ -111,7 +111,11 @@ export default function JobDetail() {
   // company against the normalised airline map and prefer that, falling back to
   // the backend id. Drives both the factfile link and the header logo/country.
   useEffect(() => { fetchAirlineMap().then(setAirlineMap).catch(() => {}); }, []);
-  const airlineId = resolveAirlineId(airlineMap, job?.company) || job?.airlineId || null;
+  const mapped = resolveAirline(airlineMap, job?.company);
+  const airlineId = mapped?.id || job?.airlineId || null;
+  // Canonical name from the map (available the moment the id resolves, so the CTA
+  // doesn't flicker the scraped variant); fall back to the fetched record / company.
+  const airlineName = mapped?.name || airline?.name || job?.company;
 
   useEffect(() => {
     if (!airlineId) { setAirline(null); return; }
@@ -272,17 +276,15 @@ export default function JobDetail() {
         </div>
       )}
 
-      {/* Top CTAs */}
-      <div style={{ marginBottom: 24 }}>
-        <CtaCluster />
-        {airlineId && (
-          <div style={{ marginTop: 12 }}>
-            <Link to={`/airlines/${airlineId}`} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
-              View {airline?.name || job.company} factfile →
-            </Link>
-          </div>
-        )}
-      </div>
+      {/* Prominent factfile CTA — sits in the slot the old Apply/Save row held.
+          Apply + Save live once, at the bottom. */}
+      {airlineId && (
+        <div style={{ marginBottom: 24 }}>
+          <Link to={`/airlines/${airlineId}`} style={{ textDecoration: 'none' }}>
+            <Button variant="secondary">View {airlineName} factfile →</Button>
+          </Link>
+        </div>
+      )}
 
       {/* Match section */}
       <Card style={{ marginBottom: 24 }}>
