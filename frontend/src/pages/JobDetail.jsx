@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { MapPin, AlertTriangle, ArrowLeft } from 'lucide-react';
@@ -72,6 +72,74 @@ const css = {
     background: 'var(--accent)', color: '#fff', cursor: 'pointer', textDecoration: 'none',
   },
 };
+
+// Collapse long scraped descriptions behind a "Show more" fade. Below the height
+// threshold (400px desktop / 320px on ≤640px viewports) it renders fully with no
+// control; at/above it, it clamps with a soft fade-to-bg overlay + toggle.
+function CollapsibleText({ id, children, style }) {
+  const innerRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);
+  const [collapsible, setCollapsible] = useState(false);
+  const [threshold, setThreshold] = useState(400);
+
+  // Measure full content height before paint (no flash of expanded → collapsed).
+  useLayoutEffect(() => {
+    const th = (typeof window !== 'undefined' && window.innerWidth <= 640) ? 320 : 400;
+    setThreshold(th);
+    const h = innerRef.current?.scrollHeight ?? 0;
+    setCollapsible(h >= th);
+  }, [children]);
+
+  const collapsed = collapsible && !expanded;
+
+  const toggle = () => {
+    const next = !expanded;
+    setExpanded(next);
+    // Re-collapse → bring the description top back into view.
+    if (!next) requestAnimationFrame(() => innerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+
+  return (
+    <div>
+      <div style={{ position: 'relative' }}>
+        <div
+          id={id}
+          ref={innerRef}
+          style={{ ...style, maxHeight: collapsed ? threshold : 'none', overflow: collapsed ? 'hidden' : 'visible' }}
+        >
+          {children}
+        </div>
+        {collapsed && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0, height: 60,
+              // --bg is #F8F6F1; rgba avoids the grey tinge bare "transparent" gives.
+              background: 'linear-gradient(to bottom, rgba(248,246,241,0) 0%, var(--bg) 100%)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </div>
+      {collapsible && (
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={expanded}
+            aria-controls={id}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px',
+              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--accent)',
+            }}
+          >
+            {expanded ? 'Show less ↑' : 'Show more ↓'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function JobDetail() {
   const { slugId } = useParams();
@@ -351,9 +419,9 @@ export default function JobDetail() {
       {job.description && (
         <div style={{ marginBottom: 24 }}>
           <div style={css.sectionLabel}>Job Description</div>
-          <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+          <CollapsibleText id="job-description" style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
             {job.description}
-          </div>
+          </CollapsibleText>
         </div>
       )}
 
