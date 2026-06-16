@@ -6,34 +6,18 @@ import {
   Shield, Search, SlidersHorizontal, AlertTriangle,
   CheckCircle, XCircle, Minus, GraduationCap, Globe, Languages, Info,
 } from 'lucide-react';
-import { jobApi, profileApi, airlineApi } from '../services/api';
+import { jobApi, profileApi } from '../services/api';
 import { setJobs } from '../store';
 import { LightPage, Card, Input, Button, Badge } from '../components/primitives';
 import {
   computeMatchCount, matchLabel, postedAgo, formatSalary,
 } from '../lib/jobMatch';
+import { fetchAirlineMap, normalizeCompany } from '../lib/airlineLookup';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
 //   dark #2ECC71 → #166534 (match/ok), #F39C12 → #92400E (partial/warn),
 //   #E74C3C/#FF4757 → #991B1B (miss/error). Matches the Badge palette.
 const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
-
-// ─── Airline cache — fetched once per session, Map keyed by lowercase name ────
-let _airlineCache = null;
-
-async function fetchAirlineMap() {
-  if (_airlineCache) return _airlineCache;
-  const map = new Map();
-  let page = 1, totalPages = 1;
-  do {
-    const { data } = await airlineApi.list({ limit: 100, page });
-    data.items.forEach((a) => map.set(a.name.toLowerCase().trim(), { id: a.id, name: a.name }));
-    totalPages = data.totalPages;
-    page++;
-  } while (page <= totalPages);
-  _airlineCache = map;
-  return map;
-}
 
 // slugify → kebab-case, NFKD-strip diacritics. Used to build the SEO-friendly
 // /jobs/:slugId path (the full UUID is appended last by slugFor).
@@ -257,10 +241,9 @@ export default function Jobs() {
   }, [token]);
 
   // Airline map — fetched once per session, cached at module level
-  const [airlineMap, setAirlineMap] = useState(() => _airlineCache);
+  const [airlineMap, setAirlineMap] = useState(null);
   useEffect(() => {
-    if (_airlineCache) return; // already cached
-    fetchAirlineMap().then(setAirlineMap).catch(() => {}); // non-fatal
+    fetchAirlineMap().then(setAirlineMap).catch(() => {}); // cached after first call; non-fatal
   }, []);
 
   // Filter panel state — seeded from the URL on mount
@@ -518,7 +501,7 @@ export default function Jobs() {
               const matchCount = pilotProfile && pilotTotals
                 ? computeMatchCount(job, pilotProfile, pilotTotals)
                 : null;
-              const airlineMatch = airlineMap?.get(job.company?.toLowerCase().trim());
+              const airlineMatch = airlineMap?.get(normalizeCompany(job.company));
               return (
                 <div
                   key={job.id}

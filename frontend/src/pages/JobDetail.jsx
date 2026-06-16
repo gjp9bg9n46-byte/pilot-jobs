@@ -7,6 +7,7 @@ import { LightPage, Card, Button } from '../components/primitives';
 import AirlineLogo from '../components/AirlineLogo';
 import MatchScore from '../components/MatchScore';
 import { computeMatchCount, matchLabel, matchStyle, postedAgo, formatSalary } from '../lib/jobMatch';
+import { fetchAirlineMap, resolveAirlineId } from '../lib/airlineLookup';
 import { MatchCountBadge, ReqRow } from './Jobs';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved) — mirrors Jobs.jsx.
@@ -85,6 +86,7 @@ export default function JobDetail() {
   const [pilotTotals, setPilotTotals] = useState(null);
 
   const [airline, setAirline] = useState(null);
+  const [airlineMap, setAirlineMap] = useState(null);
   const [saved, setSaved] = useState(false);
 
   // Fetch the job (public — optional auth). 404 / bad slug → not-found state.
@@ -98,16 +100,25 @@ export default function JobDetail() {
         if (!alive) return;
         setJob(data);
         setSaved(!!data.isSaved);
-        // Airline logo + country are not on the job payload; fetch the airline
-        // record when the job matched one (optional polish, non-fatal).
-        if (data.airlineId) {
-          airlineApi.get(data.airlineId).then(({ data: a }) => { if (alive) setAirline(a); }).catch(() => {});
-        }
       })
       .catch(() => { if (alive) setNotFound(true); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [jobId]);
+
+  // Airline factfile lookup. The backend's job.airlineId is an exact name match
+  // and misses scraped variants ("aircairo" vs "Air Cairo"), so we resolve the
+  // company against the normalised airline map and prefer that, falling back to
+  // the backend id. Drives both the factfile link and the header logo/country.
+  useEffect(() => { fetchAirlineMap().then(setAirlineMap).catch(() => {}); }, []);
+  const airlineId = resolveAirlineId(airlineMap, job?.company) || job?.airlineId || null;
+
+  useEffect(() => {
+    if (!airlineId) { setAirline(null); return; }
+    let alive = true;
+    airlineApi.get(airlineId).then(({ data: a }) => { if (alive) setAirline(a); }).catch(() => {});
+    return () => { alive = false; };
+  }, [airlineId]);
 
   // Logged-in: fetch profile + totals for the client-side match.
   useEffect(() => {
@@ -264,10 +275,10 @@ export default function JobDetail() {
       {/* Top CTAs */}
       <div style={{ marginBottom: 24 }}>
         <CtaCluster />
-        {job.airlineId && (
+        {airlineId && (
           <div style={{ marginTop: 12 }}>
-            <Link to={`/airlines/${job.airlineId}`} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
-              View {job.company} factfile →
+            <Link to={`/airlines/${airlineId}`} style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+              View {airline?.name || job.company} factfile →
             </Link>
           </div>
         )}
