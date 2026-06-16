@@ -272,8 +272,25 @@ exports.getJob = async (req, res, next) => {
   try {
     const job = await prisma.job.findUnique({ where: { id: req.params.id } });
     if (!job) return res.status(404).json({ error: 'Job not found' });
-    const [enriched] = await enrichJobs([job], req.pilot.id);
-    res.json(enriched);
+
+    // Resolve the airline factfile id from the company name (case-insensitive),
+    // so the JobDetail "View factfile" link doesn't need the client airline map.
+    let airlineId = null;
+    if (job.company) {
+      const airline = await prisma.airline.findFirst({
+        where: { name: { equals: job.company, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      airlineId = airline?.id ?? null;
+    }
+
+    // Public-readable (optionalAuth): enrich isSaved/isApplied only when a pilot
+    // is known; otherwise default to false.
+    const enriched = req.pilot
+      ? (await enrichJobs([job], req.pilot.id))[0]
+      : { ...job, isSaved: false, isApplied: false };
+
+    res.json({ ...enriched, airlineId });
   } catch (err) {
     next(err);
   }

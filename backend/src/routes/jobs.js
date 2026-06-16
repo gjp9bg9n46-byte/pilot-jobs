@@ -1,31 +1,35 @@
 const router = require('express').Router();
 const authMiddleware = require('../middleware/auth');
+const optionalAuth = require('../middleware/optionalAuth');
 const c = require('../controllers/jobController');
 
-router.use(authMiddleware);
+// Per-route auth: everything requires auth EXCEPT GET /:id (public job detail,
+// optional auth → personalised isSaved/isApplied only when a pilot is known).
+// NOTE: fixed paths (/saved, /alerts, /saved-searches) must stay declared before
+// the /:id segment so they aren't captured by it.
 
-// Jobs list & detail
-router.get('/', c.getJobs);
-router.get('/saved', c.getSavedJobs);
+// Jobs list
+router.get('/', authMiddleware, c.getJobs);
+router.get('/saved', authMiddleware, c.getSavedJobs);
 
-// Alerts — fixed paths must come before /:id segments
-router.get('/alerts', c.getMyAlerts);
-router.post('/alerts/run-match', c.triggerMatch);
-router.patch('/alerts/read-all', c.markAllAlertsRead);
-router.patch('/alerts/:id/read', c.markAlertRead);
-router.patch('/alerts/:id/dismiss', c.dismissAlert);
+// Alerts
+router.get('/alerts', authMiddleware, c.getMyAlerts);
+router.post('/alerts/run-match', authMiddleware, c.triggerMatch);
+router.patch('/alerts/read-all', authMiddleware, c.markAllAlertsRead);
+router.patch('/alerts/:id/read', authMiddleware, c.markAlertRead);
+router.patch('/alerts/:id/dismiss', authMiddleware, c.dismissAlert);
 
 // Saved searches
-router.get('/saved-searches', c.getSavedSearches);
-router.post('/saved-searches', c.createSavedSearch);
-router.patch('/saved-searches/:id', c.updateSavedSearch);
-router.delete('/saved-searches/:id', c.deleteSavedSearch);
+router.get('/saved-searches', authMiddleware, c.getSavedSearches);
+router.post('/saved-searches', authMiddleware, c.createSavedSearch);
+router.patch('/saved-searches/:id', authMiddleware, c.updateSavedSearch);
+router.delete('/saved-searches/:id', authMiddleware, c.deleteSavedSearch);
 
-// Job by id + actions
-router.get('/:id', c.getJob);
-router.post('/:id/save', c.saveJob);
-router.delete('/:id/save', c.unsaveJob);
-router.post('/:id/apply', c.applyToJob);
-router.post('/:id/report', c.reportJob);
+// Job detail — PUBLIC (optional auth); actions below require auth.
+router.get('/:id', optionalAuth, c.getJob);
+router.post('/:id/save', authMiddleware, c.saveJob);
+router.delete('/:id/save', authMiddleware, c.unsaveJob);
+router.post('/:id/apply', authMiddleware, c.applyToJob);
+router.post('/:id/report', authMiddleware, c.reportJob);
 
 module.exports = router;
