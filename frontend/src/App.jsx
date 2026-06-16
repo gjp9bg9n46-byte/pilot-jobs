@@ -23,6 +23,7 @@ import Register from './pages/auth/Register';
 import Landing from './pages/Landing';
 import Primitives from './pages/dev/Primitives';
 import Jobs from './pages/Jobs';
+import JobDetail from './pages/JobDetail';
 import Airlines from './pages/Airlines';
 import AirlineDetail from './pages/AirlineDetail';
 import AirlineContribute from './pages/AirlineContribute';
@@ -74,15 +75,16 @@ export default function App() {
           <Route path="/register" element={<Register />} />
         </Route>
 
-        {/* Public airline factfile — chrome adapts to auth state (slim shell when logged out) */}
+        {/* Public airline factfile + jobs — chrome adapts to auth state (slim shell when logged out) */}
         <Route element={<AirlineChrome />}>
           <Route path="airlines" element={<Airlines />} />
           <Route path="airlines/:id" element={<AirlineDetail />} />
+          <Route path="jobs" element={<Jobs />} />
+          <Route path="jobs/:slugId" element={<JobDetail />} />
         </Route>
 
         {/* Authenticated pilot app (pathless layout — URLs unchanged) */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
-          <Route path="jobs" element={<Jobs />} />
           <Route path="airlines/:id/contribute" element={<AirlineContribute />} />
           <Route path="admin/moderation" element={<AdminModeration />} />
           <Route path="admin/employers" element={<AdminEmployers />} />

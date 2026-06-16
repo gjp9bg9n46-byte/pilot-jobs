@@ -8,8 +8,9 @@ const c = require('../controllers/jobController');
 // NOTE: fixed paths (/saved, /alerts, /saved-searches) must stay declared before
 // the /:id segment so they aren't captured by it.
 
-// Jobs list
-router.get('/', authMiddleware, c.getJobs);
+// Jobs list — PUBLIC (optional auth): logged-out gets all active jobs without
+// qualifiedOnly filtering or isSaved/isApplied enrichment (no pilot profile).
+router.get('/', optionalAuth, c.getJobs);
 router.get('/saved', authMiddleware, c.getSavedJobs);
 
 // Alerts

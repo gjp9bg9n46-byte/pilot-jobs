@@ -373,10 +373,15 @@ account; belongs to the **backend cluster**, not this sweep.
   A job with `location: null` (etc.) throws during search. Fix = null-safe
   coalesce (`(j.location || '')`).
 
-- **No URL-state sync for Jobs filters.** `authority`/`aircraftType`/`role`/
-  `contractType`/`postedWithin`/`minSalary`/`search`/`sort`/`qualifiedOnly` live
-  in React state only — never written to the query string. Page reload and
-  shared links lose all filter/search/sort state.
+- **No URL-state sync for Jobs filters.** ✅ RESOLVED (Jobs→JobDetail migration).
+  `q`/`authority`/`aircraft`/`role`/`contractType`/`postedWithin`/`salaryMin`/
+  `sort`/`qualified` are now mirrored to the query string (omitted at default;
+  `replace:true`). Reload + shared links + back-from-detail restore the view.
+
+- **JobDetail meta is client-only (no SSR/prerender).** `/jobs/:slugId` sets
+  `document.title` + OG/canonical tags via a `useSeo` effect after hydration, so
+  social/crawler unfurls that don't run JS see the SPA shell, not per-job meta.
+  Fix = SSR or build-time prerender for job detail (and airline factfile) routes.
 
 - **No pagination on Jobs.** A single `jobApi.list({ limit: 1000 })` fetch loads
   everything client-side; the UI has no pagination/infinite-scroll. Won't scale

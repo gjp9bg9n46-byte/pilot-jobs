@@ -104,8 +104,9 @@ exports.getJobs = async (req, res, next) => {
       where.postedAt = { gte: since };
     }
 
-    // Qualified-only: filter by pilot's profile against job requirements
-    if (qualifiedOnly === 'true') {
+    // Qualified-only: filter by pilot's profile against job requirements.
+    // Requires a logged-in pilot; ignored for public (logged-out) requests.
+    if (qualifiedOnly === 'true' && req.pilot) {
       // NOTE: matching logic is duplicated in client-side computeMatchCount (Jobs.jsx).
       // Both must stay in sync. Long-term: compute server-side and return in API response.
       const pilot = await prisma.pilot.findUnique({
@@ -255,7 +256,10 @@ exports.getJobs = async (req, res, next) => {
       prisma.job.count({ where }),
     ]);
 
-    const enriched = await enrichJobs(jobs, req.pilot.id);
+    // Public (logged-out) requests have no pilot → no isSaved/isApplied state.
+    const enriched = req.pilot
+      ? await enrichJobs(jobs, req.pilot.id)
+      : jobs.map((j) => ({ ...j, isSaved: false, isApplied: false }));
 
     res.json({
       jobs: enriched,

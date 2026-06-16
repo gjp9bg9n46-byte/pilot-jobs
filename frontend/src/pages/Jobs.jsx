@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useIsMobile } from '../hooks/useIsMobile';
 import {
   MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
-  Shield, Search, SlidersHorizontal, AlertTriangle, X,
+  Shield, Search, SlidersHorizontal, AlertTriangle,
   CheckCircle, XCircle, Minus, GraduationCap, Globe, Languages, Info,
 } from 'lucide-react';
 import { jobApi, profileApi, airlineApi } from '../services/api';
 import { setJobs } from '../store';
-import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
+import { LightPage, Card, Input, Button, Badge } from '../components/primitives';
+import {
+  computeMatchCount, matchLabel, postedAgo, formatSalary,
+} from '../lib/jobMatch';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
 //   dark #2ECC71 → #166534 (match/ok), #F39C12 → #92400E (partial/warn),
@@ -33,153 +35,23 @@ async function fetchAirlineMap() {
   return map;
 }
 
-// ─── Match-count computation (client-side) ────────────────────────────────────
-// NOTE: matching logic is duplicated in the server-side qualifiedOnly filter
-// (jobController.js getJobs). Both must stay in sync.
-// Long-term: compute server-side and return in the API response.
-const EDU_RANK  = { high_school: 1, technical: 2, bachelor: 3, masters: 4, doctorate: 5 };
-const EDU_LABEL = { high_school: 'High School', technical: 'Technical / Vocational', bachelor: "Bachelor's Degree", masters: "Master's Degree", doctorate: 'Doctorate' };
-const WA_LABEL  = { EU: 'EU Work Authorization', US: 'US Work Authorization', UK: 'UK Work Authorization', required: 'Work Authorization Required' };
-
-// Mirrors server-side parseElpLevel — must use regex, NOT parseInt, because values are "Level 5" strings
-function parseElp(str) {
-  if (str == null) return null;
-  const m = String(str).match(/\d+/);
-  if (!m) return null;
-  const n = parseInt(m[0], 10);
-  return (n >= 1 && n <= 6) ? n : null;
+// slugify → kebab-case, NFKD-strip diacritics. Used to build the SEO-friendly
+// /jobs/:slugId path (the full UUID is appended last by slugFor).
+function slugify(str) {
+  return String(str || '')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
-// Pilot RTW country field is free text. Check if an entry matches a required region.
-function rtwMatchesRegion(country, region) {
-  const c = country.toLowerCase();
-  if (region === 'EU') {
-    return /\beu\b|european union|europe/.test(c) ||
-      ['germany','france','spain','italy','netherlands','belgium','poland','sweden','denmark',
-       'austria','portugal','greece','czech','hungary','romania','bulgaria','croatia','slovakia',
-       'slovenia','estonia','latvia','lithuania','luxembourg','malta','cyprus','finland','ireland'].some((k) => c.includes(k));
-  }
-  if (region === 'US') return /united states|\bu\.?s\.?a?\b/.test(c);
-  if (region === 'UK') return /united kingdom|\bu\.?k\.?\b|great britain|england|scotland|wales/.test(c);
-  return false;
+// slugId = company-role-<uuid>. JobDetail extracts the trailing UUID via regex
+// (job IDs are UUIDs and contain hyphens, so a split('-').pop() would be wrong).
+function slugFor(job) {
+  return `${slugify(job.company)}-${slugify(job.role || job.title)}-${job.id}`;
 }
 
-function computeMatchCount(job, profile, totals) {
-  const normType = (t) => (t === 'ATP' || t === 'ATPL') ? ['ATP', 'ATPL'] : [t];
-  const normAuth = (a) => (['CAA', 'CAA_UK', 'CAA-UK'].includes(a)) ? ['CAA', 'CAA_UK', 'CAA-UK'] : [a];
-
-  const certTypes = [...new Set(
-    (profile.certificates || []).filter((c) => c.type !== 'ELP').flatMap((c) => normType(c.type))
-  )];
-  const certAuthorities = [...new Set(
-    (profile.certificates || []).filter((c) => c.type !== 'ELP').flatMap((c) => normAuth(c.issuingAuthority))
-  )];
-  const ratingTypes = (profile.ratings || []).map((r) => r.aircraftType.toUpperCase());
-
-  const bestMedical = (profile.medicals || []).reduce((best, m) => {
-    const rank = { CLASS_1: 3, CLASS_2: 2, CLASS_3: 1 };
-    return (rank[m.medicalClass] ?? 0) > (rank[best] ?? 0) ? m.medicalClass : best;
-  }, null);
-  const qualifiedMedicals = bestMedical === 'CLASS_1' ? ['CLASS_1', 'CLASS_2', 'CLASS_3']
-    : bestMedical === 'CLASS_2' ? ['CLASS_2', 'CLASS_3']
-    : bestMedical === 'CLASS_3' ? ['CLASS_3'] : [];
-
-  const totalTime = totals?.totalTime ?? 0;
-  const picTime   = totals?.picTime   ?? 0;
-
-  const requirements = [];
-  const req = (label, reqValue, icon, isMatch, pilotValue = null) =>
-    requirements.push({ label, reqValue, icon, matched: isMatch, pilotValue });
-
-  if (job.reqAuthorities?.length) {
-    const isMatch = job.reqAuthorities.some((a) => certAuthorities.includes(a));
-    const pilotAuth = certAuthorities.find((a) => job.reqAuthorities.includes(a)) ?? null;
-    req('Authority', job.reqAuthorities.join(', '), 'Building2', isMatch, pilotAuth);
-  }
-  if (job.reqCertificates?.length) {
-    const isMatch = job.reqCertificates.some((c) => certTypes.includes(c));
-    const pilotCert = certTypes.find((c) => job.reqCertificates.includes(c)) ?? null;
-    req('Certificate', job.reqCertificates.join(', '), 'FileText', isMatch, pilotCert);
-  }
-  if (job.reqMinTotalHours != null) {
-    req('Total Hours', `${job.reqMinTotalHours.toLocaleString()} hrs min`, 'Clock',
-      totalTime >= job.reqMinTotalHours, `${totalTime.toLocaleString()} hrs`);
-  }
-  if (job.reqMinPicHours != null) {
-    req('PIC Hours', `${job.reqMinPicHours.toLocaleString()} hrs min`, 'Target',
-      picTime >= job.reqMinPicHours, `${picTime.toLocaleString()} hrs`);
-  }
-  if (job.reqMedicalClass != null) {
-    const isMatch = qualifiedMedicals.includes(job.reqMedicalClass);
-    req('Medical Class', job.reqMedicalClass.replace('CLASS_', 'Class '), 'Shield',
-      isMatch, bestMedical ? bestMedical.replace('CLASS_', 'Class ') : null);
-  }
-  if (job.reqAircraftTypes?.length) {
-    const isMatch = job.reqAircraftTypes.some((a) => ratingTypes.includes(a.toUpperCase()));
-    const pilotType = ratingTypes.find((r) => job.reqAircraftTypes.some((a) => a.toUpperCase() === r)) ?? null;
-    req('Aircraft Type', job.reqAircraftTypes.join(', '), 'Plane', isMatch, pilotType);
-  }
-  if (job.reqEducation) {
-    const pilotRank = EDU_RANK[profile.education] ?? 0;
-    const reqRank   = EDU_RANK[job.reqEducation]  ?? 0;
-    req('Education', EDU_LABEL[job.reqEducation] || job.reqEducation, 'GraduationCap',
-      pilotRank >= reqRank, profile.education ? EDU_LABEL[profile.education] : null);
-  }
-  if (job.reqWorkAuthorization) {
-    const rtw = profile.rightToWork || [];
-    const isMatch = job.reqWorkAuthorization === 'required'
-      ? rtw.length > 0
-      : rtw.some((r) => rtwMatchesRegion(r.country, job.reqWorkAuthorization));
-    const matchingRtw = rtw.find((r) => rtwMatchesRegion(r.country, job.reqWorkAuthorization));
-    req('Work Auth', WA_LABEL[job.reqWorkAuthorization] || job.reqWorkAuthorization, 'Globe', isMatch,
-      matchingRtw ? matchingRtw.country : (rtw.length > 0 && job.reqWorkAuthorization === 'required' ? rtw[0].country : null));
-  }
-  if (job.reqEnglishLevel != null) {
-    const elpCerts = (profile.certificates || []).filter((c) => c.type === 'ELP');
-    const maxLevel = elpCerts.reduce((m, c) => {
-      const lvl = parseElp(c.englishLevel);
-      return lvl !== null ? Math.max(m, lvl) : m;
-    }, 0);
-    req('English Level', `ICAO Level ${job.reqEnglishLevel}`, 'Languages',
-      maxLevel >= job.reqEnglishLevel, maxLevel > 0 ? `Level ${maxLevel}` : null);
-  }
-  if (job.reqMinMultiEngineHours != null) {
-    const multi = totals?.multiEngineTime ?? 0;
-    req('Multi-Engine', `${job.reqMinMultiEngineHours.toLocaleString()} hrs min`, 'Wrench',
-      multi >= job.reqMinMultiEngineHours, `${Math.round(multi).toLocaleString()} hrs`);
-  }
-  if (job.reqMinTurbineHours != null) {
-    const turb = totals?.turbineTime ?? 0;
-    req('Turbine Time', `${job.reqMinTurbineHours.toLocaleString()} hrs min`, 'Wrench',
-      turb >= job.reqMinTurbineHours, `${Math.round(turb).toLocaleString()} hrs`);
-  }
-  if (job.reqMinInstrumentHours != null) {
-    const inst = totals?.instrumentTime ?? 0;
-    req('Instrument', `${job.reqMinInstrumentHours.toLocaleString()} hrs min`, 'Wrench',
-      inst >= job.reqMinInstrumentHours, `${Math.round(inst).toLocaleString()} hrs`);
-  }
-  if (job.reqMinCrossCountryHours != null) {
-    const cc = totals?.crossCountryTime ?? 0;
-    req('Cross-Country', `${job.reqMinCrossCountryHours.toLocaleString()} hrs min`, 'MapPin',
-      cc >= job.reqMinCrossCountryHours, `${Math.round(cc).toLocaleString()} hrs`);
-  }
-  if (job.reqWillingToRelocate) {
-    const willing = profile.willingToRelocate ?? true;
-    req('Willing to Relocate', 'Required', 'MapPin', willing, willing ? 'Yes' : 'No');
-  }
-  if (job.role) {
-    const roleLabel = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor' }[job.role] || job.role;
-    const pilotRole = profile.role;
-    const isMatch = pilotRole === job.role;
-    const pilotLabel = pilotRole ? ({ CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer' }[pilotRole] || pilotRole) : null;
-    req('Role', roleLabel, 'Plane', isMatch, pilotLabel);
-  }
-
-  const matched = requirements.filter((r) => r.matched).length;
-  return { matched, total: requirements.length, requirements };
-}
-
-function MatchCountBadge({ matched, total, hideIfEmpty = false }) {
+export function MatchCountBadge({ matched, total, hideIfEmpty = false }) {
   if (total === 0) {
     if (hideIfEmpty) return null;
     return <Badge variant="neutral">No requirements specified</Badge>;
@@ -241,41 +113,6 @@ const SORT_OPTIONS = [
   { value: 'relevant', label: 'Most Relevant' },
   { value: 'deadline', label: 'Deadline' },
 ];
-
-// Match-score tiers → Badge variants (Excellent green / Great blue / Good amber)
-function matchLabel(score) {
-  if (!score) return null;
-  if (score >= 90) return { text: 'Excellent Match', variant: 'success' };
-  if (score >= 75) return { text: 'Great Match',     variant: 'info' };
-  if (score >= 60) return { text: 'Good Match',      variant: 'warning' };
-  return null;
-}
-
-function postedAgo(postedAt) {
-  if (!postedAt) return null;
-  const diff = Date.now() - new Date(postedAt).getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return 'Posted today';
-  if (days === 1) return 'Posted 1 day ago';
-  return `Posted ${days} days ago`;
-}
-
-function formatSalary(job, compact = false) {
-  const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
-  if (salaryMin == null && salaryMax == null) return null;
-  const currency = salaryCurrency || '';
-  const period = salaryPeriod ? ` / ${salaryPeriod}` : '';
-  if (compact) {
-    const fmt = (n) => n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n));
-    if (salaryMin != null && salaryMax != null && salaryMin !== salaryMax)
-      return `${currency} ${fmt(salaryMin)}–${fmt(salaryMax)}${period}`.trim();
-    return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`.trim();
-  }
-  const fmt = (n) => n.toLocaleString();
-  if (salaryMin != null && salaryMax != null && salaryMin !== salaryMax)
-    return `${currency} ${fmt(salaryMin)} – ${fmt(salaryMax)}${period}`.trim();
-  return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`.trim();
-}
 
 const css = {
   topBar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
@@ -366,7 +203,7 @@ const REQ_ICON_MAP = {
   MapPin:    <MapPin    size={12} />,
 };
 
-function ReqRow({ req }) {
+export function ReqRow({ req }) {
   const icon = REQ_ICON_MAP[req.icon] || <Minus size={12} />;
   const isMatch = req.matched;
 
@@ -391,132 +228,18 @@ function ReqRow({ req }) {
   );
 }
 
-function JobModal({ job, onClose, pilotProfile, pilotTotals, airlineMap }) {
-  const navigate = useNavigate();
-  const airlineMatch = job ? airlineMap?.get(job.company?.toLowerCase().trim()) : null;
-
-  const matchCount = job && pilotProfile && pilotTotals
-    ? computeMatchCount(job, pilotProfile, pilotTotals)
-    : null;
-
-  const missing = matchCount?.requirements.filter((r) => !r.matched) ?? [];
-  const hasReqs = matchCount && matchCount.total > 0;
-
-  // Extra non-matched fields shown in info grid (location only — hours are now in requirements)
-  const extraFields = job ? [
-    job.location && ['Location', job.location, <MapPin size={11} />],
-  ].filter(Boolean) : [];
-
-  return (
-    <Modal isOpen={!!job} onClose={onClose} size="md" title={job?.title}>
-      {job && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: formatSalary(job) ? 6 : (matchCount ? 10 : 20) }}>
-            <span style={{ fontSize: 15, color: 'var(--accent)', fontWeight: 600 }}>{job.company}</span>
-            {airlineMatch && (
-              <button
-                onClick={() => { onClose(); navigate(`/airlines/${airlineMatch.id}`); }}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: 'var(--accent)', fontWeight: 600, opacity: 0.8, whiteSpace: 'nowrap', textDecoration: 'underline', textUnderlineOffset: 3 }}
-              >
-                View factfile →
-              </button>
-            )}
-          </div>
-          {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
-            <div style={{ ...css.employerBadge, fontSize: 12, padding: '4px 10px', marginTop: 0, marginBottom: 16 }}>Posted directly by employer</div>
-          )}
-          {formatSalary(job) && (
-            <div style={{ marginBottom: matchCount ? 10 : 18 }}>
-              <span style={{ ...css.salary, fontSize: 13, padding: '5px 12px' }}>$ {formatSalary(job)}</span>
-            </div>
-          )}
-          {matchCount && (
-            <div style={{ marginBottom: 16 }}>
-              <MatchCountBadge matched={matchCount.matched} total={matchCount.total} hideIfEmpty={false} />
-            </div>
-          )}
-
-          {hasReqs ? (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 }}>Requirements</div>
-              <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0 12px' }}>
-                {matchCount.requirements.map((r) => <ReqRow key={r.label} req={r} />)}
-              </div>
-
-              {missing.length > 0 && (
-                <div style={{ marginTop: 12, padding: '10px 14px', background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8 }}>
-                  <div style={{ fontSize: 11, color: SEM.red, fontWeight: 700, marginBottom: 6 }}>WHAT YOU&apos;RE MISSING</div>
-                  {missing.map((r) => (
-                    <div key={r.label} style={{ fontSize: 12, color: SEM.red, marginBottom: 3 }}>
-                      • {r.label}: {r.reqValue}{r.pilotValue ? ` (you have: ${r.pilotValue})` : ''}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {extraFields.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
-                  {extraFields.map(([label, val, icon]) => (
-                    <div key={label} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4 }}>{icon}{label}</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{val}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : matchCount ? (
-            <div style={{ marginBottom: 20, padding: '12px 16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-              No structured requirements specified for this job.
-            </div>
-          ) : null}
-
-          {job.description ? (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
-                Job Description
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-                {job.description}
-              </div>
-            </div>
-          ) : null}
-
-          {job.notes ? (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>
-                Notes / Benefits
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
-                {job.notes}
-              </div>
-            </div>
-          ) : null}
-
-          <a
-            href={job.applyUrl} target="_blank" rel="noreferrer"
-            style={{
-              display: 'block', textAlign: 'center',
-              background: 'var(--accent)', color: '#fff', padding: '14px', borderRadius: 4,
-              fontWeight: 500, fontSize: 16, textDecoration: 'none', fontFamily: 'var(--font-body)',
-            }}
-          >
-            View Full Posting &amp; Apply →
-          </a>
-        </>
-      )}
-    </Modal>
-  );
-}
-
 export default function Jobs() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { list: jobs, total } = useSelector((s) => s.jobs);
+  const token = useSelector((s) => s.auth.token); // logged-out: public list, no match/qualified
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState(null);
+  // URL-state seeded on mount (read once — params snapshot taken eagerly so the
+  // back-from-detail restore lands before the first fetch). 'qualified' defaults
+  // ON; ?qualified=0 turns it off. 'sort' defaults 'newest'.
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
   const [hoverId, setHoverId] = useState(null);
 
   // Pilot profile for match-count badge and incomplete-profile notice
@@ -524,13 +247,14 @@ export default function Jobs() {
   const [pilotTotals, setPilotTotals] = useState(null);
 
   useEffect(() => {
+    if (!token) return; // logged-out has no profile — skip (endpoints are auth-gated)
     Promise.all([profileApi.get(), profileApi.getTotals()])
       .then(([profileRes, totalsRes]) => {
         setPilotProfile(profileRes.data);
         setPilotTotals(totalsRes.data);
       })
       .catch(() => {}); // non-fatal — badge just won't show
-  }, []);
+  }, [token]);
 
   // Airline map — fetched once per session, cached at module level
   const [airlineMap, setAirlineMap] = useState(() => _airlineCache);
@@ -539,14 +263,14 @@ export default function Jobs() {
     fetchAirlineMap().then(setAirlineMap).catch(() => {}); // non-fatal
   }, []);
 
-  // Filter panel state
+  // Filter panel state — seeded from the URL on mount
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [authority, setAuthority] = useState('');
-  const [aircraftType, setAircraftType] = useState('');
-  const [role, setRole] = useState('');
-  const [contractType, setContractType] = useState('');
-  const [postedWithin, setPostedWithin] = useState('');
-  const [minSalary, setMinSalary] = useState('');
+  const [authority, setAuthority] = useState(() => searchParams.get('authority') || '');
+  const [aircraftType, setAircraftType] = useState(() => searchParams.get('aircraft') || '');
+  const [role, setRole] = useState(() => searchParams.get('role') || '');
+  const [contractType, setContractType] = useState(() => searchParams.get('contractType') || '');
+  const [postedWithin, setPostedWithin] = useState(() => searchParams.get('postedWithin') || '');
+  const [minSalary, setMinSalary] = useState(() => searchParams.get('salaryMin') || '');
 
   // Pending (unapplied) filter state
   const [pendingAuthority, setPendingAuthority] = useState('');
@@ -556,11 +280,13 @@ export default function Jobs() {
   const [pendingPostedWithin, setPendingPostedWithin] = useState('');
   const [pendingMinSalary, setPendingMinSalary] = useState('');
 
-  // Qualified only toggle — defaults on so the initial view shows jobs the pilot qualifies for
-  const [qualifiedOnly, setQualifiedOnly] = useState(true);
+  // Qualified only toggle — defaults on so the initial view shows jobs the pilot
+  // qualifies for. ?qualified=0 in the URL turns it off. Logged-out has no profile
+  // to qualify against, so it's forced off and the toggle is hidden.
+  const [qualifiedOnly, setQualifiedOnly] = useState(() => token ? searchParams.get('qualified') !== '0' : false);
 
   // Sort
-  const [sort, setSort] = useState('newest');
+  const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest');
 
   // Saved jobs local state: map of id -> bool
   const [savedMap, setSavedMap] = useState({});
@@ -627,6 +353,24 @@ export default function Jobs() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
+  // URL-state sync — keep the address bar in step with the active filters/search/
+  // sort so a /jobs view is shareable and browser-back from a job detail restores
+  // it. Params at their default value are OMITTED (clean URLs). replace:true so we
+  // don't pollute history with every keystroke.
+  useEffect(() => {
+    const next = {};
+    if (search) next.q = search;
+    if (authority) next.authority = authority;
+    if (aircraftType) next.aircraft = aircraftType;
+    if (role) next.role = role;
+    if (contractType) next.contractType = contractType;
+    if (postedWithin) next.postedWithin = postedWithin;
+    if (minSalary) next.salaryMin = minSalary;
+    if (sort !== 'newest') next.sort = sort;
+    if (!qualifiedOnly) next.qualified = '0';
+    setSearchParams(next, { replace: true });
+  }, [search, authority, aircraftType, role, contractType, postedWithin, minSalary, sort, qualifiedOnly, setSearchParams]);
+
   const handleSaveToggle = async (e, jobId) => {
     e.stopPropagation();
     const currentlySaved = savedMap[jobId] || false;
@@ -660,7 +404,9 @@ export default function Jobs() {
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Jobs</h1>
-      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Cockpit roles, filtered to your profile.</p>
+      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>
+        {token ? 'Cockpit roles, filtered to your profile.' : 'Cockpit roles from airlines worldwide.'}
+      </p>
 
       {/* Top bar */}
       <div style={css.topBar}>
@@ -680,12 +426,14 @@ export default function Jobs() {
             <span style={css.filtersBadge}>{activeFilterCount}</span>
           )}
         </button>
-        <button
-          style={css.toggleBtn(qualifiedOnly)}
-          onClick={() => setQualifiedOnly((v) => !v)}
-        >
-          {qualifiedOnly ? '✓ ' : ''}Qualified only
-        </button>
+        {token && (
+          <button
+            style={css.toggleBtn(qualifiedOnly)}
+            onClick={() => setQualifiedOnly((v) => !v)}
+          >
+            {qualifiedOnly ? '✓ ' : ''}Qualified only
+          </button>
+        )}
         <div>
           <Input as="select" aria-label="Sort jobs" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
             {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -740,6 +488,15 @@ export default function Jobs() {
         </div>
       ) : (
         <>
+          {/* Logged-out: invite sign-in to unlock match scores against each role */}
+          {!token && (
+            <div style={{ marginBottom: 16, padding: '10px 16px', background: '#DBEAFE', border: '1px solid #BFDBFE', borderRadius: 8, fontSize: 13, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Info size={14} color="#1E40AF" />
+              Sign in to see how you match each role →{' '}
+              <a href="/login" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Sign in</a>
+            </div>
+          )}
+
           {/* Profile-incomplete notice — shown when pilot has no hours, no certs, no ratings */}
           {pilotProfile && pilotTotals &&
             (pilotTotals.totalTime ?? 0) === 0 &&
@@ -768,14 +525,14 @@ export default function Jobs() {
                   style={{ ...css.card, ...(isHover ? css.cardHover : {}) }}
                   onMouseEnter={() => setHoverId(job.id)}
                   onMouseLeave={() => setHoverId(null)}
-                  onClick={() => setSelected(job)}
+                  onClick={() => navigate(`/jobs/${slugFor(job)}`)}
                 >
                   {/* Heart save button */}
                   <button
                     style={css.heartBtn}
-                    onClick={(e) => handleSaveToggle(e, job.id)}
-                    title={isSaved ? 'Unsave job' : 'Save job'}
-                    aria-label={isSaved ? 'Unsave job' : 'Save job'}
+                    onClick={(e) => { e.stopPropagation(); if (!token) { navigate('/login'); return; } handleSaveToggle(e, job.id); }}
+                    title={token ? (isSaved ? 'Unsave job' : 'Save job') : 'Sign in to save'}
+                    aria-label={token ? (isSaved ? 'Unsave job' : 'Save job') : 'Sign in to save'}
                     aria-pressed={isSaved}
                   >
                     <PlaneSave saved={isSaved} size={36} />
@@ -846,14 +603,6 @@ export default function Jobs() {
           </div>
         </>
       )}
-
-      <JobModal
-        job={selected}
-        onClose={() => setSelected(null)}
-        pilotProfile={pilotProfile}
-        pilotTotals={pilotTotals}
-        airlineMap={airlineMap}
-      />
     </LightPage>
   );
 }

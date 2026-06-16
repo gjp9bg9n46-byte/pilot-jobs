@@ -5,6 +5,8 @@ import { jobApi } from '../services/api';
 import { setAlerts, markAlertRead, markAllAlertsRead } from '../store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { LightPage, Input, Button, Badge, Modal } from '../components/primitives';
+import { matchStyle } from '../lib/jobMatch';
+import MatchScore from '../components/MatchScore';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
 //   dark #2ECC71 → #166534 (matched), #F39C12 → #92400E (marginal/warn),
@@ -30,15 +32,6 @@ function pillColor(key, structured) {
   if (s === 'missing')  return { color: SEM.red,   bg: '#FEE2E2' };
   if (s === 'marginal') return { color: SEM.amber, bg: '#FEF3C7' };
   return { color: 'var(--text-secondary)', bg: 'var(--bg)' };
-}
-
-// Match tier → label + semantic color (Phase-8 light-AA palette). The badge is
-// now a pure typographic lockup (no ring/fill/border) — only color + label used.
-function matchStyle(score) {
-  if (score >= 90) return { label: 'Excellent Match', color: '#166534' };
-  if (score >= 75) return { label: 'Great Match',     color: '#1E40AF' };
-  if (score >= 60) return { label: 'Good Match',      color: '#92400E' };
-  return              { label: 'Partial Match',    color: '#374151' };
 }
 
 const AUTHORITIES = [
@@ -315,16 +308,11 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 >
                   <PlaneSave saved={savedMap[alert.job?.id]} size={28} />
                 </button>
-                {/* Match score — editorial typographic lockup (no ring/fill/border) */}
-                <div style={{ textAlign: 'right', minWidth: isMobile ? 64 : 80 }}>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: isMobile ? 26 : 32, fontWeight: 600, color: m.color, lineHeight: 1 }}>
-                    {/* Interim clamp — computeAlertScore is un-normalised (max 135); proper
-                        fix normalises server-side (backlog item C). Cap display at 100 meanwhile. */}
-                    {Math.min(Math.round(alert.matchScore), 100)}%
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: m.color, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4 }}>
-                    {m.label}
-                  </div>
+                {/* Match score — editorial typographic lockup (no ring/fill/border).
+                    Interim clamp lives in <MatchScore> — computeAlertScore is
+                    un-normalised (max 135); display caps at 100 meanwhile. */}
+                <div style={{ minWidth: isMobile ? 64 : 80 }}>
+                  <MatchScore score={alert.matchScore} label={m.label} size={isMobile ? 'sm' : 'lg'} />
                 </div>
               </div>
             </div>
