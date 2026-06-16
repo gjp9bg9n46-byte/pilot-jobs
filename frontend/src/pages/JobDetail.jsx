@@ -1,6 +1,7 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import DOMPurify from 'dompurify';
 import { MapPin, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { jobApi, profileApi, airlineApi } from '../services/api';
 import { LightPage, Card, Button } from '../components/primitives';
@@ -12,6 +13,27 @@ import { MatchCountBadge, ReqRow } from './Jobs';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved) — mirrors Jobs.jsx.
 const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
+
+// Scraped descriptions arrive as raw HTML. Whitelist safe formatting tags only;
+// DOMPurify strips everything else (script/iframe/inline handlers, etc).
+const DESC_ALLOWED_TAGS = ['p', 'br', 'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'u', 'a', 'h2', 'h3', 'h4'];
+const DESC_ALLOWED_ATTR = ['href', 'target', 'rel'];
+
+// Force every surviving <a> to open externally (scraped links shouldn't nav within
+// the app). DOMPurify's default href sanitization already drops javascript: URIs.
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A') {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noreferrer noopener');
+  }
+});
+
+function sanitizeDescription(raw) {
+  const clean = DOMPurify.sanitize(raw || '', { ALLOWED_TAGS: DESC_ALLOWED_TAGS, ALLOWED_ATTR: DESC_ALLOWED_ATTR });
+  // Plain text (no markup survived) — preserve the line breaks pre-wrap used to show.
+  if (!/<[a-z][\s\S]*>/i.test(clean)) return clean.replace(/\n/g, '<br>');
+  return clean;
+}
 
 // Job IDs are UUIDs (they contain hyphens), so we extract the trailing UUID from
 // the slug via regex — NOT split('-').pop().
@@ -203,10 +225,15 @@ export default function JobDetail() {
       .catch(() => {}); // non-fatal — match section just won't show
   }, [token]);
 
-  const description = (job?.description || '').slice(0, 160);
+  // Sanitized HTML for the body; a tag-stripped, truncated version for SEO meta.
+  const descHtml = useMemo(() => sanitizeDescription(job?.description), [job?.description]);
+  const descText = useMemo(
+    () => DOMPurify.sanitize(job?.description || '', { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).replace(/\s+/g, ' ').trim().slice(0, 160),
+    [job?.description],
+  );
   useSeo({
     title: job ? `${job.title} — ${job.company} | CockpitHire` : null,
-    description,
+    description: descText,
     image: airline?.logoUrl || undefined,
     canonical: typeof window !== 'undefined' ? `${window.location.origin}/jobs/${slugId}` : undefined,
   });
@@ -419,8 +446,8 @@ export default function JobDetail() {
       {job.description && (
         <div style={{ marginBottom: 24 }}>
           <div style={css.sectionLabel}>Job Description</div>
-          <CollapsibleText id="job-description" style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-            {job.description}
+          <CollapsibleText id="job-description" style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8 }}>
+            <div className="job-desc-html" dangerouslySetInnerHTML={{ __html: descHtml }} />
           </CollapsibleText>
         </div>
       )}

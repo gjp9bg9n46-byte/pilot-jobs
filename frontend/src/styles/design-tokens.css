@@ -59,3 +59,21 @@
 .app-light .icon-button:hover { background: rgba(0, 63, 136, 0.05); }
 .app-light .footer-link { color: var(--text-primary); text-decoration: none; }
 .app-light .footer-link:hover { color: var(--accent); }
+
+/* Sanitized scraped job-description HTML (JobDetail). Tags are whitelisted by
+   DOMPurify; these rules make the rendered markup match editorial-light. */
+.job-desc-html > :first-child { margin-top: 0; }
+.job-desc-html p { margin: 0 0 12px; }
+.job-desc-html ul, .job-desc-html ol { margin: 0 0 12px; padding-left: 24px; }
+.job-desc-html li { margin-bottom: 4px; }
+.job-desc-html strong, .job-desc-html b { font-weight: 600; }
+.job-desc-html em, .job-desc-html i { font-style: italic; }
+.job-desc-html a { color: var(--accent); text-decoration: none; }
+.job-desc-html a:hover { text-decoration: underline; }
+.job-desc-html h2, .job-desc-html h3, .job-desc-html h4 {
+  font-family: var(--font-display); font-weight: 600; color: var(--text-primary);
+  margin: 16px 0 8px; line-height: 1.3;
+}
+.job-desc-html h2 { font-size: 18px; }
+.job-desc-html h3 { font-size: 16px; }
+.job-desc-html h4 { font-size: 15px; }
