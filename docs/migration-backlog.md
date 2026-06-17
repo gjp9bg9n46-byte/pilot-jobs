@@ -561,3 +561,19 @@ client-side computed from `GET /profile` + `GET /cv`). Follow-ups:
 - **Mount CompletenessWidget on Profile too** (Q6 fast-follow). The component is
   self-contained (fetches its own data), so this is a one-line import at the top of
   Profile.jsx.
+
+## Quality sweep — Support (audit #10, 2026-06-18)
+
+Fix-now batch (#1 privacy-default copy, #4 accordion→button a11y, #5 cadence,
+#7 contact focus ring) + E1 (public access) + E2 (FAQ search) + E3 (categories +
+deep-link anchors) + E5 (About revamp w/ What's new + version) shipped in the
+audit-#10 commit. Remaining / confirmed-as-is:
+
+- **E4 — in-app contact form (backend cluster).** Replace/augment the three
+  `mailto:` links with a form (category + message) posting to a backend endpoint →
+  email via Resend, pre-filling pilot context. Needs Resend; pairs with password
+  reset + email verification in the transactional-email cluster. (`mailto:` silently
+  fails for users with no configured mail client.)
+- **#2 push-notification FAQ claim — kept as written** (user-confirmed). Revisit
+  copy if push delivery turns out not to be live.
+- **#8 "reply within 24 hours" SLA — kept as written** (user-confirmed).

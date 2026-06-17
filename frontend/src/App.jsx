@@ -83,6 +83,7 @@ export default function App() {
           <Route path="airlines/:id" element={<AirlineDetail />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/:slugId" element={<JobDetail />} />
+          <Route path="support" element={<Support />} />
         </Route>
 
         {/* Authenticated pilot app (pathless layout — URLs unchanged) */}
@@ -93,7 +94,6 @@ export default function App() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="logbook" element={<Logbook />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="support" element={<Support />} />
           <Route path="settings" element={<Settings />} />
           <Route path="cv" element={<Suspense fallback={<div style={{padding:48,textAlign:'center',color:'#7A8CA0'}}>Loading…</div>}><CVBuilder /></Suspense>} />
         </Route>
