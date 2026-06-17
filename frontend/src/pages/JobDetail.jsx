@@ -81,8 +81,8 @@ const css = {
     padding: '5px 12px', fontSize: 13, fontWeight: 700, color: SEM.amber,
   },
   sectionLabel: {
-    fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700,
-    letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8,
+    fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600,
+    letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8,
   },
   disclaimer: {
     fontSize: 12, fontStyle: 'italic', color: 'var(--text-secondary)', marginTop: 8,
@@ -336,7 +336,9 @@ export default function JobDetail() {
             <span style={{ fontSize: 15, color: 'var(--accent)', fontWeight: 600 }}>{job.company}</span>
             {airline?.country && <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>· {airline.country}</span>}
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: '6px 0 8px' }}>
+          {/* Typography pilot: Inter 700 (sans, technical) instead of Fraunces display.
+              Scoped to JobDetail only — other pilot pages keep Fraunces h1s. */}
+          <h1 style={{ fontFamily: 'var(--font-body)', fontSize: 32, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: '6px 0 8px' }}>
             {roleLabel || job.title}
           </h1>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: 'var(--text-secondary)' }}>
