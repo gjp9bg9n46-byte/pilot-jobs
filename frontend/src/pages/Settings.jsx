@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api, { profileApi, flightLogApi, authApi } from '../services/api';
 import { logout } from '../store';
 import { Card, Input, Button, Badge, Modal, LightPage } from '../components/primitives';
+import CompletenessWidget from '../components/CompletenessWidget';
 
 // ── Components defined OUTSIDE Settings to prevent remount-on-keypress ────────
 function Toggle({ value, onChange }) {
@@ -297,6 +298,9 @@ export default function Settings() {
         <p style={{ color: 'var(--text-secondary)', marginBottom: 32, fontSize: 15 }}>
           Manage your account, preferences, notifications, and data.
         </p>
+
+        {/* ── Profile completeness ─────────────────────────────────────── */}
+        <CompletenessWidget />
 
         {/* ── Account Card ─────────────────────────────────────────────── */}
         <Card style={cardStyle}>

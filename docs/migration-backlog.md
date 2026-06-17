@@ -543,3 +543,21 @@ button, #9 Chip aria-pressed) shipped in the audit-#9 fix-now commit. Remaining:
   the existing delete-account backlog) the Modal still lacks the required password
   field that the `DELETE /auth/account` endpoint needs. Bundle into the delete-modal
   rework.
+
+## Enhancement E1 — CompletenessWidget (follow-ups)
+
+Shipped: `CompletenessWidget` on `/settings` (7 Core + 2 Recommended categories,
+client-side computed from `GET /profile` + `GET /cv`). Follow-ups:
+
+- **Extend with Preferences + Notifications categories** once the backend schema
+  cluster lands (the `PUT …/preferences` 500 / read-mask item above). ~10-line add:
+  two more Core rows reading `profile.preferences.*` (correct column names) + a
+  notifications signal. Deferred now because neither can be completed by any user
+  today (save path 500s).
+- **Profile.jsx hash anchors** for deeper deep-link targeting (e.g. `/profile#licences`
+  scrolls to the Licences card). The widget already links to `/profile`; add `id`s on
+  the Profile sub-cards + scroll-into-view to make the per-category rows land precisely.
+  Small optional polish.
+- **Mount CompletenessWidget on Profile too** (Q6 fast-follow). The component is
+  self-contained (fetches its own data), so this is a one-line import at the top of
+  Profile.jsx.
