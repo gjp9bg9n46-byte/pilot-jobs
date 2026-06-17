@@ -364,7 +364,7 @@ export default function JobDetail() {
       )}
 
       {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 5, padding: '4px 10px', marginBottom: 16 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', background: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 5, padding: '4px 10px', marginBottom: 16 }}>
           Posted directly by employer
         </div>
       )}
@@ -433,7 +433,7 @@ export default function JobDetail() {
       {job.notes && (
         <div style={{ marginBottom: 24 }}>
           <div style={css.sectionLabel}>Notes / Benefits</div>
-          <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
             {job.notes}
           </div>
         </div>
