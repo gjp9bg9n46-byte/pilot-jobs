@@ -476,9 +476,23 @@ account; belongs to the **backend cluster**, not this sweep.
 
 ## Settings notification preferences (product + backend)
 
-- **`PUT /api/.../preferences` 500 — schema mismatch.** Open since Phase 6
-  (also tracked in memory `settings-double-api-bugs`). Not fixed during
-  migration.
+- **`PUT /api/.../preferences` 500 — schema mismatch. [HIGHEST priority in the
+  backend matching/schema session.]** Open since Phase 6 (also tracked in memory
+  `settings-double-api-bugs`). **Severity update (Settings audit #9, 2026-06-17):**
+  worse than the original "doesn't persist" framing — *every* preferences /
+  notifications / privacy save returns a hard **500** (`PrismaClientValidationError`
+  on unknown args), because `updatePreferences` does a raw
+  `prisma.pilotPreference.upsert({ ...req.body })` and the frontend sends keys that
+  aren't columns: `contractTypes` vs `preferredContractTypes`, `salaryCurrency` vs
+  `minSalaryCurrency`, `salaryPeriod` vs `minSalaryPeriod`, `allEmailOn` vs
+  `notifyEmail`, `newJobMatch` vs `notifyMatchesEmail`, `quietHours`/`quietFrom`/
+  `quietTo` vs `quietHoursEnabled`/`quietHoursStart`/`quietHoursEnd`, and the
+  privacy keys (`visibleToRecruiters`/`anonymousBrowsing`/`showSeniority`) which
+  live on the **Pilot** model, not `PilotPreference`. Also **read-masking**: the
+  loader reads the mismatched keys, so even data persisted under the correct column
+  name renders as empty/default (verified: seeded `preferredContractTypes` shows
+  chips inactive). Fix = reconcile the frontend payload/read keys with the Prisma
+  columns (and decide the salary-period value vocabulary, see #12 below).
 
 - **PRODUCT DECISION — alert cadence model (`frequency` ↔ `alertDigest`).**
   Consolidated into this Settings-preferences ticket (per Phase 11). Alerts'
@@ -489,3 +503,43 @@ account; belongs to the **backend cluster**, not this sweep.
   these unify (e.g. per-rule cadence drives digest batching, or a global
   cadence with per-rule overrides) before the notification system grows.
   Migration changed neither; logged for product review.
+
+## Quality sweep — Settings (audit #9, 2026-06-17)
+
+Fix-now items (#2 save-pref error banner, #4 in-Modal delete error, #5 Toggle
+keyboard a11y, #6 checkbox label assoc, #7 aria-live banners, #8 Tag remove
+button, #9 Chip aria-pressed) shipped in the audit-#9 fix-now commit. Remaining:
+
+- **#1 Data card exports are non-functional (404 + frontend bug).** `GET
+  /auth/export` and `GET /flight-logs/export` both return **404** — the endpoints
+  don't exist on the backend. Additionally the frontend has an `await`-precedence
+  bug (`res = await authApi.exportData ? authApi.exportData() : …` binds `await` to
+  the function *reference*, so `res` is an un-awaited Promise and `res.data` is
+  `undefined` → would download a file containing "undefined"). Errors are swallowed,
+  so clicking does nothing visible. Bundle with **E4 (deletion grace + export)** in
+  the backend cluster — needs real export endpoints first, then the frontend fix.
+
+- **#3 Privacy toggles are a silent lie.** `handlePrivacyToggle` optimistically
+  flips local state then PUTs (currently 500, empty catch) — toggle appears to save,
+  nothing persists, no error, and it resets to default on reload. Tied to the schema
+  session: `visibleToRecruiters` / `anonymousBrowsing` / `showSeniority` live on the
+  **Pilot** model, not `PilotPreference`, so they need a different write path.
+
+- **#10 Notifications subtitle is email-only framing.** "Choose what emails you
+  receive" sits above a Quiet Hours scheduler, and the schema has push columns
+  (`notify*Push`). Product call during the notification rework.
+
+- **#11 "Anonymous browsing — browse jobs without leaving a trace" describes a
+  feature that doesn't exist.** There's no browse-tracking to opt out of, and the
+  toggle does nothing (500s). Product call: build it or remove the toggle.
+
+- **#12 Salary period/currency vocabulary mismatch (beyond key names).** UI uses
+  `'Per month'` / `'Per year'`; schema enum is `'month'` / `'year'` (default
+  `'year'`). Even after the key rename, the *values* won't line up. Bundle with the
+  schema reconciliation (the HIGHEST-priority preferences item above).
+
+- **#13 Delete Modal copy is thin.** "Are you sure? This cannot be undone." doesn't
+  enumerate what's destroyed (logbook, CV, applications, contributions), and (per
+  the existing delete-account backlog) the Modal still lacks the required password
+  field that the `DELETE /auth/account` endpoint needs. Bundle into the delete-modal
+  rework.

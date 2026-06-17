@@ -8,7 +8,14 @@ import { Card, Input, Button, Badge, Modal, LightPage } from '../components/prim
 // ── Components defined OUTSIDE Settings to prevent remount-on-keypress ────────
 function Toggle({ value, onChange }) {
   return (
-    <div onClick={() => onChange(!value)} style={{ width: 44, height: 24, borderRadius: 12, background: value ? 'var(--accent)' : 'var(--border)', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
+    <div
+      role="switch"
+      aria-checked={value}
+      tabIndex={0}
+      onClick={() => onChange(!value)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(!value); } }}
+      style={{ width: 44, height: 24, borderRadius: 12, background: value ? 'var(--accent)' : 'var(--border)', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}
+    >
       <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 2px rgba(15,20,25,0.2)', transition: 'left 0.2s' }} />
     </div>
   );
@@ -17,7 +24,7 @@ function Toggle({ value, onChange }) {
 function Chip({ label, active, onClick }) {
   const [hover, setHover] = useState(false);
   return (
-    <button type="button" onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+    <button type="button" onClick={onClick} aria-pressed={active} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{ background: active ? 'rgba(0,63,136,0.08)' : 'var(--surface)', border: `1px solid ${active ? 'var(--accent)' : (hover ? 'rgba(0,63,136,0.4)' : 'var(--border)')}`, borderRadius: 20, padding: '6px 14px', color: active ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s, border-color 0.15s, color 0.15s' }}>
       {label}
     </button>
@@ -28,7 +35,7 @@ function Tag({ label, onRemove }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(0,63,136,0.08)', border: '1px solid var(--accent)', borderRadius: 20, padding: '4px 12px', fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>
       {label}
-      <span onClick={onRemove} style={{ cursor: 'pointer', lineHeight: 1, color: 'var(--text-secondary)', fontSize: 14 }}>✕</span>
+      <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} style={{ cursor: 'pointer', lineHeight: 1, color: 'var(--text-secondary)', fontSize: 14, background: 'none', border: 'none', padding: 0, display: 'inline-flex' }}>✕</button>
     </span>
   );
 }
@@ -82,6 +89,7 @@ export default function Settings() {
   const [salaryNegotiable, setSalaryNegotiable] = useState(false);
   const [prefSaved, setPrefSaved] = useState(false);
   const [prefLoading, setPrefLoading] = useState(false);
+  const [preferencesError, setPreferencesError] = useState(null);
 
   const CONTRACT_OPTIONS = ['Full-time', 'Part-time', 'Contract', 'ACMI', 'Wet Lease'];
   const ROUTE_OPTIONS = ['Short-haul', 'Long-haul', 'Ultra-long-haul', 'Regional', 'Cargo', 'Charter'];
@@ -119,6 +127,7 @@ export default function Settings() {
 
   // ── Delete account confirmation ───────────────────────────────────────
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   // ── Load preferences on mount ─────────────────────────────────────────
   useEffect(() => {
@@ -182,6 +191,7 @@ export default function Settings() {
   }
 
   async function handleSavePreferences() {
+    setPreferencesError(null);
     setPrefLoading(true);
     try {
       await profileApi.updatePreferences({
@@ -196,7 +206,9 @@ export default function Settings() {
       });
       setPrefSaved(true);
       setTimeout(() => setPrefSaved(false), 2000);
-    } catch (_) {}
+    } catch (err) {
+      setPreferencesError(err?.response?.data?.message || 'Failed to save preferences.');
+    }
     finally { setPrefLoading(false); }
   }
 
@@ -256,12 +268,14 @@ export default function Settings() {
   // Deletion logic preserved verbatim — only the confirmation UI changed
   // (window.confirm → <Modal>).
   async function confirmDelete() {
+    setDeleteError(null);
     try {
       await api.delete('/auth/account');
       dispatch(logout());
       navigate('/login');
     } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to delete account.');
+      // Keep the Modal open and surface the failure inline (replaces native alert()).
+      setDeleteError(err?.response?.data?.message || err?.response?.data?.error || 'Failed to delete account.');
     }
   }
 
@@ -304,8 +318,8 @@ export default function Settings() {
               <Input label="New Password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} placeholder="At least 8 characters" />
               <Input label="Confirm New Password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required placeholder="Repeat new password" />
             </div>
-            {passwordMsg && <div style={successBanner}>{passwordMsg}</div>}
-            {passwordError && <div style={errorBanner}>{passwordError}</div>}
+            {passwordMsg && <div style={successBanner} role="status">{passwordMsg}</div>}
+            {passwordError && <div style={errorBanner} role="alert">{passwordError}</div>}
             <Button type="submit" disabled={passwordLoading} style={{ marginTop: 16 }}>
               {passwordLoading ? 'Saving…' : 'Update Password'}
             </Button>
@@ -380,6 +394,7 @@ export default function Settings() {
             </label>
           </div>
 
+          {preferencesError && <div style={{ ...errorBanner, marginTop: 0, marginBottom: 16 }} role="alert">{preferencesError}</div>}
           <Button type="button" onClick={handleSavePreferences} disabled={prefLoading}>
             {prefSaved ? 'Saved ✓' : prefLoading ? 'Saving…' : 'Save Preferences'}
           </Button>
@@ -408,10 +423,11 @@ export default function Settings() {
               <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>Email</span>
             </div>
             {NOTIF_ROWS.map((row) => (
-              <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0 16px', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <label key={row.key} htmlFor={`notif-${row.key}`} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0 16px', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)', cursor: allEmailOn ? 'pointer' : 'not-allowed' }}>
                 <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{row.label}</span>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <input
+                    id={`notif-${row.key}`}
                     type="checkbox"
                     checked={notifMatrix[row.key]}
                     disabled={!allEmailOn}
@@ -419,7 +435,7 @@ export default function Settings() {
                     style={{ accentColor: 'var(--accent)', width: 16, height: 16, cursor: allEmailOn ? 'pointer' : 'not-allowed', opacity: allEmailOn ? 1 : 0.4 }}
                   />
                 </div>
-              </div>
+              </label>
             ))}
           </div>
 
@@ -447,8 +463,8 @@ export default function Settings() {
             )}
           </div>
 
-          {notifMsg && <div style={successBanner}>{notifMsg}</div>}
-          {notifError && <div style={errorBanner}>{notifError}</div>}
+          {notifMsg && <div style={successBanner} role="status">{notifMsg}</div>}
+          {notifError && <div style={errorBanner} role="alert">{notifError}</div>}
           <Button type="button" onClick={handleSaveNotifications} disabled={notifLoading} style={{ marginTop: 16 }}>
             {notifLoading ? 'Saving…' : 'Save Notification Preferences'}
           </Button>
@@ -518,7 +534,7 @@ export default function Settings() {
                 Permanently remove your account and all associated data.
               </div>
             </div>
-            <Button variant="danger" onClick={() => setDeleteOpen(true)} style={{ whiteSpace: 'nowrap' }}>
+            <Button variant="danger" onClick={() => { setDeleteError(null); setDeleteOpen(true); }} style={{ whiteSpace: 'nowrap' }}>
               Delete Account
             </Button>
           </div>
@@ -526,13 +542,14 @@ export default function Settings() {
       </div>
 
       {/* Delete confirmation (replaces window.confirm) */}
-      <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete account?">
+      <Modal isOpen={deleteOpen} onClose={() => { setDeleteOpen(false); setDeleteError(null); }} title="Delete account?">
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 0 }}>
           Are you sure? This cannot be undone.
         </p>
+        {deleteError && <div style={{ ...errorBanner, marginTop: 0, marginBottom: 4 }} role="alert">{deleteError}</div>}
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <Button variant="danger" onClick={() => { setDeleteOpen(false); confirmDelete(); }}>Delete account</Button>
-          <Button variant="ghost" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+          <Button variant="danger" onClick={confirmDelete}>Delete account</Button>
+          <Button variant="ghost" onClick={() => { setDeleteOpen(false); setDeleteError(null); }}>Cancel</Button>
         </div>
       </Modal>
     </LightPage>
