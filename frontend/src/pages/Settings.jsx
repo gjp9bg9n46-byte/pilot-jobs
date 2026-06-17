@@ -276,7 +276,7 @@ export default function Settings() {
 
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
-      <div style={{ maxWidth: 640, margin: '0 auto' }}>
+      <div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>
           Settings
         </h1>
