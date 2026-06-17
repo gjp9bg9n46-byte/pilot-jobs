@@ -5,6 +5,11 @@ import DOMPurify from 'dompurify';
 import { MapPin, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { jobApi, profileApi, airlineApi } from '../services/api';
 import { LightPage, Card, Button } from '../components/primitives';
+import { useBodyBackground } from '../hooks/useBodyBackground';
+
+// Aesthetic pilot: JobDetail uses a cool near-white surface instead of the shared
+// cream --bg. Scoped to this page only (override, not a token change).
+const PAGE_BG = '#F8F9FA';
 import AirlineLogo from '../components/AirlineLogo';
 import MatchScore from '../components/MatchScore';
 import { computeMatchCount, matchLabel, matchStyle, postedAgo, formatSalary } from '../lib/jobMatch';
@@ -137,7 +142,7 @@ function CollapsibleText({ id, children, style }) {
             style={{
               position: 'absolute', left: 0, right: 0, bottom: 0, height: 60,
               // --bg is #F8F6F1; rgba avoids the grey tinge bare "transparent" gives.
-              background: 'linear-gradient(to bottom, rgba(248,246,241,0) 0%, var(--bg) 100%)',
+              background: 'linear-gradient(to bottom, rgba(248,249,250,0) 0%, #F8F9FA 100%)',
               pointerEvents: 'none',
             }}
           />
@@ -167,6 +172,9 @@ export default function JobDetail() {
   const { slugId } = useParams();
   const token = useSelector((s) => s.auth.token);
   const jobId = extractUuid(slugId);
+
+  // Match the body to the cool-gray page surface so overscroll doesn't flash cream.
+  useBodyBackground(PAGE_BG);
 
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -252,7 +260,7 @@ export default function JobDetail() {
 
   if (loading) {
     return (
-      <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+      <LightPage style={{ fontFamily: 'var(--font-body)', background: PAGE_BG }}>
         <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--accent)', fontSize: 15 }}>Loading job…</div>
       </LightPage>
     );
@@ -260,7 +268,7 @@ export default function JobDetail() {
 
   if (notFound || !job) {
     return (
-      <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+      <LightPage style={{ fontFamily: 'var(--font-body)', background: PAGE_BG }}>
         <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-secondary)' }}>
           <div style={{ marginBottom: 16 }}><AlertTriangle size={48} color={SEM.amber} /></div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Job not found</div>
@@ -321,7 +329,7 @@ export default function JobDetail() {
   );
 
   return (
-    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+    <LightPage style={{ fontFamily: 'var(--font-body)', background: PAGE_BG }}>
       <div style={{ marginBottom: 20 }}>
         <Link to="/jobs" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
           <ArrowLeft size={14} /> Back to jobs
@@ -399,7 +407,7 @@ export default function JobDetail() {
             </div>
 
             {hasReqs && (
-              <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0 12px' }}>
+              <div>
                 {matchCount.requirements.map((r) => <ReqRow key={r.label} req={r} />)}
               </div>
             )}

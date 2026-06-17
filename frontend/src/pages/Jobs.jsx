@@ -192,7 +192,7 @@ export function ReqRow({ req }) {
   const isMatch = req.matched;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', borderRadius: 6, background: isMatch ? 'transparent' : '#FEF2F2', flexWrap: 'wrap' }}>
       <div style={{ flexShrink: 0 }}>
         {isMatch
           ? <CheckCircle size={16} color={SEM.green} />
