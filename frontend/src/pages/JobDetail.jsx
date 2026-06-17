@@ -272,14 +272,8 @@ export default function JobDetail() {
   }
 
   const matchCount = pilotProfile && pilotTotals ? computeMatchCount(job, pilotProfile, pilotTotals) : null;
-  const missing = matchCount?.requirements.filter((r) => !r.matched) ?? [];
   const hasReqs = matchCount && matchCount.total > 0;
   const serverMatch = matchLabel(job.matchScore);
-
-  // The public requirements list (label + reqValue only — the matched/pilot bits
-  // are the auth-gated part shown inside the match section). Built from the same
-  // computeMatchCount shape using an empty profile so we get every req row.
-  const publicReqs = computeMatchCount(job, { certificates: [], ratings: [], medicals: [], rightToWork: [] }, {}).requirements;
 
   const roleLabel = job.role
     ? ({ CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor', FLIGHT_ENGINEER: 'Flight Engineer' }[job.role] || job.role)
@@ -403,21 +397,9 @@ export default function JobDetail() {
             </div>
 
             {hasReqs && (
-              <>
-                <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0 12px' }}>
-                  {matchCount.requirements.map((r) => <ReqRow key={r.label} req={r} />)}
-                </div>
-                {missing.length > 0 && (
-                  <div style={{ marginTop: 12, padding: '10px 14px', background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8 }}>
-                    <div style={{ fontSize: 11, color: SEM.red, fontWeight: 700, marginBottom: 6 }}>WHAT YOU&apos;RE MISSING</div>
-                    {missing.map((r) => (
-                      <div key={r.label} style={{ fontSize: 12, color: SEM.red, marginBottom: 3 }}>
-                        • {r.label}: {r.reqValue}{r.pilotValue ? ` (you have: ${r.pilotValue})` : ''}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
+              <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0 12px' }}>
+                {matchCount.requirements.map((r) => <ReqRow key={r.label} req={r} />)}
+              </div>
             )}
           </>
         ) : (
@@ -426,21 +408,6 @@ export default function JobDetail() {
           </p>
         )}
       </Card>
-
-      {/* Public requirements list (label + reqValue) */}
-      {publicReqs.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <div style={css.sectionLabel}>Requirements</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: 10 }}>
-            {publicReqs.map((r) => (
-              <div key={r.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 3 }}>{r.label}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{r.reqValue}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Description */}
       {job.description && (
