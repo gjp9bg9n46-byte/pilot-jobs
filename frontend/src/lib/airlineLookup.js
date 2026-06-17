@@ -19,8 +19,10 @@ export function normalizeCompany(str) {
 
 let _airlineCache = null;
 
-// Map keyed by normalised airline name → { id, name }. First write wins so a
-// canonical name isn't clobbered by a later collision.
+// Map keyed by normalised airline name → { id, name, logoUrl, iataCode }. First
+// write wins so a canonical name isn't clobbered by a later collision. (logoUrl +
+// iataCode are additive — id/name consumers are unaffected — so card listings can
+// render the AirlineLogo from the one cached fetch instead of N per-card calls.)
 export async function fetchAirlineMap() {
   if (_airlineCache) return _airlineCache;
   const map = new Map();
@@ -29,7 +31,7 @@ export async function fetchAirlineMap() {
     const { data } = await airlineApi.list({ limit: 100, page });
     data.items.forEach((a) => {
       const k = normalizeCompany(a.name);
-      if (k && !map.has(k)) map.set(k, { id: a.id, name: a.name });
+      if (k && !map.has(k)) map.set(k, { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null });
     });
     totalPages = data.totalPages;
     page++;
@@ -38,7 +40,7 @@ export async function fetchAirlineMap() {
   return map;
 }
 
-// Resolve a job's company string to an airline { id, name } (or null if unmapped).
+// Resolve a job's company string to an airline { id, name, logoUrl, iataCode } (or null if unmapped).
 export function resolveAirline(map, company) {
   if (!map || !company) return null;
   return map.get(normalizeCompany(company)) ?? null;

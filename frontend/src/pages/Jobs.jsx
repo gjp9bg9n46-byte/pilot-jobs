@@ -9,6 +9,8 @@ import {
 import { jobApi, profileApi } from '../services/api';
 import { setJobs } from '../store';
 import { LightPage, Card, Input, Button, Badge } from '../components/primitives';
+import AirlineLogo from '../components/AirlineLogo';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   computeMatchCount, matchLabel, postedAgo, formatSalary,
 } from '../lib/jobMatch';
@@ -215,6 +217,7 @@ export function ReqRow({ req }) {
 export default function Jobs() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const { list: jobs, total } = useSelector((s) => s.jobs);
   const token = useSelector((s) => s.auth.token); // logged-out: public list, no match/qualified
@@ -521,24 +524,36 @@ export default function Jobs() {
                     <PlaneSave saved={isSaved} size={36} />
                   </button>
 
-                  <div style={css.cardTop}>
-                    <div style={css.title}>{job.title}</div>
-                    {job.role && (
-                      <div style={css.rolePill}>
-                        {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    {/* Brand mark — logo (or initials fallback) at the left of the title area */}
+                    <AirlineLogo
+                      logoUrl={airlineMatch?.logoUrl}
+                      iataCode={airlineMatch?.iataCode}
+                      name={job.company}
+                      box={isMobile ? 36 : 44}
+                      maxW={isMobile ? 52 : 64}
+                      font={12}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={css.cardTop}>
+                        <div style={css.title}>{job.title}</div>
+                        {job.role && (
+                          <div style={css.rolePill}>
+                            {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
+                          </div>
+                        )}
+                        {job.reqAuthorities?.[0] && (
+                          <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
+                        )}
                       </div>
-                    )}
-                    {job.reqAuthorities?.[0] && (
-                      <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
-                    )}
-                  </div>
-
-                  <div>
-                    <div style={css.airline}>{job.company}</div>
-                    {ago && <div style={css.postedAgo}>{ago}</div>}
-                    {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
-                      <div style={css.employerBadge}>Posted directly by employer</div>
-                    )}
+                      <div>
+                        <div style={css.airline}>{job.company}</div>
+                        {ago && <div style={css.postedAgo}>{ago}</div>}
+                        {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
+                          <div style={css.employerBadge}>Posted directly by employer</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div style={css.metaRow}>

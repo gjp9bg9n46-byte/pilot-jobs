@@ -6,7 +6,9 @@ import { setAlerts, markAlertRead, markAllAlertsRead } from '../store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { LightPage, Input, Button, Badge, Modal } from '../components/primitives';
 import { matchStyle } from '../lib/jobMatch';
+import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
 import MatchScore from '../components/MatchScore';
+import AirlineLogo from '../components/AirlineLogo';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
 //   dark #2ECC71 → #166534 (matched), #F39C12 → #92400E (marginal/warn),
@@ -137,6 +139,11 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
     return m;
   });
 
+  // Airline brand-mark lookup (one cached fetch; shared module). Resolves each
+  // alert's company → logo/IATA for the <AirlineLogo> on the card.
+  const [airlineMap, setAirlineMap] = useState(null);
+  useEffect(() => { fetchAirlineMap().then(setAirlineMap).catch(() => {}); }, []);
+
   const handleSaveToggle = async (e, jobId) => {
     e.stopPropagation();
     const isSaved = savedMap[jobId];
@@ -240,6 +247,14 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
               onMouseLeave={() => setHovered(null)}
               onClick={() => handleClick(alert)}
             >
+              <AirlineLogo
+                logoUrl={resolveAirline(airlineMap, alert.job?.company ?? alert.company)?.logoUrl}
+                iataCode={resolveAirline(airlineMap, alert.job?.company ?? alert.company)?.iataCode}
+                name={alert.job?.company ?? alert.company}
+                box={isMobile ? 36 : 44}
+                maxW={isMobile ? 52 : 64}
+                font={12}
+              />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
                   {isUnread && (
