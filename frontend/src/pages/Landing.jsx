@@ -30,7 +30,7 @@ const FOOTER_COLS = [
   ]],
   ['For Employers', [
     { label: 'Post a Job', to: '/employer/register' },
-    { label: 'Employer Login', to: '/login?as=employer' },
+    { label: 'Employer Login', to: '/employer/login' },
   ]],
   ['Company', [
     { label: 'About', href: '#' },

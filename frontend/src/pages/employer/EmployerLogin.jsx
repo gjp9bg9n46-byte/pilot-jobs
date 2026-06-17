@@ -1,38 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useBodyBackground } from '../../hooks/useBodyBackground';
+import { Card, Input } from '../../components/primitives';
+
+// Status → destination after a successful employer login.
+const DEST_FOR = { PENDING: '/employer/pending-approval', APPROVED: '/employer/dashboard', REJECTED: '/employer/rejected', SUSPENDED: '/employer/suspended' };
 
 const css = {
-  page: { minHeight: '100vh', background: '#0A1628', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { background: '#0D1E35', borderRadius: 20, padding: '48px 40px', width: '100%', maxWidth: 440, border: '1px solid #1E3050' },
-  logo: { fontSize: 28, fontWeight: 800, color: '#00B4D8', marginBottom: 6 },
-  subtitle: { color: '#7A8CA0', fontSize: 14, marginBottom: 40 },
-  label: { display: 'block', color: '#C0CDE0', fontSize: 13, fontWeight: 600, marginBottom: 8 },
-  input: { width: '100%', background: '#1B2B4B', border: '1px solid #243050', borderRadius: 10, padding: '13px 14px', color: '#fff', fontSize: 16, outline: 'none', boxSizing: 'border-box' },
-  field: { marginBottom: 20 },
-  btn: { width: '100%', background: 'linear-gradient(135deg, #00B4D8, #0077A8)', border: 'none', borderRadius: 10, padding: '15px', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginTop: 8, transition: 'opacity 0.15s' },
-  error: { background: '#2D1A1A', border: '1px solid #5C2626', borderRadius: 8, padding: '12px 14px', color: '#FF6B6B', fontSize: 13, marginBottom: 20 },
-  footer: { textAlign: 'center', marginTop: 28, color: '#7A8CA0', fontSize: 14 },
-  pilotFooter: { textAlign: 'center', marginTop: 14, color: '#5E6B80', fontSize: 13 },
-  link: { color: '#00B4D8', fontWeight: 600, textDecoration: 'none' },
-};
-
-const DEST_FOR = {
-  PENDING: '/employer/pending-approval',
-  APPROVED: '/employer/dashboard',
-  REJECTED: '/employer/rejected',
-  SUSPENDED: '/employer/suspended',
+  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'var(--font-body)' },
+  // app-b2b collapses --font-display to Inter, so the header renders cool-operator sans.
+  logo: { fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.2px', marginBottom: 6 },
+  subtitle: { color: 'var(--text-secondary)', fontSize: 14, marginBottom: 28 },
+  btn: { width: '100%', background: 'var(--accent)', border: 'none', borderRadius: 4, padding: '14px', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 500, cursor: 'pointer', marginTop: 20 },
+  error: { background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 6, padding: '12px 14px', color: '#991B1B', fontSize: 13, marginBottom: 20 },
+  footer: { textAlign: 'center', marginTop: 28, color: 'var(--text-secondary)', fontSize: 14 },
+  pilotFooter: { textAlign: 'center', marginTop: 14, color: 'var(--text-secondary)', fontSize: 13 },
+  link: { color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' },
 };
 
 export default function EmployerLogin() {
-  const { login } = useEmployerAuth();
+  const { login, isAuthenticated, status, loading: authLoading } = useEmployerAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  useBodyBackground('#F3F4F6');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Already-authenticated employer → forward away from the login form.
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) navigate(DEST_FOR[status] || '/employer/pending-approval', { replace: true });
+  }, [authLoading, isAuthenticated, status, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,29 +45,25 @@ export default function EmployerLogin() {
       const employer = await login(email, password);
       navigate(DEST_FOR[employer.status] || '/employer/pending-approval');
     } catch (err) {
-      // Backend returns a generic 401 for both wrong password and unknown email.
-      setError(err.response?.data?.error || 'Invalid credentials');
+      if (!err.response) setError("Couldn't reach the server — check your connection and try again.");
+      else setError(err.response?.data?.error || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={css.page}>
-      <div style={{ ...css.card, padding: isMobile ? '32px 20px' : '48px 40px' }}>
-        <div style={css.logo}>✈ CockpitHire for Employers</div>
-        <div style={css.subtitle}>Log in to manage your job postings.</div>
+    <div className="app-b2b" style={css.page}>
+      <Card style={{ maxWidth: 400, width: '100%', padding: isMobile ? '32px 20px' : '40px 36px', borderRadius: 12 }}>
+        <div style={css.logo}>Employer sign in</div>
+        <div style={css.subtitle}>For airlines and recruiters posting positions.</div>
 
-        {error && <div style={css.error}>{error}</div>}
+        {error && <div style={css.error} role="alert">{error}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
-          <div style={css.field}>
-            <label style={css.label}>Email address</label>
-            <input style={css.input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" autoFocus />
-          </div>
-          <div style={css.field}>
-            <label style={css.label}>Password</label>
-            <input style={css.input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <Input label="Email address" type="email" autoComplete="username" aria-label="Email address" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" autoFocus />
+            <Input label="Password" type="password" autoComplete="current-password" aria-label="Password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           </div>
           <button style={{ ...css.btn, opacity: loading ? 0.6 : 1 }} disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In →'}
@@ -74,13 +72,13 @@ export default function EmployerLogin() {
 
         <div style={css.footer}>
           Don't have an employer account?{' '}
-          <Link to="/employer/register" style={css.link}>Sign up</Link>
+          <Link to="/employer/register" style={css.link}>Register →</Link>
         </div>
         <div style={css.pilotFooter}>
           Are you a pilot?{' '}
-          <Link to="/login" style={css.link}>Pilot login →</Link>
+          <Link to="/login" style={css.link}>Sign in here →</Link>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

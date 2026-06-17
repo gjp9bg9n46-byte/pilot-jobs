@@ -8,8 +8,10 @@ import { setPilot, logout } from './store';
 import { EmployerAuthProvider } from './context/EmployerAuthContext';
 import RequireEmployerAuth from './components/employer/RequireEmployerAuth';
 import RequireEmployerStatus from './components/employer/RequireEmployerStatus';
-// EmployerLogin/EmployerRegister kept on disk (Phase 2a) but no longer routed —
-// /employer/login and /employer/register now redirect to the unified pages.
+// Dedicated employer auth (cool-operator .app-b2b identity). The /login + /register
+// pilot pages are pilot-only; ?as=employer bookmarks redirect here for back-compat.
+import EmployerLogin from './pages/employer/EmployerLogin';
+import EmployerRegister from './pages/employer/EmployerRegister';
 import EmployerPendingApproval from './pages/employer/EmployerPendingApproval';
 import EmployerStatusNotice from './pages/employer/EmployerStatusNotice';
 import EmployerDashboard from './pages/employer/EmployerDashboard';
@@ -98,9 +100,9 @@ export default function App() {
 
         {/* Employer portal — OUTSIDE the pilot RequireAuth tree, own auth provider */}
         <Route path="/employer" element={<EmployerAuthProvider><Outlet /></EmployerAuthProvider>}>
-          {/* Old auth routes redirect to the unified pages (Employer tab pre-selected) */}
-          <Route path="register" element={<Navigate to="/register?as=employer" replace />} />
-          <Route path="login" element={<Navigate to="/login?as=employer" replace />} />
+          {/* Dedicated employer auth pages (public — not advertised, but functional) */}
+          <Route path="login" element={<EmployerLogin />} />
+          <Route path="register" element={<EmployerRegister />} />
           <Route path="pending-approval" element={<RequireEmployerAuth><EmployerPendingApproval /></RequireEmployerAuth>} />
           <Route path="rejected" element={<RequireEmployerAuth><EmployerStatusNotice kind="rejected" /></RequireEmployerAuth>} />
           <Route path="suspended" element={<RequireEmployerAuth><EmployerStatusNotice kind="suspended" /></RequireEmployerAuth>} />
