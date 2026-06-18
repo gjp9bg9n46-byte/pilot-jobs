@@ -252,7 +252,7 @@ exports.listApplicants = async (req, res, next) => {
 
     const apps = await prisma.application.findMany({
       where: { jobId: job.id },
-      orderBy: [{ matchScore: 'desc' }, { appliedAt: 'asc' }],
+      orderBy: [{ matchScore: { sort: 'desc', nulls: 'last' } }, { appliedAt: 'asc' }],
       include: { pilot: { include: { certificates: true, ratings: true, medicals: true, rightToWork: true } } },
     });
     const applicants = await Promise.all(apps.map(async (a) => toApplicantDTO(a, await getPilotFlightTotals(a.pilotId))));
