@@ -619,3 +619,34 @@ audit-#10 commit. Remaining / confirmed-as-is:
 - **Phase D — Notifications + Resend (backend cluster).** Wire the stubbed triggers
   (employer digest on new applications; pilot lifecycle status email) to Resend.
   Bundle with password reset + email verification.
+
+## Quality sweep — Admin (audit #12, 2026-06-18)
+
+Fix-now batch shipped (employer reactivation [#1/E4], suspend notification stub
+[#3], honest email-delivery copy [#4], contribution approve confirm [#5]).
+Remaining:
+
+- **#2 Rejected contributions vanish silently from the contributor with no reason.**
+  `getMyContributions` returns only PENDING and omits `reviewNote`, so a rejected
+  contribution disappears from the contributor's view and the admin's required
+  rejection note is never shown. (Verified live: rejected contribution absent +
+  note not surfaced.) Fix = surface rejected contributions + `reviewNote` to the
+  contributor (mirror the employer StatusNotice pattern) — ties to **E6**.
+- **#6 Orphaned job-moderation backend.** `GET /admin/jobs/pending`
+  (`listPendingJobs`) returns 200 and `Job.moderationStatus` exists, but no
+  `adminApi` method or UI consumes it — job moderation is half-built. Build the UI
+  (**E2**) or remove the endpoint.
+- **#7 Admin a11y gaps.** Tabs / row expanders / contribution-card headers are
+  `<div onClick>` (mouse-only); the AdminEmployers modal has no ESC handler or focus
+  trap. Admin is a lower a11y bar, but logged.
+- **#9 Frontend admin routes aren't `RequireAdmin`-wrapped.** Non-admins briefly see
+  the admin chrome before the API 404 triggers `navigate('/jobs')`. Not a security
+  hole (data is API-gated); a guard would remove the flash.
+
+Backlog cross-checks (verified N/A to admin): AirlineContribution FK cascade (admin
+has no pilot-delete affordance); Settings schema drift (admin renders no pilot
+preference data). fleetDetail diff renderer (E1 S1) still works.
+
+Admin enhancement proposals (audit #12): E1 stats dashboard, E2 job moderation UI,
+E3 admin action audit log, E4 employer reactivation (✅ shipped this commit),
+E5 cross-entity search, E6 contribution rejection feedback loop.

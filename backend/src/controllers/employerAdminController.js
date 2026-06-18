@@ -1,7 +1,7 @@
 'use strict';
 
 const prisma = require('../config/database');
-const { notifyEmployerApproved, notifyEmployerRejected } = require('../services/employerEmails');
+const { notifyEmployerApproved, notifyEmployerRejected, notifyEmployerSuspended } = require('../services/employerEmails');
 const logger = require('../config/logger');
 
 // Public-safe employer projection (never exposes passwordHash).
@@ -132,6 +132,7 @@ exports.suspendEmployer = async (req, res, next) => {
     });
 
     logger.info({ type: 'employer_suspended', employerId: updated.id, reason });
+    notifyEmployerSuspended(updated, reason);
     res.json(updated);
   } catch (err) {
     next(err);

@@ -144,10 +144,13 @@ export default function AdminEmployers() {
             <button style={css.btn} onClick={() => setExpanded(open ? null : e.id)}>{open ? 'Hide details' : 'View details'}</button>
             <button style={{ ...css.btn, ...css.btnRed }} onClick={() => openModal('suspend', e)}>Suspend</button>
           </>}
-          {e.status === 'REJECTED' && <button style={css.btn} onClick={() => setExpanded(open ? null : e.id)}>{open ? 'Hide details' : 'View details'}</button>}
+          {e.status === 'REJECTED' && <>
+            <button style={css.btn} onClick={() => setExpanded(open ? null : e.id)}>{open ? 'Hide details' : 'View details'}</button>
+            <button style={{ ...css.btn, ...css.btnGreen }} onClick={() => openModal('approve', e)}>Re-approve</button>
+          </>}
           {e.status === 'SUSPENDED' && <>
             <button style={css.btn} onClick={() => setExpanded(open ? null : e.id)}>{open ? 'Hide details' : 'View details'}</button>
-            <button style={{ ...css.btn, opacity: 0.5, cursor: 'not-allowed' }} disabled title="No backend endpoint yet">Unsuspend (soon)</button>
+            <button style={{ ...css.btn, ...css.btnGreen }} onClick={() => openModal('approve', e)}>Unsuspend</button>
           </>}
         </div>
       </div>
@@ -157,7 +160,7 @@ export default function AdminEmployers() {
   return (
     <div style={css.page}>
       <div style={css.h1}>Employer Moderation</div>
-      <div style={css.sub}>Review and manage employer accounts. Emails are sent by the backend on approve/reject.</div>
+      <div style={css.sub}>Review and manage employer accounts. Notifications are logged; email delivery is pending Resend integration.</div>
 
       {toast && <div style={css.toast(toast.ok)}>{toast.msg}</div>}
 

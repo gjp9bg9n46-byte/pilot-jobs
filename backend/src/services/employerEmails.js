@@ -43,4 +43,16 @@ function notifyEmployerRejected(employer, reason) {
   });
 }
 
-module.exports = { notifyAdminNewSignup, notifyEmployerApproved, notifyEmployerRejected };
+function notifyEmployerSuspended(employer, reason) {
+  logger.info({
+    message: `email_stub | Suspended: ${employer.companyName} -> ${employer.contactEmail}`,
+    type: 'email_stub',
+    to: employer.contactEmail,
+    subject: 'Your CockpitHire employer account has been suspended',
+    body: `Hi ${employer.contactName}, your account for ${employer.companyName} has been suspended. Existing job listings remain live, but you cannot post new jobs. Reason: ${reason}. Please reply to this email to discuss.`,
+    employerId: employer.id,
+    reason,
+  });
+}
+
+module.exports = { notifyAdminNewSignup, notifyEmployerApproved, notifyEmployerRejected, notifyEmployerSuspended };

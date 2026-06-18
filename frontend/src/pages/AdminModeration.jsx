@@ -105,6 +105,7 @@ function DiffRow({ field, airline, proposed }) {
 function ContributionCard({ item, onApprove, onReject }) {
   const [expanded,   setExpanded]   = useState(true);
   const [rejecting,  setRejecting]  = useState(false);
+  const [confirmingApprove, setConfirmingApprove] = useState(false);
   const [rejectNote, setRejectNote] = useState('');
   const [busy,       setBusy]       = useState(false);
   const [error,      setError]      = useState(null);
@@ -213,13 +214,27 @@ function ContributionCard({ item, onApprove, onReject }) {
                 </button>
               </div>
             </div>
+          ) : confirmingApprove ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 13, color: '#C8D8E8', lineHeight: 1.5 }}>
+                Apply {fields.length} change{fields.length !== 1 ? 's' : ''} to <strong>{item.airline.name}</strong>? This is applied immediately and can't be undone here.
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button style={btnStyle('#2A3C55', '#7A8CA0')} disabled={busy} onClick={() => { setConfirmingApprove(false); setError(null); }}>
+                  Cancel
+                </button>
+                <button style={btnStyle('#27AE60', '#fff')} disabled={busy} onClick={handleApprove}>
+                  {busy ? 'Approving…' : 'Confirm approve'}
+                </button>
+              </div>
+            </div>
           ) : (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button style={btnStyle('#C0392B', '#fff')} disabled={busy} onClick={() => setRejecting(true)}>
                 Reject
               </button>
-              <button style={btnStyle('#27AE60', '#fff')} disabled={busy} onClick={handleApprove}>
-                {busy ? 'Approving…' : 'Approve'}
+              <button style={btnStyle('#27AE60', '#fff')} disabled={busy} onClick={() => setConfirmingApprove(true)}>
+                Approve
               </button>
             </div>
           )}
