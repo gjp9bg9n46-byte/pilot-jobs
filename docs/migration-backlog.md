@@ -597,10 +597,12 @@ audit-#10 commit. Remaining / confirmed-as-is:
   PII/CV, ownership 403) + `PATCH /employers/applications/:id/status` (ownership
   403, invalid 400); pilot `GET /jobs/applications`; notification triggers stubbed
   to console. Resolves Alerts Item C as positive coupling.
-- **Phase B — Frontend wiring (NEXT SESSION).** `jobApi.apply`; JobDetail/Jobs
-  Apply CTA → record-then-redirect (never block the external open); fill the
-  Alerts `ApplicationsTab` stub (pilot My Applications). Decision locked: logged-out
-  apply redirects immediately + soft "sign in to track" (no hard gate).
+- **Phase B — Frontend wiring — ✅ SHIPPED (this commit).** `jobApi.apply` +
+  `getApplications`; JobDetail Apply CTA records-then-redirects in parallel (external
+  opens immediately; API failure never blocks; logged-out → soft "sign in to track"
+  nudge); "✓ Applied" indicator from `isApplied`; Alerts `ApplicationsTab` now a real
+  My-Applications list (logo + status pill + MatchScore + relative date, row→JobDetail,
+  tab badge = count, loading/empty/error states). ApplicationsTab "coming soon" stub RESOLVED.
 - **Phase C — Employer applicants UI (after B).** Dashboard per-job applicant
   count → applicants list (sorted by match) + applicant detail (snapshot + ReqRow
   breakdown) + lifecycle status controls. `.app-b2b` identity.

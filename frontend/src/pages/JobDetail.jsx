@@ -186,6 +186,8 @@ export default function JobDetail() {
   const [airline, setAirline] = useState(null);
   const [airlineMap, setAirlineMap] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const [applyNote, setApplyNote] = useState(null); // 'signin' (logged-out) | 'warn' (record failed)
 
   // Fetch the job (public — optional auth). 404 / bad slug → not-found state.
   useEffect(() => {
@@ -198,6 +200,7 @@ export default function JobDetail() {
         if (!alive) return;
         setJob(data);
         setSaved(!!data.isSaved);
+        setApplied(!!data.isApplied);
       })
       .catch(() => { if (alive) setNotFound(true); })
       .finally(() => { if (alive) setLoading(false); });
@@ -296,13 +299,24 @@ export default function JobDetail() {
   const ago = postedAgo(job.postedAt);
   const salaryStr = formatSalary(job);
 
+  // Record-then-redirect (E1). The external posting opens IMMEDIATELY (parallel to
+  // the API) so apply never blocks on — or fails because of — recording. Logged-out
+  // skips the API (would 401) and shows a soft "sign in to track" nudge.
+  const handleApply = () => {
+    window.open(job.applyUrl, '_blank', 'noreferrer,noopener');
+    if (!token) { setApplyNote('signin'); return; }
+    jobApi.apply(jobId)
+      .then(() => { setApplied(true); setApplyNote(null); })
+      .catch(() => setApplyNote('warn'));
+  };
+
   const ApplyButton = () => (
     expired ? (
       <Button variant="primary" disabled>Applications closed</Button>
     ) : (
-      <a href={job.applyUrl} target="_blank" rel="noreferrer noopener" style={css.primaryCta}>
+      <button type="button" onClick={handleApply} style={css.primaryCta}>
         View Full Posting &amp; Apply →
-      </a>
+      </button>
     )
   );
 
@@ -320,10 +334,27 @@ export default function JobDetail() {
 
   const CtaCluster = () => (
     <div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <ApplyButton />
         <SaveButton />
+        {applied && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: SEM.green }}>
+            ✓ Applied
+          </span>
+        )}
       </div>
+      {applyNote === 'signin' && (
+        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+          <Link to={`/login?redirect=/jobs/${slugId}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+            Sign in to track this application →
+          </Link>
+        </div>
+      )}
+      {applyNote === 'warn' && (
+        <div style={{ marginTop: 10, fontSize: 13, color: SEM.amber }}>
+          Couldn't record your application (it still opened in a new tab).
+        </div>
+      )}
       <div style={css.disclaimer}>Never share bank or credit card details when applying.</div>
     </div>
   );

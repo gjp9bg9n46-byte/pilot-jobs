@@ -82,6 +82,9 @@ export const jobApi = {
   saveJob: (id) => api.post(`/jobs/${id}/save`),
   unsaveJob: (id) => api.delete(`/jobs/${id}/save`),
   triggerMatch: () => api.post('/jobs/alerts/run-match'),
+  // E1: records the application (+ snapshots match) and returns { applied, applyUrl, matchScore }
+  apply: (id) => api.post(`/jobs/${id}/apply`),
+  getApplications: () => api.get('/jobs/applications'),
 };
 
 export const airlineApi = {

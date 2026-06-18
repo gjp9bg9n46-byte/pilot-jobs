@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { MapPin, Building2, Search, Trash2, Bell, Pencil, Rocket, Play, Pause, AlertTriangle } from 'lucide-react';
 import { jobApi } from '../services/api';
@@ -516,16 +517,90 @@ function SavedSearchesTab() {
 
 // ─── ApplicationsTab ─────────────────────────────────────────────────────────
 
-function ApplicationsTab() {
+const APP_STATUS = {
+  APPLIED:     { label: 'Applied',     variant: 'neutral' },
+  REVIEWED:    { label: 'Reviewed',    variant: 'info' },
+  SHORTLISTED: { label: 'Shortlisted', variant: 'info' },
+  HIRED:       { label: 'Hired',       variant: 'success' },
+};
+
+const appSlugify = (s) => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const appSlugFor = (j) => `${appSlugify(j.company)}-${appSlugify(j.role || j.title)}-${j.id}`;
+
+function appliedAgo(iso) {
+  if (!iso) return '';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return '1 day ago';
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? '1 month ago' : `${months} months ago`;
+}
+
+function ApplicationsTab({ apps, loading, error, onRetry, isMobile }) {
+  const navigate = useNavigate();
+  const [airlineMap, setAirlineMap] = useState(null);
+  useEffect(() => { fetchAirlineMap().then(setAirlineMap).catch(() => {}); }, []);
+
+  if (loading) return <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: 60 }}>Loading your applications…</div>;
+  if (error) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-secondary)' }}>
+        <div style={{ marginBottom: 16 }}><AlertTriangle size={48} color={SEM.amber} /></div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Could not load applications</div>
+        <div style={{ fontSize: 14, lineHeight: 1.6 }}>{error}</div>
+        <div style={{ marginTop: 20 }}><Button onClick={onRetry}>Retry</Button></div>
+      </div>
+    );
+  }
+  if (!apps || apps.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 0' }}>
+        <div style={{ marginBottom: 16 }}><Rocket size={56} color="var(--text-secondary)" /></div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 10 }}>
+          You haven't applied to any jobs yet.
+        </div>
+        <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.8, maxWidth: 360, margin: '0 auto 18px' }}>
+          When you apply from a job page, it shows up here so you can track its status.
+        </div>
+        <a href="/jobs" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>Browse jobs →</a>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ textAlign: 'center', padding: '80px 0' }}>
-      <div style={{ marginBottom: 16 }}><Rocket size={56} color="var(--text-secondary)" /></div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 10 }}>
-        Applications tracking coming soon.
-      </div>
-      <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.8, maxWidth: 360, margin: '0 auto' }}>
-        Track every job you've applied to, follow up on status changes, and keep a full history in one place.
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {apps.map((a) => {
+        const air = resolveAirline(airlineMap, a.job?.company);
+        const st = APP_STATUS[a.status] || APP_STATUS.APPLIED;
+        return (
+          <div
+            key={a.id}
+            onClick={() => a.job && navigate(`/jobs/${appSlugFor(a.job)}`)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16,
+              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
+              padding: isMobile ? '14px' : '18px 22px', cursor: 'pointer',
+            }}
+          >
+            <AirlineLogo logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={a.job?.company} box={isMobile ? 36 : 44} maxW={isMobile ? 52 : 64} font={12} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{a.job?.title ?? '—'}</div>
+              <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{a.job?.company ?? '—'}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                {a.job?.location && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={11} /> {a.job.location}</span>}
+                <span>Applied {appliedAgo(a.appliedAt)}</span>
+                <Badge variant={st.variant}>{st.label}</Badge>
+              </div>
+            </div>
+            <div style={{ minWidth: isMobile ? 56 : 72, textAlign: 'right', flexShrink: 0 }}>
+              {a.matchScore != null
+                ? <MatchScore score={a.matchScore} size="sm" />
+                : <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>—</span>}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -542,6 +617,21 @@ export default function Alerts() {
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('newest');
   const matchTriggered = useRef(false);
+
+  // Applications (E1) — fetched once on mount so the tab badge is accurate even
+  // before the Applications tab is opened.
+  const [apps, setApps] = useState(null);
+  const [appsLoading, setAppsLoading] = useState(true);
+  const [appsError, setAppsError] = useState(null);
+  const loadApplications = useCallback(() => {
+    setAppsLoading(true);
+    setAppsError(null);
+    jobApi.getApplications()
+      .then(({ data }) => setApps(data))
+      .catch((err) => setAppsError(err?.response?.data?.error || err?.message || 'Failed to load applications'))
+      .finally(() => setAppsLoading(false));
+  }, []);
+  useEffect(() => { loadApplications(); }, [loadApplications]);
 
   const unreadCount = alerts.filter((a) => !a.readAt).length;
 
@@ -569,7 +659,7 @@ export default function Alerts() {
   const tabs = [
     { key: 'matches',       label: 'Matches',       badge: unreadCount },
     { key: 'savedSearches', label: 'Saved Searches', badge: 0 },
-    { key: 'applications',  label: 'Applications',   badge: 0 },
+    { key: 'applications',  label: 'Applications',   badge: apps?.length ?? 0 },
   ];
 
   const tabBtn = (t) => {
@@ -633,7 +723,7 @@ export default function Alerts() {
             : <MatchesTab alerts={alerts} dispatch={dispatch} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} onRefresh={() => loadAlerts(filter, sort)} isMobile={isMobile} />
       )}
       {tab === 'savedSearches' && <SavedSearchesTab />}
-      {tab === 'applications'  && <ApplicationsTab />}
+      {tab === 'applications'  && <ApplicationsTab apps={apps} loading={appsLoading} error={appsError} onRetry={loadApplications} isMobile={isMobile} />}
     </LightPage>
   );
 }
