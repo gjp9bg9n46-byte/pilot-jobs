@@ -32,6 +32,9 @@ export const employerApi = {
   updateJob: (id, payload) => client.put(`/employers/jobs/${id}`, payload),
   deleteJob: (id) => client.delete(`/employers/jobs/${id}`),
   repostJob: (id) => client.post(`/employers/jobs/${id}/repost`),
+  // Applicants (E1 Phase C)
+  getApplicants: (jobId) => client.get(`/employers/jobs/${jobId}/applicants`),
+  updateApplicationStatus: (appId, status) => client.patch(`/employers/applications/${appId}/status`, { status }),
 };
 
 export default client;

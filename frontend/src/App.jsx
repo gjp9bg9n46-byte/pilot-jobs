@@ -17,6 +17,7 @@ import EmployerStatusNotice from './pages/employer/EmployerStatusNotice';
 import EmployerDashboard from './pages/employer/EmployerDashboard';
 import EmployerProfile from './pages/employer/EmployerProfile';
 import EmployerJobForm from './pages/employer/EmployerJobForm';
+import EmployerApplicants from './pages/employer/EmployerApplicants';
 
 import Layout from './components/Layout';
 import PublicLayout from './components/PublicLayout';
@@ -110,6 +111,7 @@ export default function App() {
           <Route path="profile" element={<RequireEmployerAuth><EmployerProfile /></RequireEmployerAuth>} />
           <Route path="jobs/new" element={<RequireEmployerStatus status="APPROVED"><EmployerJobForm /></RequireEmployerStatus>} />
           <Route path="jobs/:id/edit" element={<RequireEmployerStatus status="APPROVED"><EmployerJobForm /></RequireEmployerStatus>} />
+          <Route path="jobs/:id/applicants" element={<RequireEmployerStatus status="APPROVED"><EmployerApplicants /></RequireEmployerStatus>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/jobs" replace />} />

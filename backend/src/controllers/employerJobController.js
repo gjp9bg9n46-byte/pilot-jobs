@@ -152,8 +152,9 @@ exports.listMyJobs = async (req, res, next) => {
       where: { postedByEmployerId: req.employer.id }, // ALL statuses
       orderBy: { postedAt: 'desc' },
       take: 100,
+      include: { _count: { select: { applications: true } } }, // E1: applicant count per job
     });
-    res.json(jobs);
+    res.json(jobs.map(({ _count, ...j }) => ({ ...j, applicantsCount: _count.applications })));
   } catch (err) {
     next(err);
   }
@@ -255,7 +256,7 @@ exports.listApplicants = async (req, res, next) => {
       include: { pilot: { include: { certificates: true, ratings: true, medicals: true, rightToWork: true } } },
     });
     const applicants = await Promise.all(apps.map(async (a) => toApplicantDTO(a, await getPilotFlightTotals(a.pilotId))));
-    res.json({ job: { id: job.id, title: job.title, status: job.status }, applicants });
+    res.json({ job: { id: job.id, title: job.title, status: job.status, applyUrl: job.applyUrl }, applicants });
   } catch (err) {
     next(err);
   }

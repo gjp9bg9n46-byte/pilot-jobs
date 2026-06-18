@@ -40,6 +40,8 @@ const css = {
   jcTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' },
   jcMeta: { color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, display: 'flex', gap: 14, flexWrap: 'wrap' },
   actions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  applicantsLink: { display: 'inline-block', marginTop: 10, color: 'var(--accent)', fontSize: 14, fontWeight: 600, textDecoration: 'none' },
+  applicantsNone: { display: 'inline-block', marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 },
   act: { border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 6, padding: '7px 13px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', fontFamily: 'var(--font-body)' },
   empty: { background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 8, padding: '36px 20px', textAlign: 'center', color: 'var(--text-secondary)' },
 };
@@ -88,6 +90,11 @@ export default function EmployerDashboard() {
         </div>
         <Badge variant={JOB_STATUS_VARIANT[j.status] || 'neutral'}>{j.status}</Badge>
       </div>
+      {j.status === 'ACTIVE' && (
+        j.applicantsCount > 0
+          ? <Link to={`/employer/jobs/${j.id}/applicants`} style={css.applicantsLink}>{j.applicantsCount} applicant{j.applicantsCount === 1 ? '' : 's'} →</Link>
+          : <span style={css.applicantsNone}>No applicants yet</span>
+      )}
       {approved && (
         <div style={css.actions}>
           <Link to={`/employer/jobs/${j.id}/edit`} style={css.act}>Edit</Link>

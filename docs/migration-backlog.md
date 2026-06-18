@@ -603,9 +603,19 @@ audit-#10 commit. Remaining / confirmed-as-is:
   nudge); "✓ Applied" indicator from `isApplied`; Alerts `ApplicationsTab` now a real
   My-Applications list (logo + status pill + MatchScore + relative date, row→JobDetail,
   tab badge = count, loading/empty/error states). ApplicationsTab "coming soon" stub RESOLVED.
-- **Phase C — Employer applicants UI (after B).** Dashboard per-job applicant
-  count → applicants list (sorted by match) + applicant detail (snapshot + ReqRow
-  breakdown) + lifecycle status controls. `.app-b2b` identity.
+- **Phase C — Employer applicants UI — ✅ SHIPPED (this commit).** Dashboard
+  per-ACTIVE-job applicant count (via `_count` on the existing employer jobs list —
+  no new endpoint); `/employer/jobs/:id/applicants` page (card list ranked by match
+  desc, nulls last; filter pills with per-status counts); slide-in drawer detail
+  (large MatchScore + match-breakdown buckets + full snapshot + status dropdown with
+  optimistic update/revert + "Open in external ATS"); ESC/scrim/X close. `.app-b2b`.
+  Note: the drawer breakdown uses the bucket treatment (matched/marginal/missing),
+  NOT `ReqRow` — the snapshot `matchBreakdown` is bucket-shaped arrays, not ReqRow's
+  per-requirement objects. Bulk actions deferred (single-applicant only for v1).
+- **Phase A follow-up:** add `appliedAt` to `getJob`'s `isApplied` response so the
+  JobDetail "✓ Applied" indicator can show the date (small backend addition).
+- **Phase B follow-up:** wire `Login.jsx` `?redirect=` consumption (the
+  apply-gateway sign-in nudge already passes it; Login ignores it today).
 - **Phase D — Notifications + Resend (backend cluster).** Wire the stubbed triggers
   (employer digest on new applications; pilot lifecycle status email) to Resend.
   Bundle with password reset + email verification.
