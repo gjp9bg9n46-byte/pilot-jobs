@@ -208,6 +208,18 @@ export default function Layout() {
             {/* Admin-only moderation links */}
             {pilot?.isAdmin && (
               <NavLink
+                to="/admin"
+                end
+                onClick={closeDrawer}
+                className="nav-link"
+                style={({ isActive }) => drawerLinkStyle(isActive)}
+              >
+                <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
+                <span>Admin Dashboard</span>
+              </NavLink>
+            )}
+            {pilot?.isAdmin && (
+              <NavLink
                 to="/admin/moderation"
                 onClick={closeDrawer}
                 className="nav-link"
@@ -349,7 +361,13 @@ export default function Layout() {
           ))}
 
           {pilot?.isAdmin && (
-            <NavLink to="/admin/moderation" className="nav-link" style={({ isActive }) => ({ ...navLinkStyle(isActive), marginTop: 4 })}>
+            <NavLink to="/admin" end className="nav-link" style={({ isActive }) => ({ ...navLinkStyle(isActive), marginTop: 4 })}>
+              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
+              Admin Dashboard
+            </NavLink>
+          )}
+          {pilot?.isAdmin && (
+            <NavLink to="/admin/moderation" className="nav-link" style={({ isActive }) => navLinkStyle(isActive)}>
               <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
               Airline Moderation
             </NavLink>

@@ -9,6 +9,7 @@ const ec           = require('../controllers/employerAdminController');
 router.use(authMiddleware);
 router.use(requireAdmin);
 
+router.get('/stats',                    c.getStats);
 router.get('/contributions',            c.getContributions);
 router.post('/contributions/:id/approve', c.approve);
 router.post('/contributions/:id/reject',  c.reject);

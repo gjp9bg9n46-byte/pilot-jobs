@@ -103,6 +103,7 @@ export const cvApi = {
 };
 
 export const adminApi = {
+  getStats: () => api.get('/admin/stats'),
   getContributions: (params) => api.get('/admin/contributions', { params }),
   approve: (id) => api.post(`/admin/contributions/${id}/approve`),
   reject: (id, note) => api.post(`/admin/contributions/${id}/reject`, { note }),

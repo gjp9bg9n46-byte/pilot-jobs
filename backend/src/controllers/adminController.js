@@ -2,6 +2,34 @@
 
 const prisma = require('../config/database');
 
+// Admin dashboard metrics — one aggregation call, all cheap _count queries.
+exports.getStats = async (req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 30 * 86400000); // rolling 30 days
+    const [
+      pendingContributions, pendingEmployers,
+      activePilots, activeEmployers, activeAirlines,
+      jobsPosted, applicationsSubmitted, newContributions,
+    ] = await Promise.all([
+      prisma.airlineFactContribution.count({ where: { status: 'PENDING' } }),
+      prisma.employer.count({ where: { status: 'PENDING' } }),
+      prisma.pilot.count(),
+      prisma.employer.count({ where: { status: 'APPROVED' } }),
+      prisma.airline.count(),
+      prisma.job.count({ where: { createdAt: { gte: since } } }),
+      prisma.application.count({ where: { appliedAt: { gte: since } } }),
+      prisma.airlineFactContribution.count({ where: { createdAt: { gte: since } } }),
+    ]);
+    res.json({
+      actionQueues: { pendingContributions, pendingEmployers },
+      platform:     { activePilots, activeEmployers, activeAirlines },
+      recent30d:    { jobsPosted, applicationsSubmitted, newContributions },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // All factfile fields that can be merged from proposedChanges into Airline
 const MERGEABLE_FIELDS = new Set([
   'headquarters', 'description', 'bases', 'fleet', 'fleetDetail', 'hiringStatus', 'hiringFrequency',

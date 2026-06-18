@@ -650,3 +650,20 @@ preference data). fleetDetail diff renderer (E1 S1) still works.
 Admin enhancement proposals (audit #12): E1 stats dashboard, E2 job moderation UI,
 E3 admin action audit log, E4 employer reactivation (✅ shipped this commit),
 E5 cross-entity search, E6 contribution rejection feedback loop.
+
+## Admin enhancement E1 — Stats dashboard (shipped 2026-06-18)
+
+- **E1 Admin stats dashboard → ✅ SHIPPED.** New `/admin` landing (AdminDashboard.jsx)
+  + `GET /admin/stats` (adminController.getStats, all `_count`). 8 tiles: Action
+  Required (pending contributions/employers — clickable → moderation/employers),
+  Platform (pilots/approved employers/airlines), Last 30 days (jobs posted/
+  applications/new contributions, rolling window). Layout admin nav now leads with
+  "Admin Dashboard" → /admin. Dark admin identity.
+- **E2 Job moderation → DEFERRED** (per user). The backend `moderationStatus` is
+  inert (descriptive metadata; visibility = `status`; nothing ever sets PENDING;
+  `listPendingJobs` always []). Activating it needs a product decision (pre-publish
+  vs reactive takedown) + a protected `jobController` visibility-gate change — not
+  surgical. Build when a real abuse case appears.
+- **E3 audit log / E5 cross-entity search** — remain in the admin enhancement backlog.
+- **Admin audit (#12)** — fully closed: fix-now batch + E4 (reactivation) + E6
+  (contribution feedback) + E1 (dashboard) all shipped; E2 deferred; E3/E5 logged.

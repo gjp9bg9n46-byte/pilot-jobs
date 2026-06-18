@@ -30,6 +30,7 @@ import JobDetail from './pages/JobDetail';
 import Airlines from './pages/Airlines';
 import AirlineDetail from './pages/AirlineDetail';
 import AirlineContribute from './pages/AirlineContribute';
+import AdminDashboard from './pages/AdminDashboard';
 import AdminModeration from './pages/AdminModeration';
 import AdminEmployers from './pages/AdminEmployers';
 import Alerts from './pages/Alerts';
@@ -90,6 +91,7 @@ export default function App() {
         {/* Authenticated pilot app (pathless layout — URLs unchanged) */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
           <Route path="airlines/:id/contribute" element={<AirlineContribute />} />
+          <Route path="admin" element={<AdminDashboard />} />
           <Route path="admin/moderation" element={<AdminModeration />} />
           <Route path="admin/employers" element={<AdminEmployers />} />
           <Route path="alerts" element={<Alerts />} />
