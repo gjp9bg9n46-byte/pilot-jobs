@@ -626,12 +626,12 @@ Fix-now batch shipped (employer reactivation [#1/E4], suspend notification stub
 [#3], honest email-delivery copy [#4], contribution approve confirm [#5]).
 Remaining:
 
-- **#2 Rejected contributions vanish silently from the contributor with no reason.**
-  `getMyContributions` returns only PENDING and omits `reviewNote`, so a rejected
-  contribution disappears from the contributor's view and the admin's required
-  rejection note is never shown. (Verified live: rejected contribution absent +
-  note not surfaced.) Fix = surface rejected contributions + `reviewNote` to the
-  contributor (mirror the employer StatusNotice pattern) — ties to **E6**.
+- **#2 Rejected contributions vanish silently — ✅ RESOLVED (E6, commit below).**
+  `getMyContributions` now returns all statuses (PENDING/APPROVED/REJECTED, take 50)
+  + `reviewNote`/`reviewedAt`; AirlineContribute renders a "Your contributions"
+  section with status Badges and the reviewer feedback panel. Follow-up (low
+  priority): a dedicated global `/contributions` page reachable from Profile/Settings
+  (today it's per-airline only).
 - **#6 Orphaned job-moderation backend.** `GET /admin/jobs/pending`
   (`listPendingJobs`) returns 200 and `Job.moderationStatus` exists, but no
   `adminApi` method or UI consumes it — job moderation is half-built. Build the UI

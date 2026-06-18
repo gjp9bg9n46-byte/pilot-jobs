@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { airlineApi } from '../services/api';
-import { LightPage, Input, Button } from '../components/primitives';
+import { LightPage, Input, Button, Badge } from '../components/primitives';
 import AircraftCombobox from '../components/AircraftCombobox';
 
 // Seed the structured fleet editor: prefer fleetDetail; otherwise lift the flat
@@ -191,6 +191,26 @@ function validateDiff(changes) {
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
+// Readable labels for the proposedChanges summary ("Updated: Fleet, Headquarters").
+const CONTRIB_FIELD_LABELS = {
+  headquarters: 'Headquarters', description: 'Description', bases: 'Bases', fleet: 'Fleet',
+  fleetDetail: 'Fleet', hiringStatus: 'Hiring Status', hiringFrequency: 'Hiring Frequency',
+  payRanges: 'Pay Ranges', rosterPattern: 'Roster Pattern', contractType: 'Contract Type',
+  workAuthRequired: 'Work Auth', avgResponseDays: 'Avg Response Days', interviewStages: 'Interview Stages',
+  simType: 'Sim Type', upgradeTimeMinYears: 'Upgrade Min Years', upgradeTimeMaxYears: 'Upgrade Max Years',
+  notes: 'Notes', region: 'Region',
+};
+const contribSummary = (proposed) => {
+  const labels = [...new Set(Object.keys(proposed || {}).map((k) => CONTRIB_FIELD_LABELS[k] || k))];
+  return labels.length ? labels.join(', ') : '—';
+};
+const CONTRIB_STATUS = {
+  PENDING:  { variant: 'warning', msg: 'Under review — usually replied within a few days.' },
+  APPROVED: { variant: 'success', msg: null }, // "Applied on <date>" rendered inline
+  REJECTED: { variant: 'error',   msg: null }, // reviewer feedback panel rendered below
+};
+const fmtContribDate = (d) => d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+
 const S = {
   page: { maxWidth: 740, margin: '0 auto', paddingBottom: 80 },
   back: {
@@ -265,7 +285,7 @@ export default function AirlineContribute() {
 
   const [airline, setAirline]   = useState(null);
   const [form, setForm]         = useState({});
-  const [pending, setPending]   = useState([]);
+  const [myContribs, setMyContribs] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -286,7 +306,7 @@ export default function AirlineContribute() {
       .then(([{ data: a }, { data: mine }]) => {
         setAirline(a);
         setForm(initForm(a));
-        setPending(mine);
+        setMyContribs(mine);
       })
       .catch(() => navigate('/airlines', { replace: true }))
       .finally(() => setLoading(false));
@@ -411,12 +431,39 @@ export default function AirlineContribute() {
           Only fields you change will be submitted. All contributions are reviewed before going live.
         </div>
 
-        {pending.length > 0 && (
-          <div style={S.banner}>
-            <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="9" r="7.5"/><line x1="9" y1="6" x2="9" y2="9.5"/><circle cx="9" cy="12.5" r="0.75" fill="currentColor" stroke="none"/>
-            </svg>
-            You have a pending edit for this airline awaiting review. You can still submit additional edits.
+        {myContribs.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={S.sectionTitle}>Your contributions</div>
+            {myContribs.map((c) => {
+              const st = CONTRIB_STATUS[c.status] || CONTRIB_STATUS.PENDING;
+              return (
+                <div key={c.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>
+                      Updated: {contribSummary(c.proposedChanges)}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{fmtContribDate(c.createdAt)}</span>
+                      <Badge variant={st.variant}>{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</Badge>
+                    </div>
+                  </div>
+                  {c.status === 'PENDING' && (
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>{st.msg}</div>
+                  )}
+                  {c.status === 'APPROVED' && (
+                    <div style={{ fontSize: 12, color: '#166534', marginTop: 6, fontWeight: 600 }}>
+                      ✓ Applied{c.reviewedAt ? ` on ${fmtContribDate(c.reviewedAt)}` : ''}. Thanks for helping the community.
+                    </div>
+                  )}
+                  {c.status === 'REJECTED' && c.reviewNote && (
+                    <div style={{ marginTop: 8, background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#991B1B', marginBottom: 3, letterSpacing: '0.04em' }}>REVIEWER FEEDBACK</div>
+                      <div style={{ fontSize: 13, color: '#991B1B', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{c.reviewNote}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

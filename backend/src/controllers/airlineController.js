@@ -238,11 +238,15 @@ exports.getMyContributions = async (req, res, next) => {
       where: {
         airlineId:     req.params.id,
         contributorId: req.pilot.id,
-        status:        'PENDING',
+        // All statuses (E6): the contributor sees PENDING/APPROVED/REJECTED so
+        // reviewer feedback (reviewNote) actually reaches them.
       },
       orderBy: { createdAt: 'desc' },
+      take: 50,
       select: {
+        // reviewerId intentionally omitted — admin opacity.
         id: true, proposedChanges: true, status: true, createdAt: true,
+        reviewNote: true, reviewedAt: true,
       },
     });
 
