@@ -76,6 +76,15 @@ const normaliseAuth = (a) =>
  * Only cert type and authority are hard requirements.
  * Hours and ratings are proportional soft scores.
  */
+// Shared normalization: points earned over the dynamic max for THIS job, as a
+// 0–100 integer. Used by both computeMatchScore (strict) and computeAlertScore
+// (lenient) so neither can exceed 100 — resolves the Alerts >100% bug (Item C)
+// at the source rather than via a frontend clamp.
+function normalizeScore(score, maxScore) {
+  if (!maxScore) return 0;
+  return Math.min(Math.round((score / maxScore) * 100), 100);
+}
+
 function computeAlertScore(pilot, pilotTotals, job) {
   // Hard role filter: if both sides specify a role and they disagree, skip this job entirely.
   if (pilot.role && job.role && pilot.role !== job.role) return null;
@@ -89,6 +98,9 @@ function computeAlertScore(pilot, pilotTotals, job) {
   const ratingAircraft = pilot.ratings.map((r) => r.aircraftType.toLowerCase());
 
   let score = 0;
+  // Base criteria total 100 (cert 40 + authority 20 + total 20 + PIC 10 + aircraft 10);
+  // each optional criterion below adds its weight to maxScore only when the job carries it.
+  let maxScore = 100;
 
   // Hard: cert type
   if (job.reqCertificates.length > 0) {
@@ -131,21 +143,25 @@ function computeAlertScore(pilot, pilotTotals, job) {
 
   // Instrument hours (proportional 0–5)
   if (job.reqMinInstrumentHours > 0) {
+    maxScore += 5;
     score += Math.min(5, Math.round((pilotTotals.instrumentTime / job.reqMinInstrumentHours) * 5));
   }
 
   // Cross-country hours (proportional 0–5)
   if (job.reqMinCrossCountryHours > 0) {
+    maxScore += 5;
     score += Math.min(5, Math.round((pilotTotals.crossCountryTime / job.reqMinCrossCountryHours) * 5));
   }
 
   // Work authorisation (0 or 10)
   if (job.reqWorkAuthorization) {
+    maxScore += 10;
     score += rtwSatisfies(pilot.rightToWork, job.reqWorkAuthorization) ? 10 : 0;
   }
 
   // English level (0 or 5)
   if (job.reqEnglishLevel) {
+    maxScore += 5;
     const elpCert = pilot.certificates.find((c) => c.type === 'ELP');
     const pilotLevel = parseElpLevel(elpCert?.englishLevel);
     score += (pilotLevel != null && pilotLevel >= job.reqEnglishLevel) ? 5 : 0;
@@ -153,6 +169,7 @@ function computeAlertScore(pilot, pilotTotals, job) {
 
   // Education (0 or 5)
   if (job.reqEducation) {
+    maxScore += 5;
     const pilotRank = EDU_RANK[pilot.education] ?? 0;
     const reqRank   = EDU_RANK[job.reqEducation] ?? 0;
     score += pilotRank >= reqRank ? 5 : 0;
@@ -160,15 +177,18 @@ function computeAlertScore(pilot, pilotTotals, job) {
 
   // Willing to relocate (0 or 5)
   if (job.reqWillingToRelocate) {
+    maxScore += 5;
     score += pilot.willingToRelocate ? 5 : 0;
   }
 
   // Role match (0 or 5)
   if (job.role) {
+    maxScore += 5;
     score += (pilot.role && pilot.role === job.role) ? 5 : 0;
   }
 
-  return Math.round(score);
+  // Normalized 0–100 (was a raw additive total that could exceed 100 — Item C fix).
+  return normalizeScore(score, maxScore);
 }
 
 // ─── Match score (strict, 0–100, null = disqualified) ────────────────────────
@@ -302,7 +322,7 @@ function computeMatchScore(pilot, pilotTotals, job) {
     score += (pilot.role && pilot.role === job.role) ? 5 : 0;
   }
 
-  return Math.min(Math.round((score / maxScore) * 100), 100);
+  return normalizeScore(score, maxScore);
 }
 
 // ─── Flight totals (with carry-forward) ──────────────────────────────────────
@@ -617,6 +637,7 @@ module.exports = {
   runMatchForPilot,
   computeMatchScore,
   computeAlertScore,
+  normalizeScore,
   getPilotFlightTotals,
   computeMatchBreakdown,
   medicalSatisfies,

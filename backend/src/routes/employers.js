@@ -35,4 +35,8 @@ router.put('/jobs/:id', requireEmployerAuth, requireApprovedEmployer, jc.updateJ
 router.delete('/jobs/:id', requireEmployerAuth, jc.deleteJob);
 router.post('/jobs/:id/repost', requireEmployerAuth, requireApprovedEmployer, jc.repostJob);
 
+// Applicants (E1) — APPROVED employers only; ownership enforced in the controller.
+router.get('/jobs/:id/applicants', requireEmployerAuth, requireApprovedEmployer, jc.listApplicants);
+router.patch('/applications/:id/status', requireEmployerAuth, requireApprovedEmployer, jc.updateApplicationStatus);
+
 module.exports = router;

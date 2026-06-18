@@ -1,6 +1,10 @@
 'use strict';
 
 const prisma = require('../config/database');
+const { getPilotFlightTotals } = require('../services/matchingService');
+
+const APPLICATION_STATUSES = ['APPLIED', 'REVIEWED', 'SHORTLISTED', 'HIRED'];
+const MEDICAL_RANK = { CLASS_1: 3, CLASS_2: 2, CLASS_3: 1 };
 
 // Decoupled from PilotRole — Job.role is a String? supporting CAPTAIN/FIRST_OFFICER/INSTRUCTOR. See investigation 2026-06-03.
 const VALID_ROLES = ['CAPTAIN', 'FIRST_OFFICER', 'INSTRUCTOR'];
@@ -202,6 +206,80 @@ exports.repostJob = async (req, res, next) => {
       data: { status: 'ACTIVE', postedAt: new Date() },
     });
     res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Applicants (E1) ─────────────────────────────────────────────────────────
+// Whitelisted applicant DTO — first name + last initial, qualifications, and the
+// snapshotted match/breakdown. NEVER email/phone/full surname/CV (privacy enforced
+// here at the API layer, not just in the frontend).
+function toApplicantDTO(app, totals) {
+  const p = app.pilot;
+  const elp = p.certificates.find((c) => c.type === 'ELP');
+  const bestMedical = p.medicals.reduce(
+    (best, m) => ((MEDICAL_RANK[m.medicalClass] ?? 0) > (MEDICAL_RANK[best] ?? 0) ? m.medicalClass : best),
+    null,
+  );
+  return {
+    applicationId: app.id,
+    pilotName: `${p.firstName}${p.lastName ? ` ${p.lastName[0]}.` : ''}`,
+    appliedAt: app.appliedAt,
+    status: app.status,
+    statusUpdatedAt: app.statusUpdatedAt,
+    matchScore: app.matchScore,
+    matchBreakdown: app.matchBreakdown,
+    snapshot: {
+      role: p.role,
+      totalHours: Math.round(totals.totalTime),
+      picHours: Math.round(totals.picTime),
+      ratings: [...new Set(p.ratings.map((r) => r.aircraftType.toUpperCase()))],
+      licences: [...new Set(p.certificates.filter((c) => c.type !== 'ELP').map((c) => c.type))],
+      medicalClass: bestMedical,
+      elpLevel: elp?.englishLevel || null,
+      rightToWork: p.rightToWork.map((r) => r.country),
+    },
+  };
+}
+
+exports.listApplicants = async (req, res, next) => {
+  try {
+    const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.postedByEmployerId !== req.employer.id) return res.status(403).json({ error: 'This job is not yours.' });
+
+    const apps = await prisma.application.findMany({
+      where: { jobId: job.id },
+      orderBy: [{ matchScore: 'desc' }, { appliedAt: 'asc' }],
+      include: { pilot: { include: { certificates: true, ratings: true, medicals: true, rightToWork: true } } },
+    });
+    const applicants = await Promise.all(apps.map(async (a) => toApplicantDTO(a, await getPilotFlightTotals(a.pilotId))));
+    res.json({ job: { id: job.id, title: job.title, status: job.status }, applicants });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateApplicationStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!APPLICATION_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${APPLICATION_STATUSES.join(', ')}` });
+    }
+    const app = await prisma.application.findUnique({ where: { id: req.params.id }, include: { job: true } });
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+    if (app.job.postedByEmployerId !== req.employer.id) return res.status(403).json({ error: 'This application is not yours.' });
+
+    const updated = await prisma.application.update({
+      where: { id: app.id },
+      data: { status, statusUpdatedAt: new Date() },
+    });
+
+    // Phase D notification trigger (stub — Resend wiring is the backend cluster).
+    console.log(`[notify] Pilot status email trigger — application=${app.id} pilot=${app.pilotId} status=${status}`);
+
+    res.json({ id: updated.id, status: updated.status, statusUpdatedAt: updated.statusUpdatedAt });
   } catch (err) {
     next(err);
   }

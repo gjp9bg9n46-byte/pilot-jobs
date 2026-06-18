@@ -1,6 +1,6 @@
 const prisma = require('../config/database');
 const {
-  getPilotFlightTotals, runMatchForPilot, computeAlertScore, computeMatchBreakdown,
+  getPilotFlightTotals, runMatchForPilot, computeAlertScore, computeMatchScore, computeMatchBreakdown,
   getQualifiedMedicalClasses,
 } = require('../services/matchingService');
 const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
@@ -433,12 +433,63 @@ exports.unsaveJob = async (req, res, next) => {
 
 exports.applyToJob = async (req, res, next) => {
   try {
-    await prisma.application.upsert({
-      where: { pilotId_jobId: { pilotId: req.pilot.id, jobId: req.params.id } },
-      create: { pilotId: req.pilot.id, jobId: req.params.id },
-      update: {},
+    const jobId = req.params.id;
+    const pilotId = req.pilot.id;
+
+    // Idempotent: a re-click returns success without re-snapshotting (the match is
+    // captured AS OF the first apply and must not drift on later clicks).
+    const existing = await prisma.application.findUnique({
+      where: { pilotId_jobId: { pilotId, jobId } },
+      include: { job: { select: { applyUrl: true } } },
     });
-    res.json({ applied: true });
+    if (existing) return res.json({ applied: true, applyUrl: existing.job.applyUrl });
+
+    const [pilot, totals, job] = await Promise.all([
+      prisma.pilot.findUnique({
+        where: { id: pilotId },
+        include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
+      }),
+      getPilotFlightTotals(pilotId),
+      prisma.job.findUnique({ where: { id: jobId } }),
+    ]);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    // Strict 0–100 match snapshot (null when the pilot hard-fails a requirement —
+    // the employer still sees the application + the breakdown of what's missing).
+    const matchScore = computeMatchScore(pilot, totals, job);
+    const matchBreakdown = computeMatchBreakdown(pilot, totals, job);
+
+    await prisma.application.create({
+      data: { pilotId, jobId, matchScore, matchBreakdown },
+    });
+
+    // Phase D notification trigger (stub — Resend wiring is the backend cluster).
+    console.log(`[notify] Employer digest trigger — new application: pilot=${pilotId} job=${jobId} score=${matchScore}`);
+
+    res.json({ applied: true, applyUrl: job.applyUrl });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Pilot's own applications (My Applications tab). Own rows only.
+exports.getMyApplications = async (req, res, next) => {
+  try {
+    const apps = await prisma.application.findMany({
+      where: { pilotId: req.pilot.id },
+      orderBy: { appliedAt: 'desc' },
+      include: {
+        job: { select: { id: true, title: true, company: true, location: true, role: true, status: true } },
+      },
+    });
+    res.json(apps.map((a) => ({
+      id: a.id,
+      job: a.job,
+      status: a.status,
+      appliedAt: a.appliedAt,
+      statusUpdatedAt: a.statusUpdatedAt,
+      matchScore: a.matchScore,
+    })));
   } catch (err) {
     next(err);
   }

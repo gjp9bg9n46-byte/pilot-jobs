@@ -125,8 +125,18 @@ match-badge typographic lockup [item B], mark-all-read store fix, empty-flash
 fix, Matches-tab error+Retry, a11y labels, "+ New Saved Search" terminology,
 subtitle copy) shipped in its own commit. Remaining:
 
-- **Item C — Normalize `computeAlertScore` (HIGH PRIORITY — backend matching
-  session).** Alerts display a raw additive points total (max **135**), never
+- **Item C — Normalize `computeAlertScore` — ✅ RESOLVED (E1 Phase A, commit
+  below).** Extracted a shared `normalizeScore(score, maxScore)` helper now used by
+  BOTH `computeMatchScore` (no-op, identical formula) and `computeAlertScore` (which
+  now tracks a dynamic `maxScore` and returns 0–100). Stored `JobAlert.matchScore`
+  self-heals to ≤100 on the next `run-match`. The frontend display clamp is now
+  redundant (harmless; remove as a follow-up). Note: `runMatchForPilot`'s `< 40`
+  threshold now operates on the 0–100 scale — practical effect is negligible (only
+  drops pilots matching <40% of a multi-criterion job, i.e. low-signal alerts).
+  Original report retained below for context:
+
+- **Item C (original) — raw additive total (max 135).** Alerts displayed a raw
+  additive points total (max **135**), never
   normalized: the base criteria sum to 100 even when the job doesn't specify them
   (the `else` branches award full points), then up to +35 of "new criteria"
   bonuses are added with **no matching denominator** → pilots score 110–135%
@@ -577,3 +587,23 @@ audit-#10 commit. Remaining / confirmed-as-is:
 - **#2 push-notification FAQ claim — kept as written** (user-confirmed). Revisit
   copy if push delivery turns out not to be live.
 - **#8 "reply within 24 hours" SLA — kept as written** (user-confirmed).
+
+## E1 — Employer ATS (phasing)
+
+- **Phase A — Backend foundation — ✅ SHIPPED (this commit).** Application schema
+  (status enum + matchScore + matchBreakdown + statusUpdatedAt + indices); apply
+  gateway snapshots a normalized strict match on create (idempotent, no overwrite);
+  employer endpoints `GET /employers/jobs/:id/applicants` (whitelisted DTO — no
+  PII/CV, ownership 403) + `PATCH /employers/applications/:id/status` (ownership
+  403, invalid 400); pilot `GET /jobs/applications`; notification triggers stubbed
+  to console. Resolves Alerts Item C as positive coupling.
+- **Phase B — Frontend wiring (NEXT SESSION).** `jobApi.apply`; JobDetail/Jobs
+  Apply CTA → record-then-redirect (never block the external open); fill the
+  Alerts `ApplicationsTab` stub (pilot My Applications). Decision locked: logged-out
+  apply redirects immediately + soft "sign in to track" (no hard gate).
+- **Phase C — Employer applicants UI (after B).** Dashboard per-job applicant
+  count → applicants list (sorted by match) + applicant detail (snapshot + ReqRow
+  breakdown) + lifecycle status controls. `.app-b2b` identity.
+- **Phase D — Notifications + Resend (backend cluster).** Wire the stubbed triggers
+  (employer digest on new applications; pilot lifecycle status email) to Resend.
+  Bundle with password reset + email verification.

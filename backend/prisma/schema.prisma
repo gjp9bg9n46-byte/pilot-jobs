@@ -434,16 +434,33 @@ model SavedJob {
   @@unique([pilotId, jobId])
 }
 
+enum ApplicationStatus {
+  APPLIED
+  REVIEWED
+  SHORTLISTED
+  HIRED
+}
+
 model Application {
-  id        String   @id @default(uuid())
-  pilotId   String
-  jobId     String
-  appliedAt DateTime @default(now())
+  id              String            @id @default(uuid())
+  pilotId         String
+  jobId           String
+  appliedAt       DateTime          @default(now())
+  // Lifecycle (employer-driven). statusUpdatedAt stamps each transition.
+  status          ApplicationStatus @default(APPLIED)
+  statusUpdatedAt DateTime?
+  // Snapshot of the strict 0–100 match + per-criterion breakdown AS OF the apply
+  // moment (the pilot's profile drifts; the employer evaluates them as they applied).
+  // Nullable: a pilot who hard-fails computeMatchScore applies with matchScore = null.
+  matchScore      Float?
+  matchBreakdown  Json?
 
   pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([pilotId, jobId])
+  @@index([jobId])
+  @@index([pilotId, appliedAt])
 }
 
 model JobReport {

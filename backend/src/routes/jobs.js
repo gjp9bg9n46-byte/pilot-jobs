@@ -12,6 +12,8 @@ const c = require('../controllers/jobController');
 // qualifiedOnly filtering or isSaved/isApplied enrichment (no pilot profile).
 router.get('/', optionalAuth, c.getJobs);
 router.get('/saved', authMiddleware, c.getSavedJobs);
+// Pilot's own applications (declared before /:id so it isn't captured by it).
+router.get('/applications', authMiddleware, c.getMyApplications);
 
 // Alerts
 router.get('/alerts', authMiddleware, c.getMyAlerts);
