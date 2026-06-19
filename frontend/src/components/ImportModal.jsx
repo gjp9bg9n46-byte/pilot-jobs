@@ -95,6 +95,14 @@ function formatBlock(fields) {
   return '—';
 }
 
+// RFC-4180 cell escaping — used to serialize parsed Excel rows back into a CSV
+// string that flows through the SAME server parse endpoint as a real CSV upload
+// (so xlsx gets identical auto-mapping + duplicate detection, no backend change).
+function toCsvCell(v) {
+  const s = v == null ? '' : String(v);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
 // ─── Inline styles ─── (overlay/modal/header/title/body retired — now uses the
 // <Modal size="lg"> primitive for backdrop, title, X, scroll-lock, focus, escape)
 const css = {
@@ -159,6 +167,7 @@ export default function ImportModal({ onClose, onImportDone }) {
   const [userMapping, setUserMapping] = useState({});
   const [mappingOpen, setMappingOpen] = useState(false);
   const [includeDuplicates, setIncludeDuplicates] = useState(false);
+  const [sheetNote, setSheetNote] = useState(''); // multi-sheet xlsx note for the preview
 
   // Result
   const [result, setResult] = useState(null); // { imported, skipped }
@@ -211,11 +220,64 @@ export default function ImportModal({ onClose, onImportDone }) {
     }
   }
 
+  // Excel (.xlsx/.xls): parse in-browser via SheetJS (lazy-loaded), take the first
+  // sheet, serialize back to CSV, and reuse the exact CSV pipeline (server parse →
+  // auto-map + duplicate detection → preview → confirm). Frontend-only; no backend change.
+  async function handleExcelFile(file) {
+    if (!file) return;
+    setError('');
+    setSheetNote('');
+    setUploading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let workbook;
+      try {
+        const XLSX = await import('xlsx'); // dynamic import — keeps ~600KB off the main chunk
+        workbook = XLSX.read(buf, { type: 'array', cellDates: true });
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          throw Object.assign(new Error('This file has no readable sheets.'), { handled: true });
+        }
+        const firstSheet = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheet];
+        // header:1 → array-of-arrays; raw:false applies cell formatting;
+        // cellDates + dateNF normalize Excel serial dates to ISO strings.
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd', blankrows: false });
+        const nonEmpty = rows.filter((r) => Array.isArray(r) && r.some((c) => c != null && String(c).trim() !== ''));
+        if (nonEmpty.length === 0) {
+          throw Object.assign(new Error('The first sheet is empty.'), { handled: true });
+        }
+        // Note (don't block) when other sheets are present — v1 uses the first only.
+        if (workbook.SheetNames.length > 1) {
+          const others = workbook.SheetNames.length - 1;
+          setSheetNote(`Using sheet "${firstSheet}" — ${others} other sheet${others === 1 ? '' : 's'} ignored.`);
+        }
+        const csv = nonEmpty.map((row) => row.map(toCsvCell).join(',')).join('\r\n');
+        const baseName = (file.name || 'import').replace(/\.[^.]+$/, '');
+        const csvFile = new File([new Blob([csv], { type: 'text/csv' })], `${baseName}.csv`, { type: 'text/csv' });
+        await handleFile(csvFile); // reuse the CSV path (sets parsedData + step=preview, manages its own errors)
+      } catch (e) {
+        if (e.handled) throw e;
+        throw new Error("Couldn't read this file — it may be corrupted or in an unsupported format.");
+      }
+    } catch (err) {
+      setError(err?.message || "Couldn't read this file.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // Route a chosen/dropped file to the parser for the active format.
+  function routeFile(file) {
+    if (!file) return;
+    if (format === 'xlsx') handleExcelFile(file);
+    else handleFile(file);
+  }
+
   function handleDrop(e) {
     e.preventDefault();
     setDrag(false);
     const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+    if (file) routeFile(file);
   }
 
   async function handleConfirm() {
@@ -266,37 +328,33 @@ export default function ImportModal({ onClose, onImportDone }) {
                 </div>
               </div>
 
-              {format === 'xlsx' && (
-                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-secondary)', fontSize: 13, marginBottom: 20 }}>
-                  Excel (.xlsx) support is coming soon. Please export your file as CSV for now.
+              {/* Drop zone — adapts to the selected format (CSV or Excel) */}
+              <div
+                style={css.dropZone(drag)}
+                onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                onDragLeave={() => setDrag(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload size={32} color="var(--text-secondary)" style={{ marginBottom: 12 }} />
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+                  {isMobile
+                    ? 'Tap to browse'
+                    : `Drop your ${format === 'xlsx' ? 'Excel file' : 'CSV'} here, or click to browse`}
                 </div>
-              )}
-
-              {/* Drop zone (shown inline in source step as "Browse" shortcut) */}
-              {format === 'csv' && (
-                <div
-                  style={css.dropZone(drag)}
-                  onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-                  onDragLeave={() => setDrag(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload size={32} color="var(--text-secondary)" style={{ marginBottom: 12 }} />
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                    {isMobile ? 'Tap to browse' : 'Drop your CSV here, or click to browse'}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    .csv files only · max 10 MB · max 500 rows
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv"
-                    style={{ display: 'none' }}
-                    onChange={(e) => handleFile(e.target.files[0])}
-                  />
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {format === 'xlsx'
+                    ? '.xlsx / .xls files · max 10 MB · max 500 rows · first sheet only'
+                    : '.csv files only · max 10 MB · max 500 rows'}
                 </div>
-              )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={format === 'xlsx' ? '.xlsx,.xls' : '.csv'}
+                  style={{ display: 'none' }}
+                  onChange={(e) => routeFile(e.target.files[0])}
+                />
+              </div>
 
               {uploading && (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)', fontSize: 14 }}>
@@ -332,6 +390,13 @@ export default function ImportModal({ onClose, onImportDone }) {
                   {parsedData.rawRows.length} rows parsed from file
                 </span>
               </div>
+
+              {/* Multi-sheet note (xlsx only) — v1 uses the first sheet */}
+              {sheetNote && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                  <Table2 size={14} color="var(--text-secondary)" /> {sheetNote}
+                </div>
+              )}
 
               {/* Include duplicates checkbox — only shown when duplicates exist */}
               {duplicateRows.length > 0 && (
@@ -501,7 +566,7 @@ export default function ImportModal({ onClose, onImportDone }) {
             <>
               <Button
                 variant="secondary"
-                onClick={step !== 'confirming' ? () => { setStep('source'); setParsedData(null); setError(''); setUserMapping({}); } : undefined}
+                onClick={step !== 'confirming' ? () => { setStep('source'); setParsedData(null); setError(''); setUserMapping({}); setSheetNote(''); } : undefined}
                 disabled={step === 'confirming'}
               >
                 ← Back

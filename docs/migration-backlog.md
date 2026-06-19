@@ -238,9 +238,15 @@ its own commit. Remaining:
   format cards (CSV/Excel) and the drop zone are `<div role="button">` /
   `<div onClick>` with no `tabindex`/keyboard handler — keyboard users can't pick
   a format or open the file browser; add `tabindex={0}` + Enter/Space `onKeyDown`.
-- **#9 ImportModal Excel card is a dead-end.** Selecting "Excel" shows
-  "coming soon — export as CSV" with no drop zone. Disable the card visually
-  (greyed, non-selectable) with a "Coming soon" badge until `.xlsx` ships.
+- **#9 ImportModal Excel card is a dead-end.** ✅ RESOLVED (2026-06-19). The Excel
+  card now opens a working drop zone (.xlsx/.xls). SheetJS (`xlsx`) is lazy-loaded
+  via dynamic import (separate ~429KB chunk, off the main bundle) only when an
+  Excel file is chosen; the first sheet is parsed in-browser, serialized back to
+  CSV, and routed through the EXISTING `/flight-logs/import/parse` → preview →
+  `/import/confirm` pipeline, so xlsx gets identical auto-mapping + duplicate
+  detection with no backend changes. Multi-sheet workbooks use the first sheet
+  with a preview note. Follow-up (low priority): **multi-sheet selector UI** for
+  workbooks with multiple sheets (v1 silently uses the first).
 
 Resolved (no action): **#8** new-pilot wall of "0.0" totals tiles — defensible
 (the Logbook is where totals live).
