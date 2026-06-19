@@ -217,6 +217,15 @@ Resolved (no action): **#8** Save-button label inconsistency ("Save Changes" vs
 
 ## Quality sweep — Logbook
 
+- **Multi-leg duty aggregate Block was wrong.** ✅ RESOLVED (2026-06-19). The
+  duty row/card computed Block as `blockTimeFromTimes(first.off, last.on)` — the
+  first-leg-off → last-leg-on span, which (a) misread midnight wraps when the API
+  returned legs out of chronological order (the "23.3h" bug surfaced in the mobile
+  fixes report), and (b) wrongly folded ground/turnaround time into Block. Fixed
+  in both the desktop table and mobile card (identical expression) to sum each
+  leg's own block time: `legs.reduce((s,l)=> s + (blockTimeFromTimes(l.off,l.on)
+  ?? l.totalTime ?? 0), 0)`. Individual per-leg block display unchanged.
+
 From page audit #6 (`/logbook`). The page audited very healthy — all CRUD
 (add/edit/clone/delete), multi-leg bulk, grouping/expand, block + night
 autocompute, search, and the full CSV import flow work end-to-end. The "fix-now"

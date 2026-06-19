@@ -810,10 +810,14 @@ export default function Logbook() {
             const first = legs[0];
             const last = legs[legs.length - 1];
             const dutyBlock = (() => {
-              const b = blockTimeFromTimes(first.offBlocksTime, last.onBlocksTime);
-              if (b !== null) return `${b.toFixed(1)}h`;
-              const tot = legs.reduce((s, l) => s + (l.totalTime || 0), 0);
-              return tot > 0 ? `${tot.toFixed(1)}h` : '—';
+              // Aggregate Block = sum of each leg's own block time (actual flight
+              // time). NOT first.off→last.on span — that includes ground/turnaround
+              // and misreads midnight wraps when legs arrive out of order.
+              const sum = legs.reduce((s, l) => {
+                const b = blockTimeFromTimes(l.offBlocksTime, l.onBlocksTime);
+                return s + (b !== null ? b : (l.totalTime || 0));
+              }, 0);
+              return sum > 0 ? `${sum.toFixed(1)}h` : '—';
             })();
             const totalPic = legs.reduce((s, l) => s + (l.picTime || 0), 0);
             const totalNight = legs.reduce((s, l) => s + (l.nightTime || 0), 0);
@@ -923,10 +927,14 @@ export default function Logbook() {
                 const first = legs[0];
                 const last  = legs[legs.length - 1];
                 const dutyBlock = (() => {
-                  const b = blockTimeFromTimes(first.offBlocksTime, last.onBlocksTime);
-                  if (b !== null) return `${b.toFixed(1)}h`;
-                  const tot = legs.reduce((s, l) => s + (l.totalTime || 0), 0);
-                  return tot > 0 ? `${tot.toFixed(1)}h` : '—';
+                  // Aggregate Block = sum of each leg's own block time (actual flight
+                  // time). NOT first.off→last.on span — that includes ground/turnaround
+                  // and misreads midnight wraps when legs arrive out of order.
+                  const sum = legs.reduce((s, l) => {
+                    const b = blockTimeFromTimes(l.offBlocksTime, l.onBlocksTime);
+                    return s + (b !== null ? b : (l.totalTime || 0));
+                  }, 0);
+                  return sum > 0 ? `${sum.toFixed(1)}h` : '—';
                 })();
                 const totalPic     = legs.reduce((s, l) => s + (l.picTime || 0), 0);
                 const totalMulti   = legs.reduce((s, l) => s + (l.multiEngineTime || 0), 0);
