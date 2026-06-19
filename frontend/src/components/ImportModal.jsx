@@ -357,6 +357,10 @@ export default function ImportModal({ onClose, onImportDone }) {
                     ? '.xlsx / .xls files · max 10 MB · max 5,000 rows · first sheet only'
                     : '.csv files only · max 10 MB · max 5,000 rows'}
                 </div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.5, maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
+                  Supports standard logbook columns (Date, Off, On) and crew-schedule formats
+                  (Start/Finish with combined dates like “12Mar24 0029”).
+                </div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -540,7 +544,7 @@ export default function ImportModal({ onClose, onImportDone }) {
 
               {!datesMapped && (
                 <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(146,64,14,0.08)', border: '1px solid rgba(146,64,14,0.3)', borderRadius: 8, fontSize: 13, color: SEM.amber }}>
-                  The date column is required. Expand "Column mapping" above and map it before importing.
+                  We couldn't auto-detect a date column. Pick it manually below, or check the helper text for supported formats.
                 </div>
               )}
             </>

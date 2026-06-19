@@ -1,7 +1,7 @@
 const { randomUUID } = require('crypto');
 const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
-const { parseCSV, detectMapping, coerceRow, extractKeyFields } = require('../services/importService');
+const { parseCSV, detectMapping, coerceRow, extractKeyFields, applyDateFallbacks } = require('../services/importService');
 
 const IMPORT_ROW_LIMIT = 5000;
 
@@ -205,7 +205,7 @@ exports.importParse = async (req, res, next) => {
       return res.status(422).json({ error: e.message });
     }
 
-    const { headers, rawRows } = parsed;
+    let { headers, rawRows } = parsed;
 
     if (headers.length === 0) {
       return res.status(422).json({ error: 'File is empty or contains no recognisable columns.' });
@@ -220,6 +220,13 @@ exports.importParse = async (req, res, next) => {
     }
 
     const mapping = detectMapping(headers);
+
+    // No date column from headers? Try crew-schedule combined datetimes
+    // (Start/Finish like "12Mar24 0029") + content-based date detection. This may
+    // synthesize clean Date/Off/On columns, so reassign headers/rawRows.
+    if (!mapping.date) {
+      ({ headers, rawRows } = applyDateFallbacks(headers, rawRows, mapping));
+    }
 
     // Duplicate detection — query DB for existing flights matching key fields
     const keyFields = extractKeyFields(rawRows, headers, mapping);

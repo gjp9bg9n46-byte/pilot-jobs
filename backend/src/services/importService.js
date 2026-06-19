@@ -11,8 +11,8 @@ const FIELD_SYNONYMS = {
   registration:    ['registration','reg','tail','tailnumber','tailno','acreg','tailreg'],
   departure:       ['departure','dep','from','origin','departureicao','fromapt','departureiata','depapt'],
   arrival:         ['arrival','arr','to','dest','destination','arrivalicao','toapt','arrivaliata','arrapt'],
-  offBlocksTime:   ['offblocks','offblock','atd','out','blockout','blkout','deptime','offtime','off','stdactual'],
-  onBlocksTime:    ['onblocks','onblock','ata','in','blockin','blkin','arrtime','intime','staactual'],
+  offBlocksTime:   ['offblocks','offblock','atd','out','blockout','blkout','deptime','offtime','off','blockoff','stdactual'],
+  onBlocksTime:    ['onblocks','onblock','ata','in','blockin','blkin','arrtime','intime','on','blockon','staactual'],
   takeoffTime:     ['takeoff','tof','liftoff','atot','takeofftime','wheelsoff','to'],
   landingTime:     ['landing','ldg','touchdown','aldt','landingtime','wheelson','ldgtime'],
   picName:         ['captain','captainname','pic','pilotincommand','capt','p1','captname'],
@@ -291,12 +291,160 @@ function extractKeyFields(rawRows, headers, mapping) {
   }));
 }
 
+// ─── Crew-schedule combined date-time parsing ────────────────────────────────
+// Airline crew schedules often embed the date inside the Start/Finish columns
+// (e.g. "12Mar24 0029") with no separate Date column. This parser splits a
+// combined datetime into { date:'YYYY-MM-DD', time:'HH:MM' }, then a fallback
+// (applyDateFallbacks) synthesizes clean Date/Off/On columns so the rest of the
+// import pipeline needs no changes.
+
+const MONTH_CODES = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Validate y/m/d (rejects e.g. 31 Feb) → 'YYYY-MM-DD' or null
+function buildDate(y, m, d) {
+  if (!(m >= 1 && m <= 12) || !(d >= 1 && d <= 31)) return null;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+  return `${y}-${pad2(m)}-${pad2(d)}`;
+}
+
+// "0029" / "00:29" / "2400" → 'HH:MM' or null. 2400 (end-of-day) → 00:00; 2401+ invalid.
+function parseClockTime(t) {
+  let h, m;
+  const colon = t.match(/^(\d{1,2}):(\d{2})$/);
+  const hhmm = t.match(/^(\d{3,4})$/);
+  if (colon) { h = +colon[1]; m = +colon[2]; }
+  else if (hhmm) { const s = t.padStart(4, '0'); h = +s.slice(0, 2); m = +s.slice(2); }
+  else return null;
+  if (h === 24 && m === 0) h = 0; // 2400 → midnight
+  if (h > 23 || m > 59) return null;
+  return `${pad2(h)}:${pad2(m)}`;
+}
+
+// Parse a combined datetime. Returns { date, time } on full success,
+// { date:null, time, error } when the time parsed but the date didn't (so the
+// row surfaces a clear validation error downstream), or null if not a datetime.
+function parseCombinedDateTime(str) {
+  if (!str) return null;
+  str = String(str).trim();
+  if (!str) return null;
+
+  // Split into date part + time part on whitespace or ISO 'T'
+  const m = str.match(/^(\S+)[\sT]+(\S+)$/);
+  if (!m) return null;
+  const datePart = m[1];
+  const time = parseClockTime(m[2]);
+  if (!time) return null; // second token isn't a clock time → not a combined datetime
+
+  let dm;
+  // DDMonYY / DD-Mon-YY / DD/Mon/YYYY (separators optional) — e.g. 12Mar24, 12-Mar-2024
+  if ((dm = datePart.match(/^(\d{1,2})[-/]?([A-Za-z]{3})[-/]?(\d{2,4})$/))) {
+    const day = +dm[1];
+    const mon = MONTH_CODES[dm[2].toLowerCase()];
+    if (!mon) return { date: null, time, error: `Unrecognized month "${dm[2]}"` };
+    const year = dm[3].length <= 2 ? 2000 + +dm[3] : +dm[3];
+    const date = buildDate(year, mon, day);
+    return date ? { date, time } : { date: null, time, error: `Invalid date "${datePart}"` };
+  }
+  // ISO 2024-03-12
+  if ((dm = datePart.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/))) {
+    const date = buildDate(+dm[1], +dm[2], +dm[3]);
+    return date ? { date, time } : { date: null, time, error: `Invalid date "${datePart}"` };
+  }
+  // DD/MM/YY or DD-MM-YY or DD.MM.YYYY — default DD/MM (non-US crew); fall back to MM/DD
+  if ((dm = datePart.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/))) {
+    const a = +dm[1], b = +dm[2];
+    const year = dm[3].length <= 2 ? 2000 + +dm[3] : +dm[3];
+    const date = buildDate(year, b, a) || buildDate(year, a, b); // DD/MM first, then MM/DD
+    return date ? { date, time } : { date: null, time, error: `Invalid date "${datePart}"` };
+  }
+  return null; // date part not recognized
+}
+
+// Does a value look like a combined datetime with a valid date? (content sniff)
+function looksLikeCombinedDateTime(val) {
+  const r = parseCombinedDateTime(val);
+  return !!(r && r.date);
+}
+
+// Ensure a synthetic header name doesn't collide with an existing one
+function uniqueHeader(headers, base) {
+  if (!headers.includes(base)) return base;
+  let i = 2;
+  while (headers.includes(`${base} ${i}`)) i++;
+  return `${base} ${i}`;
+}
+
+// When header detection found no date column, try (1) crew Start/Finish combined
+// datetimes — synthesize Date/Off/On columns; then (2) a plain date-like column by
+// content. Mutates `mapping`; returns possibly-extended { headers, rawRows, mapping, applied }.
+function applyDateFallbacks(headers, rawRows, mapping) {
+  if (mapping.date) return { headers, rawRows, mapping, applied: false };
+
+  const sample = rawRows.slice(0, 8);
+  const sampledVals = (c) => sample.map((r) => (r[c] ?? '').toString().trim()).filter(Boolean);
+
+  // (1) Crew Start/Finish: columns whose content is mostly combined datetimes
+  const dtCols = [];
+  for (let c = 0; c < headers.length; c++) {
+    const vals = sampledVals(c);
+    if (vals.length === 0) continue;
+    if (vals.filter(looksLikeCombinedDateTime).length >= Math.ceil(vals.length * 0.6)) dtCols.push(c);
+  }
+
+  if (dtCols.length > 0) {
+    const norm = (c) => normalizeHeader(headers[c]);
+    const START = ['start', 'off', 'out', 'blockoff', 'blockout', 'dutystart', 'std', 'departure', 'dep'];
+    const FINISH = ['finish', 'on', 'in', 'blockon', 'blockin', 'dutyend', 'sta', 'arrival', 'arr'];
+    let startIdx = dtCols.find((c) => START.includes(norm(c)));
+    if (startIdx === undefined) startIdx = dtCols[0];
+    let finishIdx = dtCols.find((c) => c !== startIdx && FINISH.includes(norm(c)));
+    if (finishIdx === undefined) finishIdx = dtCols.find((c) => c !== startIdx);
+
+    const dateHeader = uniqueHeader(headers, 'Date (auto)');
+    const offHeader = uniqueHeader([...headers, dateHeader], 'Off (auto)');
+    const onHeader = finishIdx !== undefined ? uniqueHeader([...headers, dateHeader, offHeader], 'On (auto)') : null;
+
+    const newHeaders = [...headers, dateHeader, offHeader, ...(onHeader ? [onHeader] : [])];
+    const newRows = rawRows.map((r) => {
+      const s = parseCombinedDateTime((r[startIdx] ?? '').toString().trim());
+      const f = finishIdx !== undefined ? parseCombinedDateTime((r[finishIdx] ?? '').toString().trim()) : null;
+      const row = [...r, s && s.date ? s.date : '', s && s.time ? s.time : ''];
+      if (onHeader) row.push(f && f.time ? f.time : '');
+      return row;
+    });
+
+    mapping.date = dateHeader;
+    if (!mapping.offBlocksTime) mapping.offBlocksTime = offHeader;
+    if (onHeader && !mapping.onBlocksTime) mapping.onBlocksTime = onHeader;
+    return { headers: newHeaders, rawRows: newRows, mapping, applied: true };
+  }
+
+  // (2) Plain date-like column by content (unusual header that synonyms missed)
+  for (let c = 0; c < headers.length; c++) {
+    const vals = sampledVals(c);
+    if (vals.length === 0) continue;
+    if (vals.filter((v) => parseFlexDate(v)).length >= Math.ceil(vals.length * 0.6)) {
+      mapping.date = headers[c];
+      return { headers, rawRows, mapping, applied: true };
+    }
+  }
+
+  return { headers, rawRows, mapping, applied: false };
+}
+
 module.exports = {
   detectMapping,
   parseCSV,
   coerceRow,
   parseFlexDate,
   parseFlexTime,
+  parseCombinedDateTime,
+  applyDateFallbacks,
   extractKeyFields,
   FIELD_SYNONYMS,
 };
