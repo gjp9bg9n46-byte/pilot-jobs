@@ -3,7 +3,17 @@ const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
 const { parseCSV, detectMapping, coerceRow, extractKeyFields } = require('../services/importService');
 
-const IMPORT_ROW_LIMIT = 500;
+const IMPORT_ROW_LIMIT = 5000;
+
+// Bulk-insert chunk size. Kept well under Postgres' 65535 bind-parameter ceiling
+// (FlightLog is ~30 columns → ~30 params/row, so ~2000 rows would hit it). 1000
+// leaves comfortable margin for future column additions. Used by both importers.
+const BULK_CHUNK_SIZE = 1000;
+const chunksOf = (arr, size) => {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+};
 
 exports.getLogs = async (req, res, next) => {
   try {
@@ -280,18 +290,23 @@ exports.importConfirm = async (req, res, next) => {
 
     const batchId = randomUUID();
 
-    await prisma.$transaction(
-      valid.map(row => prisma.flightLog.create({
-        data: {
-          ...row,
-          pilotId: req.pilot.id,
-          source: 'IMPORTED',
-          importBatchId: batchId,
-        },
-      }))
-    );
+    // Chunked createMany — one multi-row INSERT per chunk instead of N serial
+    // INSERTs in a transaction. ~1-3s at 5k vs ~25-75s before. Not wrapped in a
+    // transaction: partial success on a large historical import beats an
+    // all-or-nothing rollback (mirrors the legacy importer).
+    const data = valid.map(row => ({
+      ...row,
+      pilotId: req.pilot.id,
+      source: 'IMPORTED',
+      importBatchId: batchId,
+    }));
+    let imported = 0;
+    for (const chunk of chunksOf(data, BULK_CHUNK_SIZE)) {
+      const created = await prisma.flightLog.createMany({ data: chunk });
+      imported += created.count;
+    }
 
-    res.status(201).json({ imported: valid.length, skipped: skipped.length, batchId });
+    res.status(201).json({ imported, skipped: skipped.length, batchId });
   } catch (err) {
     next(err);
   }
@@ -314,12 +329,22 @@ exports.importLogbook = async (req, res, next) => {
       return res.status(400).json({ error: `Unsupported source: ${source}` });
     }
 
-    const created = await prisma.flightLog.createMany({
-      data: entries.map((e) => ({ ...e, pilotId: req.pilot.id, source })),
-      skipDuplicates: true,
-    });
+    if (entries.length > IMPORT_ROW_LIMIT) {
+      return res.status(422).json({
+        error: `File has ${entries.length} rows. The limit is ${IMPORT_ROW_LIMIT} rows per import. Split the file into batches.`,
+      });
+    }
 
-    res.json({ imported: created.count, total: entries.length });
+    // Chunked to stay under Postgres' bind-param ceiling (a single createMany of
+    // >~2000 rows would exceed it). Was uncapped/unchunked — latent bug at scale.
+    const rows = entries.map((e) => ({ ...e, pilotId: req.pilot.id, source }));
+    let imported = 0;
+    for (const chunk of chunksOf(rows, BULK_CHUNK_SIZE)) {
+      const created = await prisma.flightLog.createMany({ data: chunk, skipDuplicates: true });
+      imported += created.count;
+    }
+
+    res.json({ imported, total: entries.length });
   } catch (err) {
     next(err);
   }

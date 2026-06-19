@@ -20,6 +20,17 @@ const importParseLimit = rateLimit({
   message: { error: 'Too many import requests. Please wait before trying again (limit: 10/hour).' },
 });
 
+// Same per-user limit on /import/confirm (separate bucket from /parse so a normal
+// parse→confirm round trip never collides). Confirm writes rows, so cap abuse.
+const importConfirmLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.pilot?.id || req.ip,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many import requests. Please wait before trying again (limit: 10/hour).' },
+});
+
 router.use(authMiddleware);
 
 router.get('/recent-aircraft', flightLogController.recentAircraft);
@@ -32,6 +43,6 @@ router.post('/import', upload.single('file'), flightLogController.importLogbook)
 
 // New two-step importer
 router.post('/import/parse',   importParseLimit, importUpload.single('file'), flightLogController.importParse);
-router.post('/import/confirm', flightLogController.importConfirm);
+router.post('/import/confirm', importConfirmLimit, flightLogController.importConfirm);
 
 module.exports = router;

@@ -64,7 +64,9 @@ export const flightLogApi = {
   importParse: (formData) => api.post('/flight-logs/import/parse', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
-  importConfirm: (rows) => api.post('/flight-logs/import/confirm', { rows }),
+  // 60s timeout — chunked bulk insert finishes in ~1-3s even at the 5k cap, so a
+  // hang past 60s means something's wrong; fail cleanly instead of waiting forever.
+  importConfirm: (rows) => api.post('/flight-logs/import/confirm', { rows }, { timeout: 60000 }),
 };
 
 

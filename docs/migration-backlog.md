@@ -215,6 +215,22 @@ Resolved (no action): **#8** Save-button label inconsistency ("Save Changes" vs
 "Save") — minor; **#9** one-click default licence creation — defensible
 (licences legitimately have optional dates).
 
+## Import resilience (2026-06-19)
+
+- **Row cap raised 500 → 5,000** (`IMPORT_ROW_LIMIT`) across parse + confirm + the
+  legacy ForeFlight/LogbookPro importer. Covers a full multi-year career in one go.
+- **`importConfirm` rewritten to chunked `createMany`** (1,000/chunk, no transaction
+  wrapper — partial success beats all-or-nothing on a large backfill). ~1–3s at 5k
+  vs ~25–75s for the old per-row `$transaction`. Chunk size stays under Postgres'
+  65535 bind-param ceiling.
+- **Legacy importer uncapped `createMany` bug → ✅ RESOLVED.** It would have exceeded
+  the bind-param limit at >~2k rows; now chunked + capped at 5,000.
+- **`/import/confirm` rate-limit gap → ✅ RESOLVED.** Added a 10/hour per-user limit
+  (separate bucket from `/import/parse` so a normal parse→confirm round trip never
+  collides).
+- **Frontend hardening:** `importConfirm` now has a 60s axios timeout with an honest
+  user-facing message ("Import is taking longer than expected…") instead of hanging.
+
 ## Quality sweep — Logbook
 
 - **Multi-leg duty aggregate Block was wrong.** ✅ RESOLVED (2026-06-19). The

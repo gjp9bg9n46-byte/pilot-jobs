@@ -295,7 +295,12 @@ export default function ImportModal({ onClose, onImportDone }) {
       setStep('done');
       onImportDone?.();
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || 'Import failed. Please try again.');
+      const timedOut = err?.code === 'ECONNABORTED' || /timeout/i.test(err?.message || '');
+      setError(
+        timedOut
+          ? 'Import is taking longer than expected. Please try again or split the file into smaller batches.'
+          : err?.response?.data?.error || err?.message || 'Import failed. Please try again.'
+      );
       setStep('preview');
     }
   }
@@ -349,8 +354,8 @@ export default function ImportModal({ onClose, onImportDone }) {
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {format === 'xlsx'
-                    ? '.xlsx / .xls files · max 10 MB · max 500 rows · first sheet only'
-                    : '.csv files only · max 10 MB · max 500 rows'}
+                    ? '.xlsx / .xls files · max 10 MB · max 5,000 rows · first sheet only'
+                    : '.csv files only · max 10 MB · max 5,000 rows'}
                 </div>
                 <input
                   ref={fileInputRef}
