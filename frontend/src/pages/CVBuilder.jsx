@@ -1029,36 +1029,39 @@ export default function CVBuilder() {
 
           {activeTab === 'edit' && editorContent}
 
-          {/* Mobile preview: PDFDownloadLink → open in new tab.
-              PDFViewer (blob-URL iframe) is not used on mobile due to iOS Safari
-              reliability issues with blob URLs in iframes. */}
+          {/* Mobile preview: WYSIWYG — the same live PDF iframe desktop gets, sized
+              to the viewport width (100% × tall). Reads small at 390px; users
+              pinch-zoom in iOS Safari. "Open PDF in new tab" below is a convenience,
+              not a replacement. Paper drop-shadow keeps the Phase-13 treatment. */}
           {activeTab === 'preview' && (
-            <div style={{ textAlign: 'center', padding: '48px 0 32px' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-                Open PDF to preview
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
-                Tap the button below to generate and open your CV as a PDF.
+            <>
+              <div style={{
+                height: 'calc(100vh - 220px)', minHeight: 460,
+                display: 'flex', flexDirection: 'column',
+                border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden',
+                background: 'var(--bg)', position: 'relative',
+                boxShadow: '0 4px 24px rgba(15,20,25,0.12)',
+              }}>
+                {previewInner}
               </div>
               {PdfDoc && (
-                <PDFDownloadLink document={PdfDoc} fileName={fileName}>
-                  {({ url, loading: pdfLoading }) =>
-                    url ? (
-                      <a href={url} target="_blank" rel="noopener noreferrer" style={css.dlBtn(false)}>
-                        <FileText size={15} /> Open PDF
-                      </a>
-                    ) : (
-                      <span style={{ ...css.dlBtn(true), display: 'inline-flex' }}>
-                        <FileText size={15} /> {pdfLoading ? 'Generating…' : 'Open PDF'}
-                      </span>
-                    )
-                  }
-                </PDFDownloadLink>
+                <div style={{ textAlign: 'center', marginTop: 14 }}>
+                  <PDFDownloadLink document={PdfDoc} fileName={fileName}>
+                    {({ url, loading: pdfLoading }) =>
+                      url ? (
+                        <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <FileText size={14} /> Open PDF in new tab →
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                          {pdfLoading ? 'Preparing PDF…' : ''}
+                        </span>
+                      )
+                    }
+                  </PDFDownloadLink>
+                </div>
               )}
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 16 }}>
-                Opens in a new tab — save or share from there.
-              </div>
-            </div>
+            </>
           )}
         </div>
       )}

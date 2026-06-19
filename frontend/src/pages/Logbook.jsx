@@ -11,6 +11,7 @@ import AIRPORTS from '../data/airports.json';
 import ImportModal from '../components/ImportModal';
 import AircraftCombobox from '../components/AircraftCombobox';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
 //   dark #00C864/#2ECC71 → #166534 (ok/current), #F39C12 → #92400E (warn),
@@ -70,7 +71,25 @@ const css = {
   },
   sectionTitle: { fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12, marginTop: 4 },
   errorBanner: { background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#991B1B', fontSize: 13, marginBottom: 16 },
+
+  // Mobile (≤640px) card layout — replaces the horizontal-scrolling table.
+  mCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', marginBottom: 10 },
+  mCardHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  mCardDate: { fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 },
+  mCardAircraft: { fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' },
+  mCardReg: { fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400 },
+  mCardRoute: { fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: 0.3, margin: '8px 0' },
+  mCardStats: { fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 },
+  mCardActions: { display: 'flex', gap: 2, justifyContent: 'flex-end', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 4 },
+  mEmpty: { textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6 },
 };
+
+// Compact label-value stat line shared by every mobile card.
+function statLine(block, pic, ldg, night) {
+  return (
+    <>Block <strong style={{ color: 'var(--accent)' }}>{block}</strong> · PIC {pic > 0 ? `${pic.toFixed(1)}h` : '—'} · {ldg} LDG · {night > 0 ? `${night.toFixed(1)}h` : '0h'} NT</>
+  );
+}
 
 const TAIL_PREFIXES = ['', 'A6-', 'N', 'G-', 'OE-', 'D-', 'F-', 'HB-', 'TC-', 'SU-', 'AP-', 'VT-', '7T-', 'HL', 'B-', 'JA', 'VH-', 'ZS-', 'C-', 'OY-', 'SE-', 'LN-', 'OH-', 'PH-', 'CS-', 'EC-', 'EI-', 'TS-', 'CN-', 'EP-'];
 
@@ -472,6 +491,7 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
 
 export default function Logbook() {
   const dispatch = useDispatch();
+  const isMobile = useIsMobile(640);
   const { logs, totals } = useSelector((s) => s.logbook);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -750,6 +770,96 @@ export default function Logbook() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>Loading your logbook...</div>
+      ) : isMobile ? (
+        /* ─── Mobile (≤640px): stacked flight cards, no table / no h-scroll ─── */
+        <div>
+          {groupedRows.length === 0 ? (
+            <div style={css.mEmpty}>
+              {search ? 'No flights match your search.' : 'No flights logged yet. Click "Log a Flight" to get started.'}
+            </div>
+          ) : groupedRows.map((row) => {
+            if (row.type === 'single') {
+              const log = row.log;
+              const blockHrs = blockTimeFromTimes(log.offBlocksTime, log.onBlocksTime);
+              const displayBlock = blockHrs !== null ? `${blockHrs.toFixed(1)}h` : (log.totalTime > 0 ? `${log.totalTime.toFixed(1)}h` : '—');
+              const ldg = (log.landingsDay || 0) + (log.landingsNight || 0);
+              return (
+                <div key={log.id} style={css.mCard}>
+                  <div style={css.mCardHead}>
+                    <div>
+                      <div style={css.mCardDate}>{new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                      <div style={css.mCardAircraft}>{log.aircraftType}{log.registration && <span style={css.mCardReg}> · {log.registration}</span>}</div>
+                    </div>
+                  </div>
+                  <div style={css.mCardRoute}>
+                    {log.departure || log.arrival
+                      ? <>{log.departure || '—'}<span style={css.routeArrow}>&#x2192;</span>{log.arrival || '—'}</>
+                      : <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: 14 }}>No route</span>}
+                  </div>
+                  <div style={css.mCardStats}>{statLine(displayBlock, log.picTime || 0, ldg, log.nightTime || 0)}</div>
+                  <div style={css.mCardActions}>
+                    <Button variant="ghost" style={{ padding: '6px', color: 'var(--accent)' }} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={16} /></Button>
+                    <Button variant="ghost" style={{ padding: '6px', color: 'var(--text-secondary)' }} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={16} /></Button>
+                    <Button variant="ghost" style={{ padding: '6px', color: SEM.red }} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={16} /></Button>
+                  </div>
+                </div>
+              );
+            }
+
+            const { id: dutyId, legs } = row;
+            const first = legs[0];
+            const last = legs[legs.length - 1];
+            const dutyBlock = (() => {
+              const b = blockTimeFromTimes(first.offBlocksTime, last.onBlocksTime);
+              if (b !== null) return `${b.toFixed(1)}h`;
+              const tot = legs.reduce((s, l) => s + (l.totalTime || 0), 0);
+              return tot > 0 ? `${tot.toFixed(1)}h` : '—';
+            })();
+            const totalPic = legs.reduce((s, l) => s + (l.picTime || 0), 0);
+            const totalNight = legs.reduce((s, l) => s + (l.nightTime || 0), 0);
+            const totalLdg = legs.reduce((s, l) => s + (l.landingsDay || 0) + (l.landingsNight || 0), 0);
+            const isExpanded = expandedDuties.has(dutyId);
+            return (
+              <div key={dutyId} style={css.mCard}>
+                <div onClick={() => toggleDuty(dutyId)} style={{ cursor: 'pointer' }}>
+                  <div style={css.mCardHead}>
+                    <div>
+                      <div style={css.mCardDate}>{new Date(first.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                      <div style={css.mCardAircraft}>{first.aircraftType}{first.registration && <span style={css.mCardReg}> · {first.registration}</span>}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <Badge variant="info">{legs.length} sectors</Badge>
+                      {isExpanded ? <ChevronUp size={16} color="var(--text-secondary)" /> : <ChevronDown size={16} color="var(--text-secondary)" />}
+                    </div>
+                  </div>
+                  <div style={css.mCardRoute}>{first.departure || '?'}<span style={css.routeArrow}>&#x2192;</span>{last.arrival || '?'}</div>
+                  <div style={css.mCardStats}>{statLine(dutyBlock, totalPic, totalLdg, totalNight)}</div>
+                </div>
+                {isExpanded && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {legs.map((log, idx) => {
+                      const legBlock = blockTimeFromTimes(log.offBlocksTime, log.onBlocksTime);
+                      const legBlockDisplay = legBlock !== null ? `${legBlock.toFixed(1)}h` : (log.totalTime > 0 ? `${log.totalTime.toFixed(1)}h` : '—');
+                      const ldg = (log.landingsDay || 0) + (log.landingsNight || 0);
+                      return (
+                        <div key={log.id} style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 12px' }}>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, marginBottom: 2 }}>Leg {idx + 1}</div>
+                          <div style={{ ...css.mCardRoute, fontSize: 15, margin: '2px 0 6px' }}>{log.departure}<span style={css.routeArrow}>&#x2192;</span>{log.arrival}</div>
+                          <div style={css.mCardStats}>{statLine(legBlockDisplay, log.picTime || 0, ldg, log.nightTime || 0)}</div>
+                          <div style={css.mCardActions}>
+                            <Button variant="ghost" style={{ padding: '6px', color: 'var(--accent)' }} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></Button>
+                            <Button variant="ghost" style={{ padding: '6px', color: 'var(--text-secondary)' }} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={14} /></Button>
+                            <Button variant="ghost" style={{ padding: '6px', color: SEM.red }} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={14} /></Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%' }}>
           <table style={{ ...css.table, minWidth: 700 }}>

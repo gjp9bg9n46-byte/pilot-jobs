@@ -193,8 +193,10 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
 
   return (
     <div>
-      {/* Controls row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      {/* Controls row — on mobile the chips get their own full-width row so they
+          align to the page's left edge instead of being squeezed into a narrow
+          column beside the sort dropdown (which previously forced 1-chip-per-line). */}
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 10 : 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
           {chips.map((c) => (
             <button key={c.key} style={chipStyle(filter === c.key)} onClick={() => setFilter(c.key)}>
@@ -202,16 +204,18 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
             </button>
           ))}
         </div>
-        <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px' }}>
-          <option value="newest">Newest</option>
-          <option value="score">Best Match</option>
-          <option value="deadline">Deadline</option>
-        </Input>
-        {unreadCount > 0 && (
-          <Button variant="secondary" onClick={handleMarkAll} disabled={markingAll}>
-            {markingAll ? 'Marking…' : 'Mark all read'}
-          </Button>
-        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px' }}>
+            <option value="newest">Newest</option>
+            <option value="score">Best Match</option>
+            <option value="deadline">Deadline</option>
+          </Input>
+          {unreadCount > 0 && (
+            <Button variant="secondary" onClick={handleMarkAll} disabled={markingAll}>
+              {markingAll ? 'Marking…' : 'Mark all read'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Empty state */}
@@ -657,8 +661,8 @@ export default function Alerts() {
   }, [filter, sort, loadAlerts]);
 
   const tabs = [
-    { key: 'matches',       label: 'Matches',       badge: unreadCount },
-    { key: 'savedSearches', label: 'Saved Searches', badge: 0 },
+    { key: 'matches',       label: 'Matches',        badge: unreadCount },
+    { key: 'savedSearches', label: 'Saved Searches', mobileLabel: 'Searches', badge: 0 },
     { key: 'applications',  label: 'Applications',   badge: apps?.length ?? 0 },
   ];
 
@@ -669,15 +673,15 @@ export default function Alerts() {
         key={t.key}
         onClick={() => setTab(t.key)}
         style={{
-          padding: '9px 22px', borderRadius: 50, fontSize: 14, fontWeight: 600,
-          cursor: 'pointer', border: 'none',
+          padding: isMobile ? '9px 13px' : '9px 22px', borderRadius: 50, fontSize: isMobile ? 13 : 14, fontWeight: 600,
+          cursor: 'pointer', border: 'none', whiteSpace: 'nowrap',
           background: active ? 'var(--accent)' : 'transparent',
           color: active ? '#fff' : 'var(--text-secondary)',
           position: 'relative', display: 'flex', alignItems: 'center', gap: 8,
           fontFamily: 'var(--font-body)', transition: 'all 0.2s',
         }}
       >
-        {t.label}
+        {isMobile ? (t.mobileLabel || t.label) : t.label}
         {t.badge > 0 && (
           <span style={{
             background: active ? '#fff' : 'var(--accent)',

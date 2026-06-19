@@ -395,39 +395,81 @@ export default function Jobs() {
       </p>
 
       {/* Top bar */}
-      <div style={css.topBar}>
-        <div style={{ flex: 1, minWidth: 200 }}>
+      {isMobile ? (
+        /* ─── Mobile: search + filters stacked; then a 2-row controls block —
+               Row 1: Qualified chip + sort dropdown · Row 2: Refresh + counter. ─── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
           <Input
             placeholder="Search by title, airline, or location..."
             aria-label="Search jobs"
             value={search} onChange={(e) => setSearch(e.target.value)}
           />
-        </div>
-        <button
-          style={css.toggleBtn(filtersOpen || activeFilterCount > 0)}
-          onClick={filtersOpen ? closeFilters : openFilters}
-        >
-          <SlidersHorizontal size={15} /> Filters
-          {activeFilterCount > 0 && (
-            <span style={css.filtersBadge}>{activeFilterCount}</span>
-          )}
-        </button>
-        {token && (
           <button
-            style={css.toggleBtn(qualifiedOnly)}
-            onClick={() => setQualifiedOnly((v) => !v)}
+            style={{ ...css.toggleBtn(filtersOpen || activeFilterCount > 0), justifyContent: 'center' }}
+            onClick={filtersOpen ? closeFilters : openFilters}
           >
-            {qualifiedOnly ? '✓ ' : ''}Qualified only
+            <SlidersHorizontal size={15} /> Filters
+            {activeFilterCount > 0 && (
+              <span style={css.filtersBadge}>{activeFilterCount}</span>
+            )}
           </button>
-        )}
-        <div>
-          <Input as="select" aria-label="Sort jobs" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
-            {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </Input>
+          {/* Row 1: filters grouped — qualified-only chip + sort */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+            {token && (
+              <button
+                style={{ ...css.toggleBtn(qualifiedOnly), flex: 1, justifyContent: 'center' }}
+                onClick={() => setQualifiedOnly((v) => !v)}
+              >
+                {qualifiedOnly ? '✓ ' : ''}Qualified only
+              </button>
+            )}
+            <div style={{ flex: 1 }}>
+              <Input as="select" aria-label="Sort jobs" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
+                {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </Input>
+            </div>
+          </div>
+          {/* Row 2: refresh (left) + count (right) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <Button variant="secondary" onClick={fetchJobs}>↻ Refresh</Button>
+            <span style={{ ...css.count, fontSize: 12 }}>{filtered.length} of {total} jobs</span>
+          </div>
         </div>
-        <Button variant="secondary" onClick={fetchJobs}>↻ Refresh</Button>
-        <span style={css.count}>{filtered.length} of {total} jobs</span>
-      </div>
+      ) : (
+        <div style={css.topBar}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <Input
+              placeholder="Search by title, airline, or location..."
+              aria-label="Search jobs"
+              value={search} onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button
+            style={css.toggleBtn(filtersOpen || activeFilterCount > 0)}
+            onClick={filtersOpen ? closeFilters : openFilters}
+          >
+            <SlidersHorizontal size={15} /> Filters
+            {activeFilterCount > 0 && (
+              <span style={css.filtersBadge}>{activeFilterCount}</span>
+            )}
+          </button>
+          {token && (
+            <button
+              style={css.toggleBtn(qualifiedOnly)}
+              onClick={() => setQualifiedOnly((v) => !v)}
+            >
+              {qualifiedOnly ? '✓ ' : ''}Qualified only
+            </button>
+          )}
+          <div>
+            <Input as="select" aria-label="Sort jobs" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
+              {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </Input>
+          </div>
+          <Button variant="secondary" onClick={fetchJobs}>↻ Refresh</Button>
+          <span style={css.count}>{filtered.length} of {total} jobs</span>
+        </div>
+      )}
 
       {/* Filter panel */}
       {filtersOpen && (

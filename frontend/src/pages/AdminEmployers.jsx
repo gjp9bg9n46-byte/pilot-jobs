@@ -164,9 +164,9 @@ export default function AdminEmployers() {
 
       {toast && <div style={css.toast(toast.ok)}>{toast.msg}</div>}
 
-      <div style={css.tabBar}>
+      <div style={{ ...css.tabBar, ...(isMobile ? { flexWrap: 'wrap', overflowX: 'visible', paddingBottom: 0 } : null) }}>
         {TABS.map((t) => (
-          <div key={t} style={css.tab(tab === t)} onClick={() => { setTab(t); setExpanded(null); }}>
+          <div key={t} style={{ ...css.tab(tab === t), ...(isMobile ? { padding: '8px 12px' } : null) }} onClick={() => { setTab(t); setExpanded(null); }}>
             {t.charAt(0) + t.slice(1).toLowerCase()}<span style={css.count(tab === t)}>{counts[t]}</span>
           </div>
         ))}

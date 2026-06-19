@@ -99,28 +99,51 @@ export default function Airlines() {
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Airlines</h1>
       <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Who's hiring, what they fly, what they pay.</p>
 
-      <div style={S.controls}>
-        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <Input placeholder="Search airlines…" aria-label="Search airlines" value={q} onChange={(e) => setQ(e.target.value)} />
+      {isMobile ? (
+        /* ─── Mobile (≤640px): search full-width, then 3 dropdowns in a 3-up grid
+               filling the row (each ~33%; native selects ellipsis-truncate). ─── */
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 10 }}>
+            <Input placeholder="Search airlines…" aria-label="Search airlines" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+            <Input as="select" aria-label="Filter by region" value={region} onChange={(e) => setRegion(e.target.value)} style={{ fontSize: 13, minWidth: 0, textOverflow: 'ellipsis' }}>
+              <option value="">All Regions</option>
+              {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            </Input>
+            <Input as="select" aria-label="Filter by hiring status" value={hiringStatus} onChange={(e) => setHiringStatus(e.target.value)} style={{ fontSize: 13, minWidth: 0, textOverflow: 'ellipsis' }}>
+              <option value="">All Statuses</option>
+              {HIRING_STATUSES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+            </Input>
+            <Input as="select" aria-label="Sort airlines" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, minWidth: 0, textOverflow: 'ellipsis' }}>
+              {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </Input>
+          </div>
         </div>
-        <div style={{ flex: '0 0 auto', minWidth: 150 }}>
-          <Input as="select" aria-label="Filter by region" value={region} onChange={(e) => setRegion(e.target.value)} style={{ fontSize: 13 }}>
-            <option value="">All Regions</option>
-            {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-          </Input>
+      ) : (
+        <div style={S.controls}>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <Input placeholder="Search airlines…" aria-label="Search airlines" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <div style={{ flex: '0 0 auto', minWidth: 150 }}>
+            <Input as="select" aria-label="Filter by region" value={region} onChange={(e) => setRegion(e.target.value)} style={{ fontSize: 13 }}>
+              <option value="">All Regions</option>
+              {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            </Input>
+          </div>
+          <div style={{ flex: '0 0 auto', minWidth: 150 }}>
+            <Input as="select" aria-label="Filter by hiring status" value={hiringStatus} onChange={(e) => setHiringStatus(e.target.value)} style={{ fontSize: 13 }}>
+              <option value="">All Statuses</option>
+              {HIRING_STATUSES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+            </Input>
+          </div>
+          <div style={{ flex: '0 0 auto', minWidth: 150 }}>
+            <Input as="select" aria-label="Sort airlines" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13 }}>
+              {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </Input>
+          </div>
         </div>
-        <div style={{ flex: '0 0 auto', minWidth: 150 }}>
-          <Input as="select" aria-label="Filter by hiring status" value={hiringStatus} onChange={(e) => setHiringStatus(e.target.value)} style={{ fontSize: 13 }}>
-            <option value="">All Statuses</option>
-            {HIRING_STATUSES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
-          </Input>
-        </div>
-        <div style={{ flex: '0 0 auto', minWidth: 150 }}>
-          <Input as="select" aria-label="Sort airlines" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13 }}>
-            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </Input>
-        </div>
-      </div>
+      )}
 
       {!loading && data.total > 0 && (
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
