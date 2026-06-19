@@ -396,9 +396,22 @@ export default function Jobs() {
 
       {/* Top bar */}
       {isMobile ? (
-        /* ─── Mobile: search + filters stacked; then a 2-row controls block —
-               Row 1: Qualified chip + sort dropdown · Row 2: Refresh + counter. ─── */
+        /* ─── Mobile (top-down): Row 1 status (counter + compact refresh) ·
+               Row 2 search + filters · Row 3 qualified chip + sort dropdown. ─── */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          {/* Row 1: secondary status — counter (left) + compact refresh (right) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 0' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{filtered.length} of {total} jobs</span>
+            <button
+              onClick={fetchJobs}
+              aria-label="Refresh jobs"
+              title="Refresh jobs"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)', padding: 4 }}
+            >
+              ↻ Refresh
+            </button>
+          </div>
+          {/* Row 2: search + filters */}
           <Input
             placeholder="Search by title, airline, or location..."
             aria-label="Search jobs"
@@ -413,7 +426,7 @@ export default function Jobs() {
               <span style={css.filtersBadge}>{activeFilterCount}</span>
             )}
           </button>
-          {/* Row 1: filters grouped — qualified-only chip + sort */}
+          {/* Row 3: qualified-only chip + sort */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
             {token && (
               <button
@@ -428,11 +441,6 @@ export default function Jobs() {
                 {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </Input>
             </div>
-          </div>
-          {/* Row 2: refresh (left) + count (right) */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <Button variant="secondary" onClick={fetchJobs}>↻ Refresh</Button>
-            <span style={{ ...css.count, fontSize: 12 }}>{filtered.length} of {total} jobs</span>
           </div>
         </div>
       ) : (
