@@ -246,6 +246,11 @@ export default function ImportModal({ onClose, onImportDone }) {
         if (nonEmpty.length === 0) {
           throw Object.assign(new Error('The first sheet is empty.'), { handled: true });
         }
+        // Header-only (or a benign non-spreadsheet that SheetJS parsed as one text
+        // cell): catch client-side so we don't round-trip to the server for a 422.
+        if (nonEmpty.length < 2) {
+          throw Object.assign(new Error('The first sheet has no data rows — only a header row was found.'), { handled: true });
+        }
         // Note (don't block) when other sheets are present — v1 uses the first only.
         if (workbook.SheetNames.length > 1) {
           const others = workbook.SheetNames.length - 1;
