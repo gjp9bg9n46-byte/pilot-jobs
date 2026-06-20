@@ -10,6 +10,7 @@
     "seed": "node prisma/seed.js"
   },
   "scripts": {
+    "test": "node --test \"src/**/*.test.js\"",
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "db:generate": "prisma generate",

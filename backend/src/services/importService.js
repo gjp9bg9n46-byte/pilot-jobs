@@ -312,57 +312,80 @@ function buildDate(y, m, d) {
   return `${y}-${pad2(m)}-${pad2(d)}`;
 }
 
-// "0029" / "00:29" / "2400" → 'HH:MM' or null. 2400 (end-of-day) → 00:00; 2401+ invalid.
+// Day-of-week prefixes and timezone markers that crew rosters sprinkle around the
+// timestamp (e.g. "Tue 12Mar24 0029Z", "12Mar24 0029 UTC"). Stripped before parsing.
+const DOW_RE = /^(mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mo|tu|we|th|fr|sa|su)\.?$/i;
+const TZ_RE = /^(z|utc|gmt|zulu|local|lt)$/i;
+
+// "0029" / "00:29" / "00:29:00" / "002900" / "2400" / "0029Z" → 'HH:MM' or null.
+// 2400 (end-of-day) → 00:00; 2401+ invalid.
 function parseClockTime(t) {
-  let h, m;
-  const colon = t.match(/^(\d{1,2}):(\d{2})$/);
-  const hhmm = t.match(/^(\d{3,4})$/);
-  if (colon) { h = +colon[1]; m = +colon[2]; }
-  else if (hhmm) { const s = t.padStart(4, '0'); h = +s.slice(0, 2); m = +s.slice(2); }
+  if (t == null) return null;
+  t = String(t).trim().replace(/(z|utc|gmt|lt|l)$/i, ''); // strip trailing zone marker (0029Z)
+  let h, m, mm;
+  if ((mm = t.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/))) { h = +mm[1]; m = +mm[2]; }          // HH:MM(:SS)
+  else if ((mm = t.match(/^(\d{2})(\d{2})\d{2}$/)))      { h = +mm[1]; m = +mm[2]; }          // HHMMSS
+  else if ((mm = t.match(/^(\d{3,4})$/)))                { const s = t.padStart(4, '0'); h = +s.slice(0, 2); m = +s.slice(2); } // HMM/HHMM
   else return null;
   if (h === 24 && m === 0) h = 0; // 2400 → midnight
   if (h > 23 || m > 59) return null;
   return `${pad2(h)}:${pad2(m)}`;
 }
 
-// Parse a combined datetime. Returns { date, time } on full success,
-// { date:null, time, error } when the time parsed but the date didn't (so the
-// row surfaces a clear validation error downstream), or null if not a datetime.
-function parseCombinedDateTime(str) {
-  if (!str) return null;
-  str = String(str).trim();
-  if (!str) return null;
-
-  // Split into date part + time part on whitespace or ISO 'T'
-  const m = str.match(/^(\S+)[\sT]+(\S+)$/);
-  if (!m) return null;
-  const datePart = m[1];
-  const time = parseClockTime(m[2]);
-  if (!time) return null; // second token isn't a clock time → not a combined datetime
-
-  let dm;
-  // DDMonYY / DD-Mon-YY / DD/Mon/YYYY (separators optional) — e.g. 12Mar24, 12-Mar-2024
-  if ((dm = datePart.match(/^(\d{1,2})[-/]?([A-Za-z]{3})[-/]?(\d{2,4})$/))) {
-    const day = +dm[1];
-    const mon = MONTH_CODES[dm[2].toLowerCase()];
-    if (!mon) return { date: null, time, error: `Unrecognized month "${dm[2]}"` };
-    const year = dm[3].length <= 2 ? 2000 + +dm[3] : +dm[3];
-    const date = buildDate(year, mon, day);
-    return date ? { date, time } : { date: null, time, error: `Invalid date "${datePart}"` };
+// A date string in any of our supported shapes → 'YYYY-MM-DD', null (date-shaped
+// but invalid value, e.g. bad month / 31 Feb), or undefined (not a date shape).
+function parseFlexibleDate(s) {
+  s = String(s).trim();
+  let m;
+  // DDMon[YY|YYYY] — separators optional (space/-/ /), 3-letter or full month name
+  if ((m = s.match(/^(\d{1,2})[\s\-/]*([A-Za-z]{3,9})[\s\-/]*(\d{2,4})$/))) {
+    const mon = MONTH_CODES[m[2].slice(0, 3).toLowerCase()];
+    if (!mon) return null;
+    const year = m[3].length <= 2 ? 2000 + +m[3] : +m[3];
+    return buildDate(year, mon, +m[1]) || null;
   }
-  // ISO 2024-03-12
-  if ((dm = datePart.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/))) {
-    const date = buildDate(+dm[1], +dm[2], +dm[3]);
-    return date ? { date, time } : { date: null, time, error: `Invalid date "${datePart}"` };
-  }
+  // ISO YYYY-MM-DD
+  if ((m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/))) return buildDate(+m[1], +m[2], +m[3]) || null;
   // DD/MM/YY or DD-MM-YY or DD.MM.YYYY — default DD/MM (non-US crew); fall back to MM/DD
-  if ((dm = datePart.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/))) {
-    const a = +dm[1], b = +dm[2];
-    const year = dm[3].length <= 2 ? 2000 + +dm[3] : +dm[3];
-    const date = buildDate(year, b, a) || buildDate(year, a, b); // DD/MM first, then MM/DD
-    return date ? { date, time } : { date: null, time, error: `Invalid date "${datePart}"` };
+  if ((m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/))) {
+    const year = m[3].length <= 2 ? 2000 + +m[3] : +m[3];
+    return buildDate(year, +m[2], +m[1]) || buildDate(year, +m[1], +m[2]) || null;
   }
-  return null; // date part not recognized
+  return undefined;
+}
+
+// Parse a combined datetime, tolerant of the noise real crew rosters carry: a
+// leading day-of-week, a trailing timezone, seconds, HHMMSS, non-breaking/odd or
+// repeated whitespace, ISO 'T', and space-separated / full-month dates. Returns
+// { date, time } on success, { date:null, time, error } when the time parsed but
+// the date didn't (row surfaces a clear error), or null if it's not a datetime.
+function parseCombinedDateTime(str) {
+  if (str == null) return null;
+  // Normalize odd spaces (NBSP/thin/zero-width) + collapse runs; ISO 'T' → space
+  let s = String(str).replace(/[\u200b\u200c\u200d\ufeff]/g, '').replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+  s = s.replace(/(\d)[Tt](\d)/, '$1 $2');
+
+  // Drop day-of-week and standalone timezone tokens
+  const parts = s.split(' ').filter((p) => p && !DOW_RE.test(p) && !TZ_RE.test(p));
+  if (parts.length < 2) return null; // need a date token and a time token
+
+  // Time = the last token that parses as a clock time (the date's year can't be
+  // mistaken for it — we scan from the end and the time is always trailing).
+  let timeIdx = -1, time = null;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const t = parseClockTime(parts[i]);
+    if (t) { time = t; timeIdx = i; break; }
+  }
+  if (!time) return null;
+
+  // Date = everything else, joined (handles "12 Mar 24" / "12 March 2024")
+  const dateStr = parts.filter((_, i) => i !== timeIdx).join(' ').trim();
+  if (!dateStr) return null;
+  const date = parseFlexibleDate(dateStr);
+  if (date === undefined) return null;                                       // not a datetime
+  if (date === null) return { date: null, time, error: `Unrecognized or invalid date "${dateStr}"` };
+  return { date, time };
 }
 
 // Does a value look like a combined datetime with a valid date? (content sniff)
@@ -385,7 +408,8 @@ function uniqueHeader(headers, base) {
 function applyDateFallbacks(headers, rawRows, mapping) {
   if (mapping.date) return { headers, rawRows, mapping, applied: false };
 
-  const sample = rawRows.slice(0, 8);
+  // Sample up to 20 rows (tolerant of sparse columns / a few junk preamble rows)
+  const sample = rawRows.slice(0, 20);
   const sampledVals = (c) => sample.map((r) => (r[c] ?? '').toString().trim()).filter(Boolean);
 
   // (1) Crew Start/Finish: columns whose content is mostly combined datetimes
