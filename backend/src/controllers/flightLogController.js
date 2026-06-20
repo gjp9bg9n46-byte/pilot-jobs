@@ -17,18 +17,21 @@ const chunksOf = (arr, size) => {
 
 exports.getLogs = async (req, res, next) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
+    // Default 1000/page (covers most pilots' full career in one fetch); clamped to
+    // [1, 2000] so a huge ?limit can't pull the whole table. "Load more" pages the rest.
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 2000);
+    const skip = (page - 1) * limit;
     const [logs, total] = await Promise.all([
       prisma.flightLog.findMany({
         where: { pilotId: req.pilot.id },
         orderBy: { date: 'desc' },
         skip,
-        take: Number(limit),
+        take: limit,
       }),
       prisma.flightLog.count({ where: { pilotId: req.pilot.id } }),
     ]);
-    res.json({ logs, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
+    res.json({ logs, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     next(err);
   }

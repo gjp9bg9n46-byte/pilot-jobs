@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import SunCalc from 'suncalc';
 import { flightLogApi, profileApi } from '../services/api';
-import { setLogs, setTotals, addLog, removeLog } from '../store';
+import { setLogs, appendLogs, setTotals, addLog, removeLog } from '../store';
 import AIRPORTS from '../data/airports.json';
 import ImportModal from '../components/ImportModal';
 import AircraftCombobox from '../components/AircraftCombobox';
@@ -492,8 +492,11 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
 export default function Logbook() {
   const dispatch = useDispatch();
   const isMobile = useIsMobile(640);
-  const { logs, totals } = useSelector((s) => s.logbook);
+  const { logs, totals, total } = useSelector((s) => s.logbook);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 1000;
   const [showModal, setShowModal] = useState(false);
   const [editFlight, setEditFlight] = useState(null);
   const [cloneFlight, setCloneFlight] = useState(null);
@@ -526,8 +529,22 @@ export default function Logbook() {
       dispatch(setLogs({ logs: logsRes.data.logs, total: logsRes.data.total }));
       dispatch(setTotals(totalsRes.data));
       setCarryForward(cfRes.data ?? {});
+      setPage(1);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Pagination "Load more" — only reachable for pilots with > PAGE_SIZE flights.
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      const { data } = await flightLogApi.list(next, PAGE_SIZE);
+      dispatch(appendLogs(data.logs));
+      setPage(next);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -756,7 +773,9 @@ export default function Logbook() {
           <Upload size={14} /> Import
         </Button>
         <span style={{ color: 'var(--text-secondary)', fontSize: 13, marginLeft: 'auto' }}>
-          {groupedRows.length} {groupedRows.length !== logs.length ? `entries (${logs.length} sectors)` : 'flights'}
+          {total} {total === 1 ? 'flight' : 'flights'}
+          {groupedRows.length !== logs.length && ` · ${groupedRows.length} entries`}
+          {logs.length < total && ` · ${logs.length} loaded`}
         </span>
       </div>
 
@@ -1010,6 +1029,15 @@ export default function Logbook() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Load more — only when the pilot has more flights than one page (>1000) */}
+      {!loading && logs.length < total && (
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <Button variant="secondary" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? 'Loading…' : `Load more (${logs.length} of ${total})`}
+          </Button>
         </div>
       )}
 
