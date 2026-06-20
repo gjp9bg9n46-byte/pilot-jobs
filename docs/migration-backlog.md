@@ -215,6 +215,20 @@ Resolved (no action): **#8** Save-button label inconsistency ("Save Changes" vs
 "Save") — minor; **#9** one-click default licence creation — defensible
 (licences legitimately have optional dates).
 
+## Profile (2026-06-20)
+
+- **Passport Number field removed** from Profile → Personal Information (privacy
+  posture). The DB column `Pilot.passportNumber` and any stored values are left
+  intact; the field is just no longer collected/displayed, and is omitted from the
+  save payload so existing values aren't overwritten. Passport Expiry kept (drives
+  expiry alerts).
+- **Follow-up (optional, low priority):** plan a future migration to drop the
+  `Pilot.passportNumber` column entirely if we want to fully stop holding that PII.
+  Not shipped now (would require a Prisma migration + confirming nothing else reads
+  the column).
+- Flight Experience Totals now render rounded to 1 decimal (display-only; fixed
+  tile overflow at high imported hour counts).
+
 ## Import resilience (2026-06-19)
 
 - **Row cap raised 500 → 5,000** (`IMPORT_ROW_LIMIT`) across parse + confirm + the

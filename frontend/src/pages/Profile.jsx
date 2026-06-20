@@ -204,7 +204,7 @@ function FlightTotalsCard({ totals }) {
           {stats.map(({ key, label }) => (
             <div key={key} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 10px', textAlign: 'center' }}>
               <div style={{ fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums', fontSize: 22, fontWeight: 800, color: 'var(--accent)', lineHeight: 1.1 }}>
-                {totals?.[key] ?? 0}
+                {(Number(totals?.[key]) || 0).toFixed(1)}
               </div>
               <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 5 }}>
                 {label}
@@ -850,7 +850,8 @@ export default function Profile() {
         city: profileData.city || '',
         education: profileData.education || null,
         role: profileData.role || '',
-        passportNumber: profileData.passportNumber || '',
+        // passportNumber intentionally omitted — field removed from the form; not
+        // sent on save so the stored value (if any) is left untouched in the DB.
         passportExpiry: profileData.passportExpiry
           ? new Date(profileData.passportExpiry).toISOString().split('T')[0]
           : '',
@@ -923,7 +924,6 @@ export default function Profile() {
                 Passport
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
-                <Input label="Passport Number" value={personalForm.passportNumber || ''} onChange={(e) => setPersonalForm((f) => ({ ...f, passportNumber: e.target.value }))} placeholder="e.g. A12345678" />
                 <div>
                   <Input label="Passport Expiry" type="date" value={personalForm.passportExpiry || ''} onChange={(e) => setPersonalForm((f) => ({ ...f, passportExpiry: e.target.value }))} />
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Used for expiry alerts</div>
