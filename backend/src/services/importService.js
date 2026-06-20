@@ -6,9 +6,9 @@ const { parse } = require('csv-parse/sync');
 
 const FIELD_SYNONYMS = {
   date:            ['date','flightdate','fltdate','departuredate','depdate','flightday'],
-  flightNumber:    ['flightno','flightnum','fltno','flt','flight','flightident','fltident','flightnumber','flightno'],
+  flightNumber:    ['flightno','flightnum','fltno','flt','flight','flightident','fltident','flightnumber','fltid','flightid'],
   aircraftType:    ['aircrafttype','actype','aircraft','type','acicao','acmodel'],
-  registration:    ['registration','reg','tail','tailnumber','tailno','acreg','tailreg'],
+  registration:    ['registration','reg','tail','tailnumber','tailno','acreg','tailreg','ac'],
   departure:       ['departure','dep','from','origin','departureicao','fromapt','departureiata','depapt'],
   arrival:         ['arrival','arr','to','dest','destination','arrivalicao','toapt','arrivaliata','arrapt'],
   offBlocksTime:   ['offblocks','offblock','atd','out','blockout','blkout','deptime','offtime','off','blockoff','stdactual'],
@@ -19,8 +19,8 @@ const FIELD_SYNONYMS = {
   sicName:         ['sic','firstofficer','fo','copilot','secondincommand','f0','p2','firstofficername'],
   picTime:         ['pictime','pichours','commandtime','pichr','p1time','capttime'],
   sicTime:         ['sictime','sichours','copilottime','sichr','p2time','fotime'],
-  totalTime:       ['totaltime','blocktime','blktime','duration','ttltime','ttime','total','ttl','blockhours'],
-  nightTime:       ['nighttime','night','nighthours','nighthr','nightflight'],
+  totalTime:       ['totaltime','blocktime','blktime','duration','ttltime','ttime','total','ttl','blockhours','augblhr','blhr','totalblock'],
+  nightTime:       ['nighttime','night','nighthours','nighthr','nighthrs','ntime','nightflight'],
   instrumentTime:       ['instrumenttime','ifrtime','ifrhours','instrtime','ifr','instrument'],
   instrumentActualTime: ['ifractual','actualifr','instrumentactual','ifrActualTime','actualinstrument','imcactual','imctime','imchours','instrActual'],
   instrumentSimTime:    ['ifrsim','simifr','instrumentsim','ifrSimTime','siminstrument','simifrhours','siminstrhours','instrSim'],
@@ -30,7 +30,7 @@ const FIELD_SYNONYMS = {
   jetTime:              ['jettime','jethours','jet'],
   landingsDay:     ['ldgday','dayldg','daylandings','landingsday','ldgsday','dayldgs'],
   landingsNight:   ['ldgnight','nightldg','nightlandings','landingsnight','ldgsnight','nightldgs'],
-  remarks:         ['remarks','notes','comments','comment','remark','note'],
+  remarks:         ['remarks','notes','comments','comment','remark','note','augmentation'],
 };
 
 // Normalize a raw header string for matching
@@ -150,7 +150,7 @@ function parseFlexTime(str) {
 
 // Parse a duration → decimal hours (float) or null
 function parseDecimalHours(str) {
-  if (!str) return null;
+  if (str == null) return null;
   str = String(str).trim();
   if (!str) return null;
 
@@ -160,11 +160,17 @@ function parseDecimalHours(str) {
     return isNaN(v) ? null : v;
   }
 
-  // HH:MM
-  const hm = str.match(/^(\d{1,2}):(\d{2})$/);
-  if (hm) return parseInt(hm[1]) + parseInt(hm[2]) / 60;
+  // HH:MM or HH:MM:SS or H:MM (crew rosters give block/night as "2:37") → decimal hours
+  const hm = str.match(/^(\d{1,3}):(\d{2})(?::(\d{2}))?$/);
+  if (hm) return parseInt(hm[1]) + parseInt(hm[2]) / 60 + (hm[3] ? parseInt(hm[3]) / 3600 : 0);
 
   return null;
+}
+
+// Explicit named helper for HH:MM → decimal hours, e.g. "2:37" → 2.6166…
+// (Block / Day / Night columns in crew rosters arrive as clock strings.)
+function parseTimeToHours(str) {
+  return parseDecimalHours(str);
 }
 
 // ─── Row coercion / validation ────────────────────────────────────────────────
@@ -462,9 +468,9 @@ function applyDateFallbacks(headers, rawRows, mapping) {
     let finishIdx = dtCols.find((c) => c !== startIdx && FINISH.includes(norm(c)));
     if (finishIdx === undefined) finishIdx = dtCols.find((c) => c !== startIdx);
 
-    const dateHeader = uniqueHeader(headers, 'Date (auto)');
-    const offHeader = uniqueHeader([...headers, dateHeader], 'Off (auto)');
-    const onHeader = finishIdx !== undefined ? uniqueHeader([...headers, dateHeader, offHeader], 'On (auto)') : null;
+    const dateHeader = uniqueHeader(headers, 'Date (auto from Start/Finish)');
+    const offHeader = uniqueHeader([...headers, dateHeader], 'Off Blocks (auto from Start/Finish)');
+    const onHeader = finishIdx !== undefined ? uniqueHeader([...headers, dateHeader, offHeader], 'On Blocks (auto from Start/Finish)') : null;
 
     const newHeaders = [...headers, dateHeader, offHeader, ...(onHeader ? [onHeader] : [])];
     const newRows = rawRows.map((r) => {
@@ -494,14 +500,89 @@ function applyDateFallbacks(headers, rawRows, mapping) {
   return { headers, rawRows, mapping, applied: false };
 }
 
+// ─── Route splitting ──────────────────────────────────────────────────────────
+// Crew rosters carry a single "Route" column ("CAI-DMM") instead of separate
+// Departure/Arrival. Split it into two synthesized columns the pipeline can map.
+const ROUTE_HEADERS = ['route', 'sector', 'sectors', 'routing', 'depart', 'deparr'];
+
+// "CAI-DMM" / "CAI→DMM" / "CAI/DMM" / "CAI - DMM" / "CAI DMM" → { dep, arr } or null
+function splitRoute(val) {
+  const s = String(val ?? '').trim();
+  if (!s) return null;
+  const m = s.match(/^([A-Za-z0-9]{3,4})\s*(?:->|-|–|—|→|\/|\bto\b|\s)\s*([A-Za-z0-9]{3,4})$/i);
+  if (!m) return null;
+  return { dep: m[1].toUpperCase(), arr: m[2].toUpperCase() };
+}
+
+// Synthesize Departure/Arrival columns from a Route column when both aren't
+// already mapped. Detects the Route column by header or by content.
+function applyRouteSplit(headers, rawRows, mapping) {
+  if (mapping.departure && mapping.arrival) return { headers, rawRows, mapping, applied: false };
+
+  let routeIdx = headers.findIndex((h) => ROUTE_HEADERS.includes(normalizeHeader(h)));
+  if (routeIdx === -1) {
+    const sample = rawRows.slice(0, 20);
+    for (let c = 0; c < headers.length; c++) {
+      const vals = sample.map((r) => (r[c] ?? '').toString().trim()).filter(Boolean);
+      if (vals.length && vals.filter((v) => splitRoute(v)).length >= Math.ceil(vals.length * 0.6)) { routeIdx = c; break; }
+    }
+  }
+  if (routeIdx === -1) return { headers, rawRows, mapping, applied: false };
+
+  const depHeader = uniqueHeader(headers, 'Departure (auto from Route)');
+  const arrHeader = uniqueHeader([...headers, depHeader], 'Arrival (auto from Route)');
+  const newHeaders = [...headers, depHeader, arrHeader];
+  const newRows = rawRows.map((r) => {
+    const sp = splitRoute((r[routeIdx] ?? '').toString().trim());
+    return [...r, sp ? sp.dep : '', sp ? sp.arr : ''];
+  });
+  if (!mapping.departure) mapping.departure = depHeader;
+  if (!mapping.arrival) mapping.arrival = arrHeader;
+  return { headers: newHeaders, rawRows: newRows, mapping, applied: true };
+}
+
+// ─── Aircraft column disambiguation ───────────────────────────────────────────
+// "AC" maps to Registration by default, but if its values look like aircraft TYPE
+// codes (A320, B737, ATR72, E190, CRJ900) rather than tail codes, remap to type.
+const TYPE_CODE_RE = /^(?:[A-Z]\d{2,3}[A-Z]?|(?:ATR|CRJ|EMB|ERJ|MD|DH|DHC|RJ)\d{2,4})$/i;
+function disambiguateAircraftColumn(headers, rawRows, mapping) {
+  const acHeader = mapping.registration;
+  if (!acHeader || normalizeHeader(acHeader) !== 'ac') return; // only second-guess an "AC" header
+  const idx = headers.indexOf(acHeader);
+  if (idx === -1) return;
+  const vals = rawRows.slice(0, 20).map((r) => (r[idx] ?? '').toString().trim()).filter(Boolean);
+  if (vals.length === 0) return;
+  const typeish = vals.filter((v) => TYPE_CODE_RE.test(v)).length;
+  if (typeish >= Math.ceil(vals.length * 0.6) && !mapping.aircraftType) {
+    mapping.aircraftType = acHeader;
+    delete mapping.registration;
+  }
+}
+
+// Run all column enrichments after header-based detectMapping: crew date
+// synthesis (Start/Finish), Route splitting, and AC type/registration
+// disambiguation. Returns possibly-extended { headers, rawRows, mapping }.
+function enrichColumns(headers, rawRows, mapping) {
+  let h = headers, r = rawRows;
+  if (!mapping.date) ({ headers: h, rawRows: r } = applyDateFallbacks(h, r, mapping));
+  ({ headers: h, rawRows: r } = applyRouteSplit(h, r, mapping));
+  disambiguateAircraftColumn(h, r, mapping);
+  return { headers: h, rawRows: r, mapping };
+}
+
 module.exports = {
   detectMapping,
   parseCSV,
   coerceRow,
   parseFlexDate,
   parseFlexTime,
+  parseDecimalHours,
+  parseTimeToHours,
   parseCombinedDateTime,
   applyDateFallbacks,
+  applyRouteSplit,
+  enrichColumns,
+  splitRoute,
   stripLeadingMetadata,
   extractKeyFields,
   FIELD_SYNONYMS,

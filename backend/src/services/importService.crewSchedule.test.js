@@ -17,6 +17,10 @@ const {
   detectMapping,
   parseCSV,
   stripLeadingMetadata,
+  enrichColumns,
+  splitRoute,
+  parseTimeToHours,
+  coerceRow,
 } = require('./importService');
 
 // ── The exact user format + every variation that previously broke ──────────────
@@ -129,14 +133,15 @@ test('regression: standard Date/Off/On file detects via headers, no synthesis', 
 // End-to-end through parseCSV: the leading title band must be dropped so the real
 // header row leads, otherwise every crew row imports as 0-valid.
 
+// Full parse → header-based mapping → all enrichments (the real importParse path).
 function pipeline(csv) {
   const { headers, rawRows } = parseCSV(Buffer.from(csv, 'utf-8'));
   const mapping = detectMapping(headers);
-  const out = mapping.date
-    ? { headers, rawRows, mapping, applied: false }
-    : applyDateFallbacks(headers, rawRows, mapping);
-  return { headers, rawRows: out.rawRows, mapping: out.mapping };
+  const out = enrichColumns(headers, rawRows, mapping);
+  return { srcHeaders: headers, headers: out.headers, rawRows: out.rawRows, mapping: out.mapping };
 }
+// Resolve a mapped field to its value in row `i`.
+const cell = (out, field, i = 0) => out.rawRows[i][out.headers.indexOf(out.mapping[field])];
 
 test('metadata strip: user 2832 shape — "Period:" title above the real header row', () => {
   const csv = [
@@ -146,12 +151,11 @@ test('metadata strip: user 2832 shape — "Period:" title above the real header 
     'MM,13Mar24 0815,13Mar24 0930,CAI',
     'CAI,14Mar24 0600,14Mar24 0730,MM',
   ].join('\n');
-  const { headers, rawRows, mapping } = pipeline(csv);
-  assert.deepStrictEqual(headers, ['CrewCode', 'Start', 'Finish', 'Dest'], 'real headers detected');
-  assert.ok(mapping.date && mapping.offBlocksTime && mapping.onBlocksTime, 'Start/Finish synthesized');
-  assert.strictEqual(rawRows.length, 3, 'only the 3 flight rows are data (title + header not counted)');
-  const di = headers.length + ['Date (auto)', 'Off (auto)', 'On (auto)'].indexOf(mapping.date);
-  assert.strictEqual(rawRows[0][di], '2024-03-12', 'first flight row date parsed from Start');
+  const out = pipeline(csv);
+  assert.deepStrictEqual(out.srcHeaders, ['CrewCode', 'Start', 'Finish', 'Dest'], 'real headers detected');
+  assert.ok(out.mapping.date && out.mapping.offBlocksTime && out.mapping.onBlocksTime, 'Start/Finish synthesized');
+  assert.strictEqual(out.rawRows.length, 3, 'only the 3 flight rows are data (title + header not counted)');
+  assert.strictEqual(cell(out, 'date'), '2024-03-12', 'first flight row date parsed from Start');
 });
 
 test('metadata strip: merged single-cell title (length-1 row above wide data)', () => {
@@ -161,9 +165,9 @@ test('metadata strip: merged single-cell title (length-1 row above wide data)', 
     'MM,12Mar24 0029,12Mar24 0306,CAI',
     'MM,13Mar24 0815,13Mar24 0930,CAI',
   ].join('\n');
-  const { headers, rawRows } = pipeline(csv);
-  assert.deepStrictEqual(headers, ['CrewCode', 'Start', 'Finish', 'Dest']);
-  assert.strictEqual(rawRows.length, 2);
+  const out = pipeline(csv);
+  assert.deepStrictEqual(out.srcHeaders, ['CrewCode', 'Start', 'Finish', 'Dest']);
+  assert.strictEqual(out.rawRows.length, 2);
 });
 
 test('metadata strip: 2+ stacked metadata rows (title + blank + Period)', () => {
@@ -175,10 +179,10 @@ test('metadata strip: 2+ stacked metadata rows (title + blank + Period)', () => 
     'MM,12Mar24 0029,12Mar24 0306,CAI',
     'MM,13Mar24 0815,13Mar24 0930,CAI',
   ].join('\n');
-  const { headers, rawRows, mapping } = pipeline(csv);
-  assert.deepStrictEqual(headers, ['CrewCode', 'Start', 'Finish', 'Dest']);
-  assert.ok(mapping.date, 'date synthesized after skipping 3 metadata rows');
-  assert.strictEqual(rawRows.length, 2);
+  const out = pipeline(csv);
+  assert.deepStrictEqual(out.srcHeaders, ['CrewCode', 'Start', 'Finish', 'Dest']);
+  assert.ok(out.mapping.date, 'date synthesized after skipping 3 metadata rows');
+  assert.strictEqual(out.rawRows.length, 2);
 });
 
 test('metadata strip regression: standard file with real headers on row 1 is untouched', () => {
@@ -187,10 +191,10 @@ test('metadata strip regression: standard file with real headers on row 1 is unt
     '2026-05-01,08:00,10:00,OMDB,OTHH',
     '2026-05-02,09:00,11:30,OTHH,OMDB',
   ].join('\n');
-  const { headers, rawRows, mapping } = pipeline(csv);
-  assert.deepStrictEqual(headers, ['Date', 'Off Blocks', 'On Blocks', 'From', 'To']);
-  assert.strictEqual(mapping.date, 'Date');
-  assert.strictEqual(rawRows.length, 2);
+  const out = pipeline(csv);
+  assert.deepStrictEqual(out.srcHeaders, ['Date', 'Off Blocks', 'On Blocks', 'From', 'To']);
+  assert.strictEqual(out.mapping.date, 'Date');
+  assert.strictEqual(out.rawRows.length, 2);
 });
 
 test('stripLeadingMetadata: narrow legit file (no false positives)', () => {
@@ -198,4 +202,98 @@ test('stripLeadingMetadata: narrow legit file (no false positives)', () => {
   // 2-col header is never mistaken for a merged title.
   const recs = [['Date', 'Block'], ['2026-05-01', '1.5'], ['2026-05-02', '2.0']];
   assert.deepStrictEqual(stripLeadingMetadata(recs), recs);
+});
+
+// ── Column synonyms (AC, FltId, Aug BLHR, Night Hrs, Augmentation) ─────────────
+test('detectMapping: crew synonyms map AC/FltId/Aug BLHR/Night Hrs/Augmentation', () => {
+  const headers = ['CrewCode', 'AC', 'FltId', 'Aug BLHR', 'Night Hrs', 'Augmentation'];
+  const m = detectMapping(headers);
+  assert.strictEqual(m.registration, 'AC');
+  assert.strictEqual(m.flightNumber, 'FltId');
+  assert.strictEqual(m.totalTime, 'Aug BLHR');
+  assert.strictEqual(m.nightTime, 'Night Hrs');
+  assert.strictEqual(m.remarks, 'Augmentation');
+});
+
+// ── Route splitting ────────────────────────────────────────────────────────────
+for (const [route, dep, arr] of [
+  ['CAI-DMM', 'CAI', 'DMM'],
+  ['CAI→DMM', 'CAI', 'DMM'],
+  ['CAI/DMM', 'CAI', 'DMM'],
+  ['CAI - DMM', 'CAI', 'DMM'],
+  ['CAI DMM', 'CAI', 'DMM'],
+  ['LHR-JFK', 'LHR', 'JFK'],
+  ['OMDB-OERK', 'OMDB', 'OERK'],
+]) {
+  test(`splitRoute: ${route}`, () => assert.deepStrictEqual(splitRoute(route), { dep, arr }));
+}
+test('splitRoute: non-route value → null', () => assert.strictEqual(splitRoute('CAI'), null));
+
+test('applyRouteSplit: synthesizes Departure/Arrival from a Route column', () => {
+  const headers = ['CrewCode', 'Route', 'Date'];
+  const rawRows = [['MM', 'CAI-DMM', '2024-03-12'], ['MM', 'DMM-CAI', '2024-03-13']];
+  const mapping = detectMapping(headers);
+  const out = enrichColumns(headers, rawRows, mapping);
+  assert.ok(out.mapping.departure && out.mapping.arrival);
+  assert.ok(out.mapping.departure.includes('auto from Route'));
+  const di = out.headers.indexOf(out.mapping.departure);
+  const ai = out.headers.indexOf(out.mapping.arrival);
+  assert.deepStrictEqual([out.rawRows[0][di], out.rawRows[0][ai]], ['CAI', 'DMM']);
+  assert.deepStrictEqual([out.rawRows[1][di], out.rawRows[1][ai]], ['DMM', 'CAI']);
+});
+
+// ── HH:MM → decimal hours ──────────────────────────────────────────────────────
+test('parseTimeToHours: "2:37" → 2.6166…', () => {
+  assert.ok(Math.abs(parseTimeToHours('2:37') - (2 + 37 / 60)) < 1e-9);
+});
+test('parseTimeToHours: "0:45" → 0.75, "1:00" → 1, decimal "2.5" → 2.5, HH:MM:SS', () => {
+  assert.strictEqual(parseTimeToHours('0:45'), 0.75);
+  assert.strictEqual(parseTimeToHours('1:00'), 1);
+  assert.strictEqual(parseTimeToHours('2.5'), 2.5);
+  assert.ok(Math.abs(parseTimeToHours('2:37:30') - (2 + 37 / 60 + 30 / 3600)) < 1e-9);
+});
+test('coerceRow: night "0:45" → 0.75 decimal hours', () => {
+  const { coerced } = coerceRow({ date: '2024-03-12', nightTime: '0:45' });
+  assert.strictEqual(coerced.nightTime, 0.75);
+});
+
+// ── AC content-based disambiguation ────────────────────────────────────────────
+test('AC column with tail codes stays Registration; with type codes → Aircraft Type', () => {
+  const tail = enrichColumns(['CrewCode', 'AC'], [['MM', 'BUP'], ['MM', 'BPX']], detectMapping(['CrewCode', 'AC']));
+  assert.strictEqual(tail.mapping.registration, 'AC');
+  assert.strictEqual(tail.mapping.aircraftType, undefined);
+
+  const types = enrichColumns(['CrewCode', 'AC'], [['MM', 'A320'], ['MM', 'B737']], detectMapping(['CrewCode', 'AC']));
+  assert.strictEqual(types.mapping.aircraftType, 'AC');
+  assert.strictEqual(types.mapping.registration, undefined);
+});
+
+// ── Full 12-column user-file pipeline end-to-end ───────────────────────────────
+test('full 2832 12-column shape: all real headers + auto-mappings + coerced values', () => {
+  const csv = [
+    '', '', 'Period: 01Feb24 - 30May26', '',
+    'CrewCode,Namefirst,Namelast,AC,FltId,Route,Start,Finish,Augmentation,Aug BLHR,Day Hrs,Night Hrs',
+    'MM,John,Smith,BUP,MS501,CAI-DMM,12Mar24 0029,12Mar24 0306,N,2:37,1:52,0:45',
+  ].join('\n');
+  const out = pipeline(csv);
+  // all 12 source headers preserved (synthetic columns appended after)
+  assert.strictEqual(out.srcHeaders.length, 12);
+  assert.deepStrictEqual(out.srcHeaders.slice(0, 6), ['CrewCode', 'Namefirst', 'Namelast', 'AC', 'FltId', 'Route']);
+  // the expected auto-mappings all present
+  for (const f of ['date', 'offBlocksTime', 'onBlocksTime', 'registration', 'flightNumber', 'departure', 'arrival', 'totalTime', 'nightTime']) {
+    assert.ok(out.mapping[f], `mapping.${f} present`);
+  }
+  // coerce row 0 → real values, no errors
+  const fields = {};
+  for (const [f, h] of Object.entries(out.mapping)) fields[f] = out.rawRows[0][out.headers.indexOf(h)];
+  const { coerced, errors } = coerceRow(fields);
+  assert.deepStrictEqual(errors, []);
+  assert.strictEqual(coerced.registration, 'BUP');     // stored as-is (no SU- prefix)
+  assert.strictEqual(coerced.flightNumber, 'MS501');
+  assert.strictEqual(coerced.departure, 'CAI');
+  assert.strictEqual(coerced.arrival, 'DMM');
+  assert.strictEqual(coerced.offBlocksTime, '00:29');
+  assert.strictEqual(coerced.onBlocksTime, '03:06');
+  assert.strictEqual(coerced.nightTime, 0.75);
+  assert.ok(Math.abs(coerced.totalTime - 2.6167) < 0.01); // 00:29→03:06
 });

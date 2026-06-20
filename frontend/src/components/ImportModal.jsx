@@ -198,7 +198,7 @@ export default function ImportModal({ onClose, onImportDone }) {
   // Which columns to show in the preview table
   const previewCols = isMobile
     ? ['status', 'date', 'route', 'block']
-    : ['status', 'date', 'route', 'registration', 'flightNumber', 'block', 'picTime'];
+    : ['status', 'date', 'route', 'registration', 'flightNumber', 'block', 'nightTime'];
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
