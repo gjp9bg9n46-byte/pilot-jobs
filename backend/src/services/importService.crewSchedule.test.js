@@ -15,6 +15,8 @@ const {
   parseCombinedDateTime,
   applyDateFallbacks,
   detectMapping,
+  parseCSV,
+  stripLeadingMetadata,
 } = require('./importService');
 
 // ── The exact user format + every variation that previously broke ──────────────
@@ -121,4 +123,79 @@ test('regression: standard Date/Off/On file detects via headers, no synthesis', 
   const out = applyDateFallbacks(headers, [['2026-05-01', '08:00', '10:00', 'OMDB', 'OTHH']], mapping);
   assert.strictEqual(out.applied, false);
   assert.strictEqual(out.headers.length, headers.length, 'no synthetic columns added');
+});
+
+// ── Title/metadata row stripping (the 2832.xlsx "Period: …" title bug) ─────────
+// End-to-end through parseCSV: the leading title band must be dropped so the real
+// header row leads, otherwise every crew row imports as 0-valid.
+
+function pipeline(csv) {
+  const { headers, rawRows } = parseCSV(Buffer.from(csv, 'utf-8'));
+  const mapping = detectMapping(headers);
+  const out = mapping.date
+    ? { headers, rawRows, mapping, applied: false }
+    : applyDateFallbacks(headers, rawRows, mapping);
+  return { headers, rawRows: out.rawRows, mapping: out.mapping };
+}
+
+test('metadata strip: user 2832 shape — "Period:" title above the real header row', () => {
+  const csv = [
+    'Period: 01Feb24 - 30May26',
+    'CrewCode,Start,Finish,Dest',
+    'MM,12Mar24 0029,12Mar24 0306,CAI',
+    'MM,13Mar24 0815,13Mar24 0930,CAI',
+    'CAI,14Mar24 0600,14Mar24 0730,MM',
+  ].join('\n');
+  const { headers, rawRows, mapping } = pipeline(csv);
+  assert.deepStrictEqual(headers, ['CrewCode', 'Start', 'Finish', 'Dest'], 'real headers detected');
+  assert.ok(mapping.date && mapping.offBlocksTime && mapping.onBlocksTime, 'Start/Finish synthesized');
+  assert.strictEqual(rawRows.length, 3, 'only the 3 flight rows are data (title + header not counted)');
+  const di = headers.length + ['Date (auto)', 'Off (auto)', 'On (auto)'].indexOf(mapping.date);
+  assert.strictEqual(rawRows[0][di], '2024-03-12', 'first flight row date parsed from Start');
+});
+
+test('metadata strip: merged single-cell title (length-1 row above wide data)', () => {
+  const csv = [
+    'CockpitHire Crew Schedule',           // lone value, merged-cell style
+    'CrewCode,Start,Finish,Dest',
+    'MM,12Mar24 0029,12Mar24 0306,CAI',
+    'MM,13Mar24 0815,13Mar24 0930,CAI',
+  ].join('\n');
+  const { headers, rawRows } = pipeline(csv);
+  assert.deepStrictEqual(headers, ['CrewCode', 'Start', 'Finish', 'Dest']);
+  assert.strictEqual(rawRows.length, 2);
+});
+
+test('metadata strip: 2+ stacked metadata rows (title + blank + Period)', () => {
+  const csv = [
+    'Roster Report',
+    '',
+    'Period: 01Feb24 - 30May26',
+    'CrewCode,Start,Finish,Dest',
+    'MM,12Mar24 0029,12Mar24 0306,CAI',
+    'MM,13Mar24 0815,13Mar24 0930,CAI',
+  ].join('\n');
+  const { headers, rawRows, mapping } = pipeline(csv);
+  assert.deepStrictEqual(headers, ['CrewCode', 'Start', 'Finish', 'Dest']);
+  assert.ok(mapping.date, 'date synthesized after skipping 3 metadata rows');
+  assert.strictEqual(rawRows.length, 2);
+});
+
+test('metadata strip regression: standard file with real headers on row 1 is untouched', () => {
+  const csv = [
+    'Date,Off Blocks,On Blocks,From,To',
+    '2026-05-01,08:00,10:00,OMDB,OTHH',
+    '2026-05-02,09:00,11:30,OTHH,OMDB',
+  ].join('\n');
+  const { headers, rawRows, mapping } = pipeline(csv);
+  assert.deepStrictEqual(headers, ['Date', 'Off Blocks', 'On Blocks', 'From', 'To']);
+  assert.strictEqual(mapping.date, 'Date');
+  assert.strictEqual(rawRows.length, 2);
+});
+
+test('stripLeadingMetadata: narrow legit file (no false positives)', () => {
+  // A genuine 2-column file — the lone-value rule needs bulk width >= 3, so a
+  // 2-col header is never mistaken for a merged title.
+  const recs = [['Date', 'Block'], ['2026-05-01', '1.5'], ['2026-05-02', '2.0']];
+  assert.deepStrictEqual(stripLeadingMetadata(recs), recs);
 });

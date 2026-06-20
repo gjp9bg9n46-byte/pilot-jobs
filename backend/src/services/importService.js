@@ -241,6 +241,37 @@ function coerceRow(fields) {
   return { coerced, errors };
 }
 
+// ─── Title / metadata row stripping ───────────────────────────────────────────
+// Crew-schedule exports often carry a title band above the real header row — a
+// merged "Period: 01Feb24 - 30May26" cell, a blank line, etc. SheetJS/CSV then
+// mistakes that band for the header, turning the real headers (Start/Finish/
+// CrewCode…) into data rows and breaking auto-detection. Strip the leading band
+// so the real header row leads.
+
+// A single date token (DDMonYY, DD/MM/YY, ISO) — used to spot date-range markers.
+const META_DATE_TOKEN = String.raw`\d{1,2}[A-Za-z]{3}\d{2,4}|\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}|\d{4}[/\-.]\d{1,2}[/\-.]\d{1,2}`;
+const META_DATE_RANGE_RE = new RegExp(`(?:${META_DATE_TOKEN})\\s*(?:-|–|—|to)\\s*(?:${META_DATE_TOKEN})`, 'i');
+
+// Is `row` a title/metadata row (given the bulk data width)?
+function isMetadataRow(row, bulkWidth) {
+  const nonEmpty = row.map((c) => String(c ?? '').trim()).filter((c) => c !== '');
+  if (nonEmpty.length === 0) return true;                                  // blank line
+  const joined = nonEmpty.join(' ');
+  if (/^period\b/i.test(joined) || META_DATE_RANGE_RE.test(joined)) return true; // "Period:" / date-range pair
+  if (nonEmpty.length === 1 && bulkWidth >= 3) return true;               // lone value while data is wide (merged title)
+  return false;
+}
+
+// Remove leading metadata rows; the first non-metadata row becomes the header.
+function stripLeadingMetadata(records) {
+  if (records.length < 2) return records;
+  const widths = records.slice(0, 12).map((r) => r.filter((c) => String(c ?? '').trim() !== '').length);
+  const bulkWidth = Math.max(...widths);
+  let start = 0;
+  while (start < records.length - 1 && isMetadataRow(records[start], bulkWidth)) start++;
+  return records.slice(start);
+}
+
 // ─── CSV parser ───────────────────────────────────────────────────────────────
 
 function parseCSV(buffer) {
@@ -259,6 +290,8 @@ function parseCSV(buffer) {
   }
 
   if (!records || records.length === 0) return { headers: [], rawRows: [] };
+
+  records = stripLeadingMetadata(records); // drop any title/metadata band above the header row
 
   const headers = records[0].map(h => String(h ?? '').trim()).filter(Boolean);
   if (headers.length === 0) return { headers: [], rawRows: [] };
@@ -469,6 +502,7 @@ module.exports = {
   parseFlexTime,
   parseCombinedDateTime,
   applyDateFallbacks,
+  stripLeadingMetadata,
   extractKeyFields,
   FIELD_SYNONYMS,
 };
