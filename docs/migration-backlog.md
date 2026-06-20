@@ -215,6 +215,22 @@ Resolved (no action): **#8** Save-button label inconsistency ("Save Changes" vs
 "Save") — minor; **#9** one-click default licence creation — defensible
 (licences legitimately have optional dates).
 
+## Logbook pagination (2026-06-20)
+
+- **Traditional pagination replaces "Load more".** Logbook list now fetches 50/page
+  with a numbered page bar (Prev/Next + numbered buttons + ellipses, current page
+  highlighted) on desktop and a compact "Page X of Y + Prev/Next" on mobile. Page is
+  URL-synced (`/logbook?page=N`). Top "N flights" counter stays the grand total;
+  Block-hours totals come from the all-flights totals endpoint (unaffected).
+- 90-day **currency** now derives from a page-independent "most recent 50" fetch so it
+  stays correct on any page.
+- The prior **"1000 default + Load more"** approach is **superseded** (historical
+  context: it loaded everything in one go; pagination is the requested UX).
+- **Search is page-scoped** (client-side over the current 50; resets to page 1 on
+  change). Full cross-all-flights search would need a backend `?search=` param —
+  logged as an optional follow-up.
+- **Optional, low priority:** page-size selector (50/100/200).
+
 ## Profile (2026-06-20)
 
 - **Passport Number field removed** from Profile → Personal Information (privacy

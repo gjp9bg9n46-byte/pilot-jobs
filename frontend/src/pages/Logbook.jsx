@@ -1,12 +1,13 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
 import {
   ChevronDown, ChevronRight, ChevronUp,
   Pencil, Copy, Trash2, Clock, Upload, CheckCircle2,
 } from 'lucide-react';
 import SunCalc from 'suncalc';
 import { flightLogApi, profileApi } from '../services/api';
-import { setLogs, appendLogs, setTotals, addLog, removeLog } from '../store';
+import { setLogs, setTotals, addLog, removeLog } from '../store';
 import AIRPORTS from '../data/airports.json';
 import ImportModal from '../components/ImportModal';
 import AircraftCombobox from '../components/AircraftCombobox';
@@ -489,14 +490,87 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
   );
 }
 
+// Numbered page window with ellipses: always first + last, ±2 around current,
+// "…" for gaps. ≤7 pages → show all. e.g. (5, 11) → [1,…,3,4,5,6,7,…,11].
+function pageWindow(current, totalPages) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  let start = Math.max(2, current - 2);
+  let end = Math.min(totalPages - 1, current + 2);
+  if (current <= 4) { start = 2; end = 5; }
+  if (current >= totalPages - 3) { start = totalPages - 4; end = totalPages - 1; }
+  const out = [1];
+  if (start > 2) out.push('…');
+  for (let p = start; p <= end; p++) out.push(p);
+  if (end < totalPages - 1) out.push('…');
+  out.push(totalPages);
+  return out;
+}
+
+function Pagination({ page, totalPages, total, pageSize, count, onChange, isMobile }) {
+  if (totalPages <= 1) return null; // hidden for ≤1 page (≤50 flights)
+  const from = (page - 1) * pageSize + 1;
+  const to = (page - 1) * pageSize + count;
+  const counter = (
+    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+      Showing {from}–{to} of {total} {total === 1 ? 'flight' : 'flights'}
+    </span>
+  );
+  const btn = (label, key, { disabled = false, active = false, onClick } = {}) => (
+    <button
+      key={key}
+      onClick={onClick}
+      disabled={disabled}
+      aria-current={active ? 'page' : undefined}
+      style={{
+        minWidth: 36, height: 36, padding: '0 11px', borderRadius: 8,
+        border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+        background: active ? 'var(--accent)' : 'var(--surface)',
+        color: active ? '#fff' : disabled ? 'var(--text-secondary)' : 'var(--text-primary)',
+        fontFamily: 'var(--font-body)', fontWeight: active ? 700 : 500, fontSize: 13,
+        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  if (isMobile) {
+    return (
+      <div style={{ marginTop: 20 }}>
+        <div style={{ textAlign: 'center', marginBottom: 10 }}>{counter}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          {btn('‹ Prev', 'prev', { disabled: page <= 1, onClick: () => onChange(page - 1) })}
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 90, textAlign: 'center' }}>Page {page} of {totalPages}</span>
+          {btn('Next ›', 'next', { disabled: page >= totalPages, onClick: () => onChange(page + 1) })}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      {counter}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        {btn('‹ Prev', 'prev', { disabled: page <= 1, onClick: () => onChange(page - 1) })}
+        {pageWindow(page, totalPages).map((p, i) =>
+          p === '…'
+            ? <span key={`e${i}`} style={{ padding: '0 4px', color: 'var(--text-secondary)' }}>…</span>
+            : btn(p, p, { active: p === page, onClick: () => onChange(p) })
+        )}
+        {btn('Next ›', 'next', { disabled: page >= totalPages, onClick: () => onChange(page + 1) })}
+      </div>
+    </div>
+  );
+}
+
 export default function Logbook() {
   const dispatch = useDispatch();
   const isMobile = useIsMobile(640);
   const { logs, totals, total } = useSelector((s) => s.logbook);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const PAGE_SIZE = 1000;
+  const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
+  const [recentLogs, setRecentLogs] = useState([]); // most-recent 50 — currency source, page-independent
+  const PAGE_SIZE = 50;
   const [showModal, setShowModal] = useState(false);
   const [editFlight, setEditFlight] = useState(null);
   const [cloneFlight, setCloneFlight] = useState(null);
@@ -518,34 +592,39 @@ export default function Logbook() {
   const [carryForwardSaved, setCarryForwardSaved] = useState(false);
   const [migrationToast, setMigrationToast] = useState(false);
 
-  const fetchData = async () => {
+  // Load one page of flights into the table.
+  const loadPage = useCallback(async (p) => {
     setLoading(true);
     try {
-      const [logsRes, totalsRes, cfRes] = await Promise.all([
-        flightLogApi.list(),
-        profileApi.getTotals(),
-        profileApi.getCarryForward(),
-      ]);
-      dispatch(setLogs({ logs: logsRes.data.logs, total: logsRes.data.total }));
-      dispatch(setTotals(totalsRes.data));
-      setCarryForward(cfRes.data ?? {});
-      setPage(1);
+      const { data } = await flightLogApi.list(p, PAGE_SIZE);
+      dispatch(setLogs({ logs: data.logs, total: data.total }));
+      if (p === 1) setRecentLogs(data.logs);
     } finally {
       setLoading(false);
     }
+  }, [dispatch]);
+
+  // Most-recent 50 flights — 90-day currency is derived from these so it stays
+  // correct no matter which page is on screen (page 1 always covers the window).
+  const loadRecent = useCallback(async () => {
+    const { data } = await flightLogApi.list(1, PAGE_SIZE);
+    setRecentLogs(data.logs);
+  }, []);
+
+  const goToPage = (p) => {
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const clamped = Math.min(Math.max(1, p), totalPages);
+    setPage(clamped);
+    setSearchParams(clamped === 1 ? {} : { page: String(clamped) }, { replace: true });
   };
 
-  // Pagination "Load more" — only reachable for pilots with > PAGE_SIZE flights.
-  const loadMore = async () => {
-    setLoadingMore(true);
-    try {
-      const next = page + 1;
-      const { data } = await flightLogApi.list(next, PAGE_SIZE);
-      dispatch(appendLogs(data.logs));
-      setPage(next);
-    } finally {
-      setLoadingMore(false);
-    }
+  // Full refresh after add / edit / clone / import: current page + recent + totals.
+  const fetchData = async () => {
+    await Promise.all([
+      loadPage(page),
+      page !== 1 ? loadRecent() : Promise.resolve(),
+      profileApi.getTotals().then((r) => dispatch(setTotals(r.data))),
+    ]);
   };
 
   const migrateCarryForward = async () => {
@@ -573,20 +652,30 @@ export default function Logbook() {
     setTimeout(() => setMigrationToast(false), 5000);
   };
 
+  // One-time: migrate carry-forward, load totals + carry-forward. (The page effect
+  // below loads the flights; on page 1 it also seeds recentLogs for currency.)
   useEffect(() => {
     const init = async () => {
       await migrateCarryForward().catch((err) => console.warn('CF migration failed, will retry on next mount:', err));
-      await fetchData();
+      const [totalsRes, cfRes] = await Promise.all([profileApi.getTotals(), profileApi.getCarryForward()]);
+      dispatch(setTotals(totalsRes.data));
+      setCarryForward(cfRes.data ?? {});
+      if (page !== 1) loadRecent(); // deep-linked to a later page → fetch recent separately
     };
     init();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load the current page on mount and whenever it changes.
+  useEffect(() => { loadPage(page); }, [page, loadPage]);
 
   const currency = useMemo(() => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
     let dayLandings = 0;
     let nightLandings = 0;
-    for (const log of logs) {
+    // Computed from recentLogs (most-recent 50), not the displayed page — keeps the
+    // 90-day window correct regardless of pagination.
+    for (const log of recentLogs) {
       if (log.date && new Date(log.date) >= cutoff) {
         dayLandings += parseInt(log.landingsDay) || 0;
         nightLandings += parseInt(log.landingsNight) || 0;
@@ -596,7 +685,7 @@ export default function Logbook() {
     // threshold. NOT full FAA/EASA recency — real currency is authority-specific
     // and time-windowed (night = full-stop landings in the night period, etc.).
     return { dayCurrent: dayLandings >= 3, nightCurrent: nightLandings >= 3 };
-  }, [logs]);
+  }, [recentLogs]);
 
   const filteredLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -774,16 +863,14 @@ export default function Logbook() {
         </Button>
         <span style={{ color: 'var(--text-secondary)', fontSize: 13, marginLeft: 'auto' }}>
           {total} {total === 1 ? 'flight' : 'flights'}
-          {groupedRows.length !== logs.length && ` · ${groupedRows.length} entries`}
-          {logs.length < total && ` · ${logs.length} loaded`}
         </span>
       </div>
 
       <Input
         type="text"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search by aircraft, registration, or airport..."
+        onChange={(e) => { setSearch(e.target.value); if (page !== 1) goToPage(1); }}
+        placeholder="Search by aircraft, registration, or airport… (current page)"
         style={{ marginBottom: 20 }}
       />
 
@@ -1032,14 +1119,16 @@ export default function Logbook() {
         </div>
       )}
 
-      {/* Load more — only when the pilot has more flights than one page (>1000) */}
-      {!loading && logs.length < total && (
-        <div style={{ textAlign: 'center', marginTop: 20 }}>
-          <Button variant="secondary" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? 'Loading…' : `Load more (${logs.length} of ${total})`}
-          </Button>
-        </div>
-      )}
+      {/* Pagination — 50 per page, numbered (desktop) / compact (mobile) */}
+      <Pagination
+        page={page}
+        totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+        total={total}
+        pageSize={PAGE_SIZE}
+        count={logs.length}
+        onChange={goToPage}
+        isMobile={isMobile}
+      />
 
       {showModal && (
         <AddFlightModal onClose={() => setShowModal(false)} onSave={handleSaveNew} onSaveBulk={handleSaveBulk} title="Log a Flight" />

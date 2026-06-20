@@ -40,7 +40,6 @@ const logbookSlice = createSlice({
   initialState: { logs: [], totals: null, total: 0 },
   reducers: {
     setLogs: (state, { payload }) => { state.logs = payload.logs; state.total = payload.total; },
-    appendLogs: (state, { payload }) => { state.logs.push(...payload); },
     setTotals: (state, { payload }) => { state.totals = payload; },
     addLog: (state, { payload }) => { state.logs.unshift(payload); state.total += 1; },
     removeLog: (state, { payload }) => { state.logs = state.logs.filter((l) => l.id !== payload); state.total = Math.max(0, state.total - 1); },
@@ -49,7 +48,7 @@ const logbookSlice = createSlice({
 
 export const { setAuth, logout, setPilot } = authSlice.actions;
 export const { setJobs, setAlerts, markAlertRead, markAllAlertsRead } = jobsSlice.actions;
-export const { setLogs, appendLogs, setTotals, addLog, removeLog } = logbookSlice.actions;
+export const { setLogs, setTotals, addLog, removeLog } = logbookSlice.actions;
 
 export const store = configureStore({
   reducer: { auth: authSlice.reducer, jobs: jobsSlice.reducer, logbook: logbookSlice.reducer },
