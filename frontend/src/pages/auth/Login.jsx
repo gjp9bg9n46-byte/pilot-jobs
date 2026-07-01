@@ -83,6 +83,9 @@ export default function Login() {
             <Input label="Email address" type="email" autoComplete="username" aria-label="Email address" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" autoFocus />
             <Input label="Password" type="password" autoComplete="current-password" aria-label="Password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           </div>
+          <div style={{ textAlign: 'right', marginTop: 8 }}>
+            <Link to="/forgot-password" style={{ ...css.link, fontSize: 13, fontWeight: 500 }}>Forgot password?</Link>
+          </div>
           <button style={{ ...css.btn, opacity: loading ? 0.6 : 1 }} disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In →'}
           </button>

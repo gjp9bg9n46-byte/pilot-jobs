@@ -83,6 +83,36 @@ function paragraph(text) {
   return `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${TEXT};">${esc(text)}</p>`;
 }
 
+// Email-safe CTA button (table-wrapped, inline styles, white text on navy).
+function ctaButton(label, url) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 4px;">
+    <tr>
+      <td style="border-radius:6px;background:${ACCENT};">
+        <a href="${esc(url)}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:6px;">${esc(label)}</a>
+      </td>
+    </tr>
+  </table>`;
+}
+
+/** Password reset email (Phase B1). */
+function renderPasswordResetEmail({ recipientName, resetUrl, expiresInMinutes = 60 } = {}) {
+  const greeting = recipientName ? `Hi ${esc(recipientName)},` : 'Hi,';
+  const body = `
+    ${heading('Reset your password')}
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${TEXT};">${greeting}</p>
+    ${paragraph(`You (or someone using this email address) requested to reset the password for your CockpitHire account. Click the button below to set a new password. This link expires in ${Number(expiresInMinutes)} minutes.`)}
+    ${ctaButton('Reset password', resetUrl)}
+    <p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:${MUTED};">
+      If the button doesn't work, copy and paste this link into your browser:<br>
+      <a href="${esc(resetUrl)}" style="color:${ACCENT};word-break:break-all;">${esc(resetUrl)}</a>
+    </p>
+    <p style="margin:18px 0 0;font-size:13px;line-height:1.5;color:${MUTED};">
+      If you didn't request this, you can safely ignore this email — your password won't change.
+    </p>
+  `;
+  return renderBaseTemplate({ title: 'Reset your CockpitHire password', body });
+}
+
 /** Phase-A health-check email. */
 function renderTestEmail({ recipientName } = {}) {
   const greeting = recipientName ? `Hi ${esc(recipientName)},` : 'Hi,';
@@ -95,4 +125,4 @@ function renderTestEmail({ recipientName } = {}) {
   return renderBaseTemplate({ title: 'CockpitHire notifications test', body });
 }
 
-module.exports = { renderBaseTemplate, renderTestEmail, heading, paragraph, PALETTE: { BG, SURFACE, TEXT, MUTED, ACCENT, BORDER } };
+module.exports = { renderBaseTemplate, renderTestEmail, renderPasswordResetEmail, ctaButton, heading, paragraph, PALETTE: { BG, SURFACE, TEXT, MUTED, ACCENT, BORDER } };

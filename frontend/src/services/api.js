@@ -21,6 +21,8 @@ api.interceptors.response.use(
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (email, password) => api.post('/auth/login', { email, password }),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
   me: () => api.get('/auth/me'),
   updateFcmToken: (fcmToken) => api.patch('/auth/fcm-token', { fcmToken }),
   exportData: () => api.get('/auth/export', { responseType: 'blob' }),

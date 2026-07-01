@@ -23,6 +23,10 @@ import Layout from './components/Layout';
 import PublicLayout from './components/PublicLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+import EmployerForgotPassword from './pages/employer/EmployerForgotPassword';
+import EmployerResetPassword from './pages/employer/EmployerResetPassword';
 import Landing from './pages/Landing';
 import Primitives from './pages/dev/Primitives';
 import Jobs from './pages/Jobs';
@@ -77,6 +81,8 @@ export default function App() {
         <Route element={<EmployerAuthProvider><Outlet /></EmployerAuthProvider>}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
         {/* Public airline factfile + jobs — chrome adapts to auth state (slim shell when logged out) */}
@@ -106,6 +112,8 @@ export default function App() {
           {/* Dedicated employer auth pages (public — not advertised, but functional) */}
           <Route path="login" element={<EmployerLogin />} />
           <Route path="register" element={<EmployerRegister />} />
+          <Route path="forgot-password" element={<EmployerForgotPassword />} />
+          <Route path="reset-password" element={<EmployerResetPassword />} />
           <Route path="pending-approval" element={<RequireEmployerAuth><EmployerPendingApproval /></RequireEmployerAuth>} />
           <Route path="rejected" element={<RequireEmployerAuth><EmployerStatusNotice kind="rejected" /></RequireEmployerAuth>} />
           <Route path="suspended" element={<RequireEmployerAuth><EmployerStatusNotice kind="suspended" /></RequireEmployerAuth>} />

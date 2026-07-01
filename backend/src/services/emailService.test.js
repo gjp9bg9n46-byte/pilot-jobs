@@ -105,3 +105,16 @@ test('renderTestEmail: contains the expected copy + recipient name', () => {
   assert.match(html, /Hi Jane,/);
   assert.match(html, /Resend integration is working correctly/);
 });
+
+// ── Password reset template (Phase B1) ─────────────────────────────────────────
+const { renderPasswordResetEmail } = require('./emailTemplates');
+test('renderPasswordResetEmail: greeting, CTA to resetUrl, expiry, ignore-note', () => {
+  const url = 'https://cockpithire.com/reset-password?token=abc123';
+  const html = renderPasswordResetEmail({ recipientName: 'Jane', resetUrl: url, expiresInMinutes: 60 });
+  assert.match(html, /Hi Jane,/);
+  assert.match(html, /Reset password/);
+  assert.ok(html.includes(url), 'CTA links to the reset URL');
+  assert.match(html, /expires in 60 minutes/);
+  assert.match(html, /you can safely ignore this email/i);
+  assert.match(html, /#003F88/); // navy CTA button
+});

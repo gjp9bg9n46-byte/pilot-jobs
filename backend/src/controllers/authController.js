@@ -3,6 +3,12 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const prisma = require('../config/database');
+const logger = require('../config/logger');
+const { sendEmail } = require('../services/emailService');
+const { renderPasswordResetEmail } = require('../services/emailTemplates');
+
+const APP_URL = process.env.APP_URL || 'https://cockpithire.com';
+const RESET_TOKEN_TTL_MIN = 60;
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -160,6 +166,96 @@ exports.deleteAllSessions = async (req, res, next) => {
       where: { pilotId: req.pilot.id, NOT: { tokenHash: currentHash } },
     });
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Password reset (Phase B1) — shared by pilots and employers ────────────────
+
+// Neutral response — never reveals whether an email is registered.
+const FORGOT_RESPONSE = {
+  success: true,
+  message: "If an account exists for this email, we've sent a reset link.",
+};
+
+// POST /auth/forgot-password  { email }
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const input = (req.body.email || '').trim();
+    if (!input) return res.status(200).json(FORGOT_RESPONSE); // don't leak validation state
+
+    // Resolve account type (pilot first, then employer), case-insensitively —
+    // emails are stored as-typed at registration.
+    const pilot = await prisma.pilot.findFirst({ where: { email: { equals: input, mode: 'insensitive' } } });
+    const employer = pilot ? null : await prisma.employer.findFirst({ where: { contactEmail: { equals: input, mode: 'insensitive' } } });
+    const userType = pilot ? 'pilot' : (employer ? 'employer' : null);
+
+    if (!userType) return res.status(200).json(FORGOT_RESPONSE); // unknown email → still 200
+
+    // Store + send to the canonical (stored) address, not what was typed.
+    const email = pilot ? pilot.email : employer.contactEmail;
+    const token = crypto.randomBytes(32).toString('hex'); // ~64 chars
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MIN * 60 * 1000);
+    await prisma.passwordResetToken.create({ data: { token, email, userType, expiresAt } });
+
+    const resetUrl = userType === 'employer'
+      ? `${APP_URL}/employer/reset-password?token=${token}`
+      : `${APP_URL}/reset-password?token=${token}`;
+    const recipientName = pilot
+      ? [pilot.firstName, pilot.lastName].filter(Boolean).join(' ') || email
+      : (employer.contactName || employer.companyName || email);
+
+    const result = await sendEmail({
+      to: [email],
+      subject: 'Reset your CockpitHire password',
+      html: renderPasswordResetEmail({ recipientName, resetUrl, expiresInMinutes: RESET_TOKEN_TTL_MIN }),
+      tags: { type: 'password-reset', userType, phase: 'B1' },
+    });
+    if (!result.success) {
+      logger.error({ message: `password_reset_email_failed | ${email} | ${result.error}`, type: 'password_reset_email_failed', email, error: result.error });
+    }
+
+    // Always 200 (don't leak existence or delivery failures).
+    return res.status(200).json(FORGOT_RESPONSE);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /auth/reset-password  { token, newPassword }
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token) return res.status(400).json({ error: 'Invalid or expired reset link' });
+    if (!newPassword || String(newPassword).length < 8) {
+      return res.status(422).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    const record = await prisma.passwordResetToken.findUnique({ where: { token } });
+    if (!record) return res.status(400).json({ error: 'Invalid or expired reset link' });
+    if (record.usedAt) return res.status(400).json({ error: 'This reset link has already been used.' });
+    if (record.expiresAt < new Date()) return res.status(400).json({ error: 'This reset link has expired. Request a new one.' });
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    if (record.userType === 'employer') {
+      const employer = await prisma.employer.findUnique({ where: { contactEmail: record.email } });
+      if (!employer) return res.status(400).json({ error: 'Invalid or expired reset link' });
+      await prisma.employer.update({ where: { id: employer.id }, data: { passwordHash } });
+    } else {
+      const pilot = await prisma.pilot.findUnique({ where: { email: record.email } });
+      if (!pilot) return res.status(400).json({ error: 'Invalid or expired reset link' });
+      await prisma.pilot.update({ where: { id: pilot.id }, data: { passwordHash } });
+    }
+
+    // Mark this token used + invalidate any other unused tokens for the same email.
+    await prisma.passwordResetToken.updateMany({
+      where: { email: record.email, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    return res.json({ success: true, message: 'Password updated. You can now sign in with your new password.' });
   } catch (err) {
     next(err);
   }

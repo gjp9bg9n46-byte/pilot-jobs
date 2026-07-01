@@ -615,3 +615,18 @@ model NotificationLog {
 
   @@unique([pilotId, kind, documentId, daysBeforeExpiry, channel])
 }
+// Password reset tokens — shared by pilots and employers (userType discriminates).
+// Rows are single-use and short-lived; created by /auth/forgot-password, consumed
+// by /auth/reset-password.
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  email      String
+  userType   String    // 'pilot' or 'employer'
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([token])
+  @@index([email])
+}

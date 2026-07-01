@@ -1,7 +1,18 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const authController = require('../controllers/authController');
 const authMiddleware = require('../middleware/auth');
+
+// 3 password-reset requests per hour, keyed by target email (falls back to IP).
+const forgotPasswordLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req) => (req.body?.email || '').trim().toLowerCase() || req.ip,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many reset requests. Please wait an hour before trying again.' },
+});
 
 router.post(
   '/register',
@@ -15,6 +26,11 @@ router.post(
 );
 
 router.post('/login', authController.login);
+
+// Password reset (Phase B1) — shared by pilots + employers, public.
+router.post('/forgot-password', forgotPasswordLimit, authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
 router.get('/me', authMiddleware, authController.me);
 router.patch('/fcm-token', authMiddleware, authController.updateFcmToken);
 router.patch('/change-password', authMiddleware, authController.changePassword);
