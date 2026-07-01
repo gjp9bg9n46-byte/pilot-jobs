@@ -4,6 +4,26 @@ Tickets surfaced during the editorial-light migration. These are **not** bugs
 introduced by the migration — they are pre-existing issues or follow-ups
 deferred so each phase stays presentation-only and tightly scoped.
 
+## Notifications (email) — Resend
+
+Foundation + phased rollout. See `docs/notifications.md`.
+
+- **Phase A — Resend integration foundation → ✅ SHIPPED (2026-07-01).**
+  `emailService.sendEmail` abstraction (log-only without a key, 429 retry-once,
+  never-throws, `{success,id?,error?}`), `emailTemplates` (base template +
+  editorial-light inline palette + test email), admin health-check endpoint
+  `POST /admin/notifications/test`, unit tests, docs. No trigger points wired.
+- **Phase B** — auth transactional: password reset, email verification, welcome.
+  (Pairs with Login/Register #5 password-reset flow.) — next.
+- **Phase C** — ATS: applicant emails, employer applicant digest, pilot status.
+- **Phase D** — contributions + admin: approve/reject emails, employer
+  approve/reject/suspend (wire the existing `employerEmails.js` log-only stubs +
+  `jobController`/`employerJobController` Phase-D stubs to real sends).
+- **Phase E** — Alerts: job-alert emails per saved-search frequency
+  (INSTANT/DAILY/WEEKLY).
+- **Phase F** — notification-preferences UI in Settings. Depends on the Settings
+  preferences PUT 500 / schema-drift fix.
+
 ## Quality sweep — Landing
 
 Findings from the Landing (`/`) quality audit. The "fix-now" batch (stats wiring,

@@ -1,6 +1,32 @@
 'use strict';
 
 const prisma = require('../config/database');
+const { sendEmail } = require('../services/emailService');
+const { renderTestEmail } = require('../services/emailTemplates');
+
+// POST /admin/notifications/test — admin-only health check for the Resend
+// integration. Sends a test email to the calling admin's own address.
+exports.sendTestNotification = async (req, res, next) => {
+  try {
+    const admin = req.pilot;
+    if (!admin?.email) return res.status(400).json({ error: 'Admin has no email on file.' });
+    const recipientName = [admin.firstName, admin.lastName].filter(Boolean).join(' ') || admin.email;
+
+    const result = await sendEmail({
+      to: [admin.email],
+      subject: 'CockpitHire notifications test',
+      html: renderTestEmail({ recipientName }),
+      tags: { type: 'test', phase: 'A' },
+    });
+
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error || 'Email send failed', sentTo: admin.email });
+    }
+    res.json({ success: true, messageId: result.id, sentTo: admin.email });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // Admin dashboard metrics — one aggregation call, all cheap _count queries.
 exports.getStats = async (req, res, next) => {

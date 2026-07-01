@@ -10,6 +10,7 @@ router.use(authMiddleware);
 router.use(requireAdmin);
 
 router.get('/stats',                    c.getStats);
+router.post('/notifications/test',      c.sendTestNotification);
 router.get('/contributions',            c.getContributions);
 router.post('/contributions/:id/approve', c.approve);
 router.post('/contributions/:id/reject',  c.reject);
