@@ -6,6 +6,7 @@ const prisma = require('../config/database');
 const logger = require('../config/logger');
 const { sendEmail } = require('../services/emailService');
 const { renderPasswordResetEmail } = require('../services/emailTemplates');
+const { sendWelcomeVerify, sendResendVerify } = require('../services/verificationService');
 
 const APP_URL = process.env.APP_URL || 'https://cockpithire.com';
 const RESET_TOKEN_TTL_MIN = 60;
@@ -47,11 +48,13 @@ exports.register = async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const pilot = await prisma.pilot.create({
       data: { email, passwordHash, firstName, lastName: lastName || '', phone, country, city },
-      select: { id: true, email: true, firstName: true, lastName: true },
+      select: { id: true, email: true, firstName: true, lastName: true, emailVerified: true },
     });
 
     const token = signToken(pilot.id);
     await createSession(pilot.id, req, token);
+    // Welcome + verify email (Phase B2) — never blocks registration.
+    await sendWelcomeVerify({ email: pilot.email, userType: 'pilot', recipientName: [pilot.firstName, pilot.lastName].filter(Boolean).join(' ') || pilot.email });
     res.status(201).json({ token, pilot });
   } catch (err) {
     next(err);
@@ -256,6 +259,52 @@ exports.resetPassword = async (req, res, next) => {
     });
 
     return res.json({ success: true, message: 'Password updated. You can now sign in with your new password.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Email verification (Phase B2) — shared by pilots and employers ────────────
+
+// POST /auth/verify-email  { token }  (public)
+exports.verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Invalid verification link' });
+
+    const record = await prisma.emailVerificationToken.findUnique({ where: { token } });
+    if (!record) return res.status(400).json({ error: 'Invalid verification link' });
+    if (record.usedAt) return res.status(200).json({ success: true, message: 'Email verified.' }); // idempotent
+    if (record.expiresAt < new Date()) return res.status(400).json({ error: 'This link has expired. Request a new one.' });
+
+    if (record.userType === 'employer') {
+      await prisma.employer.updateMany({ where: { contactEmail: record.email }, data: { emailVerified: true } });
+    } else {
+      await prisma.pilot.updateMany({ where: { email: record.email }, data: { emailVerified: true } });
+    }
+
+    // Mark this token used + drop any other unused siblings for the email.
+    await prisma.emailVerificationToken.update({ where: { token }, data: { usedAt: new Date() } });
+    await prisma.emailVerificationToken.deleteMany({ where: { email: record.email, usedAt: null } });
+
+    return res.json({ success: true, message: 'Email verified.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /auth/resend-verification  (auth: pilot OR employer via authAnyUser)
+exports.resendVerification = async (req, res, next) => {
+  try {
+    const { userType, email, emailVerified, name } = req.account;
+    if (emailVerified) return res.status(400).json({ error: 'Email already verified' });
+
+    const result = await sendResendVerify({ email, userType, recipientName: name });
+    if (!result.success) {
+      logger.error({ message: `resend_verify_email_failed | ${email} | ${result.error}`, type: 'resend_verify_email_failed', email, error: result.error });
+    }
+    // Don't leak delivery failures — token was created; tell the user to check.
+    return res.json({ success: true, message: 'Verification link sent. Please check your email.' });
   } catch (err) {
     next(err);
   }

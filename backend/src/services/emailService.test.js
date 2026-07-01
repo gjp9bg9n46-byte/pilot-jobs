@@ -118,3 +118,24 @@ test('renderPasswordResetEmail: greeting, CTA to resetUrl, expiry, ignore-note',
   assert.match(html, /you can safely ignore this email/i);
   assert.match(html, /#003F88/); // navy CTA button
 });
+
+// ── Welcome + verify templates (Phase B2) ──────────────────────────────────────
+const { renderWelcomeVerifyEmail, renderResendVerifyEmail } = require('./emailTemplates');
+test('renderWelcomeVerifyEmail: pilot copy + CTA + optional footnote', () => {
+  const url = 'https://cockpithire.com/verify-email?token=t1';
+  const html = renderWelcomeVerifyEmail({ recipientName: 'Jane', verifyUrl: url, userType: 'pilot' });
+  assert.match(html, /Welcome to CockpitHire, Jane!/);
+  assert.match(html, /job alerts and application updates/);
+  assert.ok(html.includes(url));
+  assert.match(html, /Verification is optional/);
+});
+test('renderWelcomeVerifyEmail: employer PENDING copy', () => {
+  const html = renderWelcomeVerifyEmail({ recipientName: 'Acme Air', verifyUrl: 'https://x/v?token=t', userType: 'employer', employerPendingApproval: true });
+  assert.match(html, /Welcome to CockpitHire, Acme Air!/);
+  assert.match(html, /pending approval/);
+});
+test('renderResendVerifyEmail: greeting + CTA', () => {
+  const html = renderResendVerifyEmail({ recipientName: 'Jane', verifyUrl: 'https://x/v?token=t' });
+  assert.match(html, /Hi Jane,/);
+  assert.match(html, /Verify email/);
+});

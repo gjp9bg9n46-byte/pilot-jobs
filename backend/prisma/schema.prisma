@@ -129,6 +129,7 @@ model Pilot {
   isInstructor    Boolean   @default(false)
   isExaminer      Boolean   @default(false)
   isAdmin         Boolean   @default(false)
+  emailVerified   Boolean   @default(false)
   notificationPreferences Json @default("{}")
   // Privacy flags
   profileVisible     Boolean  @default(true)
@@ -569,6 +570,7 @@ model Employer {
 
   // Lifecycle
   status           EmployerStatus @default(PENDING)
+  emailVerified    Boolean        @default(false)
   approvedAt       DateTime?
   approvedBy       String?        // admin Pilot.id (loose ref — no FK, keeps Pilot model untouched)
   rejectionReason  String?        // set on REJECT or SUSPEND (mutually exclusive states)
@@ -619,6 +621,21 @@ model NotificationLog {
 // Rows are single-use and short-lived; created by /auth/forgot-password, consumed
 // by /auth/reset-password.
 model PasswordResetToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  email      String
+  userType   String    // 'pilot' or 'employer'
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([token])
+  @@index([email])
+}
+
+// Email verification tokens — shared by pilots and employers (userType). Created
+// on registration (bundled in the welcome email) and by /auth/resend-verification.
+model EmailVerificationToken {
   id         String    @id @default(cuid())
   token      String    @unique
   email      String

@@ -70,6 +70,19 @@ export default function Settings() {
   const navigate = useNavigate();
 
   // ── Account / Change Password ─────────────────────────────────────────
+  const [verifyResend, setVerifyResend] = useState(null); // { ok, text }
+  const [verifySending, setVerifySending] = useState(false);
+  const handleResendVerify = async () => {
+    setVerifySending(true); setVerifyResend(null);
+    try {
+      const { data } = await api.post('/auth/resend-verification');
+      setVerifyResend({ ok: true, text: data?.message || 'Verification link sent — check your email.' });
+    } catch (err) {
+      setVerifyResend({ ok: false, text: err.response?.status === 429 ? 'Too many requests. Wait an hour and try again.' : (err.response?.data?.error || 'Could not send. Try again later.') });
+    } finally {
+      setVerifySending(false);
+    }
+  };
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -309,6 +322,18 @@ export default function Settings() {
 
           <div style={{ marginBottom: 20 }}>
             <Input label="Email Address" type="email" value={pilot?.email || ''} readOnly style={{ opacity: 0.6, cursor: 'not-allowed' }} />
+            <div style={{ marginTop: 8, fontSize: 13 }}>
+              {pilot?.emailVerified
+                ? <span style={{ color: 'var(--text-secondary)' }}>✓ Email verified</span>
+                : (
+                  <span style={{ color: '#92400E' }}>
+                    ⚠ Email not verified.{' '}
+                    {verifyResend
+                      ? <span style={{ color: verifyResend.ok ? '#166534' : '#991B1B', fontWeight: 600 }}>{verifyResend.text}</span>
+                      : <button onClick={handleResendVerify} disabled={verifySending} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline', cursor: verifySending ? 'default' : 'pointer', padding: 0, fontSize: 13 }}>{verifySending ? 'Sending…' : 'Resend verification link'}</button>}
+                  </span>
+                )}
+            </div>
           </div>
 
           <div style={divider} />

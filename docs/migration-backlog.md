@@ -20,7 +20,15 @@ Foundation + phased rollout. See `docs/notifications.md`.
   invalid/expired/used, bcrypt update, invalidates sibling tokens, no auto-login),
   reset email template, 4 frontend pages (pilot + employer forgot/reset) +
   "Forgot password?" links on both logins. Resolves Login #5 + Employer #5.
-- **Phase B2** — auth transactional cont.: email verification + welcome emails. — next.
+- **Phase B2 — Welcome + email verification → ✅ SHIPPED (2026-07-01).** `emailVerified`
+  on Pilot+Employer + `EmailVerificationToken` model/migration. Welcome+verify email
+  bundled on both register paths (never blocks registration). `POST /auth/verify-email`
+  (public, idempotent on used token, 7-day expiry) + `POST /auth/resend-verification`
+  (any-user auth via `authAnyUser`, 3/hr rate limit). Optional verification (no gating):
+  dismissible `<VerifyEmailBanner>` (pilot Layout + employer Dashboard, versioned
+  localStorage dismiss), `/verify-email` + `/employer/verify-email` pages, and a
+  verification-status line + resend in Settings (pilot) and EmployerProfile (employer).
+- **Phase B (auth transactional) → ✅ COMPLETE** (B1 password reset + B2 welcome/verify).
 - **Phase C** — ATS: applicant emails, employer applicant digest, pilot status.
 - **Phase D** — contributions + admin: approve/reject emails, employer
   approve/reject/suspend (wire the existing `employerEmails.js` log-only stubs +

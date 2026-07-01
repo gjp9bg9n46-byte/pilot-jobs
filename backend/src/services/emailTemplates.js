@@ -113,6 +113,55 @@ function renderPasswordResetEmail({ recipientName, resetUrl, expiresInMinutes = 
   return renderBaseTemplate({ title: 'Reset your CockpitHire password', body });
 }
 
+// Small muted footnote used by the verify emails.
+function verifyFootnote() {
+  return `<p style="margin:18px 0 0;font-size:13px;line-height:1.5;color:${MUTED};">
+    Verification is optional. You can use CockpitHire without it, but verified emails ensure you receive alerts.
+  </p>`;
+}
+
+/** Welcome + verify email, bundled on registration (Phase B2). */
+function renderWelcomeVerifyEmail({ recipientName, verifyUrl, userType, employerPendingApproval } = {}) {
+  const name = esc(recipientName || 'there');
+  let intro;
+  if (userType === 'employer') {
+    const pending = employerPendingApproval
+      ? ` Your account is pending approval — we'll notify you when it's live.`
+      : '';
+    intro = `Welcome to CockpitHire, ${name}!${pending} Verify your email so you don't miss updates.`;
+  } else {
+    intro = `Welcome to CockpitHire, ${name}! Your account is ready. Verify your email to make sure you get job alerts and application updates.`;
+  }
+  const body = `
+    ${heading('Welcome to CockpitHire')}
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${TEXT};">${intro}</p>
+    ${ctaButton('Verify email', verifyUrl)}
+    <p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:${MUTED};">
+      If the button doesn't work, copy and paste this link into your browser:<br>
+      <a href="${esc(verifyUrl)}" style="color:${ACCENT};word-break:break-all;">${esc(verifyUrl)}</a>
+    </p>
+    ${verifyFootnote()}
+  `;
+  return renderBaseTemplate({ title: 'Welcome to CockpitHire — verify your email', body });
+}
+
+/** Standalone "resend verification" email (Phase B2). */
+function renderResendVerifyEmail({ recipientName, verifyUrl } = {}) {
+  const greeting = recipientName ? `Hi ${esc(recipientName)},` : 'Hi,';
+  const body = `
+    ${heading('Verify your email')}
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${TEXT};">${greeting}</p>
+    ${paragraph("Here's your new verification link. Click the button below to verify your email address.")}
+    ${ctaButton('Verify email', verifyUrl)}
+    <p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:${MUTED};">
+      If the button doesn't work, copy and paste this link into your browser:<br>
+      <a href="${esc(verifyUrl)}" style="color:${ACCENT};word-break:break-all;">${esc(verifyUrl)}</a>
+    </p>
+    ${verifyFootnote()}
+  `;
+  return renderBaseTemplate({ title: 'Verify your CockpitHire email', body });
+}
+
 /** Phase-A health-check email. */
 function renderTestEmail({ recipientName } = {}) {
   const greeting = recipientName ? `Hi ${esc(recipientName)},` : 'Hi,';
@@ -125,4 +174,4 @@ function renderTestEmail({ recipientName } = {}) {
   return renderBaseTemplate({ title: 'CockpitHire notifications test', body });
 }
 
-module.exports = { renderBaseTemplate, renderTestEmail, renderPasswordResetEmail, ctaButton, heading, paragraph, PALETTE: { BG, SURFACE, TEXT, MUTED, ACCENT, BORDER } };
+module.exports = { renderBaseTemplate, renderTestEmail, renderPasswordResetEmail, renderWelcomeVerifyEmail, renderResendVerifyEmail, ctaButton, heading, paragraph, PALETTE: { BG, SURFACE, TEXT, MUTED, ACCENT, BORDER } };

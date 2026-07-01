@@ -6,6 +6,7 @@ const { validationResult } = require('express-validator');
 const { EmployerType } = require('@prisma/client');
 const prisma = require('../config/database');
 const { notifyAdminNewSignup } = require('../services/employerEmails');
+const { sendWelcomeVerify } = require('../services/verificationService');
 
 // Employer tokens are namespaced with type:'employer' so they can never be
 // interchanged with pilot tokens (which carry { id } and no type). Same
@@ -91,6 +92,8 @@ exports.register = async (req, res, next) => {
     });
 
     notifyAdminNewSignup(created);
+    // Welcome + verify email (Phase B2) — PENDING copy; never blocks registration.
+    await sendWelcomeVerify({ email: created.contactEmail, userType: 'employer', recipientName: created.contactName || created.companyName, employerPendingApproval: true });
     const token = signToken(created.id);
     res.status(201).json({ token, employer: stripSensitive(created) });
   } catch (err) {

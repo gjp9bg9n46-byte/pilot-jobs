@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store';
-import { adminApi } from '../services/api';
+import { adminApi, authApi } from '../services/api';
 import { useIsMobile } from '../hooks/useIsMobile';
+import VerifyEmailBanner from './auth/VerifyEmailBanner';
 
 const S = { strokeLinecap: 'round', strokeLinejoin: 'round' };
 const Ico = ({ d, extra, size = 18 }) => (
@@ -411,6 +412,7 @@ export default function Layout() {
             <div style={avatar(34)}>{initials}</div>
           </div>
         </header>
+        <VerifyEmailBanner verified={pilot?.emailVerified} resendFn={authApi.resendVerification} />
         {/* intentional — dark page body; light page bodies migrate later */}
         {/* NOTE: LightPage primitive bleeds over this padding (32px). Keep in sync. */}
         <div style={{ flex: 1, padding: '32px', overflowY: 'auto', background: '#0A1628', color: '#fff' }}>

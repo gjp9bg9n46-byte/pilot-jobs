@@ -5,6 +5,7 @@ import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Badge, Button, Modal } from '../../components/primitives';
 import { useBodyBackground } from '../../hooks/useBodyBackground';
+import VerifyEmailBanner from '../../components/auth/VerifyEmailBanner';
 
 const TYPE_LABEL = { AIRLINE: 'Airline', CHARTER: 'Charter', CARGO: 'Cargo', EMS: 'EMS / Air Ambulance', FLIGHT_SCHOOL: 'Flight School', CORPORATE: 'Corporate', RECRUITER: 'Recruiter / Agency', OTHER: 'Other' };
 const ROLE_LABEL = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor', FLIGHT_ENGINEER: 'Flight Engineer' };
@@ -120,6 +121,8 @@ export default function EmployerDashboard() {
           </div>
         </div>
       </div>
+
+      <VerifyEmailBanner verified={employer.emailVerified} resendFn={employerApi.resendVerification} />
 
       <div style={css.wrap}>
         {toast && <div style={css.toast}>{toast}</div>}

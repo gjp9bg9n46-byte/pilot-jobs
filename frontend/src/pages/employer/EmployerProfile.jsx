@@ -27,6 +27,19 @@ export default function EmployerProfile() {
   const { employer, refresh } = useEmployerAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [verifyResend, setVerifyResend] = useState(null); // { ok, text }
+  const [verifySending, setVerifySending] = useState(false);
+  const handleResendVerify = async () => {
+    setVerifySending(true); setVerifyResend(null);
+    try {
+      const { data } = await employerApi.resendVerification();
+      setVerifyResend({ ok: true, text: data?.message || 'Verification link sent — check your email.' });
+    } catch (err) {
+      setVerifyResend({ ok: false, text: err.response?.status === 429 ? 'Too many requests. Wait an hour and try again.' : (err.response?.data?.error || 'Could not send. Try again later.') });
+    } finally {
+      setVerifySending(false);
+    }
+  };
   const [form, setForm] = useState(() => ({
     companyName: employer?.companyName || '', companyType: employer?.companyType || 'OTHER',
     country: employer?.country || '', headquartersCity: employer?.headquartersCity || '',
@@ -121,6 +134,18 @@ export default function EmployerProfile() {
           <div style={css.row2}>
             <div style={css.field}>
               <Input label="Contact Email (read-only)" value={employer.contactEmail} disabled style={{ opacity: 0.6, cursor: 'not-allowed' }} />
+              <div style={{ marginTop: 8, fontSize: 13 }}>
+                {employer.emailVerified
+                  ? <span style={{ color: 'var(--text-secondary)' }}>✓ Email verified</span>
+                  : (
+                    <span style={{ color: '#92400E' }}>
+                      ⚠ Email not verified.{' '}
+                      {verifyResend
+                        ? <span style={{ color: verifyResend.ok ? '#166534' : '#991B1B', fontWeight: 600 }}>{verifyResend.text}</span>
+                        : <button onClick={handleResendVerify} disabled={verifySending} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline', cursor: verifySending ? 'default' : 'pointer', padding: 0, fontSize: 13 }}>{verifySending ? 'Sending…' : 'Resend verification link'}</button>}
+                    </span>
+                  )}
+              </div>
               <div style={css.hint}>Changing email is a separate flow (out of scope).</div>
             </div>
             <div style={css.field}>

@@ -26,6 +26,9 @@ export const employerApi = {
   login: (email, password) => client.post('/employers/login', { contactEmail: email, password }),
   getMe: () => client.get('/employers/me'),
   updateMe: (payload) => client.put('/employers/me', payload),
+  // Email verification (shared /auth/* endpoints; employer token attached).
+  verifyEmail: (token) => client.post('/auth/verify-email', { token }),
+  resendVerification: () => client.post('/auth/resend-verification'),
   // Jobs (employer-owned)
   listJobs: () => client.get('/employers/jobs'),
   createJob: (payload) => client.post('/employers/jobs', payload),
