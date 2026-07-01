@@ -13,8 +13,14 @@ Foundation + phased rollout. See `docs/notifications.md`.
   never-throws, `{success,id?,error?}`), `emailTemplates` (base template +
   editorial-light inline palette + test email), admin health-check endpoint
   `POST /admin/notifications/test`, unit tests, docs. No trigger points wired.
-- **Phase B** — auth transactional: password reset, email verification, welcome.
-  (Pairs with Login/Register #5 password-reset flow.) — next.
+- **Phase B1 — Password reset → ✅ SHIPPED (2026-07-01).** Shared pilot+employer
+  flow: `PasswordResetToken` model + migration, `POST /auth/forgot-password`
+  (neutral response, 3/hr per-email rate limit, case-insensitive pilot→employer
+  lookup, 1h single-use token) + `POST /auth/reset-password` (validates
+  invalid/expired/used, bcrypt update, invalidates sibling tokens, no auto-login),
+  reset email template, 4 frontend pages (pilot + employer forgot/reset) +
+  "Forgot password?" links on both logins. Resolves Login #5 + Employer #5.
+- **Phase B2** — auth transactional cont.: email verification + welcome emails. — next.
 - **Phase C** — ATS: applicant emails, employer applicant digest, pilot status.
 - **Phase D** — contributions + admin: approve/reject emails, employer
   approve/reject/suspend (wire the existing `employerEmails.js` log-only stubs +
