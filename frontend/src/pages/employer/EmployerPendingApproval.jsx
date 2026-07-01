@@ -4,6 +4,8 @@ import { useEmployerAuth } from '../../context/EmployerAuthContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Badge, Button } from '../../components/primitives';
 import { useBodyBackground } from '../../hooks/useBodyBackground';
+import { employerApi } from '../../services/employerApi';
+import VerifyEmailBanner from '../../components/auth/VerifyEmailBanner';
 
 const COMPANY_TYPE_LABEL = {
   AIRLINE: 'Airline', CHARTER: 'Charter', CARGO: 'Cargo', EMS: 'EMS / Air Ambulance',
@@ -40,7 +42,9 @@ export default function EmployerPendingApproval() {
 
   return (
     <div className="app-b2b" style={css.page}>
-      <div style={{ ...css.card, padding: isMobile ? '32px 20px' : '48px 40px' }}>
+      <div style={{ ...css.card, padding: 0, overflow: 'hidden' }}>
+        <VerifyEmailBanner verified={employer.emailVerified} resendFn={employerApi.resendVerification} />
+        <div style={{ padding: isMobile ? '32px 20px' : '48px 40px' }}>
         <Badge variant="warning">UNDER REVIEW</Badge>
         <div style={css.headline}>Your account is under review.</div>
         <div style={css.body}>
@@ -62,6 +66,7 @@ export default function EmployerPendingApproval() {
         <div style={css.contact}>
           Have questions? Contact us at{' '}
           <a href="mailto:support@cockpithire.com" style={css.link}>support@cockpithire.com</a>
+        </div>
         </div>
       </div>
     </div>
