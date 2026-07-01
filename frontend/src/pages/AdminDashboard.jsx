@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Send } from 'lucide-react';
 import { adminApi } from '../services/api';
 
 // Admin stays deliberately dark (operator-only surface). Palette mirrors
@@ -53,6 +54,28 @@ export default function AdminDashboard() {
   }, [navigate]);
   useEffect(() => { load(); }, [load]);
 
+  // Notifications — one-tap Resend health check (Phase A endpoint).
+  const [testSending, setTestSending] = useState(false);
+  const [testMsg, setTestMsg] = useState(null); // { ok, text }
+  const dismissTimer = useRef(null);
+  useEffect(() => () => clearTimeout(dismissTimer.current), []);
+
+  const sendTest = async () => {
+    setTestSending(true);
+    setTestMsg(null);
+    clearTimeout(dismissTimer.current);
+    try {
+      const { data } = await adminApi.sendTestNotification();
+      setTestMsg({ ok: true, text: `Test email sent — check ${data.sentTo}. Message ID: ${data.messageId}` });
+      dismissTimer.current = setTimeout(() => setTestMsg(null), 8000);
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Unknown error';
+      setTestMsg({ ok: false, text: `Failed to send test email: ${msg}. Check Resend dashboard for details.` });
+    } finally {
+      setTestSending(false);
+    }
+  };
+
   return (
     <div style={css.page}>
       <div style={css.h1}>Admin Dashboard</div>
@@ -86,6 +109,37 @@ export default function AdminDashboard() {
             <Tile value={stats.recent30d.jobsPosted.toLocaleString()} label="Jobs posted" />
             <Tile value={stats.recent30d.applicationsSubmitted.toLocaleString()} label="Applications submitted" />
             <Tile value={stats.recent30d.newContributions.toLocaleString()} label="New contributions" />
+          </div>
+
+          <div style={css.sectionLabel}>Notifications</div>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
+            <button
+              onClick={sendTest}
+              disabled={testSending}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: testSending ? '#16263F' : C.accent,
+                color: testSending ? C.muted : '#04121F',
+                border: 'none', borderRadius: 8, padding: '10px 16px',
+                fontSize: 13, fontWeight: 700, cursor: testSending ? 'default' : 'pointer',
+                transition: 'background 0.15s',
+              }}
+            >
+              <Send size={15} /> {testSending ? 'Sending…' : 'Send test email'}
+            </button>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 10 }}>
+              Sends a test email to your admin address to verify the Resend integration.
+            </div>
+            {testMsg && (
+              <div style={{
+                marginTop: 12, padding: '10px 14px', borderRadius: 8, fontSize: 13, lineHeight: 1.5,
+                background: testMsg.ok ? 'rgba(52,211,153,0.1)' : 'rgba(231,76,60,0.1)',
+                border: `1px solid ${testMsg.ok ? 'rgba(52,211,153,0.35)' : 'rgba(231,76,60,0.35)'}`,
+                color: testMsg.ok ? '#34D399' : '#FF6B6B', wordBreak: 'break-word',
+              }}>
+                {testMsg.text}
+              </div>
+            )}
           </div>
         </>
       )}
