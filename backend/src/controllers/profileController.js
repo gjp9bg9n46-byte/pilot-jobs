@@ -1,6 +1,55 @@
 const { validationResult } = require('express-validator');
 const prisma = require('../config/database');
 
+// ── Preference key mapping ──────────────────────────────────────────────────
+// The client (web + mobile) speaks friendly keys; the PilotPreference table uses
+// schema columns. PREF_KEY_MAP whitelists incoming keys and maps each to its
+// column(s) — a single category toggle drives both the email and push variants.
+// Anything not in the map is discarded (no raw req.body spread → no Prisma crash).
+const PREF_KEY_MAP = {
+  // Job preferences
+  preferredCountries: 'preferredCountries',
+  preferredAircraft:  'preferredAircraft',
+  minSalary:          'minSalary',
+  salaryCurrency:     'minSalaryCurrency',
+  salaryPeriod:       'minSalaryPeriod',
+  salaryNegotiable:   'salaryNegotiable',
+  contractTypes:      'preferredContractTypes',
+  routePreferences:   'routePreferences',
+  // Notifications (single UI toggle per category → email + push columns)
+  allEmailOn:         'notifyEmail',
+  newJobMatch:        ['notifyMatchesEmail', 'notifyMatchesPush'],
+  alertDigest:        ['notifyDigestEmail', 'notifyAlertsPush'],
+  applicationUpdate:  ['notifyApplicationsEmail', 'notifyApplicationsPush'],
+  documentExpiry:     ['notifyExpiriesEmail', 'notifyExpiriesPush'],
+  productUpdates:     'notifyProductUpdatesEmail',
+  // Quiet hours
+  quietHours:         'quietHoursEnabled',
+  quietFrom:          'quietHoursStart',
+  quietTo:            'quietHoursEnd',
+};
+
+// Reverse map: PilotPreference row → the client-facing preference shape, so the
+// UI toggles hydrate. Reads the canonical (email) column for each category.
+function toClientPrefs(p) {
+  if (!p) return p;
+  return {
+    ...p,
+    salaryCurrency:    p.minSalaryCurrency,
+    salaryPeriod:      p.minSalaryPeriod,
+    contractTypes:     p.preferredContractTypes,
+    allEmailOn:        p.notifyEmail,
+    newJobMatch:       p.notifyMatchesEmail,
+    alertDigest:       p.notifyDigestEmail,
+    applicationUpdate: p.notifyApplicationsEmail,
+    documentExpiry:    p.notifyExpiriesEmail,
+    productUpdates:    p.notifyProductUpdatesEmail,
+    quietHours:        p.quietHoursEnabled,
+    quietFrom:         p.quietHoursStart,
+    quietTo:           p.quietHoursEnd,
+  };
+}
+
 exports.getProfile = async (req, res, next) => {
   try {
     const pilot = await prisma.pilot.findUnique({
@@ -15,6 +64,7 @@ exports.getProfile = async (req, res, next) => {
       },
     });
     const { passwordHash, ...profile } = pilot;
+    if (profile.preferences) profile.preferences = toClientPrefs(profile.preferences);
     res.json(profile);
   } catch (err) {
     next(err);
@@ -355,12 +405,32 @@ exports.deleteRightToWork = async (req, res, next) => {
 
 exports.updatePreferences = async (req, res, next) => {
   try {
+    const body = { ...req.body };
+
+    // Backward-compat (one release): legacy split expiry toggles → merged
+    // documentExpiry, true if EITHER was true. Lets un-upgraded clients still save.
+    if ('certificateExpiry' in body || 'medicalExpiry' in body) {
+      if (!('documentExpiry' in body)) {
+        body.documentExpiry = !!(body.certificateExpiry || body.medicalExpiry);
+      }
+      delete body.certificateExpiry;
+      delete body.medicalExpiry;
+    }
+
+    // Whitelist + map client keys → schema columns; drop anything unknown.
+    const data = {};
+    for (const [key, value] of Object.entries(body)) {
+      const cols = PREF_KEY_MAP[key];
+      if (!cols) continue;
+      for (const col of Array.isArray(cols) ? cols : [cols]) data[col] = value;
+    }
+
     const prefs = await prisma.pilotPreference.upsert({
       where: { pilotId: req.pilot.id },
-      create: { ...req.body, pilotId: req.pilot.id },
-      update: req.body,
+      create: { ...data, pilotId: req.pilot.id },
+      update: data,
     });
-    res.json(prefs);
+    res.json(toClientPrefs(prefs));
   } catch (err) {
     next(err);
   }

@@ -114,8 +114,7 @@ export default function Settings() {
     newJobMatch: true,
     alertDigest: true,
     applicationUpdate: true,
-    certificateExpiry: true,
-    medicalExpiry: true,
+    documentExpiry: true,
     productUpdates: false,
   });
   const [quietHours, setQuietHours] = useState(false);
@@ -129,8 +128,7 @@ export default function Settings() {
     { key: 'newJobMatch', label: 'New Job Match' },
     { key: 'alertDigest', label: 'Alert Digest' },
     { key: 'applicationUpdate', label: 'Application Update' },
-    { key: 'certificateExpiry', label: 'Certificate Expiry' },
-    { key: 'medicalExpiry', label: 'Medical Expiry' },
+    { key: 'documentExpiry', label: 'Document Expiries', desc: 'Alerts for licence, medical, and document expiry dates.' },
     { key: 'productUpdates', label: 'Product Updates' },
   ];
 
@@ -160,8 +158,10 @@ export default function Settings() {
         newJobMatch: p.newJobMatch !== false,
         alertDigest: p.alertDigest !== false,
         applicationUpdate: p.applicationUpdate !== false,
-        certificateExpiry: p.certificateExpiry !== false,
-        medicalExpiry: p.medicalExpiry !== false,
+        // Fold any legacy split keys into the merged toggle (true if either was on).
+        documentExpiry: p.documentExpiry !== undefined
+          ? p.documentExpiry !== false
+          : (p.certificateExpiry !== false || p.medicalExpiry !== false),
         productUpdates: !!p.productUpdates,
       });
       setQuietHours(!!p.quietHours);
@@ -453,7 +453,10 @@ export default function Settings() {
             </div>
             {NOTIF_ROWS.map((row) => (
               <label key={row.key} htmlFor={`notif-${row.key}`} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0 16px', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)', cursor: allEmailOn ? 'pointer' : 'not-allowed' }}>
-                <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{row.label}</span>
+                <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
+                  {row.label}
+                  {row.desc && <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{row.desc}</span>}
+                </span>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <input
                     id={`notif-${row.key}`}
