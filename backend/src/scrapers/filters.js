@@ -67,6 +67,14 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
     'helicopter',
     'rotorcraft',
     'rotary[-\\s]?wing',
+    // Non-pilot aviation roles (owner directive: pilots only)
+    'air\\s+traffic',
+    '\\batc\\b',
+    'dispatcher',
+    'flight\\s+attendant',
+    'cabin\\s+crew',
+    'loadmaster',
+    'flight\\s+engineer\\s+instructor',
     // Maritime false positives (aggregator sources return ship/harbour pilots)
     'harbou?r\\s+pilot',
     'marine\\s+pilot',

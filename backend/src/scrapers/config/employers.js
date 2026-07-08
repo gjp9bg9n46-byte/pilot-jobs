@@ -49,14 +49,14 @@ module.exports = [
   // Queries Job Series 2181 (Aircraft Operation) + 2185 (Aircraft Aerial Work).
   // skipFilter: true — series codes 2181/2185 are exclusively aviation operational roles
   // (Aircraft Commander, Fixed Wing Pilot, etc.) — the API does the filtering.
-  // excludeOnly: the federal series (2181/2185) are already pilot-only, but
-  // titles often lack the word 'pilot' ("Air Interdiction Agent"). Run ONLY the
-  // exclusion patterns (drone/UAS, helicopter/rotary, maritime) — keep the rest.
+  // STRICT filter (owner directive 2026-07-08): only explicitly pilot-titled
+  // roles (pilot / captain / first officer / instructor / examiner). Federal
+  // flying roles without a pilot keyword in the title (e.g. "Air Interdiction
+  // Agent") are deliberately dropped — purity over volume.
   {
     source: 'USAJOBS',
     company: 'USAJobs.gov',
     skipFilter: false,
-    excludeOnly: true,
   },
 
   // ── Pilot Career Centre (blocked — robots.txt Disallow: / for PilotJobsIngest) ──
