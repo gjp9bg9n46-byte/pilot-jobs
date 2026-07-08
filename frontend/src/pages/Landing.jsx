@@ -6,7 +6,7 @@ import '../styles/landing-tokens.css';
 
 // ── Content (copy preserved verbatim from the previous landing) ──────────────
 const FEATURES = [
-  { icon: RefreshCw,    title: 'Always-fresh listings',    body: 'We scrape Lever, Greenhouse, and direct airline career boards daily and deduplicate across sources — no stale postings, no duplicates.', photo: 'feature-fresh.webp' },
+  { icon: RefreshCw,    title: 'Always-fresh listings',    body: 'Aggregated daily from official airline career boards, government job APIs, and trusted job platforms — deduplicated across sources, with expired roles removed automatically.', photo: 'feature-fresh.webp' },
   { icon: Target,       title: 'Matched to your ratings',  body: 'Enter your certificates (ATPL, CPL), total hours, PIC time, aircraft type ratings, and issuing authority. We surface only the jobs you meet the minimums for.', photo: 'feature-ratings.webp' },
   { title: 'Instant push alerts',      body: 'New job that matches your profile? You get a push notification within minutes of it hitting the board — before the rush of applicants.', photo: 'feature-alerts.webp' },
   { title: 'Digital logbook',         body: 'Log flights directly in the app. Import from ForeFlight CSV or manual entry. Your totals update in real-time and power the matching engine.', photo: 'feature-logbook.webp' },
@@ -106,8 +106,11 @@ export default function Landing() {
 
   const freshness = stats ? freshnessLabel(stats.lastScrapedAt) : null; // cadence word | null
   const statEntries = stats ? [
+    // Live job count leads — the number pilots and recruiters judge a board by.
+    Number.isFinite(stats.activeJobsCount) && stats.activeJobsCount > 0
+      ? { num: String(stats.activeJobsCount), label: 'Pilot jobs live now', amber: true } : null,
     Number.isFinite(stats.airlinesCount) && stats.airlinesCount > 0
-      ? { num: String(stats.airlinesCount), label: 'Airlines tracked', amber: true } : null,
+      ? { num: String(stats.airlinesCount), label: 'Airlines tracked' } : null,
     Number.isFinite(stats.fleetProfilesCount) && stats.fleetProfilesCount > 0
       ? { num: String(stats.fleetProfilesCount), label: 'With detailed fleets' } : null,
     freshness ? { num: freshness, label: 'Data refreshed' } : null,
@@ -303,7 +306,7 @@ export default function Landing() {
         <div style={css.container}>
           <Reveal style={css.employerCard}>
             <h2 style={css.employerH}>Are you an airline, charter operator, or flight school?</h2>
-            <p style={css.employerSub}>Post pilot openings directly to our community.</p>
+            <p style={css.employerSub}>Post openings directly and our matching engine puts them in front of the pilots who meet your minimums — licence, ratings, and hours verified — with instant push notifications the moment you publish.</p>
             <Link to="/employer/register" className="btn-primary" style={css.btnPrimary}>Apply to post jobs →</Link>
           </Reveal>
         </div>
