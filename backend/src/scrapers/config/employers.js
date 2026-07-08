@@ -218,4 +218,14 @@ module.exports = [
     source: 'JOOBLE',
     company: 'Jooble (North Africa)',
   },
+
+  // ── Aviation Job Search (aviationjobsearch.com) ────────────────────────────
+  // Verified 2026-07-08: robots.txt allows job pages; T&Cs restrict only the
+  // candidate/CV database (never touched). Pages publish schema.org JSON-LD
+  // (ItemList + JobPosting). We store description EXCERPTS + link back to
+  // their listing for the apply click. Shared fixed-wing filter applies.
+  {
+    source: 'AVIATIONJOBSEARCH',
+    company: 'Aviation Job Search',
+  },
 ];

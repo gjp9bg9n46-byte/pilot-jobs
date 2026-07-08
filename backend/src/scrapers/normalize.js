@@ -567,6 +567,7 @@ function normalize(raw, empConfig) {
       case 'USAJOBS': return raw;
       case 'ADZUNA':  return raw;
       case 'JOOBLE':  return raw;
+      case 'AVIATIONJOBSEARCH': return raw;
       default: return null;
     }
   } catch (err) {
