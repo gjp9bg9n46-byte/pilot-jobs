@@ -10,6 +10,7 @@ const logger = require('./config/logger');
 const errorHandler = require('./middleware/errorHandler');
 const { runIngestion } = require('./scrapers/index');
 const { runFullMatch } = require('./services/matchingService');
+const { recomputeJobDerivedStats, refreshWikiFleet } = require('./services/airlineEnrichmentService');
 
 const app = express();
 app.use(helmet());
@@ -56,6 +57,22 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
     await runIngestion();
   } catch (err) {
     logger.error(`Scheduled scrape failed: ${err.message}`);
+  }
+  // Airline factfiles derive hiring status / pay ranges from the fresh job data.
+  try {
+    await recomputeJobDerivedStats();
+  } catch (err) {
+    logger.error(`Airline stats recompute failed: ${err.message}`);
+  }
+});
+
+// Weekly airline fleet refresh from Wikipedia (Mondays 04:00 UTC) — fleetDetail
+// is enrichment-owned and refreshed; community-contributed fields are untouched.
+cron.schedule('0 4 * * 1', async () => {
+  try {
+    await refreshWikiFleet();
+  } catch (err) {
+    logger.error(`Airline fleet refresh failed: ${err.message}`);
   }
 });
 
