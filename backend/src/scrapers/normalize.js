@@ -563,8 +563,10 @@ function normalize(raw, empConfig) {
       case 'MAGELLAN':         return raw;  // magellan.js pre-normalizes
       case 'SMARTRECRUITERS':    return normalizeSmartRecruiters(raw, empConfig);
       case 'PILOTCAREERCENTRE':  return normalizePCC(raw, empConfig);
-      // USAJobs source pre-normalizes inside fetchUSAJobs() — pass through as-is
+      // These sources pre-normalize inside their fetchers — pass through as-is
       case 'USAJOBS': return raw;
+      case 'ADZUNA':  return raw;
+      case 'JOOBLE':  return raw;
       default: return null;
     }
   } catch (err) {

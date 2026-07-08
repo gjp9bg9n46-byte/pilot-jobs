@@ -33,6 +33,7 @@ const AVIATION_TITLE_PATTERNS = new RegExp(
     'check\\s+airman',
     'chief\\s+pilot',
     'type\\s+rating\\s+examiner',
+    'aircraft\\s+commander',
     'flight\\s+examiner',
     'line\\s+training\\s+captain',
     'training\\s+captain',
@@ -55,7 +56,26 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
     'pilot\\s+initiative',
     'autopilot',
     'auto-pilot',
-    'drone\\s+pilot',         // UAV operators — different licence/career path
+    // Fixed-wing-only policy (owner directive): no drone/UAS and no rotary-wing roles.
+    'drone',                  // any drone role (operator, pilot, technician)
+    '\\buas\\b',
+    '\\buav\\b',
+    '\\bsuas\\b',
+    'unmanned',
+    'remotely\\s+piloted',
+    'remote\\s+pilot',
+    'helicopter',
+    'rotorcraft',
+    'rotary[-\\s]?wing',
+    // Maritime false positives (aggregator sources return ship/harbour pilots)
+    'harbou?r\\s+pilot',
+    'marine\\s+pilot',
+    'maritime',
+    'yacht',
+    '\\bvessel\\b',
+    '\\bship\\b',
+    '\\btug(?:boat)?\\b',
+    'cruise\\s+line',
     'co-founder',             // "Co-Pilot" false-positive guard for startup roles
   ].join('|'),
   'i',

@@ -49,10 +49,12 @@ module.exports = [
   // Queries Job Series 2181 (Aircraft Operation) + 2185 (Aircraft Aerial Work).
   // skipFilter: true — series codes 2181/2185 are exclusively aviation operational roles
   // (Aircraft Commander, Fixed Wing Pilot, etc.) — the API does the filtering.
+  // skipFilter now FALSE: series 2181/2185 include helicopter and UAS roles;
+  // the shared filter enforces the fixed-wing-pilot-only policy.
   {
     source: 'USAJOBS',
     company: 'USAJobs.gov',
-    skipFilter: true,
+    skipFilter: false,
   },
 
   // ── Pilot Career Centre (blocked — robots.txt Disallow: / for PilotJobsIngest) ──
@@ -72,7 +74,8 @@ module.exports = [
 
   // eVTOL / autonomous aviation
   // Verified 2026-06-02: 20 postings (cargo UAV)
-  { source: 'LEVER', slug: 'pyka',        company: 'Pyka' },
+  // Disabled 2026-07-08 per owner: cargo-UAV company — drone roles only.
+  { source: 'LEVER', slug: 'pyka',        company: 'Pyka', disabled: true },
   // Verified 2026-06-02: 29 postings (AI autopilot, occasional test-pilot roles)
   { source: 'LEVER', slug: 'merlinlabs',  company: 'Merlin Labs' },
 
@@ -118,7 +121,8 @@ module.exports = [
   // 1939 jobs total; includes ~24 aviation/drone/test-pilot roles
   { source: 'GREENHOUSE', slug: 'andurilindustries',      company: 'Anduril Industries' },
   // 202 jobs; drone delivery — operations/logistics pilot roles
-  { source: 'GREENHOUSE', slug: 'flyzipline',             company: 'Zipline International' },
+  // Disabled 2026-07-08 per owner: drone-delivery company — drone roles only.
+  { source: 'GREENHOUSE', slug: 'flyzipline',             company: 'Zipline International', disabled: true },
   // 34 jobs; Eve Air Mobility (eVTOL, Embraer-backed)
   { source: 'GREENHOUSE', slug: 'eve',                    company: 'Eve Air Mobility' },
 
@@ -194,4 +198,22 @@ module.exports = [
   //   Frontier Airlines → Unknown ATS (not publicly accessible)
   //   Air Canada → Custom or Oracle HCM (not Workday)
   //   Other: Emirates (Taleo), British Airways (404), Hawaiian (unreachable), Cathay Pacific (undetected)
+
+  // ── Adzuna (official aggregator API) — Europe volume ───────────────────────
+  // Free API (developer.adzuna.com). Requires ADZUNA_APP_ID + ADZUNA_APP_KEY.
+  // Countries via ADZUNA_COUNTRIES (default gb,fr,de,it,es,nl,pl,at).
+  // Every job links to the original posting. Shared fixed-wing filter applies.
+  {
+    source: 'ADZUNA',
+    company: 'Adzuna (Europe)',
+  },
+
+  // ── Jooble (official aggregator API) — North Africa volume ────────────────
+  // Free API (jooble.org/api/about). Requires JOOBLE_API_KEY.
+  // Locations via JOOBLE_LOCATIONS (default Egypt,Morocco,Tunisia,Algeria).
+  // Every job links to the original posting. Shared fixed-wing filter applies.
+  {
+    source: 'JOOBLE',
+    company: 'Jooble (North Africa)',
+  },
 ];

@@ -24,6 +24,8 @@ const { fetchMagellan }        = require('./sources/magellan');
 const { fetchSmartRecruiters }     = require('./sources/smartrecruiters');
 const { fetchPilotCareerCentre, enrichPccBatch } = require('./sources/pilotcareercentre');
 const { fetchUSAJobs } = require('./sources/usajobs');
+const { fetchAdzuna } = require('./sources/adzuna');
+const { fetchJooble } = require('./sources/jooble');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize }      = require('./normalize');
 const { filterAviationJobs } = require('./filters');
@@ -149,6 +151,8 @@ async function fetchForEmployer(empConfig) {
     case 'SMARTRECRUITERS':   return fetchSmartRecruiters(empConfig);
     case 'PILOTCAREERCENTRE': return fetchPilotCareerCentre(empConfig);
     case 'USAJOBS':           return fetchUSAJobs(empConfig);
+    case 'ADZUNA':            return fetchAdzuna(empConfig);
+    case 'JOOBLE':            return fetchJooble(empConfig);
     default:
       logger.warn({ msg: `unknown source: ${empConfig.source}` });
       return [];

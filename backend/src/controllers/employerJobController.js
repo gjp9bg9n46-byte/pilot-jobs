@@ -1,7 +1,8 @@
 'use strict';
 
 const prisma = require('../config/database');
-const { getPilotFlightTotals } = require('../services/matchingService');
+const { getPilotFlightTotals, matchJobToAllPilots } = require('../services/matchingService');
+const logger = require('../config/logger');
 
 const APPLICATION_STATUSES = ['APPLIED', 'REVIEWED', 'SHORTLISTED', 'HIRED'];
 const MEDICAL_RANK = { CLASS_1: 3, CLASS_2: 2, CLASS_3: 1 };
@@ -140,6 +141,10 @@ exports.createJob = async (req, res, next) => {
       },
     });
 
+    // Run the matching engine for this new job (creates alerts + push
+    // notifications for qualifying pilots). Fire-and-forget so posting stays fast.
+    matchJobToAllPilots(job).catch((err) => logger.error(`match on employer createJob failed: ${err.message}`));
+
     res.status(201).json(job);
   } catch (err) {
     next(err);
@@ -206,6 +211,10 @@ exports.repostJob = async (req, res, next) => {
       where: { id: job.id },
       data: { status: 'ACTIVE', postedAt: new Date() },
     });
+
+    // Reposted job is live again — re-run matching (fire-and-forget).
+    matchJobToAllPilots(updated).catch((err) => logger.error(`match on employer relist failed: ${err.message}`));
+
     res.json(updated);
   } catch (err) {
     next(err);
