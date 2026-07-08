@@ -185,7 +185,7 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
     // skipFilter: true → source is already a pilot-only board (e.g. PilotCareerCentre)
     const { kept, dropped } = empConfig.skipFilter
       ? { kept: normalized, dropped: 0 }
-      : filterAviationJobs(normalized, empConfig.source, empConfig.company);
+      : filterAviationJobs(normalized, empConfig.source, empConfig.company, { excludeOnly: !!empConfig.excludeOnly });
     stats.keptAfterFilter = kept.length;
 
     logger.info({

@@ -19,9 +19,15 @@
  * roles only) — do NOT set skipFilter on this source's config entry.
  */
 
+const axios = require('axios');
 const logger = require('../../config/logger');
-const { fetchJSON } = require('../http');
 const { extractRequirements } = require('../normalize');
+
+// Direct axios (NOT the robots-honouring crawler helper): this is an
+// authenticated, registered API client — robots.txt governs crawlers, not API
+// consumers. We still self-rate-limit between calls.
+const CALL_DELAY_MS = 1200;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const COUNTRY_NAMES = {
   gb: 'United Kingdom', fr: 'France', de: 'Germany', it: 'Italy', es: 'Spain',
@@ -112,9 +118,10 @@ async function fetchAdzuna() {
           `&results_per_page=50&${q.param}=${encodeURIComponent(q.value)}&content-type=application/json`;
         let data;
         try {
-          data = await fetchJSON(url, { source: 'ADZUNA' });
+          const resp = await axios.get(url, { timeout: 20000, headers: { Accept: 'application/json' } });
+          data = resp.data;
         } catch (err) {
-          logger.error({ source: 'ADZUNA', country, query: q.value, page, err: err.message, msg: 'fetch failed' });
+          logger.error({ source: 'ADZUNA', country, query: q.value, page, status: err.response?.status, err: err.message, msg: 'fetch failed' });
           break;
         }
         const items = data?.results || [];
@@ -125,6 +132,7 @@ async function fetchAdzuna() {
           results.push(normalized);
         }
         logger.info({ source: 'ADZUNA', country, query: q.value, page, fetched: items.length, cumulative: results.length, msg: 'page fetched' });
+        await sleep(CALL_DELAY_MS);
         if (items.length < 50) break; // last page
       }
     }

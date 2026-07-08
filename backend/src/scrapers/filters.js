@@ -87,9 +87,13 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
  * @param {string} title
  * @returns {boolean}
  */
-function isAviationRole(title) {
+function isAviationRole(title, { excludeOnly = false } = {}) {
   if (!title) return false;
   if (FALSE_POSITIVE_PATTERNS.test(title)) return false;
+  // excludeOnly: for sources that are already pilot-only (e.g. USAJobs federal
+  // aviation series) — titles like "Air Interdiction Agent" carry no pilot
+  // keyword but ARE fixed-wing pilot roles; only the exclusions apply.
+  if (excludeOnly) return true;
   return AVIATION_TITLE_PATTERNS.test(title);
 }
 
@@ -102,8 +106,8 @@ function isAviationRole(title) {
  * @param {string} employer label for logging
  * @returns {{ kept: import('./types').NormalizedJob[], dropped: number }}
  */
-function filterAviationJobs(jobs, source, employer) {
-  const kept = jobs.filter((j) => isAviationRole(j.title));
+function filterAviationJobs(jobs, source, employer, { excludeOnly = false } = {}) {
+  const kept = jobs.filter((j) => isAviationRole(j.title, { excludeOnly }));
   const dropped = jobs.length - kept.length;
   return { kept, dropped };
 }
