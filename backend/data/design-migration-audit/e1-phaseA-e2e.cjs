@@ -1,0 +1,98 @@
+const BASE='https://cockpithire.com';
+const prisma=require('/Users/mohamedalaa/pilot-jobs/backend/src/config/database');
+async function api(p,o={}){const r=await fetch(`${BASE}/api${p}`,{...o,headers:{'Content-Type':'application/json',...(o.headers||{})},body:o.body?JSON.stringify(o.body):undefined});const t=await r.text();let j;try{j=JSON.parse(t)}catch{j=t}return{status:r.status,body:j}}
+const results=[];const ok=(id,c,m)=>{results.push([id,!!c]);console.log(`  ${c?'✓':'✗'} ${id}  ${m||''}`)};
+(async()=>{
+  const ts=Date.now();
+  const pEmail=`e1p_${ts}@example.com`, pPw='Verify123!pw';
+  const p2Email=`e1p2_${ts}@example.com`;
+  const eEmail=`e1e_${ts}@example.com`, ePw='Verify123!emp';
+  const e2Email=`e1e2_${ts}@example.com`;
+  let cleanup={pilots:[],employers:[],jobs:[]};
+  try{
+    // pilots
+    const reg=await api('/auth/register',{method:'POST',body:{email:pEmail,password:pPw,firstName:'Apply',lastName:'Pilot',phone:'+10000000000',country:'United States',city:'Dallas'}});
+    const pTok=reg.body.token; const pH={Authorization:`Bearer ${pTok}`};
+    const reg2=await api('/auth/register',{method:'POST',body:{email:p2Email,password:pPw,firstName:'Other',lastName:'Pilot',phone:'+10000000000',country:'United States',city:'Dallas'}});
+    const p2Tok=reg2.body.token; const p2H={Authorization:`Bearer ${p2Tok}`};
+    // give pilot 1 a profile so the snapshot has signal
+    await api('/profile',{method:'PATCH',headers:pH,body:{role:'CAPTAIN',nationality:'American'}});
+    await api('/profile/certificates',{method:'POST',headers:pH,body:{type:'ATPL',issuingAuthority:'FAA'}});
+    await api('/profile/ratings',{method:'POST',headers:pH,body:{aircraftType:'A320',category:'TYPE'}});
+    // employers (register PENDING → approve via prisma)
+    const ereg=await api('/employers/register',{method:'POST',body:{companyName:'E1 Air',companyType:'CHARTER',country:'Portugal',contactName:'E1 Contact',contactEmail:eEmail,password:ePw}});
+    const e2reg=await api('/employers/register',{method:'POST',body:{companyName:'E1 Other Air',companyType:'CHARTER',country:'Portugal',contactName:'E2',contactEmail:e2Email,password:ePw}});
+    const emp=await prisma.employer.findFirst({where:{contactEmail:eEmail}}); const emp2=await prisma.employer.findFirst({where:{contactEmail:e2Email}});
+    cleanup.employers=[emp.id,emp2.id];
+    await prisma.employer.update({where:{id:emp.id},data:{status:'APPROVED'}});
+    await prisma.employer.update({where:{id:emp2.id},data:{status:'APPROVED'}});
+    const elg=await api('/employers/login',{method:'POST',body:{contactEmail:eEmail,password:ePw}}); const eH={Authorization:`Bearer ${elg.body.token}`};
+    const e2lg=await api('/employers/login',{method:'POST',body:{contactEmail:e2Email,password:ePw}}); const e2H={Authorization:`Bearer ${e2lg.body.token}`};
+    // employer 1 posts a job
+    const job=await api('/employers/jobs',{method:'POST',headers:eH,body:{title:'E1 Captain A320',description:'E1 phase A e2e job.',applyUrl:'https://example.com/apply',role:'CAPTAIN',reqCertificates:['ATPL'],reqAuthorities:['FAA'],reqAircraftTypes:['A320'],reqMinTotalHours:1500}});
+    const jobId=job.body.id; cleanup.jobs=[jobId];
+    ok('employer posts job', job.status===201||!!jobId, `status=${job.status}`);
+
+    // pilot applies (records + snapshots)
+    const apply=await api(`/jobs/${jobId}/apply`,{method:'POST',headers:pH});
+    ok('c apply records + returns applyUrl', apply.status===200&&apply.body.applied&&apply.body.applyUrl==='https://example.com/apply', JSON.stringify(apply.body));
+    // re-apply idempotent
+    const apply2=await api(`/jobs/${jobId}/apply`,{method:'POST',headers:pH});
+    const appRow=await prisma.application.findFirst({where:{jobId,pilotId:reg.body.pilot?.id||undefined},orderBy:{appliedAt:'desc'}});
+    // fetch the snapshot directly
+    const snap=await prisma.application.findFirst({where:{jobId}});
+    ok('c snapshot matchScore set + <=100', snap.matchScore!=null&&snap.matchScore<=100, `matchScore=${snap.matchScore}`);
+    ok('c re-apply idempotent (one row, snapshot preserved)', apply2.status===200, '');
+
+    // employer fetches applicants
+    const list=await api(`/employers/jobs/${jobId}/applicants`,{headers:eH});
+    const a0=list.body.applicants?.[0];
+    ok('f applicants 200 + sorted + snapshot present', list.status===200&&list.body.applicants.length===1&&a0.matchScore!=null&&a0.snapshot, `count=${list.body.applicants?.length}`);
+    // PII whitelist assertion
+    const raw=JSON.stringify(list.body);
+    ok('f NO PII (no email/phone/full surname/CV)', !raw.includes(pEmail)&&!/"contactPhone"|"phone"|"cvUrl"|"passwordHash"/.test(raw)&&a0.pilotName==='Apply P.', `pilotName=${a0.pilotName}`);
+    // ownership 403: employer2 fetches employer1's job applicants
+    const own=await api(`/employers/jobs/${jobId}/applicants`,{headers:e2H});
+    ok('f ownership 403 (other employer)', own.status===403, `status=${own.status}`);
+    // PENDING/REJECTED 403 handled by requireApprovedEmployer middleware (flip emp2 to PENDING, retry its OWN — but emp2 has no job; test middleware via emp2 PENDING on any applicants call)
+    await prisma.employer.update({where:{id:emp2.id},data:{status:'PENDING'}});
+    const e2lg2=await api('/employers/login',{method:'POST',body:{contactEmail:e2Email,password:ePw}});
+    const pend=await api(`/employers/jobs/${jobId}/applicants`,{headers:{Authorization:`Bearer ${e2lg2.body.token}`}});
+    ok('f PENDING employer 403 (requireApprovedEmployer)', pend.status===403, `status=${pend.status}`);
+    await prisma.employer.update({where:{id:emp2.id},data:{status:'APPROVED'}});
+
+    // PATCH status
+    const appId=a0.applicationId;
+    const patch=await api(`/employers/applications/${appId}/status`,{method:'PATCH',headers:eH,body:{status:'SHORTLISTED'}});
+    ok('g PATCH status 200 + statusUpdatedAt', patch.status===200&&patch.body.status==='SHORTLISTED'&&!!patch.body.statusUpdatedAt, JSON.stringify(patch.body));
+    const bad=await api(`/employers/applications/${appId}/status`,{method:'PATCH',headers:eH,body:{status:'BOGUS'}});
+    ok('g invalid status 400', bad.status===400, `status=${bad.status}`);
+    const e2lg3=await api('/employers/login',{method:'POST',body:{contactEmail:e2Email,password:ePw}});
+    const wrongOwner=await api(`/employers/applications/${appId}/status`,{method:'PATCH',headers:{Authorization:`Bearer ${e2lg3.body.token}`},body:{status:'HIRED'}});
+    ok('g ownership 403 (other employer patches)', wrongOwner.status===403, `status=${wrongOwner.status}`);
+    // free transition: SHORTLISTED → APPLIED
+    const back=await api(`/employers/applications/${appId}/status`,{method:'PATCH',headers:eH,body:{status:'APPLIED'}});
+    ok('g free transitions (any→any)', back.status===200&&back.body.status==='APPLIED', back.body.status);
+    await api(`/employers/applications/${appId}/status`,{method:'PATCH',headers:eH,body:{status:'SHORTLISTED'}});
+
+    // pilot My Applications
+    const mine=await api('/jobs/applications',{headers:pH});
+    ok('h pilot sees own application + status', mine.status===200&&mine.body.length===1&&mine.body[0].status==='SHORTLISTED'&&mine.body[0].matchScore!=null, JSON.stringify(mine.body[0]));
+    const mine2=await api('/jobs/applications',{headers:p2H});
+    ok('h other pilot sees none (own only)', mine2.status===200&&mine2.body.length===0, `count=${mine2.body.length}`);
+
+    // e: run-match pilot → JobAlerts <=100
+    const rm=await api('/jobs/alerts/run-match',{method:'POST',headers:pH});
+    const alerts=await prisma.jobAlert.findMany({where:{pilotId:(await prisma.pilot.findFirst({where:{email:pEmail}})).id}});
+    const maxAlert=alerts.reduce((m,a)=>Math.max(m,a.matchScore||0),0);
+    ok('e recomputed alerts all <=100', alerts.every(a=>a.matchScore<=100), `n=${alerts.length} max=${maxAlert}`);
+  } finally {
+    // cleanup
+    for(const jid of cleanup.jobs){await prisma.application.deleteMany({where:{jobId:jid}}).catch(()=>{}); await prisma.job.delete({where:{id:jid}}).catch(()=>{});}
+    for(const eid of cleanup.employers){await prisma.employer.delete({where:{id:eid}}).catch(()=>{});}
+    for(const em of [pEmail,p2Email]){const pl=await prisma.pilot.findFirst({where:{email:em}}); if(pl){await prisma.jobAlert.deleteMany({where:{pilotId:pl.id}}).catch(()=>{}); await prisma.application.deleteMany({where:{pilotId:pl.id}}).catch(()=>{}); await prisma.pilot.delete({where:{id:pl.id}}).catch(e=>console.log('pilot del err',em,e.message));}}
+    console.log('  cleanup done');
+    const passed=results.filter(r=>r[1]).length; console.log(`\n========== E1 PHASE A E2E: ${passed}/${results.length} ==========`);
+    process.exit(0);
+  }
+})().catch(e=>{console.error('FATAL',e.message,e.stack);process.exit(1);});

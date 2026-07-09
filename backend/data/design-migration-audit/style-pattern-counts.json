@@ -1,0 +1,87 @@
+{
+  "_comment": "Counts of hardcoded color references across frontend/src/pages + frontend/src/components. Generated read-only via grep. 'all_hex' = every #RRGGBB occurrence in the file; 'navy_bg' = #0A1628/#0D1E35/#0A2040/#0A1729; 'surface' = #1B2B4B/#2A3A55/#2A3C55; 'cyan' = #00B4D8/#0077A8; 'rgba' = any rgb()/rgba().",
+  "totals": {
+    "files_scanned": 32,
+    "total_hex_occurrences": 1216,
+    "total_rgb_rgba": 110,
+    "distinct_hex_values": 114,
+    "estimated_chrome_hex_to_migrate": 1033,
+    "note": "chrome_to_migrate = total_hex (1216) minus semantic_preserve (183). Most rgba() also migrate (cyan/navy tints) except Landing's scrim."
+  },
+  "semantic_preserve": {
+    "_comment": "Semantic status colors that must NOT change meaning (only their surrounding chrome migrates). May need light-theme-tuned variants but keep green=ok/amber=marginal/red=missing.",
+    "green_ok": { "count": 55, "hexes": ["#2ECC71", "#34D399", "#1A4A2A", "#0D2B1A"] },
+    "amber_marginal": { "count": 43, "hexes": ["#F39C12", "#F59E0B", "#D97706", "#F0A500", "#E0C24A", "#4A3A1A"] },
+    "red_missing_error": { "count": 85, "hexes": ["#E74C3C", "#FF4757", "#FF6B6B", "#C0392B", "#5C2626", "#2D1A1A", "#FF8A8A"] }
+  },
+  "do_not_touch": {
+    "cv_accent_palette": {
+      "file": "frontend/src/components/cv/accentPalette.js",
+      "reason": "User-selectable CV theme colors baked into the generated PDF. 10 presets (Navy/Charcoal/Burgundy/Forest/Slate Blue/Midnight/Teal/Bronze/Plum/Indigo).",
+      "consumers": ["pages/CVBuilder.jsx", "components/cv/TemplateApproach.jsx", "components/cv/TemplateFinal.jsx"]
+    }
+  },
+  "top_palette_frequency": {
+    "#00B4D8_cyan_accent": 175,
+    "#7A8CA0_muted_text": 158,
+    "#4A6080_faint_text": 117,
+    "#1E3050_border": 100,
+    "#1B2B4B_surface": 78,
+    "#0D1E35_panel": 68,
+    "#243050_border": 63,
+    "#0A1628_bg": 45,
+    "#2ECC71_green": 37,
+    "#F39C12_amber": 25,
+    "#0077A8_cyan_dark": 22,
+    "#FF6B6B_red": 21,
+    "#C0CDE0_text": 20,
+    "#FF4757_red": 19,
+    "#E74C3C_red": 15,
+    "#16263F_border": 11,
+    "#C8D8E8_text": 10,
+    "#0A2040_bg": 8,
+    "#2A3C55_border": 7
+  },
+  "index_html_global": {
+    "file": "frontend/index.html",
+    "body_background": "#0A1628",
+    "body_color": "#fff",
+    "scrollbar_track": "#0A1628",
+    "scrollbar_thumb": "#243050",
+    "note": "Shared by EVERY page. Changing this is the single most dangerous foundation step — affects all non-migrated pages simultaneously."
+  },
+  "per_file": [
+    { "file": "pages/Landing.jsx",                          "all_hex": 1,   "navy_bg": 0,  "surface": 0,  "cyan": 0,  "rgba": 7,  "state": "migrated" },
+    { "file": "pages/Jobs.jsx",                              "all_hex": 123, "navy_bg": 6,  "surface": 10, "cyan": 22, "rgba": 3 },
+    { "file": "pages/Alerts.jsx",                            "all_hex": 102, "navy_bg": 11, "surface": 3,  "cyan": 22, "rgba": 16 },
+    { "file": "pages/Airlines.jsx",                          "all_hex": 23,  "navy_bg": 4,  "surface": 3,  "cyan": 1,  "rgba": 6 },
+    { "file": "pages/AirlineDetail.jsx",                     "all_hex": 40,  "navy_bg": 3,  "surface": 3,  "cyan": 5,  "rgba": 9 },
+    { "file": "pages/AirlineContribute.jsx",                 "all_hex": 32,  "navy_bg": 5,  "surface": 1,  "cyan": 3,  "rgba": 2 },
+    { "file": "pages/Profile.jsx",                           "all_hex": 78,  "navy_bg": 9,  "surface": 4,  "cyan": 14, "rgba": 0 },
+    { "file": "pages/CVBuilder.jsx",                         "all_hex": 143, "navy_bg": 14, "surface": 14, "cyan": 26, "rgba": 18, "note": "UI chrome only; PDF templates excluded" },
+    { "file": "pages/Logbook.jsx",                           "all_hex": 94,  "navy_bg": 11, "surface": 5,  "cyan": 21, "rgba": 10 },
+    { "file": "pages/Settings.jsx",                          "all_hex": 53,  "navy_bg": 3,  "surface": 4,  "cyan": 10, "rgba": 2 },
+    { "file": "pages/Support.jsx",                           "all_hex": 12,  "navy_bg": 1,  "surface": 2,  "cyan": 3,  "rgba": 2 },
+    { "file": "pages/AdminModeration.jsx",                   "all_hex": 33,  "navy_bg": 2,  "surface": 6,  "cyan": 1,  "rgba": 4 },
+    { "file": "pages/AdminEmployers.jsx",                    "all_hex": 47,  "navy_bg": 5,  "surface": 2,  "cyan": 4,  "rgba": 9 },
+    { "file": "pages/auth/Login.jsx",                        "all_hex": 20,  "navy_bg": 3,  "surface": 2,  "cyan": 5,  "rgba": 0 },
+    { "file": "pages/auth/Register.jsx",                     "all_hex": 26,  "navy_bg": 3,  "surface": 3,  "cyan": 6,  "rgba": 0 },
+    { "file": "pages/employer/EmployerDashboard.jsx",        "all_hex": 42,  "navy_bg": 6,  "surface": 2,  "cyan": 5,  "rgba": 6 },
+    { "file": "pages/employer/EmployerProfile.jsx",          "all_hex": 18,  "navy_bg": 2,  "surface": 2,  "cyan": 2,  "rgba": 1 },
+    { "file": "pages/employer/EmployerJobForm.jsx",          "all_hex": 34,  "navy_bg": 3,  "surface": 2,  "cyan": 7,  "rgba": 1 },
+    { "file": "pages/employer/EmployerPendingApproval.jsx",  "all_hex": 17,  "navy_bg": 3,  "surface": 1,  "cyan": 1,  "rgba": 0 },
+    { "file": "pages/employer/EmployerStatusNotice.jsx",     "all_hex": 13,  "navy_bg": 3,  "surface": 1,  "cyan": 0,  "rgba": 0 },
+    { "file": "pages/employer/JobPreviewCard.jsx",           "all_hex": 19,  "navy_bg": 1,  "surface": 1,  "cyan": 2,  "rgba": 2 },
+    { "file": "pages/employer/EmployerLogin.jsx",            "all_hex": 16,  "navy_bg": 2,  "surface": 1,  "cyan": 4,  "rgba": 0,  "state": "DEAD CODE — unrouted" },
+    { "file": "pages/employer/EmployerRegister.jsx",         "all_hex": 20,  "navy_bg": 2,  "surface": 2,  "cyan": 4,  "rgba": 0,  "state": "DEAD CODE — unrouted" },
+    { "file": "components/Layout.jsx",                       "all_hex": 53,  "navy_bg": 11, "surface": 4,  "cyan": 17, "rgba": 1,  "note": "shared auth shell — highest leverage" },
+    { "file": "components/PublicLayout.jsx",                 "all_hex": 4,   "navy_bg": 1,  "surface": 0,  "cyan": 1,  "rgba": 1 },
+    { "file": "components/SiteFooter.jsx",                   "all_hex": 4,   "navy_bg": 0,  "surface": 0,  "cyan": 1,  "rgba": 0 },
+    { "file": "components/AircraftCombobox.jsx",             "all_hex": 12,  "navy_bg": 1,  "surface": 1,  "cyan": 1,  "rgba": 1 },
+    { "file": "components/ImportModal.jsx",                  "all_hex": 75,  "navy_bg": 5,  "surface": 8,  "cyan": 7,  "rgba": 7 },
+    { "file": "components/cv/TemplateApproach.jsx",          "all_hex": 14,  "navy_bg": 1,  "surface": 2,  "cyan": 1,  "rgba": 0,  "state": "DO NOT MIGRATE — PDF" },
+    { "file": "components/cv/TemplateFinal.jsx",             "all_hex": 13,  "navy_bg": 1,  "surface": 2,  "cyan": 1,  "rgba": 2,  "state": "DO NOT MIGRATE — PDF" },
+    { "file": "components/employer/RequireEmployerAuth.jsx", "all_hex": 2,   "navy_bg": 1,  "surface": 0,  "cyan": 0,  "rgba": 0 },
+    { "file": "components/employer/RequireEmployerStatus.jsx","all_hex": 2,  "navy_bg": 1,  "surface": 0,  "cyan": 0,  "rgba": 0 }
+  ]
+}

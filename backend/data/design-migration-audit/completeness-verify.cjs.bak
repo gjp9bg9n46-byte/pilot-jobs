@@ -1,0 +1,95 @@
+const puppeteer=require('puppeteer');
+const BASE='https://cockpithire.com',CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const OUT='/Users/mohamedalaa/pilot-jobs/backend/data/design-migration-audit';
+async function api(p,o={}){const r=await fetch(`${BASE}/api${p}`,{...o,headers:{'Content-Type':'application/json',...(o.headers||{})},body:o.body?JSON.stringify(o.body):undefined});const t=await r.text();let j;try{j=JSON.parse(t)}catch{j=t}return{status:r.status,body:j}}
+const results=[];const ok=(id,c,m)=>{results.push([id,!!c]);console.log(`  ${c?'✓':'✗'} ${id}  ${m||''}`)};
+const readWidget=p=>p.evaluate(()=>{
+  const ring=document.querySelector('svg[role="img"]');
+  const pct=ring?ring.getAttribute('aria-label'):null;
+  const rows=[...document.querySelectorAll('.completeness-row')].map(a=>({label:a.getAttribute('aria-label'),href:a.getAttribute('href'),tag:a.tagName}));
+  const collapsed=/Profile complete/.test(document.body.innerText)&&!ring;
+  return {pct,rows,collapsed};
+});
+(async()=>{
+  const email=`cmp_${Date.now()}@example.com`,pw='Verify123!pw';
+  const reg=await api('/auth/register',{method:'POST',body:{email,password:pw,firstName:'C',lastName:'P',phone:'+10000000000',country:'United States',city:'Dallas'}});
+  const tok=reg.body?.token; const H={Authorization:`Bearer ${tok}`};
+  const b=await puppeteer.launch({executablePath:CHROME,headless:'new',args:['--no-sandbox']});
+  const errs=[];
+  try{
+    const p=await b.newPage(); await p.setViewport({width:1280,height:1400});
+    p.on('console',m=>{if(m.type()==='error'&&!/Failed to load resource/.test(m.text()))errs.push(m.text().slice(0,140))});
+    await p.goto(BASE,{waitUntil:'domcontentloaded'}); await p.evaluate(t=>localStorage.setItem('authToken',t),tok);
+
+    // STAGE 0 — new pilot 0%
+    await p.goto(`${BASE}/settings`,{waitUntil:'networkidle2'}); await sleep(2000);
+    const s0=await readWidget(p);
+    const allEmpty=s0.rows.length===9 && s0.rows.every(r=>/incomplete/.test(r.label));
+    ok('g 0% new pilot, all 9 rows empty', s0.pct==='0% complete'&&allEmpty, `pct=${s0.pct} rows=${s0.rows.length}`);
+    ok('a widget renders as card', s0.rows.length===9, `${s0.rows.length} rows`);
+    ok('i rows are <a> links + aria-labelled', s0.rows.every(r=>r.tag==='A'&&/complete/.test(r.label)), '');
+    await p.screenshot({path:`${OUT}/cmp-0pct.png`});
+
+    // seed 6 core (personal,licence,medical,logbook,rtw,elp) + 1 recommended (rating); leave CV empty → 6/7=86%
+    console.log('  seeding 6 core + 1 rec...');
+    const seeds=await Promise.all([
+      api('/profile',{method:'PATCH',headers:H,body:{role:'CAPTAIN',nationality:'British'}}),
+      api('/profile/certificates',{method:'POST',headers:H,body:{type:'ATP',issuingAuthority:'FAA'}}),
+      api('/profile/medicals',{method:'POST',headers:H,body:{medicalClass:'CLASS_1',issueDate:'2026-01-01T00:00:00Z',expiryDate:'2027-01-01T00:00:00Z'}}),
+      api('/profile/elp',{method:'POST',headers:H,body:{level:'Level 5',issuingAuthority:'FAA'}}),
+      api('/profile/rtw',{method:'POST',headers:H,body:{country:'United States'}}),
+      api('/flight-logs',{method:'POST',headers:H,body:{date:'2026-01-01',aircraftType:'A320',registration:'A6-ABC',departure:'OMDB',arrival:'EGLL',totalTime:8,picTime:8,sicTime:0}}),
+      api('/profile/ratings',{method:'POST',headers:H,body:{aircraftType:'A320'}}),
+    ]);
+    console.log('  seed statuses:', seeds.map(s=>s.status).join(','));
+
+    // STAGE 1 — reload → 86%
+    await p.goto(`${BASE}/settings`,{waitUntil:'networkidle2'}); await sleep(2000);
+    const s1=await readWidget(p);
+    const byLabel=lbl=>s1.rows.find(r=>r.label.startsWith(lbl));
+    const coreDone=s1.rows.filter(r=>/: complete/.test(r.label)).length;
+    ok('b/c/k seeded rows flip to complete', /Personal info: complete/.test(byLabel('Personal info').label)&&/Licences: complete/.test(byLabel('Licences').label)&&/Medical: complete/.test(byLabel('Medical').label)&&/English proficiency: complete/.test(byLabel('English').label)&&/Right to work: complete/.test(byLabel('Right to work').label)&&/Logbook: complete/.test(byLabel('Logbook').label)&&/Type ratings: complete/.test(byLabel('Type ratings').label), `coreDone+rec=${coreDone}`);
+    ok('b CV still empty (not built)', /CV: incomplete/.test(byLabel('CV').label), byLabel('CV').label.slice(0,40));
+    ok('d headline % = 86 (6/7 core)', s1.pct==='86% complete', s1.pct);
+    await p.screenshot({path:`${OUT}/cmp-high.png`});
+
+    // e — click CV row navigates to /cv
+    ok('e CV row deep-links /cv', byLabel('CV').href==='/cv'&&byLabel('Logbook').href==='/logbook'&&byLabel('Licences').href==='/profile', `cv=${byLabel('CV').href} log=${byLabel('Logbook').href}`);
+    await p.click('.completeness-row[href="/cv"]'); await sleep(1500);
+    ok('e navigation works', /\/cv$/.test(await p.evaluate(()=>location.pathname)), await p.evaluate(()=>location.pathname));
+
+    // seed CV → 100%
+    await api('/cv',{method:'PUT',headers:H,body:{summary:'Experienced A320 captain with 8000 hours.'}});
+    await p.goto(`${BASE}/settings`,{waitUntil:'networkidle2'}); await sleep(2000);
+    const s2=await readWidget(p);
+    ok('f 100% → collapsed "Profile complete" bar', s2.collapsed&&s2.rows.length===0, `collapsed=${s2.collapsed} rows=${s2.rows.length}`);
+    await p.screenshot({path:`${OUT}/cmp-100-collapsed.png`});
+    // expand
+    await p.evaluate(()=>{const btn=[...document.querySelectorAll('button')].find(b=>/View checklist/.test(b.textContent));btn&&btn.click();});
+    await sleep(800);
+    const s2e=await readWidget(p);
+    ok('f expand reveals full widget at 100%', s2e.pct==='100% complete'&&s2e.rows.length===9, `pct=${s2e.pct} rows=${s2e.rows.length}`);
+
+    // i keyboard focus-visible (focus a row, check outline applies via :focus-visible — check focusable)
+    const focusable=await p.evaluate(()=>{const a=document.querySelector('.completeness-row');a.focus();return document.activeElement===a;});
+    ok('i row keyboard-focusable', focusable);
+
+    // mobile
+    const pm=await b.newPage(); await pm.setViewport({width:390,height:1500,isMobile:true});
+    await pm.goto(BASE,{waitUntil:'domcontentloaded'}); await pm.evaluate(t=>localStorage.setItem('authToken',t),tok);
+    await pm.goto(`${BASE}/settings`,{waitUntil:'networkidle2'}); await sleep(1800);
+    // expand on mobile (it's 100% now → collapsed)
+    await pm.evaluate(()=>{const btn=[...document.querySelectorAll('button')].find(b=>/View checklist/.test(b.textContent));btn&&btn.click();});
+    await sleep(600);
+    ok('h mobile no h-scroll', await pm.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
+    await pm.screenshot({path:`${OUT}/cmp-mobile.png`});
+
+    ok('j no console errors', errs.length===0, errs.join(' | ')||'none');
+  } finally {
+    await b.close();
+    const d=await api('/auth/account',{method:'DELETE',headers:H,body:{password:pw}}); console.log('  cleanup:',d.status);
+    const passed=results.filter(r=>r[1]).length;
+    console.log(`\n========== COMPLETENESS VERIFY: ${passed}/${results.length} ==========`);
+  }
+})().catch(e=>console.error('FATAL',e.message,e.stack));
