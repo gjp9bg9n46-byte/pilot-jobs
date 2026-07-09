@@ -67,6 +67,27 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
     'helicopter',
     'rotorcraft',
     'rotary[-\\s]?wing',
+    '\\bheli\\b', '\\bhelo\\b',
+    // Helicopter in other ingested languages
+    'hubschrauber',            // German
+    'h[ée]licopt[èe]re',       // French
+    'helic[óo]ptero',          // Spanish/Portuguese
+    'elicotter',               // Italian (elicottero/i)
+    's[mś]igłow',              // Polish (śmigłowiec)
+    // Rotary-wing aircraft models — job titles often name the type instead of
+    // the word "helicopter" (e.g. "AH-64D Instructor Pilot")
+    '\\bah[-\\s]?64', '\\buh[-\\s]?60', '\\bch[-\\s]?47', '\\bhh[-\\s]?60', '\\bmh[-\\s]?60', '\\boh[-\\s]?58',
+    'black\\s?hawk', 'apache', 'chinook', 'kiowa', '\\bhuey\\b', 'seahawk', 'lakota',
+    'osprey', '\\bv[-\\s]?22\\b', 'tiltrotor',
+    '\\baw\\s?1[0-9]{2}\\b',                        // AW109/119/139/169/189
+    '\\bec\\s?1[0-9]{2}\\b',                        // EC120–EC155
+    '\\bas\\s?3[0-9]{2}\\b',                        // AS350/355/365
+    '\\bh1[2-7][05]\\b',                            // H120/125/130/135/145/155/160/175
+    '\\bs[-\\s]?92\\b', '\\bs[-\\s]?76\\b',
+    '\\br(?:22|44|66)\\b',                          // Robinson
+    '\\bmd\\s?5[03]0\\b',
+    'bell\\s?(?:2[01][0-9]|4[01][0-9]|505|525|429)\\b',
+    '\\bmi[-\\s]?(?:8|17|24|26)\\b',
     // Non-pilot aviation roles (owner directive: pilots only)
     'air\\s+traffic',
     '\\batc\\b',

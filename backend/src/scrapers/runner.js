@@ -189,12 +189,21 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       .filter(Boolean);
 
     // skipFilter: true → source is already a pilot-only board (e.g. PilotCareerCentre)
-    const { kept, dropped } = empConfig.skipFilter
+    let { kept, dropped } = empConfig.skipFilter
       ? { kept: normalized, dropped: 0 }
       : filterAviationJobs(normalized, empConfig.source, empConfig.company, {
           excludeOnly: !!empConfig.excludeOnly,
           requireContext: !!empConfig.requireContext,
         });
+
+    // Freshness cap for aggregators: their feeds resurface years-old evergreen
+    // postings; anything older than JOB_MAX_AGE_DAYS never reaches the board.
+    if (empConfig.aggregate) {
+      const cutoff = new Date(Date.now() - maxAgeDays() * 24 * 3600 * 1000);
+      const fresh = kept.filter((j) => !j.postedAt || j.postedAt >= cutoff);
+      dropped += kept.length - fresh.length;
+      kept = fresh;
+    }
     stats.keptAfterFilter = kept.length;
 
     logger.info({
@@ -381,22 +390,30 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
 
 // ─── Housekeeping sweeps (run once per ingestion pass) ────────────────────────
 
+const maxAgeDays = () => Math.max(1, parseInt(process.env.JOB_MAX_AGE_DAYS || '90', 10));
+
 /**
- * Re-validate ACTIVE jobs from context-required aggregate sources against the
- * CURRENT filter rules and expire failures. Self-healing: when the filter gets
- * stricter (e.g. the French "pilote de travaux" purge), previously stored junk
- * disappears on the next run without manual DB surgery.
+ * Re-validate ACTIVE jobs from aggregate sources against the CURRENT filter
+ * rules and freshness cap, expiring failures. Self-healing: when the filter
+ * gets stricter (e.g. the French "pilote de travaux" purge, rotary-model
+ * blocks), previously stored junk disappears on the next run without manual
+ * DB surgery.
  */
 async function revalidateActiveJobs(employers) {
   let expired = 0;
+  const cutoff = new Date(Date.now() - maxAgeDays() * 24 * 3600 * 1000);
+  const seenSources = new Set();
   for (const emp of employers) {
-    if (!emp.requireContext || emp.skipFilter) continue;
+    if (!emp.aggregate || seenSources.has(emp.source)) continue;
+    seenSources.add(emp.source);
     const jobs = await prisma.job.findMany({
       where: { sourcePlatform: emp.source, status: 'ACTIVE' },
-      select: { id: true, title: true, description: true },
+      select: { id: true, title: true, description: true, postedAt: true },
     });
     const badIds = jobs
-      .filter((j) => !isAviationJob(j, { requireContext: true }))
+      .filter((j) =>
+        (j.postedAt && j.postedAt < cutoff) ||
+        (!emp.skipFilter && !isAviationJob(j, { excludeOnly: !!emp.excludeOnly, requireContext: !!emp.requireContext })))
       .map((j) => j.id);
     if (badIds.length) {
       const { count } = await prisma.job.updateMany({
@@ -404,7 +421,7 @@ async function revalidateActiveJobs(employers) {
         data: { status: 'EXPIRED' },
       });
       expired += count;
-      logger.info({ source: emp.source, expired: count, msg: 'revalidation expired non-aviation jobs' });
+      logger.info({ source: emp.source, expired: count, msg: 'revalidation expired stale/non-pilot jobs' });
     }
   }
   return expired;
