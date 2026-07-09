@@ -183,7 +183,7 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
 // ─── Matches tab ──────────────────────────────────────────────────────────────
 
 // No 'saved' chip — saved jobs have their own tab at the top of the screen.
-const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['noreq', 'No requirements'], ['dismissed', 'Dismissed']];
+const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['dismissed', 'Dismissed'], ['noreq', 'No requirements']];
 const SORTS: [string, string][] = [['newest', 'Newest'], ['score', 'Best Match'], ['deadline', 'Deadline']];
 
 function MatchesTab({ header }: { header?: ReactNode }) {
@@ -208,7 +208,7 @@ function MatchesTab({ header }: { header?: ReactNode }) {
   const load = useCallback(async (f: string, s: string) => {
     setLoading(true); setError(null);
     try {
-      const { data } = await api.get('/jobs/alerts', { params: { filter: f, sort: s } });
+      const { data } = await api.get('/jobs/alerts', { params: { filter: f, sort: s, limit: 200 } });
       setAlerts(data.alerts ?? []);
     } catch (err) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

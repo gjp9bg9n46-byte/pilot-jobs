@@ -177,9 +177,9 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
   const chips = [
     { key: 'all',       label: 'All' },
     { key: 'unread',    label: 'Unread' },
-    { key: 'noreq',     label: 'No requirements' },
     { key: 'saved',     label: 'Saved' },
     { key: 'dismissed', label: 'Dismissed' },
+    { key: 'noreq',     label: 'No requirements' },
   ];
 
   const unreadCount = alerts.filter((a) => !a.readAt).length;
@@ -643,7 +643,7 @@ export default function Alerts() {
   const loadAlerts = React.useCallback((f, s) => {
     setLoading(true);
     setError(null);
-    return jobApi.getAlerts({ filter: f, sort: s })
+    return jobApi.getAlerts({ filter: f, sort: s, limit: 200 })
       .then(({ data }) => dispatch(setAlerts(data.alerts ?? [])))
       .catch((err) => setError(err?.response?.data?.error || err?.message || 'Failed to load alerts'))
       .finally(() => setLoading(false));
