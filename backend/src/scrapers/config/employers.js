@@ -57,6 +57,7 @@ module.exports = [
     source: 'USAJOBS',
     company: 'USAJobs.gov',
     skipFilter: false,
+    aggregate: true, // jobs carry real agency names — stale-expiry matches by source only
   },
 
   // ── Pilot Career Centre (blocked — robots.txt Disallow: / for PilotJobsIngest) ──
@@ -65,6 +66,7 @@ module.exports = [
     source: 'PILOTCAREERCENTRE',
     company: 'Pilot Career Centre',
     skipFilter: true,
+    aggregate: true,
     disabled: true,
   },
 
@@ -208,6 +210,8 @@ module.exports = [
   {
     source: 'ADZUNA',
     company: 'Adzuna (Europe)',
+    aggregate: true,      // jobs carry real employer names — stale-expiry matches by source only
+    requireContext: true, // 'pilote/piloto' is non-aviation jargon in FR/ES/IT — require aviation terms
   },
 
   // ── Jooble (official aggregator API) — North Africa volume ────────────────
@@ -217,6 +221,8 @@ module.exports = [
   {
     source: 'JOOBLE',
     company: 'Jooble (North Africa)',
+    aggregate: true,
+    requireContext: true,
   },
 
   // ── Aviation Job Search (aviationjobsearch.com) ────────────────────────────
@@ -227,5 +233,6 @@ module.exports = [
   {
     source: 'AVIATIONJOBSEARCH',
     company: 'Aviation Job Search',
+    aggregate: true,
   },
 ];

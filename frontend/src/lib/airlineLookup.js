@@ -17,6 +17,14 @@ export function normalizeCompany(str) {
     .replace(/[^a-z0-9]/g, '');     // drop spaces + punctuation
 }
 
+// Secondary key with corporate suffixes stripped, so "Emirates Airline" still
+// finds the "Emirates" factfile and "Delta Air Lines" finds "Delta".
+const CORP_SUFFIX_RE = /\b(airlines?|airways|air\s?lines?|aviation|group|holdings?|international|company|inc|llc|ltd|limited|gmbh|plc|corp(oration)?|co|sa|sau|sas)\b/g;
+export function coreCompanyKey(str) {
+  const stripped = String(str || '').toLowerCase().replace(CORP_SUFFIX_RE, ' ');
+  return normalizeCompany(stripped);
+}
+
 let _airlineCache = null;
 
 // Map keyed by normalised airline name → { id, name, logoUrl, iataCode }. First
@@ -30,8 +38,11 @@ export async function fetchAirlineMap() {
   do {
     const { data } = await airlineApi.list({ limit: 100, page });
     data.items.forEach((a) => {
+      const entry = { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null };
       const k = normalizeCompany(a.name);
-      if (k && !map.has(k)) map.set(k, { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null });
+      if (k && !map.has(k)) map.set(k, entry);
+      const core = coreCompanyKey(a.name);
+      if (core && core !== k && !map.has(core)) map.set(core, entry);
     });
     totalPages = data.totalPages;
     page++;
@@ -41,9 +52,10 @@ export async function fetchAirlineMap() {
 }
 
 // Resolve a job's company string to an airline { id, name, logoUrl, iataCode } (or null if unmapped).
+// Tries the exact normalised name first, then the suffix-stripped core key.
 export function resolveAirline(map, company) {
   if (!map || !company) return null;
-  return map.get(normalizeCompany(company)) ?? null;
+  return map.get(normalizeCompany(company)) ?? map.get(coreCompanyKey(company)) ?? null;
 }
 
 // Convenience: just the id (or null).

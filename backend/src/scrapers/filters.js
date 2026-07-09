@@ -89,6 +89,40 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
   'i',
 );
 
+// ─── Aviation context (for general-purpose aggregators) ──────────────────────
+// In French/Spanish/Italian business jargon "pilote / piloto / pilota" means
+// "project lead / operator" ("Pilote de travaux" = construction manager,
+// "Pilote de ligne de production" = production-line operator). Title matching
+// alone therefore floods the board with non-aviation roles from Adzuna/Jooble.
+// For those sources we additionally require the title+description to contain
+// at least one genuinely aeronautical term (any language we ingest).
+const AVIATION_CONTEXT_PATTERNS = new RegExp(
+  [
+    // English
+    'aircraft', 'airline', 'airport', 'aviation', 'aeronautic', 'avionics',
+    '\\bflight\\b', 'flying', 'cockpit', 'flight\\s+deck', 'type\\s+rating',
+    'flight\\s+hours', 'aerial\\s+(?:survey|application|firefight)',
+    // Licences / authorities
+    '\\batpl?\\b', '\\bcpl\\b', '\\bppl\\b', '\\beasa\\b', '\\bfaa\\b', '\\bicao\\b',
+    '\\bcaa\\b', 'part\\s*(?:121|135|91)\\b', 'medical\\s+class', 'class\\s*1\\s+medical',
+    // Manufacturers / types
+    'boeing', 'airbus', 'cessna', 'embraer', 'bombardier', 'gulfstream', 'dassault',
+    'pilatus', 'beechcraft', 'king\\s+air', '\\ba[23][0-9]{2}\\b', '\\bb7[0-9]{2}\\b',
+    '\\batr\\b', '\\bcrj\\b', 'simulator', 'simulateur',
+    // French
+    'a[ée]rien', 'a[ée]ronef', 'a[ée]ronautique', 'a[ée]roport', 'compagnie\\s+a[ée]rienne',
+    '\\bavion\\b', 'heures\\s+de\\s+vol', 'licence\\s+de\\s+pilote', 'pilote\\s+de\\s+ligne\\s+a[ée]rienne',
+    // Spanish / Italian / Portuguese
+    'aerol[ií]nea', 'aeron[aá]utic', 'aeronave', 'a[ée]reo', 'horas\\s+de\\s+vuelo',
+    'licencia\\s+de\\s+piloto', '\\bvuelo\\b', '\\bvolo\\b', 'compagnia\\s+aerea',
+    // German / Dutch
+    'luftfahrt', 'fluggesellschaft', 'flugzeug', 'flugstunden', '\\bpiloot\\b', 'luchtvaart',
+    // Arabic-region English job boards often use these
+    'first\\s+officer', 'captain', 'air\\s+operator',
+  ].join('|'),
+  'i',
+);
+
 /**
  * Returns true if the job title looks like a pilot / flight-crew role.
  *
@@ -105,6 +139,47 @@ function isAviationRole(title, { excludeOnly = false } = {}) {
   return AVIATION_TITLE_PATTERNS.test(title);
 }
 
+// French: "pilote" is standard business jargon for any coordinator/lead role
+// ("Pilote de travaux" = construction manager, "Pilote qualité" = QA lead) —
+// and those postings often mention "aéronautique" because the CLIENT is an
+// aerospace firm, so the context check alone can't catch them. A French
+// 'pilote' title is therefore only kept when the title itself names a flying
+// role. (Doesn't affect 'piloto/pilota/pilot' — other languages don't use the
+// word this way nearly as much, and the context check still applies to all.)
+const FRENCH_PILOT_TITLE = new RegExp(
+  [
+    'copilote',
+    // "pilote de ligne" = airline pilot — but NOT "ligne de production/fabrication…"
+    "pilote\\s+de\\s+ligne(?!\\s+(?:de\\s+)?(?:prod|conditionnement|fabrication|montage|assemblage|usinage|emballage))",
+    "pilote\\s+d['’]a(?:vion|[ée]ronef)",
+    'pilote\\s+avion',
+    'pilote\\s+cargo',
+    'pilote\\s+instructeur',
+    'instructeur\\s+pilote',
+    'pilote\\s+professionnel',
+    'pilote\\s+priv[ée]',
+    "pilote\\s+de\\s+l['’]aviation",
+    'pilote\\s+(?:a[23]\\d{2}|b7\\d{2}|atr|crj|e\\d{3}|dash|q400)',
+  ].join('|'),
+  'i',
+);
+
+/**
+ * Full job check: title filter + (optionally) aviation-context requirement on
+ * title+description. Use requireContext for general-purpose aggregators
+ * (Adzuna, Jooble) where "pilote/piloto" is common non-aviation jargon.
+ *
+ * @param {{title: string, description?: string}} job
+ * @returns {boolean}
+ */
+function isAviationJob(job, { excludeOnly = false, requireContext = false } = {}) {
+  const title = String(job.title || '');
+  if (!isAviationRole(title, { excludeOnly })) return false;
+  if (!requireContext) return true;
+  if (/\bpilote(s)?\b/i.test(title) && !FRENCH_PILOT_TITLE.test(title)) return false;
+  return AVIATION_CONTEXT_PATTERNS.test(`${title} ${job.description || ''}`);
+}
+
 /**
  * Filter an array of normalized jobs, keeping only aviation roles.
  * Logs counts per source.
@@ -114,10 +189,10 @@ function isAviationRole(title, { excludeOnly = false } = {}) {
  * @param {string} employer label for logging
  * @returns {{ kept: import('./types').NormalizedJob[], dropped: number }}
  */
-function filterAviationJobs(jobs, source, employer, { excludeOnly = false } = {}) {
-  const kept = jobs.filter((j) => isAviationRole(j.title, { excludeOnly }));
+function filterAviationJobs(jobs, source, employer, { excludeOnly = false, requireContext = false } = {}) {
+  const kept = jobs.filter((j) => isAviationJob(j, { excludeOnly, requireContext }));
   const dropped = jobs.length - kept.length;
   return { kept, dropped };
 }
 
-module.exports = { isAviationRole, filterAviationJobs, AVIATION_TITLE_PATTERNS };
+module.exports = { isAviationRole, isAviationJob, filterAviationJobs, AVIATION_TITLE_PATTERNS };

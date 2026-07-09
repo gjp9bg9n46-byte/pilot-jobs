@@ -16,6 +16,14 @@ export function normalizeCompany(str: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
+// Secondary key with corporate suffixes stripped, so "Emirates Airline" still
+// finds the "Emirates" factfile and "Delta Air Lines" finds "Delta".
+const CORP_SUFFIX_RE = /\b(airlines?|airways|air\s?lines?|aviation|group|holdings?|international|company|inc|llc|ltd|limited|gmbh|plc|corp(oration)?|co|sa|sau|sas)\b/g;
+export function coreCompanyKey(str: string): string {
+  const stripped = String(str || '').toLowerCase().replace(CORP_SUFFIX_RE, ' ');
+  return normalizeCompany(stripped);
+}
+
 let _cache: Map<string, AirlineRef> | null = null;
 
 export async function fetchAirlineMap(): Promise<Map<string, AirlineRef>> {
@@ -27,8 +35,11 @@ export async function fetchAirlineMap(): Promise<Map<string, AirlineRef>> {
     const { data } = await api.get('/airlines', { params: { limit: 100, page } });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data.items || []).forEach((a: any) => {
+      const entry = { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null };
       const k = normalizeCompany(a.name);
-      if (k && !map.has(k)) map.set(k, { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null });
+      if (k && !map.has(k)) map.set(k, entry);
+      const core = coreCompanyKey(a.name);
+      if (core && core !== k && !map.has(core)) map.set(core, entry);
     });
     totalPages = data.totalPages;
     page++;
@@ -39,5 +50,5 @@ export async function fetchAirlineMap(): Promise<Map<string, AirlineRef>> {
 
 export function resolveAirline(map: Map<string, AirlineRef> | null, company: string): AirlineRef | null {
   if (!map || !company) return null;
-  return map.get(normalizeCompany(company)) ?? null;
+  return map.get(normalizeCompany(company)) ?? map.get(coreCompanyKey(company)) ?? null;
 }

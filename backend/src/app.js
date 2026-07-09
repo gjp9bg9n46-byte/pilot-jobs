@@ -81,6 +81,20 @@ if (process.env.NODE_ENV !== 'production') {
   setImmediate(() => runIngestion().catch((err) => logger.error(`Dev startup scrape failed: ${err.message}`)));
 }
 
+// On every boot (incl. production deploys): purge stored jobs that fail the
+// current filter rules or are past their expiry date — stale/invalid listings
+// vanish immediately instead of waiting for the next scrape cron.
+setImmediate(async () => {
+  try {
+    const { revalidateActiveJobs, expirePastDue } = require('./scrapers/runner');
+    const employerConfigs = require('./scrapers/config/employers');
+    await revalidateActiveJobs(employerConfigs);
+    await expirePastDue();
+  } catch (err) {
+    logger.error(`Startup job cleanup failed: ${err.message}`);
+  }
+});
+
 // Run matching on startup to catch missed matches
 cron.schedule('0 2 * * *', async () => {
   try {

@@ -40,6 +40,13 @@ function normalizeCompany(str) {
     .replace(/[^a-z0-9]/g, '');
 }
 
+// Suffix-stripped secondary key so "Emirates Airline" jobs count toward the
+// "Emirates" factfile (mirrors frontend/mobile airlineLookup coreCompanyKey).
+const CORP_SUFFIX_RE = /\b(airlines?|airways|air\s?lines?|aviation|group|holdings?|international|company|inc|llc|ltd|limited|gmbh|plc|corp(oration)?|co|sa|sau|sas)\b/g;
+function coreCompanyKey(str) {
+  return normalizeCompany(String(str || '').toLowerCase().replace(CORP_SUFFIX_RE, ' '));
+}
+
 // ─── 1. Job-derived stats ──────────────────────────────────────────────────────
 
 const NINETY_DAYS_MS = 90 * 24 * 3600 * 1000;
@@ -104,15 +111,16 @@ async function recomputeJobDerivedStats() {
   // Bucket jobs by normalised company name
   const byCompany = new Map();
   for (const j of jobs) {
-    const k = normalizeCompany(j.company);
-    if (!k) continue;
-    if (!byCompany.has(k)) byCompany.set(k, []);
-    byCompany.get(k).push(j);
+    for (const k of new Set([normalizeCompany(j.company), coreCompanyKey(j.company)])) {
+      if (!k) continue;
+      if (!byCompany.has(k)) byCompany.set(k, []);
+      byCompany.get(k).push(j);
+    }
   }
 
   let updated = 0;
   for (const a of airlines) {
-    const matched = byCompany.get(normalizeCompany(a.name)) || [];
+    const matched = byCompany.get(normalizeCompany(a.name)) || byCompany.get(coreCompanyKey(a.name)) || [];
     const active = matched.filter((j) => j.status === 'ACTIVE');
     const recent = matched.filter((j) => j.postedAt && j.postedAt.getTime() >= Date.now() - NINETY_DAYS_MS);
 

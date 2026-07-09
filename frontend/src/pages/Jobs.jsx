@@ -14,7 +14,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import {
   computeMatchCount, matchLabel, postedAgo, formatSalary,
 } from '../lib/jobMatch';
-import { fetchAirlineMap, normalizeCompany } from '../lib/airlineLookup';
+import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
 //   dark #2ECC71 → #166534 (match/ok), #F39C12 → #92400E (partial/warn),
@@ -554,7 +554,7 @@ export default function Jobs() {
               const matchCount = pilotProfile && pilotTotals
                 ? computeMatchCount(job, pilotProfile, pilotTotals)
                 : null;
-              const airlineMatch = airlineMap?.get(normalizeCompany(job.company));
+              const airlineMatch = resolveAirline(airlineMap, job.company);
               return (
                 <div
                   key={job.id}

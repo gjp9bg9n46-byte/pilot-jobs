@@ -29,7 +29,7 @@ const { fetchJooble } = require('./sources/jooble');
 const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize }      = require('./normalize');
-const { filterAviationJobs } = require('./filters');
+const { filterAviationJobs, isAviationJob } = require('./filters');
 const { collapseXSourceDuplicates } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
@@ -122,7 +122,11 @@ async function markStaleInactive(sourcePlatform, company, seenExternalIds) {
   const { count } = await prisma.job.updateMany({
     where: {
       sourcePlatform,
-      company,
+      // Aggregate sources (Adzuna, Jooble, USAJobs, AJS…) store the REAL
+      // employer name on each job, so filtering by the config's label
+      // ('Adzuna (Europe)') would match nothing and stale jobs would live
+      // forever. For those, company is passed as null → match by source only.
+      ...(company ? { company } : {}),
       status: 'ACTIVE',
       externalId: { notIn: seenExternalIds },
       // Don't expire jobs whose Workday expiresAt is still in the future
@@ -187,7 +191,10 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
     // skipFilter: true → source is already a pilot-only board (e.g. PilotCareerCentre)
     const { kept, dropped } = empConfig.skipFilter
       ? { kept: normalized, dropped: 0 }
-      : filterAviationJobs(normalized, empConfig.source, empConfig.company, { excludeOnly: !!empConfig.excludeOnly });
+      : filterAviationJobs(normalized, empConfig.source, empConfig.company, {
+          excludeOnly: !!empConfig.excludeOnly,
+          requireContext: !!empConfig.requireContext,
+        });
     stats.keptAfterFilter = kept.length;
 
     logger.info({
@@ -255,7 +262,11 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       }
 
       // Expire jobs that weren't in this run's listing
-      stats.markedInactive = await markStaleInactive(empConfig.source, empConfig.company, seenExternalIds);
+      stats.markedInactive = await markStaleInactive(
+        empConfig.source,
+        empConfig.aggregate ? null : empConfig.company,
+        seenExternalIds,
+      );
 
       // PCC post-step: enrich any stub-description jobs with detail-page text + requirements.
       // Stub marker: 'is recruiting' AND char_length < 200 (avoids false positives where
@@ -368,6 +379,47 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
   return stats;
 }
 
+// ─── Housekeeping sweeps (run once per ingestion pass) ────────────────────────
+
+/**
+ * Re-validate ACTIVE jobs from context-required aggregate sources against the
+ * CURRENT filter rules and expire failures. Self-healing: when the filter gets
+ * stricter (e.g. the French "pilote de travaux" purge), previously stored junk
+ * disappears on the next run without manual DB surgery.
+ */
+async function revalidateActiveJobs(employers) {
+  let expired = 0;
+  for (const emp of employers) {
+    if (!emp.requireContext || emp.skipFilter) continue;
+    const jobs = await prisma.job.findMany({
+      where: { sourcePlatform: emp.source, status: 'ACTIVE' },
+      select: { id: true, title: true, description: true },
+    });
+    const badIds = jobs
+      .filter((j) => !isAviationJob(j, { requireContext: true }))
+      .map((j) => j.id);
+    if (badIds.length) {
+      const { count } = await prisma.job.updateMany({
+        where: { id: { in: badIds } },
+        data: { status: 'EXPIRED' },
+      });
+      expired += count;
+      logger.info({ source: emp.source, expired: count, msg: 'revalidation expired non-aviation jobs' });
+    }
+  }
+  return expired;
+}
+
+/** Expire any ACTIVE job whose own expiry date has passed. */
+async function expirePastDue() {
+  const { count } = await prisma.job.updateMany({
+    where: { status: 'ACTIVE', expiresAt: { lt: new Date() } },
+    data: { status: 'EXPIRED' },
+  });
+  if (count) logger.info({ expired: count, msg: 'expired past-validThrough jobs' });
+  return count;
+}
+
 // ─── Full ingestion pass ──────────────────────────────────────────────────────
 
 /**
@@ -393,7 +445,14 @@ async function runAllEmployers(employers, opts = {}) {
     await collapseXSourceDuplicates([...sourcePlatformsSeen]);
   }
 
+  if (!opts.dryRun) {
+    // Housekeeping: purge stored jobs that no longer pass the (stricter) filter,
+    // and anything past its own expiry date.
+    try { await revalidateActiveJobs(employers); } catch (err) { logger.error({ err: err.message, msg: 'revalidation sweep failed' }); }
+    try { await expirePastDue(); } catch (err) { logger.error({ err: err.message, msg: 'expiry sweep failed' }); }
+  }
+
   return allStats;
 }
 
-module.exports = { runAllEmployers, upsertJob, processEmployer };
+module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue };
