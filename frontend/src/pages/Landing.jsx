@@ -14,12 +14,18 @@ const FEATURES = [
   { icon: Lock,         title: 'Private by default',       body: 'Your profile is invisible until you choose to share it. Anonymous browsing mode lets you research jobs without leaving a trace.', photo: 'feature-private.webp' },
 ];
 
-const SOURCES = ['Shield AI', 'United Airlines', 'Southwest Airlines', 'Joby Aviation', 'Wisk Aero', 'Textron Aviation', 'Ameriflight', 'Contour Aviation', 'Sun Country', 'Flexjet', 'NetJets', '+ more added weekly'];
+const COVERAGE = [
+  { num: '5+',       label: 'Licensing authorities', sub: 'FAA · EASA · GCAA · CAAC · CASA' },
+  { num: '4×',       label: 'Refreshed daily',       sub: 'Stale and expired roles removed automatically' },
+  { num: '100%',     label: 'Official applications', sub: 'Every listing links to the employer\u2019s own posting' },
+];
 
+// Each teaser card demos a DIFFERENT factfile dimension (fleet / bases / pilot
+// intel) so visitors see the breadth of the data, not three fleet lists.
 const FACTFILES = [
-  { id: 'b86ff04a-8cee-4b71-aab6-1efead27e138', name: 'Emirates',        country: 'UAE',           iso: 'ae', fleet: '8 aircraft types · 117 777-300ER · 116 A380-800' },
-  { id: 'f0def0a6-6e74-4ff8-a465-8f5c1b46d464', name: 'Lufthansa',       country: 'Germany',       iso: 'de', fleet: '16 aircraft types · 44 A320-200 · 41 A320neo' },
-  { id: 'ac423eec-2a7a-43c4-b11f-1fb5cb92b004', name: 'Delta Air Lines', country: 'United States', iso: 'us', fleet: '20 aircraft types · 163 737-900ER · 127 A321-200' },
+  { id: 'b86ff04a-8cee-4b71-aab6-1efead27e138', name: 'Emirates',        country: 'UAE',           iso: 'ae', dim: 'Fleet',        line: '8 aircraft types · 117 777-300ER · 116 A380-800' },
+  { id: 'f0def0a6-6e74-4ff8-a465-8f5c1b46d464', name: 'Lufthansa',       country: 'Germany',       iso: 'de', dim: 'Bases & hubs', line: 'Frankfurt (FRA) · Munich (MUC) · fleet across 16 types' },
+  { id: 'ac423eec-2a7a-43c4-b11f-1fb5cb92b004', name: 'Delta Air Lines', country: 'United States', iso: 'us', dim: 'Pilot intel',  line: 'Pay ranges · hiring status · upgrade times — contributed and verified by pilots' },
 ];
 
 const FOOTER_COLS = [
@@ -151,7 +157,17 @@ export default function Landing() {
     h2: { fontFamily: display, fontWeight: 500, fontSize: isMobile ? 29 : 44, letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--text-primary)' },
     lead: { fontFamily: body, fontWeight: 400, fontSize: isMobile ? 16 : 17, lineHeight: 1.6, color: 'var(--text-secondary)' },
 
-    // Feature grid
+    // Feature rows — one full-width section per feature, alternating sides.
+    featRow: { display: 'flex', alignItems: 'center', gap: isMobile ? 28 : 72, padding: isMobile ? '40px 0' : '72px 0', minHeight: isMobile ? 'auto' : '52vh' },
+    featMediaWrap: { flex: isMobile ? 'none' : '1 1 55%', width: isMobile ? '100%' : undefined },
+    featMedia: { width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block', borderRadius: 6, border: '1px solid var(--border)' },
+    featIconPanel: { background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    featCopy: { flex: isMobile ? 'none' : '1 1 45%' },
+    featIndex: { fontFamily: mono, fontWeight: 500, fontSize: 14, letterSpacing: '0.08em', color: 'var(--accent-amber)', marginBottom: 14 },
+    featTitle: { fontFamily: display, fontWeight: 500, fontSize: isMobile ? 26 : 36, letterSpacing: '-0.01em', lineHeight: 1.12, color: 'var(--text-primary)', marginBottom: 14 },
+    featText: { fontFamily: body, fontWeight: 400, fontSize: isMobile ? 16 : 18, lineHeight: 1.65, color: 'var(--text-secondary)', maxWidth: 480 },
+
+    // Grid primitive (still used by the coverage band + factfile teaser)
     grid: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 32 },
     card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' },
     cardMedia: { width: '100%', height: 240, objectFit: 'cover', display: 'block' },
@@ -171,6 +187,7 @@ export default function Landing() {
     flag: { width: 28, height: 21, borderRadius: 3, border: '1px solid var(--border)', display: 'block', flexShrink: 0 },
     ffName: { fontFamily: display, fontWeight: 500, fontSize: 20, letterSpacing: '-0.01em' },
     ffCountry: { fontFamily: body, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 },
+    ffDim: { fontFamily: body, fontWeight: 600, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 8 },
     ffFleet: { fontFamily: mono, fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: 'var(--text-primary)' },
 
     // Sources
@@ -238,19 +255,22 @@ export default function Landing() {
             <div style={css.eyebrow}>Why CockpitHire</div>
             <h2 style={{ ...css.h2, marginTop: 14, maxWidth: 640 }}>Built for the flight deck, not a job board</h2>
           </Reveal>
-          <div style={{ ...css.grid, marginTop: isMobile ? 40 : 56 }}>
-            {FEATURES.map(({ icon: Icon, title, body: text, photo }) => (
-              <Reveal key={title} className="card" style={css.card}>
+          {/* One feature per full-width row — image and copy alternate sides, each
+              revealed as the visitor scrolls (owner directive: no stacked card grid). */}
+          {FEATURES.map(({ icon: Icon, title, body: text, photo }, i) => (
+            <Reveal key={title} style={{ ...css.featRow, flexDirection: isMobile ? 'column' : (i % 2 === 0 ? 'row' : 'row-reverse') }}>
+              <div style={css.featMediaWrap}>
                 {photo
-                  ? <img src={`/landing-photos/${photo}`} alt={title} style={css.cardMedia} loading="lazy" />
-                  : <div style={css.cardIconPanel}><Icon size={40} color="var(--accent)" strokeWidth={1.5} /></div>}
-                <div style={css.cardBody}>
-                  <h3 style={css.cardTitle}>{title}</h3>
-                  <p style={css.cardText}>{text}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+                  ? <img src={`/landing-photos/${photo}`} alt={title} style={css.featMedia} loading="lazy" />
+                  : <div style={{ ...css.featMedia, ...css.featIconPanel }}><Icon size={56} color="var(--accent)" strokeWidth={1.5} /></div>}
+              </div>
+              <div style={css.featCopy}>
+                <div style={css.featIndex}>{String(i + 1).padStart(2, '0')}</div>
+                <h3 style={css.featTitle}>{title}</h3>
+                <p style={css.featText}>{text}</p>
+              </div>
+            </Reveal>
+          ))}
         </div>
       </section>
 
@@ -280,7 +300,8 @@ export default function Landing() {
                     <span style={css.ffName}>{a.name}</span>
                   </div>
                   <div style={css.ffCountry}>{a.country}</div>
-                  <div style={css.ffFleet}>{a.fleet}</div>
+                  <div style={css.ffDim}>{a.dim}</div>
+                  <div style={css.ffFleet}>{a.line}</div>
                 </Link>
               </Reveal>
             ))}
@@ -291,12 +312,20 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* 7 — Sources strip */}
+      {/* 7 — Coverage band */}
       <section style={{ ...css.section, paddingTop: 0 }}>
         <div style={css.container}>
           <Reveal>
-            <div style={css.eyebrow}>Sources we monitor</div>
-            <div style={css.chips}>{SOURCES.map((s) => <span key={s} style={css.chip}>{s}</span>)}</div>
+            <div style={css.eyebrow}>Coverage</div>
+            <div style={{ ...css.grid, marginTop: 28 }}>
+              {COVERAGE.map((c) => (
+                <div key={c.label} style={{ ...css.card, padding: 32 }}>
+                  <div style={{ ...css.dataNum, fontSize: isMobile ? 32 : 40 }}>{c.num}</div>
+                  <div style={{ ...css.dataLabel, marginTop: 10 }}>{c.label}</div>
+                  <p style={{ ...css.cardText, marginTop: 12, fontSize: 14 }}>{c.sub}</p>
+                </div>
+              ))}
+            </div>
           </Reveal>
         </div>
       </section>
