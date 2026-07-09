@@ -72,9 +72,9 @@ module.exports = [
 
   // ── Lever ─────────────────────────────────────────────────────────────────
 
-  // Defence / autonomy (has pilot/test-pilot roles)
-  // Verified 2026-05-14: 287 jobs, 1 pilot title
-  { source: 'LEVER', slug: 'shieldai',    company: 'Shield AI' },
+  // Defence / autonomy
+  // Disabled 2026-07-09 per owner no-drones directive: pilot roles are V-BAT/UAS operators.
+  { source: 'LEVER', slug: 'shieldai',    company: 'Shield AI', disabled: true },
 
   // eVTOL / autonomous aviation
   // Verified 2026-06-02: 20 postings (cargo UAV)
@@ -121,9 +121,9 @@ module.exports = [
   // Verified 2026-06-02: correct slug (was archer-aviation-inc which returned 404)
   { source: 'GREENHOUSE', slug: 'archer',                 company: 'Archer Aviation' },
 
-  // NEW — verified 2026-06-02
-  // 1939 jobs total; includes ~24 aviation/drone/test-pilot roles
-  { source: 'GREENHOUSE', slug: 'andurilindustries',      company: 'Anduril Industries' },
+  // Disabled 2026-07-09 per owner no-drones directive: 'Test Pilot' roles are
+  // UAS/RC operators (Part 107, unmanned Group 3, Fury UAS) — not manned flying.
+  { source: 'GREENHOUSE', slug: 'andurilindustries',      company: 'Anduril Industries', disabled: true },
   // 202 jobs; drone delivery — operations/logistics pilot roles
   // Disabled 2026-07-08 per owner: drone-delivery company — drone roles only.
   { source: 'GREENHOUSE', slug: 'flyzipline',             company: 'Zipline International', disabled: true },

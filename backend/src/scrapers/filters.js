@@ -62,8 +62,11 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
     '\\buav\\b',
     '\\bsuas\\b',
     'unmanned',
+    'uncrewed',
     'remotely\\s+piloted',
     'remote\\s+pilot',
+    '\\brpic\\b',
+    'multicopter', 'multirotor', 'quadcopter',
     'helicopter',
     'rotorcraft',
     'rotary[-\\s]?wing',
@@ -193,12 +196,19 @@ const FRENCH_PILOT_TITLE = new RegExp(
  * @param {{title: string, description?: string}} job
  * @returns {boolean}
  */
+// Drone/UAS signals in the BODY text (title-level negatives already exist).
+// Applied to general aggregators only: a "Flight Test Pilot" ad whose text is
+// about multicopters/Part 107 is a drone job wearing a manned-pilot title.
+const DRONE_CONTEXT_PATTERNS = /multicopter|multirotor|quadcopter|uncrewed|unmanned|\bdrones?\b|\buas\b|\buav\b|remote(?:ly)?\s+piloted|\bbvlos\b|part\s*107|\brpas\b|\brpic\b/i;
+
 function isAviationJob(job, { excludeOnly = false, requireContext = false } = {}) {
   const title = String(job.title || '');
   if (!isAviationRole(title, { excludeOnly })) return false;
   if (!requireContext) return true;
   if (/\bpilote(s)?\b/i.test(title) && !FRENCH_PILOT_TITLE.test(title)) return false;
-  return AVIATION_CONTEXT_PATTERNS.test(`${title} ${job.description || ''}`);
+  const text = `${title} ${job.description || ''}`;
+  if (DRONE_CONTEXT_PATTERNS.test(text)) return false;
+  return AVIATION_CONTEXT_PATTERNS.test(text);
 }
 
 /**

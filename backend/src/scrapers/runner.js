@@ -402,9 +402,28 @@ const maxAgeDays = () => Math.max(1, parseInt(process.env.JOB_MAX_AGE_DAYS || '9
 async function revalidateActiveJobs(employers) {
   let expired = 0;
   const cutoff = new Date(Date.now() - maxAgeDays() * 24 * 3600 * 1000);
+
+  // Disabled employers never refresh, so their leftover ACTIVE jobs are
+  // zombies (e.g. Zipline/Anduril after the no-drones directive) — expire them.
+  for (const emp of employers) {
+    if (!emp.disabled) continue;
+    const { count } = await prisma.job.updateMany({
+      where: {
+        sourcePlatform: emp.source,
+        status: 'ACTIVE',
+        ...(emp.aggregate ? {} : { company: emp.company }),
+      },
+      data: { status: 'EXPIRED' },
+    });
+    if (count) {
+      expired += count;
+      logger.info({ source: emp.source, employer: emp.company, expired: count, msg: 'expired jobs from disabled employer' });
+    }
+  }
+
   const seenSources = new Set();
   for (const emp of employers) {
-    if (!emp.aggregate || seenSources.has(emp.source)) continue;
+    if (emp.disabled || !emp.aggregate || seenSources.has(emp.source)) continue;
     seenSources.add(emp.source);
     const jobs = await prisma.job.findMany({
       where: { sourcePlatform: emp.source, status: 'ACTIVE' },
