@@ -79,6 +79,7 @@ export const jobApi = {
   list: (params) => api.get('/jobs', { params }),
   get: (id) => api.get(`/jobs/${id}`),
   getAlerts: (params) => api.get('/jobs/alerts', { params }),
+  getUnreadCount: () => api.get('/jobs/alerts/unread-count'),
   markRead: (id) => api.patch(`/jobs/alerts/${id}/read`),
   markAllAlertsRead: () => api.patch('/jobs/alerts/read-all'),
   getSavedSearches: () => api.get('/jobs/saved-searches'),

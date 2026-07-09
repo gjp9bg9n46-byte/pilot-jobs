@@ -23,6 +23,37 @@ async function enrichJobs(jobs, pilotId) {
   return jobs.map((j) => ({ ...j, isSaved: savedSet.has(j.id), isApplied: appliedSet.has(j.id) }));
 }
 
+// ─── "No requirements specified" definition (shared by alerts noreq filter
+// and the qualified-unread badge count) ───────────────────────────────────────
+const NO_REQ_JOB_WHERE = {
+  reqCertificates: { isEmpty: true },
+  reqAuthorities: { isEmpty: true },
+  reqAircraftTypes: { isEmpty: true },
+  reqMinTotalHours: null,
+  reqMinPicHours: null,
+  reqMinMultiEngineHours: null,
+  reqMinTurbineHours: null,
+  reqMinInstrumentHours: null,
+  reqMinCrossCountryHours: null,
+  reqMedicalClass: null,
+  reqEducation: null,
+  reqWorkAuthorization: null,
+  reqEnglishLevel: null,
+};
+
+function jobHasRequirements(job) {
+  return (
+    (job.reqCertificates?.length || 0) > 0 ||
+    (job.reqAuthorities?.length || 0) > 0 ||
+    (job.reqAircraftTypes?.length || 0) > 0 ||
+    job.reqMinTotalHours != null || job.reqMinPicHours != null ||
+    job.reqMinMultiEngineHours != null || job.reqMinTurbineHours != null ||
+    job.reqMinInstrumentHours != null || job.reqMinCrossCountryHours != null ||
+    job.reqMedicalClass != null || job.reqEducation != null ||
+    job.reqWorkAuthorization != null || job.reqEnglishLevel != null
+  );
+}
+
 exports.getJobs = async (req, res, next) => {
   try {
     const {
@@ -313,6 +344,11 @@ exports.getMyAlerts = async (req, res, next) => {
       where.dismissedAt = null;
     } else if (filter === 'dismissed') {
       where.dismissedAt = { not: null };
+    } else if (filter === 'noreq') {
+      // Jobs that didn't specify any requirements — can't be scored, surfaced
+      // in their own bucket so pilots can review them manually.
+      where.dismissedAt = null;
+      where.job = NO_REQ_JOB_WHERE;
     } else if (filter === 'saved') {
       const savedJobIds = (
         await prisma.savedJob.findMany({ where: { pilotId: req.pilot.id }, select: { jobId: true } })
@@ -593,6 +629,37 @@ exports.triggerMatch = async (req, res, next) => {
   try {
     const matched = await runMatchForPilot(req.pilot.id);
     res.json({ matched });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Badge count: unread alerts the pilot actually QUALIFIES for (meets every
+// specified requirement, strict). Jobs with no specified requirements are
+// excluded here — they live in the Alerts 'noreq' bucket instead.
+exports.getUnreadCount = async (req, res, next) => {
+  try {
+    const pilotId = req.pilot.id;
+    const [alerts, pilot, totals] = await Promise.all([
+      prisma.jobAlert.findMany({
+        where: { pilotId, readAt: null, dismissedAt: null, job: { status: 'ACTIVE' } },
+        include: { job: true },
+      }),
+      prisma.pilot.findUnique({
+        where: { id: pilotId },
+        include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
+      }),
+      getPilotFlightTotals(pilotId),
+    ]);
+
+    let qualified = 0;
+    let noReq = 0;
+    for (const a of alerts) {
+      if (!jobHasRequirements(a.job)) { noReq++; continue; }
+      if (computeMatchScore(pilot, totals, a.job) != null) qualified++;
+    }
+
+    res.json({ unread: qualified, totalUnread: alerts.length, noReqUnread: noReq });
   } catch (err) {
     next(err);
   }

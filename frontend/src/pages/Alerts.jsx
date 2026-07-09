@@ -177,6 +177,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
   const chips = [
     { key: 'all',       label: 'All' },
     { key: 'unread',    label: 'Unread' },
+    { key: 'noreq',     label: 'No requirements' },
     { key: 'saved',     label: 'Saved' },
     { key: 'dismissed', label: 'Dismissed' },
   ];

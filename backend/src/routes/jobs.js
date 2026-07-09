@@ -17,6 +17,7 @@ router.get('/applications', authMiddleware, c.getMyApplications);
 
 // Alerts
 router.get('/alerts', authMiddleware, c.getMyAlerts);
+router.get('/alerts/unread-count', authMiddleware, c.getUnreadCount);
 router.post('/alerts/run-match', authMiddleware, c.triggerMatch);
 router.patch('/alerts/read-all', authMiddleware, c.markAllAlertsRead);
 router.patch('/alerts/:id/read', authMiddleware, c.markAlertRead);

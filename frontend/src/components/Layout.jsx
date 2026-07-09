@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store';
-import { adminApi, authApi } from '../services/api';
+import { adminApi, authApi, jobApi } from '../services/api';
 import { useIsMobile } from '../hooks/useIsMobile';
 import VerifyEmailBanner from './auth/VerifyEmailBanner';
 
@@ -91,7 +91,14 @@ export default function Layout() {
   const navigate   = useNavigate();
   const pilot      = useSelector((s) => s.auth.pilot);
   const alerts     = useSelector((s) => s.jobs.alerts);
-  const unread     = alerts.filter((a) => !a.readAt).length;
+  // Badge counts only unread alerts for jobs the pilot fully QUALIFIES for
+  // (server-side strict check); re-synced whenever the alerts slice changes
+  // (mark read / dismiss) so the number stays honest.
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!pilot) return;
+    jobApi.getUnreadCount().then(({ data }) => setUnread(data?.unread ?? 0)).catch(() => {});
+  }, [pilot, alerts]);
   const isMobile   = useIsMobile();
   const path       = window.location.pathname;
   const [drawerOpen, setDrawerOpen] = useState(false);

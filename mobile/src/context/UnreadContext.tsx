@@ -2,9 +2,10 @@
 // Alerts screen's Matches tab badge. Kept in one place so "Mark all read" on the
 // Alerts screen can drop every badge to 0 optimistically and then re-sync.
 //
-// Source mirrors web (unread = alerts with no readAt, excluding dismissed): we
-// read the `total` of GET /jobs/alerts?filter=unread — the server already
-// applies that bucket, so we don't page the whole list just to count.
+// Source: GET /jobs/alerts/unread-count → `unread` counts ONLY unread alerts
+// for jobs the pilot fully qualifies for (every specified requirement met,
+// strict server-side check). Jobs with no specified requirements don't count
+// toward the badge — they live in the Alerts "No requirements" chip.
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import api from '../lib/api';
 import { useAuth } from './AuthContext';
@@ -22,10 +23,10 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
     // auth hydration must NOT zero the badge (that caused a stuck-at-0 race).
     if (accountType !== 'pilot') return;
     try {
-      const { data } = await api.get('/jobs/alerts', { params: { filter: 'unread', limit: 1 } });
+      const { data } = await api.get('/jobs/alerts/unread-count');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const d: any = data;
-      setUnread(typeof d?.total === 'number' ? d.total : (d?.alerts?.length ?? 0));
+      setUnread(typeof d?.unread === 'number' ? d.unread : 0);
     } catch {
       /* best-effort — leave the last known count */
     }

@@ -183,7 +183,7 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
 // ─── Matches tab ──────────────────────────────────────────────────────────────
 
 // No 'saved' chip — saved jobs have their own tab at the top of the screen.
-const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['dismissed', 'Dismissed']];
+const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['noreq', 'No requirements'], ['dismissed', 'Dismissed']];
 const SORTS: [string, string][] = [['newest', 'Newest'], ['score', 'Best Match'], ['deadline', 'Deadline']];
 
 function MatchesTab({ header }: { header?: ReactNode }) {
