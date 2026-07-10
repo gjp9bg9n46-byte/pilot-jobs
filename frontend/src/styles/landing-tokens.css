@@ -8,19 +8,65 @@
   font-family: var(--font-body);
 }
 
-/* Buttons */
-.landing-root .btn-primary { transition: background 0.2s ease; }
-.landing-root .btn-primary:hover { background: var(--accent-hover); }
-.landing-root .btn-secondary { transition: background 0.2s ease, color 0.2s ease; }
-.landing-root .btn-secondary:hover { background: var(--text-primary); color: #fff; }
+/* ── Micro-interaction language: "editorial lift" ─────────────────────────────
+   Hover = lift 1–3px + deepen color + soft shadow. Press = settle back down.
+   180ms ease-out everywhere so the whole page moves with one rhythm. */
 
-/* Cards — no shadow at rest, subtle shadow on hover */
-.landing-root .card { transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
-.landing-root .card:hover { box-shadow: 0 4px 12px rgba(15, 20, 25, 0.06); }
+/* Buttons — lift on hover, settle on press */
+.landing-root .btn-primary {
+  transition: background 0.18s ease-out, transform 0.18s ease-out, box-shadow 0.18s ease-out;
+}
+.landing-root .btn-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 63, 136, 0.28);
+}
+.landing-root .btn-primary:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 6px rgba(0, 63, 136, 0.2);
+}
+.landing-root .btn-secondary { transition: background 0.18s ease-out, color 0.18s ease-out, transform 0.18s ease-out; }
+.landing-root .btn-secondary:hover { background: var(--text-primary); color: #fff; transform: translateY(-2px); }
+.landing-root .btn-secondary:active { transform: translateY(0) scale(0.98); }
 
-/* Text links */
-.landing-root .ls-link { transition: color 0.2s ease; }
-.landing-root .ls-link:hover { color: var(--accent); }
+/* Ghost nav button (Log in) */
+.landing-root .nav-ghost { transition: border-color 0.18s ease-out, color 0.18s ease-out, background 0.18s ease-out, transform 0.18s ease-out; }
+.landing-root .nav-ghost:hover { border-color: var(--accent-amber) !important; color: var(--accent-amber) !important; transform: translateY(-1px); }
+.landing-root .nav-ghost:active { transform: translateY(0) scale(0.98); }
+
+/* Nav + footer links — amber underline slides in from the left */
+.landing-root .nav-link, .landing-root .ls-link {
+  background-image: linear-gradient(var(--accent-amber), var(--accent-amber));
+  background-repeat: no-repeat;
+  background-position: left calc(100% + 3px);
+  background-size: 0% 2px;
+  transition: color 0.18s ease-out, background-size 0.22s ease-out;
+  padding-bottom: 3px;
+}
+.landing-root .nav-link:hover, .landing-root .ls-link:hover { background-size: 100% 2px; }
+.landing-root .ls-link:hover { color: #fff; }
+.landing-root .nav-link:hover { color: var(--accent-amber) !important; }
+
+/* Cards — lift + accent border */
+.landing-root .card { transition: box-shadow 0.18s ease-out, border-color 0.18s ease-out, transform 0.18s ease-out; }
+.landing-root .card:hover {
+  box-shadow: 0 10px 24px rgba(15, 20, 25, 0.09);
+  transform: translateY(-4px);
+  border-color: var(--accent);
+}
+
+/* Feature photo frames — the image breathes inside its mat */
+.landing-root .feat-frame { overflow: hidden; }
+.landing-root .feat-frame img, .landing-root .feat-frame .feat-panel {
+  transition: transform 0.35s ease-out;
+}
+.landing-root .feat-frame:hover img, .landing-root .feat-frame:hover .feat-panel {
+  transform: scale(1.03);
+}
+
+/* FAQ questions — accent on hover */
+.landing-root details summary { transition: color 0.18s ease-out; }
+.landing-root details summary:hover { color: var(--accent); }
 
 /* Keyboard focus ring (quality sweep #9): accent outline on every interactive
    element. Every clickable on the landing is a link (.btn-primary CTAs, factfile
@@ -67,4 +113,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .landing-root .reveal { opacity: 1; transform: none; transition: none; }
+  .landing-root .btn-primary, .landing-root .btn-secondary, .landing-root .nav-ghost,
+  .landing-root .card, .landing-root .feat-frame img, .landing-root .feat-frame .feat-panel {
+    transition: none;
+  }
+  .landing-root .btn-primary:hover, .landing-root .btn-secondary:hover,
+  .landing-root .card:hover, .landing-root .feat-frame:hover img {
+    transform: none;
+  }
 }

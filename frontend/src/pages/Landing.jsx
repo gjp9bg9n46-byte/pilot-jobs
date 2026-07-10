@@ -252,14 +252,14 @@ export default function Landing() {
         <Link to="/" style={css.wordmark}>✈ CockpitHire</Link>
         {!isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-            <a href="#features" style={css.navLink}>How it works</a>
-            <Link to="/jobs" style={css.navLink}>Jobs</Link>
-            <Link to="/airlines" style={css.navLink}>Airlines</Link>
-            <Link to="/employer/login" style={css.navLink}>For employers</Link>
+            <a href="#features" className="nav-link" style={css.navLink}>How it works</a>
+            <Link to="/jobs" className="nav-link" style={css.navLink}>Jobs</Link>
+            <Link to="/airlines" className="nav-link" style={css.navLink}>Airlines</Link>
+            <Link to="/employer/login" className="nav-link" style={css.navLink}>For employers</Link>
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
-          <Link to="/login" style={css.navGhost}>Log in</Link>
+          <Link to="/login" className="nav-ghost" style={css.navGhost}>Log in</Link>
           <Link to="/register" className="btn-primary" style={css.navCta}>Register</Link>
         </div>
       </nav>
@@ -329,10 +329,10 @@ export default function Landing() {
                     ...(i % 2 !== 0 && !isMobile ? { left: -18, right: 18 } : {}),
                     ...(i % 2 !== 0 && isMobile ? { left: -12, right: 12 } : {}),
                   }} />
-                  <div style={css.featFrame}>
+                  <div className="feat-frame" style={css.featFrame}>
                     {photo
                       ? <img src={`/landing-photos/${photo}`} alt={title} style={css.featMedia} loading="lazy" />
-                      : <div style={{ ...css.featMedia, ...css.featIconPanel }}><Icon size={56} color="var(--accent)" strokeWidth={1.5} /></div>}
+                      : <div className="feat-panel" style={{ ...css.featMedia, ...css.featIconPanel }}><Icon size={56} color="var(--accent)" strokeWidth={1.5} /></div>}
                   </div>
                 </div>
               </div>
