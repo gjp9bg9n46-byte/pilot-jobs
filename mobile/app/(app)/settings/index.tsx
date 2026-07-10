@@ -70,7 +70,7 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
 function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   const styles = useThemedStyles(createStyles);
   return (
-    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && { transform: [{ scale: 0.96 }] }]}>
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
   );
@@ -219,7 +219,7 @@ export default function SettingsScreen() {
   const emailVerified = p?.emailVerified;
 
   const CompRow = ({ item }: { item: CompletenessItem }) => (
-    <Pressable style={styles.compRow} onPress={() => router.push(item.to as never)}>
+    <Pressable style={({ pressed }) => [styles.compRow, pressed && { transform: [{ scale: 0.985 }], opacity: 0.92 }]} onPress={() => router.push(item.to as never)}>
       <StatusGlyph done={item.done} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.compLabel}>{item.label}</Text>

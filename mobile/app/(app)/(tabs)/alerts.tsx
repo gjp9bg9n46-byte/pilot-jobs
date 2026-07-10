@@ -129,7 +129,7 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
     <View style={{ marginBottom: 14 }}>
       <Pressable
         onPress={onPress}
-        style={[styles.card, isUnread && styles.cardUnread, expanded && styles.cardOpen]}
+        style={({ pressed }) => [styles.card, isUnread && styles.cardUnread, expanded && styles.cardOpen, pressed && { transform: [{ scale: 0.98 }], opacity: 0.92 }]}
       >
         <AirlineLogo logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company ?? alert.company} box={40} />
         <View style={{ flex: 1, minWidth: 0 }}>
@@ -284,14 +284,14 @@ function MatchesTab({ header }: { header?: ReactNode }) {
       <View style={styles.controls}>
       <View style={styles.chipRow}>
         {CHIPS.map(([key, label]) => (
-          <Pressable key={key} onPress={() => setFilter(key)} style={[styles.chip, filter === key && styles.chipActive]}>
+          <Pressable key={key} onPress={() => setFilter(key)} style={({ pressed }) => [styles.chip, filter === key && styles.chipActive, pressed && { transform: [{ scale: 0.96 }] }]}>
             <Text style={[styles.chipText, filter === key && styles.chipTextActive]}>{label}</Text>
           </Pressable>
         ))}
         {/* Standalone "No requirements" toggle — its own space at the row's right edge */}
         <Pressable
           onPress={() => setFilter(filter === 'noreq' ? 'all' : 'noreq')}
-          style={[styles.noreqBtn, filter === 'noreq' && styles.noreqBtnActive]}
+          style={({ pressed }) => [styles.noreqBtn, filter === 'noreq' && styles.noreqBtnActive, pressed && { transform: [{ scale: 0.96 }] }]}
         >
           <Text style={[styles.chipText, filter === 'noreq' && styles.chipTextActive]}>No requirements</Text>
         </Pressable>

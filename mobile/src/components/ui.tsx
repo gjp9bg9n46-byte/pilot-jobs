@@ -339,7 +339,8 @@ export function PrimaryButton({
       accessibilityLabel={accessibilityLabel ?? label}
       style={({ pressed }) => [
         styles.primaryBtn,
-        (isDisabled || pressed) && styles.btnDim,
+        isDisabled && styles.btnDim,
+        pressed && !isDisabled && { transform: [{ scale: 0.98 }], opacity: 0.9 },
       ]}
     >
       {loading ? (
@@ -366,7 +367,7 @@ export function SecondaryButton({
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.secondaryBtn, (disabled || pressed) && styles.btnDim]}
+      style={({ pressed }) => [styles.secondaryBtn, disabled && styles.btnDim, pressed && !disabled && { transform: [{ scale: 0.98 }], opacity: 0.9 }]}
     >
       <Text style={styles.secondaryBtnText}>{label}</Text>
     </Pressable>

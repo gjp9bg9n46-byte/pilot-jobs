@@ -125,7 +125,7 @@ export default function JobsList() {
     const full = !!mc && mc.total > 0 && mc.matched === mc.total;
     return (
       <Pressable
-        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed, pressed && { transform: [{ scale: 0.985 }] }]}
         onPress={() => router.push(`/jobs/${slugFor(job)}`)}
       >
         <AirlineLogo hideIfMissing logoUrl={resolveAirline(airlineMap, job.company)?.logoUrl} name={job.company} box={46} />

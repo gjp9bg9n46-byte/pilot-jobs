@@ -220,7 +220,7 @@ export default function LogbookList() {
 
         {/* Toolbar */}
         <View style={styles.toolbar}>
-          <Pressable style={styles.primaryBtn} onPress={() => router.push('/logbook/add')}>
+          <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 }]} onPress={() => router.push('/logbook/add')}>
             <Text style={styles.primaryBtnText}>+ Log a Flight</Text>
           </Pressable>
           <Pressable style={styles.secondaryBtn} onPress={() => router.push('/logbook/import')}>

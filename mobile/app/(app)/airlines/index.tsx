@@ -48,7 +48,7 @@ export default function Airlines() {
     const known = a.hiringStatus && a.hiringStatus !== 'UNKNOWN';
     const badge = known ? hiringMeta(a.hiringStatus) : null;
     return (
-      <Pressable style={styles.card} onPress={() => router.push(`/airlines/${a.id}`)}>
+      <Pressable style={({ pressed }) => [styles.card, pressed && { transform: [{ scale: 0.98 }], opacity: 0.92 }]} onPress={() => router.push(`/airlines/${a.id}`)}>
         <View style={styles.cardHead}>
           <View style={styles.cardHeadLeft}>
             <AirlineLogo logoUrl={a.logoUrl} iataCode={a.iataCode} name={a.name} box={56} bare />
