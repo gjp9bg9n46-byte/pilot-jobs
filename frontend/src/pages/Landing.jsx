@@ -58,6 +58,11 @@ const FOOTER_COLS = [
     { label: 'FAQ', href: '#faq' },
     { label: 'Contact us', href: 'mailto:contact@cockpithire.com' },
   ]],
+  ['Company', [
+    { label: 'About us', to: '/about' },
+    { label: 'Privacy policy', to: '/privacy' },
+    { label: 'Terms & conditions', to: '/terms' },
+  ]],
 ];
 
 // Social profiles aren't live yet — icons render as placeholders until the
@@ -229,7 +234,7 @@ export default function Landing() {
     // Footer
     footer: { background: '#0B1B33', borderTop: 'none' },
     fSocial: { color: 'rgba(255,255,255,0.55)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)', cursor: 'default' },
-    footerTop: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '56px 20px 36px' : '72px 40px 48px', display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr', gap: isMobile ? 32 : 40 },
+    footerTop: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '56px 20px 36px' : '72px 40px 48px', display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr 1fr', gap: isMobile ? 32 : 40 },
     fBrandName: { fontFamily: display, fontWeight: 600, fontSize: 20, color: '#FFFFFF', textDecoration: 'none' },
     fTagline: { fontFamily: body, fontSize: 14, color: 'rgba(255,255,255,0.55)', marginTop: 10 },
     fColTitle: { fontFamily: body, fontWeight: 600, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 16, marginTop: isMobile ? 28 : 0 },

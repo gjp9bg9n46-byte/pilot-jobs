@@ -23,6 +23,9 @@ import Layout from './components/Layout';
 import PublicLayout from './components/PublicLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import About from './pages/legal/About';
+import Privacy from './pages/legal/Privacy';
+import Terms from './pages/legal/Terms';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import VerifyEmail from './pages/auth/VerifyEmail';
@@ -78,6 +81,11 @@ export default function App() {
 
         {/* Internal design-primitives showcase (unlinked, public) */}
         <Route path="/dev/primitives" element={<Primitives />} />
+
+        {/* Public info + legal pages */}
+        <Route path="/about" element={<About />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
 
         {/* Unified auth — wrapped in EmployerAuthProvider so the Employer toggle works */}
         <Route element={<EmployerAuthProvider><Outlet /></EmployerAuthProvider>}>
