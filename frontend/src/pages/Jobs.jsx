@@ -577,6 +577,7 @@ export default function Jobs() {
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     {/* Brand mark — logo (or initials fallback) at the left of the title area */}
                     <AirlineLogo
+                      hideIfMissing
                       logoUrl={airlineMatch?.logoUrl}
                       iataCode={airlineMatch?.iataCode}
                       name={job.company}

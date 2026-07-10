@@ -128,7 +128,7 @@ export default function JobsList() {
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
         onPress={() => router.push(`/jobs/${slugFor(job)}`)}
       >
-        <AirlineLogo logoUrl={resolveAirline(airlineMap, job.company)?.logoUrl} name={job.company} box={46} />
+        <AirlineLogo hideIfMissing logoUrl={resolveAirline(airlineMap, job.company)?.logoUrl} name={job.company} box={46} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.rowTitle} numberOfLines={2}>{job.title}</Text>
           <Text style={styles.rowSub}>{job.company}{ago ? `  ·  ${ago}` : ''}</Text>

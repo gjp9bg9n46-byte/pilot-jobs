@@ -175,7 +175,7 @@ export default function Airlines() {
               >
                 <div style={S.cardHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-                    <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} box={isMobile ? 36 : 44} maxW={isMobile ? 52 : 64} font={isMobile ? 12 : 13} />
+                    <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} box={isMobile ? 42 : 52} maxW={isMobile ? 62 : 76} font={isMobile ? 12 : 13} frameless />
                     <div style={S.airlineName}>{airline.name}</div>
                   </div>
                   {airline.iataCode && <div style={S.iata}>{airline.iataCode}</div>}
@@ -188,9 +188,11 @@ export default function Airlines() {
                     <><span>·</span><span>{airline.fleet.length} type{airline.fleet.length !== 1 ? 's' : ''}</span></>
                   )}
                 </div>
-                <div>
-                  <Badge variant={badge.variant}>{badge.label}</Badge>
-                </div>
+                {airline.hiringStatus && airline.hiringStatus !== 'UNKNOWN' && (
+                  <div>
+                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                  </div>
+                )}
               </div>
             );
           })}

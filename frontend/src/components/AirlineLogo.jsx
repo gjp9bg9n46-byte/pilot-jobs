@@ -8,24 +8,28 @@ import React from 'react';
 //   - logoUrl null     → a fixed SQUARE box × box neutral circle with the IATA
 //     code (or first 2 letters of name) in JetBrains Mono. No colour hashing.
 // `box` = fixed height (px); `maxW` = max logo width (px); `font` = initials size.
-export default function AirlineLogo({ logoUrl, iataCode, name, box = 44, maxW = 64, font = 13 }) {
+export default function AirlineLogo({ logoUrl, iataCode, name, box = 44, maxW = 64, font = 13, frameless = false, hideIfMissing = false }) {
   const initials = (iataCode && iataCode.slice(0, 2).toUpperCase())
     || ((name || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase())
     || '—';
+
+  if (!logoUrl && hideIfMissing) return null;
 
   if (logoUrl) {
     return (
       <div style={{
         height: box, maxWidth: maxW, flexShrink: 0,
-        borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)',
+        borderRadius: 6,
+        border: frameless ? 'none' : '1px solid var(--border)',
+        background: frameless ? 'transparent' : 'var(--surface)',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        padding: 4, boxSizing: 'border-box',
+        padding: frameless ? 0 : 4, boxSizing: 'border-box',
       }}>
         <img
           src={logoUrl}
           alt={`${name} logo`}
           loading="lazy"
-          style={{ maxHeight: box - 8, maxWidth: maxW - 8, objectFit: 'contain', display: 'block' }}
+          style={{ maxHeight: frameless ? box : box - 8, maxWidth: frameless ? maxW : maxW - 8, objectFit: 'contain', display: 'block' }}
         />
       </div>
     );

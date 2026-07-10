@@ -23,6 +23,7 @@ export default function AirlineLogo({
   name,
   box = 44,
   bare = false,
+  hideIfMissing = false,
 }: {
   logoUrl?: string | null;
   iataCode?: string | null;
@@ -30,9 +31,13 @@ export default function AirlineLogo({
   box?: number;
   /** true → no bordered white box behind the logo; the image floats on the card. */
   bare?: boolean;
+  /** true → render nothing at all when there is no logo (no initials fallback). */
+  hideIfMissing?: boolean;
 }) {
   const styles = useThemedStyles(createStyles);
   const [failed, setFailed] = useState(false);
+
+  if ((!logoUrl || failed) && hideIfMissing) return null;
 
   const initials =
     (iataCode && iataCode.slice(0, 2).toUpperCase()) ||
