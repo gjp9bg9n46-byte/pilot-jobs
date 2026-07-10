@@ -19,6 +19,21 @@ const COVERAGE = [
   { num: '4×',       label: 'Refreshed daily',       sub: 'Stale and expired roles removed automatically' },
 ];
 
+const HOW_IT_WORKS = [
+  { title: 'Build your pilot profile', body: 'Licences, ratings, medicals, and flight hours — pulled straight from your logbook, entered once.' },
+  { title: 'Every job gets checked', body: 'Each new listing is compared against your profile requirement by requirement: certificates, authority, hours, type ratings.' },
+  { title: 'Alerted the moment it matters', body: 'A push notification the instant a role you actually qualify for goes live. No digest emails, no noise.' },
+  { title: 'Apply at the source', body: 'One tap opens the original posting. Your application goes to the employer, not through us.' },
+];
+
+const FAQ = [
+  { q: 'Is CockpitHire free for pilots?', a: 'Yes. Your profile, job matching, instant alerts, the digital logbook, and the CV builder are all free.' },
+  { q: 'Where do the jobs come from?', a: 'Airline career sites, government job boards, and licensed job APIs — refreshed several times a day, with expired and duplicate postings removed automatically. Every listing links back to the original posting.' },
+  { q: 'Who can see my profile?', a: 'Nobody, by default. Your profile exists to compute your matches. It is never shown to employers or anyone else unless you choose to share it.' },
+  { q: 'What does the match percentage mean?', a: 'Each job\u2019s stated requirements \u2014 licence type, issuing authority, flight hours, type ratings, medical class \u2014 are compared against your profile one by one. 100% means you meet every requirement the employer listed.' },
+  { q: 'Do you handle my application?', a: 'No. Applying always happens on the employer\u2019s own site \u2014 we never sit between you and the airline, and we never send your data anywhere.' },
+];
+
 // Each teaser card demos a DIFFERENT factfile dimension (fleet / bases / pilot
 // intel) so visitors see the breadth of the data, not three fleet lists.
 const FACTFILES = [
@@ -111,11 +126,11 @@ export default function Landing() {
 
   const freshness = stats ? freshnessLabel(stats.lastScrapedAt) : null; // cadence word | null
   const statEntries = stats ? [
-    // Live job count leads — the number pilots and recruiters judge a board by.
-    Number.isFinite(stats.activeJobsCount) && stats.activeJobsCount > 0
-      ? { num: String(stats.activeJobsCount), label: 'Pilot jobs live now', amber: true } : null,
+    // The airline factfile library leads — it's the deepest asset on the site.
     Number.isFinite(stats.airlinesCount) && stats.airlinesCount > 0
-      ? { num: String(stats.airlinesCount), label: 'Airlines tracked' } : null,
+      ? { num: String(stats.airlinesCount), label: 'Airline factfiles', amber: true } : null,
+    Number.isFinite(stats.activeJobsCount) && stats.activeJobsCount > 0
+      ? { num: String(stats.activeJobsCount), label: 'Pilot jobs live now' } : null,
     Number.isFinite(stats.fleetProfilesCount) && stats.fleetProfilesCount > 0
       ? { num: String(stats.fleetProfilesCount), label: 'With detailed fleets' } : null,
     freshness ? { num: freshness, label: 'Data refreshed' } : null,
@@ -247,6 +262,25 @@ export default function Landing() {
         </section>
       )}
 
+      {/* 3b — How it works */}
+      <section style={{ ...css.section, paddingBottom: 0 }}>
+        <div style={css.container}>
+          <Reveal>
+            <div style={css.eyebrow}>How it works</div>
+            <h2 style={{ ...css.h2, marginTop: 14, maxWidth: 680 }}>From logbook to flight deck in four steps</h2>
+          </Reveal>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: isMobile ? 28 : 32, marginTop: 48 }}>
+            {HOW_IT_WORKS.map((st, i) => (
+              <Reveal key={st.title} style={{ borderTop: '1px solid var(--border)', paddingTop: 22 }}>
+                <div style={css.featIndex}>{String(i + 1).padStart(2, '0')}</div>
+                <div style={{ ...css.cardTitle, fontSize: 19 }}>{st.title}</div>
+                <p style={{ ...css.cardText, fontSize: 15 }}>{st.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 4 — Why CockpitHire */}
       <section style={css.section} id="features">
         <div style={css.container}>
@@ -326,6 +360,24 @@ export default function Landing() {
               ))}
             </div>
           </Reveal>
+        </div>
+      </section>
+
+      {/* 7b — FAQ */}
+      <section style={{ ...css.section, paddingTop: 0 }}>
+        <div style={{ ...css.container, maxWidth: 780 }}>
+          <Reveal>
+            <div style={css.eyebrow}>Questions</div>
+            <h2 style={{ ...css.h2, marginTop: 14 }}>Straight answers</h2>
+          </Reveal>
+          <div style={{ marginTop: 36, borderBottom: '1px solid var(--border)' }}>
+            {FAQ.map((f) => (
+              <details key={f.q} style={{ borderTop: '1px solid var(--border)', padding: '18px 0' }}>
+                <summary style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: isMobile ? 17 : 19, color: 'var(--text-primary)', cursor: 'pointer' }}>{f.q}</summary>
+                <p style={{ ...css.cardText, marginTop: 12, maxWidth: 640 }}>{f.a}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
