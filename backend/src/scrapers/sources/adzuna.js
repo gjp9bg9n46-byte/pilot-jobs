@@ -12,7 +12,7 @@
  *
  * Env:
  *   ADZUNA_APP_ID / ADZUNA_APP_KEY   — required (free registration)
- *   ADZUNA_COUNTRIES                 — optional, default 'gb,fr,de,it,es,nl,pl,at'
+ *   ADZUNA_COUNTRIES                 — optional, default 'us,gb,fr,de,it,es,nl,pl,at,ch,ca,au,za'
  *   ADZUNA_MAX_PAGES                 — optional pages per query (50 results/page), default 2
  *
  * All results flow through the shared aviation title filter (fixed-wing pilot
@@ -102,7 +102,7 @@ async function fetchAdzuna() {
     return [];
   }
 
-  const countries = (process.env.ADZUNA_COUNTRIES || 'gb,fr,de,it,es,nl,pl,at')
+  const countries = (process.env.ADZUNA_COUNTRIES || 'us,gb,fr,de,it,es,nl,pl,at,ch,ca,au,za')
     .split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
   const maxPages = Math.max(1, parseInt(process.env.ADZUNA_MAX_PAGES || '2', 10));
 

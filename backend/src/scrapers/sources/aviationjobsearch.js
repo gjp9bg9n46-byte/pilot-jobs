@@ -17,8 +17,8 @@
  *     rate-limited, retry with backoff).
  *
  * Env:
- *   AJS_MAX_LIST_PAGES    — listing pages per run (25 jobs each), default 4
- *   AJS_MAX_DETAIL_FETCH  — detail pages per run, default 80
+ *   AJS_MAX_LIST_PAGES    — listing pages per run (25 jobs each), default 8
+ *   AJS_MAX_DETAIL_FETCH  — detail pages per run, default 160
  */
 
 const logger = require('../../config/logger');
@@ -102,8 +102,8 @@ function normalizePosting(posting, url) {
 }
 
 async function fetchAviationJobSearch() {
-  const maxListPages = Math.max(1, parseInt(process.env.AJS_MAX_LIST_PAGES || '4', 10));
-  const maxDetails = Math.max(1, parseInt(process.env.AJS_MAX_DETAIL_FETCH || '80', 10));
+  const maxListPages = Math.max(1, parseInt(process.env.AJS_MAX_LIST_PAGES || '8', 10));
+  const maxDetails = Math.max(1, parseInt(process.env.AJS_MAX_DETAIL_FETCH || '160', 10));
 
   // 1. Collect job URLs from the listing pages' ItemList JSON-LD.
   const urls = [];

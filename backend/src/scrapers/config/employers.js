@@ -95,6 +95,8 @@ module.exports = [
 
   // US scheduled carriers
   // (frontier-airlines and sun-country verified 2026-05-14 but returned 0 — keep for future)
+  // Verified 2026-07-10: 44 jobs incl. "Airbus A220 First Officer" + "A220 Flight Instructor"
+  { source: 'GREENHOUSE', slug: 'breezeairways',          company: 'Breeze Airways' },
   { source: 'GREENHOUSE', slug: 'frontier-airlines',      company: 'Frontier Airlines' },
   { source: 'GREENHOUSE', slug: 'sun-country-airlines',   company: 'Sun Country Airlines' },
   { source: 'GREENHOUSE', slug: 'silver-airways',         company: 'Silver Airways' },
