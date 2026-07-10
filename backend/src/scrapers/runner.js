@@ -30,7 +30,7 @@ const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize }      = require('./normalize');
 const { filterAviationJobs, isAviationJob } = require('./filters');
-const { collapseXSourceDuplicates } = require('./dedup');
+const { collapseXSourceDuplicates, collapseSameAdAcrossLocations } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
 // ─── Upsert a single normalized job ──────────────────────────────────────────
@@ -484,6 +484,7 @@ async function runAllEmployers(employers, opts = {}) {
   if (!opts.dryRun) {
     // Housekeeping: purge stored jobs that no longer pass the (stricter) filter,
     // and anything past its own expiry date.
+    try { await collapseSameAdAcrossLocations(); } catch (err) { logger.error({ err: err.message, msg: 'same-ad collapse failed' }); }
     try { await revalidateActiveJobs(employers); } catch (err) { logger.error({ err: err.message, msg: 'revalidation sweep failed' }); }
     try { await expirePastDue(); } catch (err) { logger.error({ err: err.message, msg: 'expiry sweep failed' }); }
     try {
