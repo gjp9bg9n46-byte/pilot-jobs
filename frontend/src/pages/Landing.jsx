@@ -150,6 +150,8 @@ export default function Landing() {
     nav: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '14px 20px' : '20px 40px', background: scrolled ? 'var(--bg)' : 'transparent', borderBottom: `1px solid ${scrolled ? 'var(--border)' : 'transparent'}`, transition: 'background 0.3s ease, border-color 0.3s ease' },
     wordmark: { fontFamily: display, fontWeight: 600, fontSize: isMobile ? 19 : 22, letterSpacing: '-0.01em', color: scrolled ? 'var(--text-primary)' : '#fff', textDecoration: 'none', transition: 'color 0.3s ease' },
     navCta: { fontFamily: body, fontWeight: 500, fontSize: 15, background: 'var(--accent)', color: '#fff', padding: '9px 18px', borderRadius: 4, textDecoration: 'none' },
+    navLink: { fontFamily: body, fontWeight: 500, fontSize: 15, color: scrolled ? 'var(--text-primary)' : '#fff', textDecoration: 'none', transition: 'color 0.3s ease' },
+    navGhost: { fontFamily: body, fontWeight: 500, fontSize: 15, color: scrolled ? 'var(--text-primary)' : '#fff', textDecoration: 'none', padding: '9px 14px', border: `1px solid ${scrolled ? 'var(--border)' : 'rgba(255,255,255,0.45)'}`, borderRadius: 4, transition: 'color 0.3s ease, border-color 0.3s ease' },
 
     // Hero
     hero: { position: 'relative', width: '100%', height: isMobile ? 'auto' : '80vh', aspectRatio: isMobile ? '4 / 5' : 'auto', minHeight: isMobile ? undefined : 480, overflow: 'hidden', display: 'flex', alignItems: 'flex-end' },
@@ -232,7 +234,18 @@ export default function Landing() {
       {/* 1 — Nav */}
       <nav style={css.nav}>
         <Link to="/" style={css.wordmark}>✈ CockpitHire</Link>
-        <Link to="/login" className="btn-primary" style={css.navCta}>Web App →</Link>
+        {!isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+            <a href="#features" style={css.navLink}>How it works</a>
+            <Link to="/jobs" style={css.navLink}>Jobs</Link>
+            <Link to="/airlines" style={css.navLink}>Airlines</Link>
+            <Link to="/employer/login" style={css.navLink}>For employers</Link>
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
+          <Link to="/login" style={css.navGhost}>Log in</Link>
+          <Link to="/register" className="btn-primary" style={css.navCta}>Register</Link>
+        </div>
       </nav>
 
       {/* 2 — Hero */}
