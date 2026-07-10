@@ -204,7 +204,7 @@ export default function Layout() {
                 key={to}
                 to={to}
                 onClick={closeDrawer}
-                className="nav-link"
+                className="nav-link ch-navitem"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
@@ -219,7 +219,7 @@ export default function Layout() {
                 to="/admin"
                 end
                 onClick={closeDrawer}
-                className="nav-link"
+                className="nav-link ch-navitem"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
@@ -230,7 +230,7 @@ export default function Layout() {
               <NavLink
                 to="/admin/moderation"
                 onClick={closeDrawer}
-                className="nav-link"
+                className="nav-link ch-navitem"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
@@ -241,7 +241,7 @@ export default function Layout() {
               <NavLink
                 to="/admin/employers"
                 onClick={closeDrawer}
-                className="nav-link"
+                className="nav-link ch-navitem"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
@@ -259,7 +259,7 @@ export default function Layout() {
                 key={to}
                 to={to}
                 onClick={closeDrawer}
-                className="nav-link"
+                className="nav-link ch-navitem"
                 style={({ isActive }) => drawerLinkStyle(isActive)}
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
@@ -272,7 +272,7 @@ export default function Layout() {
           <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0', flexShrink: 0 }}>
             <button
               onClick={() => { closeDrawer(); handleLogout(); }}
-              className="nav-link"
+              className="nav-link ch-navitem"
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 14,
                 padding: '13px 20px', background: 'none', border: 'none',
@@ -360,7 +360,7 @@ export default function Layout() {
             <React.Fragment key={to}>
               {/* Divider before Settings (index 6 = after CV Builder and Profile) */}
               {i === 6 && <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px 8px' }} />}
-              <NavLink to={to} className="nav-link" style={({ isActive }) => navLinkStyle(isActive)}>
+              <NavLink to={to} className="nav-link ch-navitem" style={({ isActive }) => navLinkStyle(isActive)}>
                 <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{icon}</span>
                 {label}
                 {to === '/alerts' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 'auto' }}>{unread}</span>}
@@ -369,19 +369,19 @@ export default function Layout() {
           ))}
 
           {pilot?.isAdmin && (
-            <NavLink to="/admin" end className="nav-link" style={({ isActive }) => ({ ...navLinkStyle(isActive), marginTop: 4 })}>
+            <NavLink to="/admin" end className="nav-link ch-navitem" style={({ isActive }) => ({ ...navLinkStyle(isActive), marginTop: 4 })}>
               <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
               Admin Dashboard
             </NavLink>
           )}
           {pilot?.isAdmin && (
-            <NavLink to="/admin/moderation" className="nav-link" style={({ isActive }) => navLinkStyle(isActive)}>
+            <NavLink to="/admin/moderation" className="nav-link ch-navitem" style={({ isActive }) => navLinkStyle(isActive)}>
               <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
               Airline Moderation
             </NavLink>
           )}
           {pilot?.isAdmin && (
-            <NavLink to="/admin/employers" className="nav-link" style={({ isActive }) => navLinkStyle(isActive)}>
+            <NavLink to="/admin/employers" className="nav-link ch-navitem" style={({ isActive }) => navLinkStyle(isActive)}>
               <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{MODERATION_ICON}</span>
               <span style={{ flex: 1 }}>Employer Moderation</span>
               {empPending > 0 && <span style={pendingBadge}>{empPending}</span>}
@@ -391,7 +391,7 @@ export default function Layout() {
 
         <button
           onClick={handleLogout}
-          className="nav-link"
+          className="nav-link ch-navitem"
           style={{
             margin: '0 12px', padding: '11px 14px', borderRadius: 10,
             background: 'transparent', border: 'none', cursor: 'pointer',

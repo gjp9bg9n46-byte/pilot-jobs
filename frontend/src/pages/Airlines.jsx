@@ -162,6 +162,7 @@ export default function Airlines() {
             return (
               <div
                 key={airline.id}
+                className="ch-card"
                 style={S.card}
                 role="button"
                 tabIndex={0}

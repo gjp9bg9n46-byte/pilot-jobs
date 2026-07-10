@@ -207,7 +207,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 10 : 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
           {chips.map((c) => (
-            <button key={c.key} style={chipStyle(filter === c.key)} onClick={() => setFilter(c.key)}>
+            <button key={c.key} className="ch-chip" style={chipStyle(filter === c.key)} onClick={() => setFilter(c.key)}>
               {c.label}
             </button>
           ))}
@@ -260,6 +260,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
         return (
           <div key={alert.id} style={{ marginBottom: 14 }}>
             <div
+              className="ch-card"
               style={{
                 background: isHover ? 'rgba(0,63,136,0.04)' : 'var(--surface)',
                 border: `1px solid ${isUnread ? 'var(--accent)' : 'var(--border)'}`,

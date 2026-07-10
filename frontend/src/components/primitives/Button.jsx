@@ -10,7 +10,7 @@ const VARIANTS = {
   danger:    { bg: '#991B1B', fg: '#fff', border: 'transparent', hoverBg: '#7F1616' },
 };
 
-export default function Button({ variant = 'primary', type = 'button', disabled = false, style, onMouseEnter, onMouseLeave, children, ...props }) {
+export default function Button({ variant = 'primary', type = 'button', disabled = false, style, className = '', onMouseEnter, onMouseLeave, children, ...props }) {
   const v = VARIANTS[variant] || VARIANTS.primary;
   const [hover, setHover] = useState(false);
   const on = hover && !disabled;
@@ -28,6 +28,7 @@ export default function Button({ variant = 'primary', type = 'button', disabled 
   return (
     <button
       type={type}
+      className={`ch-btn ${className}`.trim()}
       disabled={disabled}
       onMouseEnter={(e) => { setHover(true); onMouseEnter?.(e); }}
       onMouseLeave={(e) => { setHover(false); onMouseLeave?.(e); }}

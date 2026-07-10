@@ -558,6 +558,7 @@ export default function Jobs() {
               return (
                 <div
                   key={job.id}
+                  className="ch-card"
                   style={{ ...css.card, ...(isHover ? css.cardHover : {}) }}
                   onMouseEnter={() => setHoverId(job.id)}
                   onMouseLeave={() => setHoverId(null)}

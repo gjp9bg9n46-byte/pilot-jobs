@@ -93,3 +93,31 @@
 .admin-tile { transition: border-color 0.15s ease; }
 .admin-tile:hover { border-color: #00B4D8; }
 .admin-tile:focus-visible { outline: 2px solid #00B4D8; outline-offset: 2px; }
+
+/* ── Editorial-lift micro-interactions (shared with the landing page) ─────────
+   Hover = lift + soft shadow; press = settle + tiny squeeze. 180ms ease-out. */
+.ch-btn {
+  transition: background 0.15s ease, color 0.15s ease,
+    transform 0.18s ease-out, box-shadow 0.18s ease-out;
+}
+.ch-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 63, 136, 0.16); }
+.ch-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); box-shadow: none; }
+
+.ch-card {
+  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out,
+    border-color 0.18s ease-out, background 0.18s ease-out;
+}
+.ch-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15, 20, 25, 0.08); }
+.ch-card:active { transform: translateY(0); }
+
+.ch-chip { transition: border-color 0.15s ease-out, color 0.15s ease-out, background 0.15s ease-out, transform 0.15s ease-out; }
+.ch-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
+.ch-chip:active { transform: translateY(0) scale(0.97); }
+
+.ch-navitem { transition: background 0.15s ease-out, color 0.15s ease-out, padding-left 0.18s ease-out; }
+.ch-navitem:hover { background: rgba(0, 63, 136, 0.06); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-btn, .ch-card, .ch-chip, .ch-navitem { transition: none; }
+  .ch-btn:hover:not(:disabled), .ch-card:hover, .ch-chip:hover { transform: none; }
+}
