@@ -189,7 +189,9 @@ export default function Landing() {
     // Feature rows — one full-width section per feature, alternating sides.
     featRow: { display: 'flex', alignItems: 'center', gap: isMobile ? 28 : 72, padding: isMobile ? '40px 0' : '72px 0', minHeight: isMobile ? 'auto' : '52vh' },
     featMediaWrap: { flex: isMobile ? 'none' : '1 1 55%', width: isMobile ? '100%' : undefined },
-    featMedia: { width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block', borderRadius: 6, border: '1px solid var(--border)' },
+    featFrame: { position: 'relative', padding: isMobile ? 10 : 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 },
+    featFrameOffset: { position: 'absolute', top: isMobile ? 12 : 18, left: isMobile ? 12 : 18, right: isMobile ? -12 : -18, bottom: isMobile ? -12 : -18, border: '2px solid var(--accent-amber)', borderRadius: 8, opacity: 0.55, pointerEvents: 'none', zIndex: -1 },
+    featMedia: { width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block', borderRadius: 4 },
     featIconPanel: { background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     featCopy: { flex: isMobile ? 'none' : '1 1 45%' },
     featIndex: { fontFamily: mono, fontWeight: 500, fontSize: 14, letterSpacing: '0.08em', color: 'var(--accent-amber)', marginBottom: 14 },
@@ -320,9 +322,19 @@ export default function Landing() {
           {FEATURES.map(({ icon: Icon, title, body: text, photo }, i) => (
             <Reveal key={title} style={{ ...css.featRow, flexDirection: isMobile ? 'column' : (i % 2 === 0 ? 'row' : 'row-reverse') }}>
               <div style={css.featMediaWrap}>
-                {photo
-                  ? <img src={`/landing-photos/${photo}`} alt={title} style={css.featMedia} loading="lazy" />
-                  : <div style={{ ...css.featMedia, ...css.featIconPanel }}><Icon size={56} color="var(--accent)" strokeWidth={1.5} /></div>}
+                <div style={{ position: 'relative', zIndex: 0 }}>
+                  <div style={{
+                    ...css.featFrameOffset,
+                    borderColor: i % 2 === 0 ? 'var(--accent-amber)' : 'var(--accent)',
+                    ...(i % 2 !== 0 && !isMobile ? { left: -18, right: 18 } : {}),
+                    ...(i % 2 !== 0 && isMobile ? { left: -12, right: 12 } : {}),
+                  }} />
+                  <div style={css.featFrame}>
+                    {photo
+                      ? <img src={`/landing-photos/${photo}`} alt={title} style={css.featMedia} loading="lazy" />
+                      : <div style={{ ...css.featMedia, ...css.featIconPanel }}><Icon size={56} color="var(--accent)" strokeWidth={1.5} /></div>}
+                  </div>
+                </div>
               </div>
               <div style={css.featCopy}>
                 <div style={css.featIndex}>{String(i + 1).padStart(2, '0')}</div>
