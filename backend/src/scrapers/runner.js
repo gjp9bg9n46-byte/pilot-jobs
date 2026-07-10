@@ -486,6 +486,10 @@ async function runAllEmployers(employers, opts = {}) {
     // and anything past its own expiry date.
     try { await revalidateActiveJobs(employers); } catch (err) { logger.error({ err: err.message, msg: 'revalidation sweep failed' }); }
     try { await expirePastDue(); } catch (err) { logger.error({ err: err.message, msg: 'expiry sweep failed' }); }
+    try {
+      const { translateUntranslatedJobs } = require('../services/translationService');
+      await translateUntranslatedJobs();
+    } catch (err) { logger.error({ err: err.message, msg: 'translation sweep failed' }); }
   }
 
   return allStats;

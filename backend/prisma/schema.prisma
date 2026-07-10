@@ -335,6 +335,9 @@ model Job {
   location             String
   country              String?
   description          String
+  titleEn              String?    // machine translation (DeepL) when source isn't English
+  descriptionEn        String?
+  sourceLanguage       String?    // detected language; 'EN' = no translation needed
   notes                String?
   applyUrl             String
   sourceUrl            String?

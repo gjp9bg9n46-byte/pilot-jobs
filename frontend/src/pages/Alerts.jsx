@@ -179,7 +179,6 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
     { key: 'unread',    label: 'Unread' },
     { key: 'saved',     label: 'Saved' },
     { key: 'dismissed', label: 'Dismissed' },
-    { key: 'noreq',     label: 'No requirements' },
   ];
 
   const unreadCount = alerts.filter((a) => !a.readAt).length;
@@ -206,6 +205,19 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Standalone "No requirements" view toggle — its own space, top right */}
+          <button
+            onClick={() => setFilter(filter === 'noreq' ? 'all' : 'noreq')}
+            style={{
+              padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              border: `1.5px dashed ${filter === 'noreq' ? 'var(--accent)' : 'var(--border)'}`,
+              color: filter === 'noreq' ? '#fff' : 'var(--text-secondary)',
+              background: filter === 'noreq' ? 'var(--accent)' : 'var(--surface)',
+              fontFamily: 'var(--font-body)', transition: 'all 0.15s', whiteSpace: 'nowrap',
+            }}
+          >
+            No requirements listed
+          </button>
           <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px' }}>
             <option value="newest">Newest</option>
             <option value="score">Best Match</option>
@@ -265,9 +277,10 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
                   {isUnread && (
                     <span style={{
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: 'var(--accent)', display: 'inline-block', marginRight: 6,
-                    }} />
+                      fontSize: 10, fontWeight: 800, letterSpacing: 0.8, verticalAlign: 'middle',
+                      background: 'var(--accent)', color: '#fff', borderRadius: 5,
+                      padding: '2px 6px', marginRight: 8, display: 'inline-block',
+                    }}>NEW</span>
                   )}
                   {alert.job?.title ?? alert.jobTitle ?? '—'}
                 </div>

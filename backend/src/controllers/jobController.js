@@ -13,6 +13,20 @@ const EU_COUNTRIES_RTW = new Set([
   'slovenia', 'spain', 'sweden',
 ]);
 
+// English-first presentation: when a job has been machine-translated, serve the
+// English text as title/description and keep the original for reference.
+function presentJob(j) {
+  if (!j || (!j.titleEn && !j.descriptionEn)) return j;
+  return {
+    ...j,
+    title: j.titleEn ?? j.title,
+    description: j.descriptionEn ?? j.description,
+    originalTitle: j.title,
+    originalDescription: j.description,
+    originalLanguage: j.sourceLanguage,
+  };
+}
+
 async function enrichJobs(jobs, pilotId) {
   const [saved, applied] = await Promise.all([
     prisma.savedJob.findMany({ where: { pilotId }, select: { jobId: true } }),
@@ -20,7 +34,7 @@ async function enrichJobs(jobs, pilotId) {
   ]);
   const savedSet = new Set(saved.map((s) => s.jobId));
   const appliedSet = new Set(applied.map((a) => a.jobId));
-  return jobs.map((j) => ({ ...j, isSaved: savedSet.has(j.id), isApplied: appliedSet.has(j.id) }));
+  return jobs.map((j) => ({ ...presentJob(j), isSaved: savedSet.has(j.id), isApplied: appliedSet.has(j.id) }));
 }
 
 // ─── "No requirements specified" definition (shared by alerts noreq filter
@@ -323,7 +337,7 @@ exports.getJob = async (req, res, next) => {
     // is known; otherwise default to false.
     const enriched = req.pilot
       ? (await enrichJobs([job], req.pilot.id))[0]
-      : { ...job, isSaved: false, isApplied: false };
+      : { ...presentJob(job), isSaved: false, isApplied: false };
 
     res.json({ ...enriched, airlineId });
   } catch (err) {
@@ -384,7 +398,8 @@ exports.getMyAlerts = async (req, res, next) => {
       prisma.jobAlert.count({ where }),
     ]);
 
-    res.json({ alerts, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
+    const presented = alerts.map((a) => ({ ...a, job: presentJob(a.job) }));
+    res.json({ alerts: presented, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
   } catch (err) {
     next(err);
   }

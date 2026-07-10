@@ -134,7 +134,8 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
         <AirlineLogo logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company ?? alert.company} box={40} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.cardTitle} numberOfLines={2}>
-            {isUnread ? <Text style={styles.unreadDot}>● </Text> : null}
+            {isUnread ? <Text style={styles.newPill}>NEW</Text> : null}
+            {isUnread ? ' ' : null}
             {job?.title ?? alert.jobTitle ?? '—'}
           </Text>
           <Text style={styles.cardCompany}>{job?.company ?? alert.company ?? '—'}</Text>
@@ -183,7 +184,7 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
 // ─── Matches tab ──────────────────────────────────────────────────────────────
 
 // No 'saved' chip — saved jobs have their own tab at the top of the screen.
-const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['dismissed', 'Dismissed'], ['noreq', 'No requirements']];
+const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['dismissed', 'Dismissed']];
 const SORTS: [string, string][] = [['newest', 'Newest'], ['score', 'Best Match'], ['deadline', 'Deadline']];
 
 function MatchesTab({ header }: { header?: ReactNode }) {
@@ -287,6 +288,13 @@ function MatchesTab({ header }: { header?: ReactNode }) {
             <Text style={[styles.chipText, filter === key && styles.chipTextActive]}>{label}</Text>
           </Pressable>
         ))}
+        {/* Standalone "No requirements" toggle — its own space at the row's right edge */}
+        <Pressable
+          onPress={() => setFilter(filter === 'noreq' ? 'all' : 'noreq')}
+          style={[styles.noreqBtn, filter === 'noreq' && styles.noreqBtnActive]}
+        >
+          <Text style={[styles.chipText, filter === 'noreq' && styles.chipTextActive]}>No requirements</Text>
+        </Pressable>
       </View>
       <View style={styles.sortRow}>
         <View style={{ flex: 1 }}>
@@ -475,7 +483,12 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
 
   listContent: { padding: spacing.xl, paddingTop: spacing.lg, paddingBottom: 116 /* clears floating tab bar */ },
   controls: { marginBottom: 12 },
-  chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10 },
+  chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' },
+  noreqBtn: {
+    marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: pilot.line, backgroundColor: pilot.surface,
+  },
+  noreqBtnActive: { backgroundColor: pilot.navy, borderColor: pilot.navy },
   chip: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface },
   chipActive: { borderColor: pilot.navy, backgroundColor: 'rgba(0,63,136,0.06)' },
   chipText: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.bodyMedium },
@@ -489,6 +502,11 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   cardOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
   cardTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 21 },
   unreadDot: { color: pilot.navy, fontSize: 10 },
+  newPill: {
+    backgroundColor: pilot.navy, color: '#FFFFFF', fontSize: 9, fontWeight: '800',
+    letterSpacing: 0.8, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1,
+    overflow: 'hidden',
+  },
   cardCompany: { fontSize: fontSizes.sm, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, marginTop: 3 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 6 },
   meta: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body },

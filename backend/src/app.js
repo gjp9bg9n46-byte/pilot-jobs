@@ -90,6 +90,7 @@ setImmediate(async () => {
     const employerConfigs = require('./scrapers/config/employers');
     await revalidateActiveJobs(employerConfigs);
     await expirePastDue();
+    await require('./services/translationService').translateUntranslatedJobs();
   } catch (err) {
     logger.error(`Startup job cleanup failed: ${err.message}`);
   }
