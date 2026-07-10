@@ -20,9 +20,13 @@ export default function TabsLayout() {
         tabBarActiveTintColor: pilot.navy,
         tabBarInactiveTintColor: pilot.muted,
         tabBarStyle: makeTabBarStyle(pilot),
-        tabBarItemStyle: { borderRadius: 24, marginHorizontal: 2, overflow: 'hidden' },
+        tabBarItemStyle: { borderRadius: 24, marginHorizontal: 1, overflow: 'hidden' },
         tabBarActiveBackgroundColor: mode === 'dark' ? 'rgba(111,169,224,0.16)' : 'rgba(0,63,136,0.08)',
-        tabBarLabelStyle: { fontFamily: fontFamilies.bodyMedium, fontSize: 10.5 },
+        // allowFontScaling off + explicit lineHeight: long labels ("Logbook")
+        // were truncated/descender-clipped when the phone's text size scaled
+        // the label beyond its ~60px slot in the floating pill.
+        tabBarAllowFontScaling: false,
+        tabBarLabelStyle: { fontFamily: fontFamilies.bodyMedium, fontSize: 10, lineHeight: 13 },
         sceneStyle: { backgroundColor: pilot.cream },
       }}
     >
