@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import PlaneMark from '../../components/PlaneMark';
 
 // Shared shell for the public About / Privacy / Terms pages: slim header with
 // the wordmark, readable single-column prose, and a small footer strip.
@@ -21,7 +22,7 @@ export default function LegalShell({ title, updated, children }) {
   return (
     <div style={css.page}>
       <nav style={css.nav}>
-        <Link to="/" style={css.logo}>✈ CockpitHire</Link>
+        <Link to="/" style={css.logo}><PlaneMark size={16} style={{ marginRight: 8 }} /> CockpitHire</Link>
         <Link to="/register" style={css.cta}>Register</Link>
       </nav>
       <main style={css.main}>

@@ -5,6 +5,7 @@ import { logout } from '../store';
 import { adminApi, authApi, jobApi } from '../services/api';
 import { useIsMobile } from '../hooks/useIsMobile';
 import VerifyEmailBanner from './auth/VerifyEmailBanner';
+import PlaneMark from './PlaneMark';
 
 const S = { strokeLinecap: 'round', strokeLinejoin: 'round' };
 const Ico = ({ d, extra, size = 18 }) => (
@@ -55,12 +56,7 @@ const PAGE_TITLES = {
 
 const SIGN_OUT_ICON = <Ico size={18} extra={<><path d="M7 3H3a1 1 0 00-1 1v10a1 1 0 001 1h4"/><polyline points="12 5 16 9 12 13"/><line x1="16" y1="9" x2="6" y2="9"/></>} />;
 
-// Plane wordmark glyph (stroke via style so it can use the accent token).
-const PlaneMark = ({ size = 18, style }) => (
-  <svg width={size} height={size} viewBox="0 0 18 18" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: 'var(--accent)', ...style }}>
-    <path d="M16 9H3.5M10 4L16 9l-6 5M7 6L2 9l5 3" />
-  </svg>
-);
+
 
 // Light-theme nav link: active gets accent text + a 3px left-border accent.
 // No inline background, so the .nav-link:hover utility can apply the fill.

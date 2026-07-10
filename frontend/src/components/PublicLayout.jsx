@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { useIsMobile } from '../hooks/useIsMobile';
 import SiteFooter from './SiteFooter';
+import PlaneMark from './PlaneMark';
 
 // PublicLayout shell — used only by logged-out airline pages
 // (factfile + detail). Migrated to light in Phase 12 alongside
@@ -26,7 +27,7 @@ export default function PublicLayout() {
   return (
     <div className="app-light" style={css.page}>
       <nav style={css.nav}>
-        <Link to="/" style={css.logo}>✈ CockpitHire</Link>
+        <Link to="/" style={css.logo}><PlaneMark size={16} style={{ marginRight: 8 }} /> CockpitHire</Link>
         <Link to="/login" style={css.navCta}>Web App →</Link>
       </nav>
       <main style={css.main}>

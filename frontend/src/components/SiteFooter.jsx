@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import PlaneMark from './PlaneMark';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 // Shared marketing footer (light theme). Currently rendered only by PublicLayout
@@ -41,7 +42,7 @@ export default function SiteFooter() {
     <footer style={css.footer}>
       <div style={css.footerTop}>
         <div style={css.fBrand}>
-          <Link to="/" style={css.fLogo}>✈ CockpitHire</Link>
+          <Link to="/" style={css.fLogo}><PlaneMark size={15} style={{ marginRight: 7 }} /> CockpitHire</Link>
           <div style={css.fTagline}>Built by pilots, for pilots</div>
         </div>
         {FOOTER_COLS.map(([title, links]) => (

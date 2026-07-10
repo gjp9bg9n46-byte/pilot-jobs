@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import PlaneMark from '../../components/PlaneMark';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { employerApi } from '../../services/employerApi';
 import { useEmployerAuth } from '../../context/EmployerAuthContext';
@@ -111,7 +112,7 @@ export default function EmployerDashboard() {
       <div style={css.header}>
         <div style={css.headerIn}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={css.brand}>✈ CockpitHire</span>
+            <span style={css.brand}><PlaneMark size={16} style={{ stroke: 'currentColor', marginRight: 7 }} /> CockpitHire</span>
             <span style={css.co}>{employer.companyName}</span>
             <Badge variant={ACCT_STATUS_VARIANT[status] || 'neutral'}>{status}</Badge>
           </div>

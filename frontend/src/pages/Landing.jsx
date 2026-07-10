@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PlaneMark from '../components/PlaneMark';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Target, Globe, Lock } from 'lucide-react';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -249,7 +250,7 @@ export default function Landing() {
     <div className="landing-root" style={css.root}>
       {/* 1 — Nav */}
       <nav style={css.nav}>
-        <Link to="/" style={css.wordmark}>✈ CockpitHire</Link>
+        <Link to="/" style={css.wordmark}><PlaneMark size={18} style={{ stroke: scrolled ? 'var(--accent)' : '#fff', marginRight: 8, transition: 'stroke 0.3s ease' }} /> CockpitHire</Link>
         {!isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
             <a href="#features" className="nav-link" style={css.navLink}>How it works</a>
@@ -435,7 +436,7 @@ export default function Landing() {
       <footer style={css.footer}>
         <div style={css.footerTop}>
           <div>
-            <Link to="/" style={css.fBrandName}>✈ CockpitHire</Link>
+            <Link to="/" style={css.fBrandName}><PlaneMark size={17} style={{ stroke: '#F0A84B', marginRight: 8 }} /> CockpitHire</Link>
             <div style={css.fTagline}>Built by pilots, for pilots</div>
           </div>
           {FOOTER_COLS.map(([title, links]) => (
