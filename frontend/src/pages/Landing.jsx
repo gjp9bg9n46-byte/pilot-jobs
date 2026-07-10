@@ -17,7 +17,6 @@ const FEATURES = [
 const COVERAGE = [
   { num: '5+',       label: 'Licensing authorities', sub: 'FAA · EASA · GCAA · CAAC · CASA' },
   { num: '4×',       label: 'Refreshed daily',       sub: 'Stale and expired roles removed automatically' },
-  { num: '100%',     label: 'Official applications', sub: 'Every listing links to the employer\u2019s own posting' },
 ];
 
 // Each teaser card demos a DIFFERENT factfile dimension (fleet / bases / pilot

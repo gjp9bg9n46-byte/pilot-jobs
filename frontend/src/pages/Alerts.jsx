@@ -131,6 +131,7 @@ function SavedSearchModal({ initial, onClose, onSave }) {
 // ─── MatchesTab ──────────────────────────────────────────────────────────────
 
 function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefresh, isMobile }) {
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(null);
   const [hovered, setHovered] = useState(null);
   const [markingAll, setMarkingAll] = useState(false);
@@ -158,12 +159,19 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
     }
   };
 
-  const handleClick = async (alert) => {
+  const handleClick = (alert) => {
+    // Fire-and-forget read receipt so navigation is instant
     if (!alert.readAt) {
-      await jobApi.markRead(alert.id);
+      jobApi.markRead(alert.id).catch(() => {});
       dispatch(markAlertRead(alert.id));
     }
-    setExpanded((prev) => (prev === alert.id ? null : alert.id));
+    // Open the full job page (same as the Jobs list). Inline expansion stays
+    // only as a fallback for alerts whose job row is gone.
+    if (alert.job?.id) {
+      navigate(`/jobs/${appSlugFor(alert.job)}`);
+    } else {
+      setExpanded((prev) => (prev === alert.id ? null : alert.id));
+    }
   };
 
   const handleMarkAll = async () => {
