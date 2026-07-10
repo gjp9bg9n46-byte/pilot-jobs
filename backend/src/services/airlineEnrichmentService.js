@@ -241,4 +241,4 @@ async function refreshWikiFleet() {
   return updated;
 }
 
-module.exports = { recomputeJobDerivedStats, refreshWikiFleet, normalizeCompany, deriveHiringStatus, derivePayRanges };
+module.exports = { recomputeJobDerivedStats, refreshWikiFleet, normalizeCompany, coreCompanyKey, deriveHiringStatus, derivePayRanges };

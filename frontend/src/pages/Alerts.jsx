@@ -284,13 +284,6 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                  {isUnread && (
-                    <span style={{
-                      fontSize: 10, fontWeight: 800, letterSpacing: 0.8, verticalAlign: 'middle',
-                      background: 'var(--accent)', color: '#fff', borderRadius: 5,
-                      padding: '2px 6px', marginRight: 8, display: 'inline-block',
-                    }}>NEW</span>
-                  )}
                   {alert.job?.title ?? alert.jobTitle ?? '—'}
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 600, marginBottom: 8 }}>

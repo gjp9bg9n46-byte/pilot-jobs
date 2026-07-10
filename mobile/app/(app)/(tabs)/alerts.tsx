@@ -131,11 +131,9 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
         onPress={onPress}
         style={({ pressed }) => [styles.card, isUnread && styles.cardUnread, expanded && styles.cardOpen, pressed && { transform: [{ scale: 0.98 }], opacity: 0.92 }]}
       >
-        <AirlineLogo logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company ?? alert.company} box={40} />
+        <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company ?? alert.company} box={40} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.cardTitle} numberOfLines={2}>
-            {isUnread ? <Text style={styles.newPill}>NEW</Text> : null}
-            {isUnread ? ' ' : null}
             {job?.title ?? alert.jobTitle ?? '—'}
           </Text>
           <Text style={styles.cardCompany}>{job?.company ?? alert.company ?? '—'}</Text>
@@ -388,7 +386,7 @@ function SavedJobsTab({ header }: { header?: ReactNode }) {
         const ago = postedAgo(j.postedAt);
         return (
           <Pressable style={styles.appCard} onPress={() => router.push(`/jobs/${slugFor(j)}`)}>
-            <AirlineLogo logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={j.company} box={40} />
+            <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={j.company} box={40} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.cardTitle} numberOfLines={2}>{j.title ?? '—'}</Text>
               <Text style={styles.cardCompany}>{j.company ?? '—'}</Text>

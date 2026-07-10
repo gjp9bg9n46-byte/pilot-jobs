@@ -18,6 +18,7 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
+const { normalizeCompany, coreCompanyKey } = require('../services/airlineEnrichmentService');
 
 function normaliseKey(str) {
   return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
@@ -103,6 +104,29 @@ async function collapseXSourceDuplicates(sourcePlatforms) {
  * per real vacancy, where identical titles at different bases are distinct
  * jobs and must never be collapsed.
  */
+// Where does this airline ACTUALLY fly from? Ad campaigns are posted across
+// whole countries ("Emirates" advertised in 40 Spanish provinces), so the ad's
+// location is where it was SHOWN, not where the pilot will work. When the
+// company resolves to an airline factfile, use its primary base/headquarters.
+async function buildAirlineBaseMap() {
+  const airlines = await prisma.airline.findMany({
+    select: { name: true, headquarters: true, bases: true, country: true },
+  });
+  const map = new Map();
+  for (const a of airlines) {
+    const base = (a.bases && a.bases[0]) || a.headquarters || null;
+    const entry = { base, country: a.country || null };
+    for (const k of new Set([normalizeCompany(a.name), coreCompanyKey(a.name)])) {
+      if (k && !map.has(k)) map.set(k, entry);
+    }
+  }
+  return map;
+}
+
+function lookupAirlineBase(map, company) {
+  return map.get(normalizeCompany(company)) ?? map.get(coreCompanyKey(company)) ?? null;
+}
+
 async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBLE']) {
   const jobs = await prisma.job.findMany({
     where: { sourcePlatform: { in: sourcePlatforms }, status: 'ACTIVE', mergedInto: null },
@@ -111,6 +135,8 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
       description: true, location: true, country: true, postedAt: true,
     },
   });
+
+  const airlineBases = await buildAirlineBaseMap();
 
   const groups = new Map();
   for (const job of jobs) {
@@ -138,10 +164,17 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
     const canonical = group[0];
     const duplicates = group.slice(1);
 
+    // Prefer the airline's real base over the ad campaign's target country.
+    const home = lookupAirlineBase(airlineBases, canonical.company);
     const countries = [...new Set(group.map((j) => j.country).filter(Boolean))];
-    const newLocation = countries.length === 1 ? countries[0] : 'Multiple locations';
+    const newLocation = home?.base
+      ? home.base
+      : (countries.length === 1 ? countries[0] : 'Multiple locations');
 
-    await prisma.job.update({ where: { id: canonical.id }, data: { location: newLocation } });
+    await prisma.job.update({
+      where: { id: canonical.id },
+      data: { location: newLocation, ...(home?.country ? { country: home.country } : {}) },
+    });
     for (const dup of duplicates) {
       await prisma.job.update({
         where: { id: dup.id },
