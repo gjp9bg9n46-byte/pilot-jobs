@@ -199,20 +199,75 @@ function FlightTotalsCard({ totals }) {
         <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic' }}>
           Log flights in your logbook to see your totals here.
         </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(108px, 1fr))', gap: 12 }}>
-          {stats.map(({ key, label }) => (
-            <div key={key} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 8px', textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums', fontSize: 19, fontWeight: 800, color: 'var(--accent)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
-                {(Number(totals?.[key]) || 0).toFixed(1)}
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 5 }}>
-                {label}
+      ) : (() => {
+        const total = Number(totals?.totalTime) || 0;
+        const pic = Number(totals?.picTime) || 0;
+        const sic = Number(totals?.sicTime) || 0;
+        const other = Math.max(0, total - pic - sic);
+        // Donut: PIC / SIC / other split of total time (these sum to the total,
+        // unlike night/instrument/multi which overlap and get bars instead).
+        const R = 52; const C = 2 * Math.PI * R;
+        const segs = [
+          { label: 'PIC', value: pic, color: 'var(--accent)' },
+          { label: 'SIC', value: sic, color: '#F0A84B' },
+          { label: 'Other', value: other, color: '#C9D4E4' },
+        ].filter((x) => x.value > 0.05);
+        let acc = 0;
+        const arcs = segs.map((x) => {
+          const frac = total > 0 ? x.value / total : 0;
+          const arc = { ...x, dash: `${frac * C} ${C}`, offset: -acc * C };
+          acc += frac;
+          return arc;
+        });
+        const bars = [
+          { label: 'Night', value: Number(totals?.nightTime) || 0 },
+          { label: 'Instrument', value: Number(totals?.instrumentTime) || 0 },
+          { label: 'Multi-engine', value: Number(totals?.multiEngineTime) || 0 },
+          { label: 'Turbine', value: Number(totals?.turbineTime) || 0 },
+        ];
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 36 }}>
+            <div style={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
+              <svg width="150" height="150" viewBox="0 0 150 150" role="img" aria-label="Flight time split: PIC vs SIC">
+                <circle cx="75" cy="75" r={R} fill="none" stroke="var(--bg)" strokeWidth="16" />
+                {arcs.map((a2) => (
+                  <circle key={a2.label} cx="75" cy="75" r={R} fill="none" stroke={a2.color} strokeWidth="16"
+                    strokeDasharray={a2.dash} strokeDashoffset={a2.offset} transform="rotate(-90 75 75)" strokeLinecap="butt" />
+                ))}
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{total.toFixed(0)}</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Total hrs</div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ display: 'flex', gap: 18, marginBottom: 18, flexWrap: 'wrap' }}>
+                {segs.map((x) => (
+                  <div key={x.label} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: x.color, display: 'inline-block' }} />
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{x.label}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>{x.value.toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
+              {bars.map((bl) => {
+                const pct = total > 0 ? Math.min(100, (bl.value / total) * 100) : 0;
+                return (
+                  <div key={bl.label} style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{bl.label}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-secondary)' }}>{bl.value.toFixed(1)} h · {Math.round(pct)}%</span>
+                    </div>
+                    <div style={{ height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 3, transition: 'width 0.6s ease-out' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </Card>
   );
 }
