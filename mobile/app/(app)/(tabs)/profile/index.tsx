@@ -8,6 +8,7 @@ import {
   ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
@@ -164,16 +165,7 @@ export default function ProfileView() {
           {allZero ? (
             <Empty text="Log flights in your logbook to see your totals here." />
           ) : (
-            <View style={styles.statGrid}>
-              {TOTAL_STATS.map(([key, label]) => (
-                <View key={key} style={styles.statTile}>
-                  <Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
-                    {(Number(totals?.[key]) || 0).toFixed(1)}
-                  </Text>
-                  <Text style={styles.statLabel}>{label}</Text>
-                </View>
-              ))}
-            </View>
+            <FlightDashboard totals={totals} styles={styles} palette={pilot} />
           )}
         </Section>
 
@@ -276,6 +268,79 @@ export default function ProfileView() {
   );
 }
 
+// ── Flight experience dashboard: PIC/SIC donut + category proportion bars ────
+// Mirrors the web Profile dashboard. Donut splits TOTAL time by role (PIC/SIC
+// sum to the total); night/instrument/multi/turbine overlap each other, so
+// they render as bars showing their share of total time instead.
+function FlightDashboard({ totals, styles, palette }: { totals: Any; styles: Any; palette: ThemePalette }) {
+  const total = Number(totals?.totalTime) || 0;
+  const pic = Number(totals?.picTime) || 0;
+  const sic = Number(totals?.sicTime) || 0;
+  const other = Math.max(0, total - pic - sic);
+  const R = 46;
+  const C = 2 * Math.PI * R;
+  const segs = [
+    { label: 'PIC', value: pic, color: palette.navy },
+    { label: 'SIC', value: sic, color: palette.amber },
+    { label: 'Other', value: other, color: palette.line },
+  ].filter((x) => x.value > 0.05);
+  let acc = 0;
+  const arcs = segs.map((x) => {
+    const frac = total > 0 ? x.value / total : 0;
+    const arc = { ...x, dash: [frac * C, C] as [number, number], offset: -acc * C };
+    acc += frac;
+    return arc;
+  });
+  const bars = [
+    { label: 'Night', value: Number(totals?.nightTime) || 0 },
+    { label: 'Instrument', value: Number(totals?.instrumentTime) || 0 },
+    { label: 'Multi-engine', value: Number(totals?.multiEngineTime) || 0 },
+    { label: 'Turbine', value: Number(totals?.turbineTime) || 0 },
+  ];
+  return (
+    <View>
+      <View style={styles.dashTop}>
+        <View style={styles.donutWrap}>
+          <Svg width={124} height={124} viewBox="0 0 124 124">
+            <Circle cx={62} cy={62} r={R} fill="none" stroke={palette.cream} strokeWidth={14} />
+            {arcs.map((a) => (
+              <Circle key={a.label} cx={62} cy={62} r={R} fill="none" stroke={a.color} strokeWidth={14}
+                strokeDasharray={a.dash} strokeDashoffset={a.offset} transform="rotate(-90 62 62)" />
+            ))}
+          </Svg>
+          <View style={styles.donutCenter}>
+            <Text style={styles.donutNum}>{total.toFixed(0)}</Text>
+            <Text style={styles.donutLabel}>Total hrs</Text>
+          </View>
+        </View>
+        <View style={styles.legendCol}>
+          {segs.map((x) => (
+            <View key={x.label} style={styles.legendRow}>
+              <View style={[styles.legendDot, { backgroundColor: x.color }]} />
+              <Text style={styles.legendLabel}>{x.label}</Text>
+              <Text style={styles.legendVal}>{x.value.toFixed(1)}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      {bars.map((bl) => {
+        const pct = total > 0 ? Math.min(100, (bl.value / total) * 100) : 0;
+        return (
+          <View key={bl.label} style={styles.barBlock}>
+            <View style={styles.barHead}>
+              <Text style={styles.barLabel}>{bl.label}</Text>
+              <Text style={styles.barVal}>{bl.value.toFixed(1)} h · {Math.round(pct)}%</Text>
+            </View>
+            <View style={styles.barTrack}>
+              <View style={[styles.barFill, { width: `${pct}%` }]} />
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
   content: { padding: spacing.xl, paddingBottom: 116 /* clears floating tab bar */ },
@@ -300,6 +365,22 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   emptyNote: { color: pilot.muted, fontSize: fontSizes.sm, fontStyle: 'italic', fontFamily: fontFamilies.body },
 
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  dashTop: { flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 16 },
+  donutWrap: { width: 124, height: 124, alignItems: 'center', justifyContent: 'center' },
+  donutCenter: { position: 'absolute', alignItems: 'center' },
+  donutNum: { fontFamily: fontFamilies.mono, fontSize: 21, fontWeight: '800', color: pilot.ink },
+  donutLabel: { fontSize: 9, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 3 },
+  legendCol: { flex: 1, gap: 8 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  legendDot: { width: 10, height: 10, borderRadius: 3 },
+  legendLabel: { fontSize: 13, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink, flex: 1 },
+  legendVal: { fontFamily: fontFamilies.mono, fontSize: 12, color: pilot.muted },
+  barBlock: { marginBottom: 10 },
+  barHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  barLabel: { fontSize: 12, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
+  barVal: { fontFamily: fontFamilies.mono, fontSize: 11, color: pilot.muted },
+  barTrack: { height: 8, backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 4, overflow: 'hidden' },
+  barFill: { height: '100%', backgroundColor: pilot.navy, borderRadius: 3 },
   statTile: { width: '31%', backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 6, alignItems: 'center' },
   // fontSize 16 so 5–6 digit totals fit the tile width without truncation;
   // adjustsFontSizeToFit shrinks further on device for anything larger.
