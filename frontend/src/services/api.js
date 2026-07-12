@@ -35,6 +35,7 @@ export const profileApi = {
   get: () => api.get('/profile'),
   update: (data) => api.patch('/profile', data),
   getTotals: () => api.get('/profile/totals'),
+  getAirports: () => api.get('/profile/airports'),
   getCarryForward: () => api.get('/profile/carry-forward'),
   updateCarryForward: (data) => api.put('/profile/carry-forward', data),
   addCertificate: (data) => api.post('/profile/certificates', data),

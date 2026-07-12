@@ -7,6 +7,7 @@ router.use(authMiddleware);
 router.get('/', profileController.getProfile);
 router.patch('/', profileController.updateProfile);
 router.get('/totals',         profileController.getFlightTotals);
+router.get('/airports',       profileController.getAirports);
 router.get('/carry-forward',  profileController.getCarryForward);
 router.put('/carry-forward',  profileController.updateCarryForward);
 

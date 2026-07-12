@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { profileApi } from '../services/api';
 import AircraftCombobox from '../components/AircraftCombobox';
+import FlightMap from '../components/FlightMap';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 
 const LICENCE_TYPES = [
@@ -935,6 +936,9 @@ export default function Profile() {
 
       {/* Flight Experience Totals */}
       <FlightTotalsCard totals={totals} />
+
+      {/* Flight map — every airport recorded in the logbook */}
+      <FlightMap />
 
       {/* Personal info */}
       <Card style={{ padding: 28, marginBottom: 24 }}>

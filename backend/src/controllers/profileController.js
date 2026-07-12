@@ -50,6 +50,51 @@ function toClientPrefs(p) {
   };
 }
 
+// ─── Flight map: every airport recorded in the logbook ───────────────────────
+// Aggregates departure + arrival codes across all the pilot's flights, resolves
+// them to city/country/coordinates (OurAirports data), and returns visit counts
+// with first/last dates. Unresolvable codes are listed but carry no pin.
+exports.getAirports = async (req, res, next) => {
+  try {
+    const { resolveAirport } = require('../services/airportService');
+    const flights = await prisma.flightLog.findMany({
+      where: { pilotId: req.pilot.id },
+      select: { date: true, departure: true, arrival: true },
+      orderBy: { date: 'asc' },
+    });
+
+    const agg = new Map(); // CODE → { count, firstDate, lastDate }
+    for (const f of flights) {
+      for (const raw of [f.departure, f.arrival]) {
+        const code = String(raw || '').trim().toUpperCase();
+        if (!code) continue;
+        const cur = agg.get(code) ?? { count: 0, firstDate: f.date, lastDate: f.date };
+        cur.count += 1;
+        if (f.date < cur.firstDate) cur.firstDate = f.date;
+        if (f.date > cur.lastDate) cur.lastDate = f.date;
+        agg.set(code, cur);
+      }
+    }
+
+    const airports = [];
+    const unresolved = [];
+    for (const [code, info] of agg) {
+      let ap = null;
+      try { ap = await resolveAirport(code); } catch { ap = null; }
+      if (ap) {
+        airports.push({ code, icao: ap.icao, iata: ap.iata, name: ap.name, city: ap.city, country: ap.country, lat: ap.lat, lon: ap.lon, ...info });
+      } else {
+        unresolved.push({ code, ...info });
+      }
+    }
+    airports.sort((a, b) => b.count - a.count);
+
+    res.json({ airports, unresolved, totalFlights: flights.length });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getProfile = async (req, res, next) => {
   try {
     const pilot = await prisma.pilot.findUnique({
