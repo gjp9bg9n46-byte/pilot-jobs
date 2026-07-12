@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import { SecondaryButton } from '../../../../src/components/ui';
 import CredentialModal from '../../../../src/components/CredentialModal';
+import FlightMap from '../../../../src/components/FlightMap';
 import { CREDENTIALS } from '../../../../src/lib/credentialConfigs';
 import { useAuth } from '../../../../src/context/AuthContext';
 import {
@@ -167,6 +168,11 @@ export default function ProfileView() {
           ) : (
             <FlightDashboard totals={totals} styles={styles} palette={pilot} />
           )}
+        </Section>
+
+        {/* Flight map — every airport recorded in the logbook */}
+        <Section title="Your flight map" subtitle="Every airport recorded in your logbook">
+          <FlightMap />
         </Section>
 
         {/* Personal Information (read-only; edit via /profile/edit) */}
