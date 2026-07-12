@@ -19,6 +19,7 @@
 const axios = require('axios');
 const prisma = require('../config/database');
 const logger = require('../config/logger');
+const { extractRequirements } = require('../scrapers/normalize');
 
 // Cheap English detector — ≥3 common English stopwords in the first 500 chars.
 // Saves quota by never sending English text to the API.
@@ -71,12 +72,28 @@ async function translateUntranslatedJobs() {
 
     try {
       const [t, d] = await deeplTranslate([j.title, String(j.description || '').slice(0, 4000)], apiKey);
+
+      // The requirement extractor only understands English patterns ("1,500
+      // hours", "ATPL required"), so extraction on the original text came up
+      // empty for FR/DE/ES ads. Re-run it on the translation and fill any
+      // requirement fields that are still blank — never overwrite existing data.
+      const full = await prisma.job.findUnique({ where: { id: j.id } });
+      const reqs = extractRequirements(`${t.text} ${d?.text ?? ''}`);
+      const fill = {};
+      for (const [k, v] of Object.entries(reqs)) {
+        if (v == null) continue;
+        const cur = full?.[k];
+        const empty = cur == null || (Array.isArray(cur) && cur.length === 0);
+        if (empty && (!Array.isArray(v) || v.length > 0)) fill[k] = v;
+      }
+
       await prisma.job.update({
         where: { id: j.id },
         data: {
           titleEn: t.text,
           descriptionEn: d?.text ?? null,
           sourceLanguage: t.detected_source_language || 'UNKNOWN',
+          ...fill,
         },
       });
       translated++;
@@ -88,6 +105,28 @@ async function translateUntranslatedJobs() {
       } else {
         logger.error({ jobId: j.id, err: err.message, msg: 'translation failed' });
       }
+    }
+  }
+
+  // Backfill: jobs translated BEFORE requirement re-extraction existed — run
+  // the extractor over their stored English text (free, no API calls).
+  const translatedNoReqs = await prisma.job.findMany({
+    where: {
+      status: 'ACTIVE',
+      descriptionEn: { not: null },
+      reqCertificates: { isEmpty: true },
+      reqMinTotalHours: null,
+      reqMinPicHours: null,
+    },
+    select: { id: true, titleEn: true, descriptionEn: true },
+  });
+  for (const j of translatedNoReqs) {
+    const reqs = extractRequirements(`${j.titleEn ?? ''} ${j.descriptionEn ?? ''}`);
+    const fill = Object.fromEntries(
+      Object.entries(reqs).filter(([, v]) => v != null && (!Array.isArray(v) || v.length > 0)),
+    );
+    if (Object.keys(fill).length > 0) {
+      await prisma.job.update({ where: { id: j.id }, data: fill }).catch(() => {});
     }
   }
 
