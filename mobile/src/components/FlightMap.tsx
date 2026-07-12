@@ -4,8 +4,10 @@
 // every airport recorded in the logbook (dot size = flight count, top 3 amber),
 // with the per-airport report list below. Unresolvable codes are listed greyed.
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 // @ts-ignore — pure-JS lib, no bundled types needed
 import { geoNaturalEarth1, geoPath } from 'd3-geo';
 // @ts-ignore — pure-JS lib, no bundled types needed
@@ -36,6 +38,37 @@ export default function FlightMap() {
   const [data, setData] = useState<{ airports: Airport[]; unresolved: Unresolved[] } | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [world, setWorld] = useState<any>(geoCache);
+  const [showLabels, setShowLabels] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+
+  // Pinch-to-zoom + drag-to-pan (clamped 1×–8×). Labels fade in past ~1.8×.
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const tx = useSharedValue(0);
+  const ty = useSharedValue(0);
+  const savedTx = useSharedValue(0);
+  const savedTy = useSharedValue(0);
+
+  const syncZoomFlags = (z: number) => { setShowLabels(z > 1.8); setZoomed(z > 1.05); };
+
+  const pinch = Gesture.Pinch()
+    .onUpdate((e) => { scale.value = Math.min(8, Math.max(1, savedScale.value * e.scale)); })
+    .onEnd(() => { savedScale.value = scale.value; runOnJS(syncZoomFlags)(scale.value); });
+  const pan = Gesture.Pan()
+    .minPointers(1)
+    .onUpdate((e) => { tx.value = savedTx.value + e.translationX; ty.value = savedTy.value + e.translationY; })
+    .onEnd(() => { savedTx.value = tx.value; savedTy.value = ty.value; });
+  const composed = Gesture.Simultaneous(pinch, pan);
+  const animStyle = useAnimatedStyle(() => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }] as any,
+  }));
+
+  const resetView = () => {
+    scale.value = 1; savedScale.value = 1;
+    tx.value = 0; ty.value = 0; savedTx.value = 0; savedTy.value = 0;
+    setShowLabels(false); setZoomed(false);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -63,30 +96,52 @@ export default function FlightMap() {
       <Text style={styles.summary}>
         {airports.length} airport{airports.length === 1 ? '' : 's'}{countries > 0 ? ` across ${countries} countr${countries === 1 ? 'y' : 'ies'}` : ''}
       </Text>
-      <View style={styles.mapBox}>
-        <Svg width="100%" height={undefined} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ aspectRatio: W / H }}>
-          {world
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ? (world.features as any[]).map((f, i) => (
-                <Path key={i} d={path(f) ?? ''} fill={pilot.surface} stroke={pilot.line} strokeWidth={0.4} />
-              ))
-            : null}
-          {airports.map((a) => {
-            const p = projection([a.lon, a.lat]);
-            if (!p) return null;
-            const r = 2.5 + (a.count / maxCount) * 4;
-            return (
-              <Circle key={a.code} cx={p[0]} cy={p[1]} r={r}
-                fill={top.has(a.code) ? pilot.amber : pilot.navy}
-                stroke="#FFFFFF" strokeWidth={0.8} opacity={0.9} />
-            );
-          })}
-        </Svg>
-      </View>
+      <GestureHandlerRootView>
+        <View style={styles.mapBox}>
+          <GestureDetector gesture={composed}>
+            <Animated.View style={animStyle}>
+              <Svg width="100%" height={undefined} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ aspectRatio: W / H }}>
+                {world
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ? (world.features as any[]).map((f, i) => (
+                      <Path key={i} d={path(f) ?? ''} fill={pilot.surface} stroke={pilot.line} strokeWidth={0.4} />
+                    ))
+                  : null}
+                {airports.map((a) => {
+                  const p = projection([a.lon, a.lat]);
+                  if (!p) return null;
+                  const r = 2.5 + (a.count / maxCount) * 4;
+                  const hot = top.has(a.code);
+                  return (
+                    <Circle key={a.code} cx={p[0]} cy={p[1]} r={r}
+                      fill={hot ? pilot.amber : pilot.navy}
+                      stroke="#FFFFFF" strokeWidth={0.8} opacity={0.9} />
+                  );
+                })}
+                {showLabels && airports.map((a) => {
+                  const p = projection([a.lon, a.lat]);
+                  if (!p) return null;
+                  return (
+                    <SvgText key={`t-${a.code}`} x={p[0]} y={p[1] - 4.5} textAnchor="middle"
+                      fontSize={4.2} fontWeight="600" fill={pilot.ink} stroke={pilot.cream} strokeWidth={0.6}>
+                      {a.city || a.code}
+                    </SvgText>
+                  );
+                })}
+              </Svg>
+            </Animated.View>
+          </GestureDetector>
+          {zoomed ? (
+            <Pressable style={styles.resetBtn} onPress={resetView}>
+              <Text style={styles.resetText}>Reset</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </GestureHandlerRootView>
       <View style={styles.legendRow}>
         <View style={[styles.legendDot, { backgroundColor: pilot.amber }]} /><Text style={styles.legendText}>Most visited</Text>
         <View style={[styles.legendDot, { backgroundColor: pilot.navy, marginLeft: 14 }]} /><Text style={styles.legendText}>Visited</Text>
-        <Text style={[styles.legendText, { marginLeft: 'auto' }]}>Dot size = flights</Text>
+        <Text style={[styles.legendText, { marginLeft: 'auto' }]}>Pinch to zoom · drag to pan</Text>
       </View>
 
       {/* Airport report — every code recorded in the logbook */}
@@ -125,4 +180,6 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   repCity: { fontSize: 13, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
   repDates: { fontSize: 11, fontFamily: fontFamilies.body, color: pilot.muted, marginTop: 1 },
   repCount: { fontFamily: fontFamilies.mono, fontSize: 12, color: pilot.muted },
+  resetBtn: { position: 'absolute', top: 8, right: 8, backgroundColor: pilot.navy, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  resetText: { color: '#FFFFFF', fontSize: 11, fontFamily: fontFamilies.bodySemiBold },
 });

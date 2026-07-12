@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 import { MapPin } from 'lucide-react';
 import { profileApi } from '../services/api';
 import Card from './primitives/Card';
@@ -21,6 +21,9 @@ const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { ye
 export default function FlightMap() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [hoverCountry, setHoverCountry] = useState(null);
+  const [center, setCenter] = useState([12, 20]);
 
   useEffect(() => {
     profileApi.getAirports()
@@ -33,6 +36,7 @@ export default function FlightMap() {
   const airports = data?.airports ?? [];
   const maxCount = airports.reduce((m, a) => Math.max(m, a.count), 1);
   const topCodes = new Set(airports.slice(0, 3).map((a) => a.code));
+  const showLabels = zoom >= 2.2;
 
   return (
     <Card style={{ padding: 28, marginBottom: 24 }}>
@@ -51,37 +55,77 @@ export default function FlightMap() {
         <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Loading your map…</div>
       ) : (
         <>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: '#EAF0F7' }}>
+          <div style={{ position: 'relative', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: '#EAF0F7' }}>
             <ComposableMap projection="geoNaturalEarth1" style={{ width: '100%', height: 'auto', display: 'block' }}>
-              <Geographies geography={GEO_URL}>
-                {({ geographies }) => geographies.map((geo) => (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill="#FBF7F0"
-                    stroke="#C9D4E4"
-                    strokeWidth={0.5}
-                    style={{ default: { outline: 'none' }, hover: { outline: 'none', fill: '#F3ECE0' }, pressed: { outline: 'none' } }}
-                  />
-                ))}
-              </Geographies>
-              {airports.map((a) => {
-                const r = 3 + (a.count / maxCount) * 5;
-                const hot = topCodes.has(a.code);
-                return (
-                  <Marker key={a.code} coordinates={[a.lon, a.lat]}>
-                    <circle r={r} fill={hot ? '#F0A84B' : 'var(--accent)'} fillOpacity={0.85} stroke="#fff" strokeWidth={1}>
-                      <title>{`${a.code} · ${a.city || a.name || ''} · ${a.count} flight${a.count === 1 ? '' : 's'}`}</title>
-                    </circle>
-                  </Marker>
-                );
-              })}
+              <ZoomableGroup
+                zoom={zoom}
+                center={center}
+                minZoom={1}
+                maxZoom={16}
+                onMoveEnd={({ zoom: z, coordinates }) => { setZoom(z); setCenter(coordinates); }}
+              >
+                <Geographies geography={GEO_URL}>
+                  {({ geographies }) => geographies.map((geo) => (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      onMouseEnter={() => setHoverCountry(geo.properties.name)}
+                      onMouseLeave={() => setHoverCountry(null)}
+                      fill="#FBF7F0"
+                      stroke="#C9D4E4"
+                      strokeWidth={0.5 / zoom}
+                      style={{ default: { outline: 'none' }, hover: { outline: 'none', fill: '#F3ECE0' }, pressed: { outline: 'none' } }}
+                    />
+                  ))}
+                </Geographies>
+                {airports.map((a) => {
+                  const r = (3 + (a.count / maxCount) * 5) / zoom;
+                  const hot = topCodes.has(a.code);
+                  const label = a.city || a.iata || a.code;
+                  return (
+                    <Marker key={a.code} coordinates={[a.lon, a.lat]}>
+                      <circle r={r} fill={hot ? '#F0A84B' : 'var(--accent)'} fillOpacity={0.85} stroke="#fff" strokeWidth={1 / zoom}>
+                        <title>{`${a.code} · ${a.city || a.name || ''} · ${a.count} flight${a.count === 1 ? '' : 's'}`}</title>
+                      </circle>
+                      {(showLabels || (hot && zoom >= 1.4)) && (
+                        <text
+                          textAnchor="middle"
+                          y={-(r + 3 / zoom)}
+                          style={{
+                            fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 11 / zoom,
+                            fill: 'var(--text-primary)', paintOrder: 'stroke', stroke: '#FBF7F0', strokeWidth: 2.5 / zoom,
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          {label}
+                        </text>
+                      )}
+                    </Marker>
+                  );
+                })}
+              </ZoomableGroup>
             </ComposableMap>
+
+            {/* Hovered country name */}
+            {hoverCountry && (
+              <div style={{ position: 'absolute', top: 10, left: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', pointerEvents: 'none' }}>
+                {hoverCountry}
+              </div>
+            )}
+
+            {/* Zoom controls */}
+            <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[['+', () => setZoom((z) => Math.min(16, z * 1.6))], ['−', () => setZoom((z) => Math.max(1, z / 1.6))], ['⟲', () => { setZoom(1); setCenter([12, 20]); }]].map(([sym, fn]) => (
+                <button key={sym} onClick={fn} aria-label={sym === '+' ? 'Zoom in' : sym === '−' ? 'Zoom out' : 'Reset view'} style={{ width: 30, height: 30, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', lineHeight: 1 }}>
+                  {sym}
+                </button>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 18, marginTop: 10, fontSize: 12, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', gap: 18, marginTop: 10, fontSize: 12, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
             <span><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#F0A84B', marginRight: 6 }} />Most visited</span>
             <span><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: 'var(--accent)', marginRight: 6 }} />Visited</span>
-            <span style={{ marginLeft: 'auto' }}>Dot size = number of flights</span>
+            <span style={{ marginLeft: 'auto' }}>Scroll or pinch to zoom · drag to pan · city names appear as you zoom</span>
           </div>
 
           {/* Airport report — every code recorded in the logbook */}
