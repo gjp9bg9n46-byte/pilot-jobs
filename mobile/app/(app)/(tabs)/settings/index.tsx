@@ -17,12 +17,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
-import api from '../../../src/lib/api';
-import { TextField, SelectField, PrimaryButton, Sheet } from '../../../src/components/ui';
-import { useAuth } from '../../../src/context/AuthContext';
-import { buildCompleteness, completenessSubtitle, CompletenessItem } from '../../../src/lib/completeness';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../../src/theme/tokens';
-import { ThemePalette, useTheme, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import api from '../../../../src/lib/api';
+import { TextField, SelectField, PrimaryButton, Sheet } from '../../../../src/components/ui';
+import { useAuth } from '../../../../src/context/AuthContext';
+import { buildCompleteness, completenessSubtitle, CompletenessItem } from '../../../../src/lib/completeness';
+import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
+import { ThemePalette, useTheme, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;

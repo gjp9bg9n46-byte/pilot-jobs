@@ -8,10 +8,10 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../../src/lib/api';
-import { EMPTY_FIELD, contractLabel, hiringFreqLabel, hiringMeta, relativeDate } from '../../../src/lib/airlineFormat';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import api from '../../../../src/lib/api';
+import { EMPTY_FIELD, contractLabel, hiringFreqLabel, hiringMeta, relativeDate } from '../../../../src/lib/airlineFormat';
+import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
+import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Airline = Record<string, any>;

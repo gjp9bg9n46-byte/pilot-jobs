@@ -15,6 +15,8 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import AirlineLogo from '../../../../src/components/AirlineLogo';
+import AlertsScreen from '../alerts';
+import { useUnread } from '../../../../src/context/UnreadContext';
 import { SelectField, TextField } from '../../../../src/components/ui';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
 import { computeMatchCount, postedAgo } from '../../../../src/lib/jobMatch';
@@ -39,7 +41,7 @@ function slugFor(job: Job) {
   return `${slugify(job.company)}-${slugify(job.role || job.title)}-${job.id}`;
 }
 
-export default function JobsList() {
+function JobsBrowse() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -207,10 +209,53 @@ export default function JobsList() {
   );
 }
 
+// ─── Merged Jobs screen: Browse (job board) + Matches (former Alerts page) ────
+export default function JobsScreen() {
+  const pilotColors = useThemeColors();
+  const styles = useThemedStyles(createStyles);
+  const { unread } = useUnread();
+  const params = useLocalSearchParams<{ view?: string }>();
+  const [view, setView] = useState<'browse' | 'matches'>(params.view === 'matches' ? 'matches' : 'browse');
+
+  useEffect(() => {
+    if (params.view === 'matches') setView('matches');
+  }, [params.view]);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: pilotColors.cream }}>
+      <View style={styles.segmentWrap}>
+        {([['browse', 'Browse'], ['matches', 'Matches']] as const).map(([key, label]) => {
+          const active = view === key;
+          return (
+            <Pressable key={key} onPress={() => setView(key)} style={[styles.segment, active && styles.segmentActive]}>
+              <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
+              {key === 'matches' && unread > 0 ? (
+                <View style={[styles.segBadge, active && styles.segBadgeActive]}>
+                  <Text style={[styles.segBadgeText, active && styles.segBadgeTextActive]}>{unread > 99 ? '99+' : unread}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+      {view === 'browse' ? <JobsBrowse /> : <AlertsScreen />}
+    </View>
+  );
+}
+
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
   // Rows run edge-to-edge; only the header block is inset.
   listContent: { paddingBottom: TAB_BAR_CLEARANCE },
+  segmentWrap: { flexDirection: 'row', marginHorizontal: spacing.xl, marginTop: 10, marginBottom: 6, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 3, gap: 3 },
+  segment: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 9 },
+  segmentActive: { backgroundColor: pilot.navy },
+  segmentText: { fontSize: 13, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted },
+  segmentTextActive: { color: '#FFFFFF' },
+  segBadge: { backgroundColor: pilot.navy, borderRadius: 9, minWidth: 18, paddingHorizontal: 5, paddingVertical: 1, alignItems: 'center' },
+  segBadgeActive: { backgroundColor: '#FFFFFF' },
+  segBadgeText: { color: '#FFFFFF', fontSize: 10, fontFamily: fontFamilies.bodyBold },
+  segBadgeTextActive: { color: pilot.navy },
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: 4 },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 20 },
@@ -230,12 +275,12 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   toggleText: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.bodyMedium },
   toggleTextActive: { color: pilot.navy },
 
-  // Flat full-width list rows (Climbto350-style): hairline dividers, no cards.
+  // Card rows — identical treatment to the Matches (alerts) cards.
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: spacing.xl, paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: pilot.line,
-    backgroundColor: pilot.cream,
+    backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line,
+    borderLeftWidth: 4, borderLeftColor: pilot.line, borderRadius: 14,
+    padding: 14, marginHorizontal: spacing.xl, marginBottom: 12,
   },
   rowPressed: { backgroundColor: 'rgba(0,63,136,0.04)' },
   rowTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 23 },

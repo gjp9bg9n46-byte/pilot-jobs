@@ -36,6 +36,19 @@
       "expo-secure-store",
       "expo-notifications",
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "84e555c3-fa9d-4307-86e4-51891f044bea"
+      }
+    },
+    "owner": "migo2dayberlin",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/84e555c3-fa9d-4307-86e4-51891f044bea"
+    }
   }
 }

@@ -433,7 +433,7 @@ export default function AlertsScreen() {
   // control — two equal halves, no leftover gap.
   const head = (
     <View style={styles.head}>
-      <Text style={styles.h1}>Alerts</Text>
+      <Text style={styles.h1}>Matches</Text>
       <Text style={styles.subtitle}>Cockpit roles, matched to your profile.</Text>
       <View style={styles.tabBar}>
         {TABS.map((t) => {

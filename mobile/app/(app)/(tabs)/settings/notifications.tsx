@@ -17,11 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import api from '../../../src/lib/api';
-import { PrimaryButton } from '../../../src/components/ui';
-import { getPushPermissionStatus, registerForPush, type PushStatus } from '../../../src/lib/push';
-import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import api from '../../../../src/lib/api';
+import { PrimaryButton } from '../../../../src/components/ui';
+import { getPushPermissionStatus, registerForPush, type PushStatus } from '../../../../src/lib/push';
+import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
+import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 const NOTIF_ROWS: [string, string, string?][] = [
   ['newJobMatch', 'New Job Match'],

@@ -23,10 +23,7 @@ export default function AppHeader() {
       </View>
 
       <View style={styles.right}>
-        <Pressable onPress={() => router.navigate('/airlines')} hitSlop={8} style={styles.iconBtn} accessibilityLabel="Airlines directory">
-          <Ionicons name="airplane-outline" size={22} color="#FFFFFF" />
-        </Pressable>
-        <Pressable onPress={() => router.navigate('/alerts')} hitSlop={8} style={styles.iconBtn} accessibilityLabel={`Alerts${unread > 0 ? `, ${unread} unread` : ''}`}>
+        <Pressable onPress={() => router.navigate({ pathname: '/jobs', params: { view: 'matches' } })} hitSlop={8} style={styles.iconBtn} accessibilityLabel={`Alerts${unread > 0 ? `, ${unread} unread` : ''}`}>
           <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
           {unread > 0 ? (
             <View style={styles.badge}>
