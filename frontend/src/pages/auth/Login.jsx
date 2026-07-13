@@ -61,7 +61,7 @@ export default function Login() {
     try {
       const { data } = await authApi.login(email, password);
       dispatch(setAuth({ token: data.token, pilot: data.pilot }));
-      navigate('/jobs');
+      navigate('/profile');
     } catch (err) {
       if (!err.response) setError("Couldn't reach the server — check your connection and try again.");
       else setError(err.response?.data?.error || 'Invalid credentials');

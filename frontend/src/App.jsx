@@ -136,7 +136,7 @@ export default function App() {
           <Route path="jobs/:id/applicants" element={<RequireEmployerStatus status="APPROVED"><EmployerApplicants /></RequireEmployerStatus>} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/jobs" replace />} />
+        <Route path="*" element={<Navigate to="/profile" replace />} />
       </Routes>
     </BrowserRouter>
   );

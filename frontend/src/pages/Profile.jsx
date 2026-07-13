@@ -887,6 +887,8 @@ export default function Profile() {
   const [personalForm, setPersonalForm] = useState(null);
   const [savedSnapshot, setSavedSnapshot] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null); // { label, fn }
+  const [showMap, setShowMap] = useState(false);
+  const [tab, setTab] = useState('licences'); // licences is the default (leftmost) tab
   const { saving: personalSaving, savedAt: personalSavedAt, error: personalError, run: personalRun } = useSave();
 
   const confirmDelete = (label, fn) => setPendingDelete({ label, fn });
@@ -927,19 +929,51 @@ export default function Profile() {
     setSavedSnapshot({ ...personalForm });
   });
 
+  const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || 'Pilot';
+  const initials = (((profile?.firstName || ' ')[0] || '') + ((profile?.lastName || ' ')[0] || '')).toUpperCase().trim() || 'P';
+  const roleLabel = profile?.role
+    ? profile.role.replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
+    : null;
+
   if (loading) return <LightPage><div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: 80 }}>Loading your profile...</div></LightPage>;
 
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Profile</h1>
-      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Your career record — keep it current.</p>
+      {/* ── Instagram-style header: avatar + name / phone / role ─────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 28, marginBottom: 26, flexWrap: 'wrap' }}>
+        <div style={{ width: 92, height: 92, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 34, fontWeight: 600, flexShrink: 0 }}>
+          {initials}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.15 }}>{fullName}</div>
+          {profile?.phone ? <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>{profile.phone}</div> : null}
+          {roleLabel ? <div style={{ display: 'inline-block', marginTop: 8, background: 'rgba(0,63,136,0.08)', color: 'var(--accent)', fontWeight: 600, fontSize: 13, padding: '4px 12px', borderRadius: 14 }}>{roleLabel}</div> : null}
+        </div>
+      </div>
 
-      {/* Flight Experience Totals */}
-      <FlightTotalsCard totals={totals} />
+      {/* Hours — Instagram-style counters + map button */}
+      <div style={{ display: 'flex', gap: 36, alignItems: 'center', padding: '16px 4px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', marginBottom: 4, flexWrap: 'wrap' }}>
+        {[['Total hours', totals?.totalTime], ['PIC', totals?.picTime], ['SIC', totals?.sicTime]].map(([label, v]) => (
+          <div key={label} style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums', fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{(Number(v) || 0).toFixed(0)}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{label}</div>
+          </div>
+        ))}
+        <button className="ch-btn" onClick={() => setShowMap(true)} style={{ marginLeft: 'auto', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+          Flight map & airports
+        </button>
+      </div>
 
-      {/* Flight map — every airport recorded in the logbook */}
-      <FlightMap />
+      {/* Tab row — Licences is the default leftmost tab */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto' }}>
+        {[['licences', 'Licences'], ['medical', 'Medical'], ['ratings', 'Type ratings'], ['training', 'Training'], ['details', 'Details']].map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} style={{ background: 'none', border: 'none', borderBottom: `2px solid ${tab === key ? 'var(--accent)' : 'transparent'}`, color: tab === key ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '10px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
+            {label}
+          </button>
+        ))}
+      </div>
 
+      {tab === 'details' && (<>
       {/* Personal info */}
       <Card style={{ padding: 28, marginBottom: 24 }}>
         <div style={css.cardHeader}>
@@ -1003,25 +1037,22 @@ export default function Profile() {
         )}
       </Card>
 
-      {/* Licences and Medical in a two-column grid */}
-      <div style={css.grid}>
-        <LicencesCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />
-        <MedicalCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />
-      </div>
-
-      {/* Type Ratings */}
-      <div style={{ marginTop: 24, marginBottom: 24 }}>
-        <TypeRatingsCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />
-      </div>
-
-      {/* English Language Proficiency */}
-      <EnglishProficiencyCard confirmDelete={confirmDelete} />
-
-      {/* Recurrent Training */}
-      <RecurrentTrainingCard confirmDelete={confirmDelete} />
-
-      {/* Right to Work */}
       <RightToWorkCard confirmDelete={confirmDelete} />
+      </>)}
+
+      {tab === 'licences' && <LicencesCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />}
+      {tab === 'medical' && <MedicalCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />}
+      {tab === 'ratings' && <TypeRatingsCard profile={profile} setProfile={setProfile} confirmDelete={confirmDelete} />}
+      {tab === 'training' && (<>
+        <RecurrentTrainingCard confirmDelete={confirmDelete} />
+        <EnglishProficiencyCard confirmDelete={confirmDelete} />
+      </>)}
+
+      {/* Flight map + airport statistics popup */}
+      <Modal isOpen={showMap} onClose={() => setShowMap(false)} title="Flight map & airport statistics" size="lg">
+        <FlightTotalsCard totals={totals} />
+        <FlightMap />
+      </Modal>
 
       {/* Single page-level delete confirmation (replaces 6 window.confirm) */}
       <Modal isOpen={!!pendingDelete} onClose={() => setPendingDelete(null)} title={pendingDelete ? `Delete ${pendingDelete.label}?` : ''}>

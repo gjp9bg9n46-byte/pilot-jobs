@@ -62,7 +62,7 @@ export default function Register() {
   }, []);
 
   useEffect(() => {
-    if (pilotToken) navigate('/jobs', { replace: true });
+    if (pilotToken) navigate('/profile', { replace: true });
   }, [pilotToken, navigate]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));

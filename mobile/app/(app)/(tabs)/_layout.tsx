@@ -15,6 +15,7 @@ export default function TabsLayout() {
   const { colors: pilot, mode } = useTheme();
   return (
     <Tabs
+      initialRouteName="profile"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: pilot.navy,

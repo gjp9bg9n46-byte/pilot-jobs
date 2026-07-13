@@ -12,7 +12,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
-import { SecondaryButton } from '../../../../src/components/ui';
+import { SecondaryButton, Sheet } from '../../../../src/components/ui';
 import CredentialModal from '../../../../src/components/CredentialModal';
 import FlightMap from '../../../../src/components/FlightMap';
 import { CREDENTIALS } from '../../../../src/lib/credentialConfigs';
@@ -89,6 +89,8 @@ function ItemRow({ title, sub, onDelete }: { title: string; sub?: React.ReactNod
 export default function ProfileView() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const [tab, setTab] = useState<'licences' | 'medical' | 'ratings' | 'training' | 'details'>('licences');
+  const [showMap, setShowMap] = useState(false);
   const router = useRouter();
   const { logout } = useAuth();
   const [profile, setProfile] = useState<Any | null>(null);
@@ -150,10 +152,25 @@ export default function ProfileView() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
       >
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.h1}>Profile</Text>
-            <Text style={styles.subtitle}>Your career record — keep it current.</Text>
+        {/* ── Instagram-style header: avatar + name / phone / role ─────────── */}
+        <View style={styles.igHeader}>
+          <View style={styles.igAvatar}>
+            <Text style={styles.igAvatarText}>
+              {((((profile?.firstName || ' ')[0] || '') + ((profile?.lastName || ' ')[0] || '')).toUpperCase().trim()) || 'P'}
+            </Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.igName} numberOfLines={1}>
+              {[profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || 'Pilot'}
+            </Text>
+            {profile?.phone ? <Text style={styles.igPhone}>{profile.phone}</Text> : null}
+            {profile?.role ? (
+              <View style={styles.igRolePill}>
+                <Text style={styles.igRoleText}>
+                  {String(profile.role).replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, (c: string) => c.toUpperCase())}
+                </Text>
+              </View>
+            ) : null}
           </View>
           <Pressable style={styles.editBtn} onPress={() => router.push('/profile/edit')}>
             <Ionicons name="create-outline" size={16} color={pilot.navy} />
@@ -161,20 +178,35 @@ export default function ProfileView() {
           </Pressable>
         </View>
 
-        {/* Flight Experience Totals */}
-        <Section title="Flight Experience Totals" subtitle="Aggregated from your logbook">
-          {allZero ? (
-            <Empty text="Log flights in your logbook to see your totals here." />
-          ) : (
-            <FlightDashboard totals={totals} styles={styles} palette={pilot} />
-          )}
-        </Section>
+        {/* Hours — Instagram-style counters */}
+        <View style={styles.igStatsRow}>
+          {([['Total hours', totals?.totalTime], ['PIC', totals?.picTime], ['SIC', totals?.sicTime]] as [string, number][]).map(([label, v]) => (
+            <View key={label} style={{ alignItems: 'center' }}>
+              <Text style={styles.igStatNum}>{(Number(v) || 0).toFixed(0)}</Text>
+              <Text style={styles.igStatLabel}>{label}</Text>
+            </View>
+          ))}
+        </View>
 
-        {/* Flight map — every airport recorded in the logbook */}
-        <Section title="Your flight map" subtitle="Every airport recorded in your logbook">
-          <FlightMap />
-        </Section>
+        {/* Map + airport statistics popup trigger */}
+        <Pressable
+          style={({ pressed }) => [styles.mapBtn, pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 }]}
+          onPress={() => setShowMap(true)}
+        >
+          <Ionicons name="map-outline" size={17} color="#FFFFFF" />
+          <Text style={styles.mapBtnText}>Flight map & airports</Text>
+        </Pressable>
 
+        {/* Tab row — Licences is the default leftmost tab */}
+        <View style={styles.igTabs}>
+          {([['licences', 'Licences'], ['medical', 'Medical'], ['ratings', 'Ratings'], ['training', 'Training'], ['details', 'Details']] as const).map(([key, label]) => (
+            <Pressable key={key} onPress={() => setTab(key)} style={[styles.igTab, tab === key && styles.igTabActive]}>
+              <Text style={[styles.igTabText, tab === key && styles.igTabTextActive]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {tab === 'details' && (<>
         {/* Personal Information (read-only; edit via /profile/edit) */}
         <Section title="Personal Information" subtitle="Basic details on your account">
           <ItemRow title="Name" sub={[profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || '—'} />
@@ -186,6 +218,9 @@ export default function ProfileView() {
         </Section>
 
         {/* Licences */}
+        </>)}
+
+        {tab === 'licences' && (<>
         <Section title="My Pilot Licences" subtitle="Add every licence you hold" onAdd={() => setActiveCred('licence')}>
           {licences.length === 0 ? <Empty text="No licences added yet." /> : licences.map((c: Any) => (
             <ItemRow key={c.id} title={LICENCE_LABEL[c.type] || c.type} onDelete={() => confirmDelete(CREDENTIALS.licence.deletePath(c.id))}
@@ -194,6 +229,9 @@ export default function ProfileView() {
         </Section>
 
         {/* Medical */}
+        </>)}
+
+        {tab === 'medical' && (<>
         <Section title="Medical Certificate" subtitle="Required by most airlines" onAdd={() => setActiveCred('medical')}>
           {medicals.length === 0 ? <Empty text="No medical certificate added." /> : medicals.map((m: Any) => {
             const expired = new Date(m.expiryDate) < new Date();
@@ -203,6 +241,9 @@ export default function ProfileView() {
         </Section>
 
         {/* Type Ratings */}
+        </>)}
+
+        {tab === 'ratings' && (<>
         <Section title="Aircraft Type Ratings" subtitle="Aircraft you are rated to fly" onAdd={() => setActiveCred('rating')}>
           {ratings.length === 0 ? <Empty text="No type ratings added." /> : ratings.map((r: Any) => (
             <ItemRow key={r.id} title={r.aircraftType} onDelete={() => confirmDelete(CREDENTIALS.rating.deletePath(r.id))}
@@ -211,6 +252,9 @@ export default function ProfileView() {
         </Section>
 
         {/* ELP */}
+        </>)}
+
+        {tab === 'training' && (<>
         <Section title="English Language Proficiency" subtitle="ICAO ELP — required for all international operations" onAdd={() => setActiveCred('elp')}>
           {elp.length === 0 ? <Empty text="No ELP record added. ICAO Level 4 minimum is required by most airlines." /> : elp.map((i: Any) => (
             <ItemRow key={i.id} title={`ICAO ${i.level}`} onDelete={() => confirmDelete(CREDENTIALS.elp.deletePath(i.id))}
@@ -218,6 +262,9 @@ export default function ProfileView() {
           ))}
         </Section>
 
+        </>)}
+
+        {tab === 'training' && (<>
         {/* Recurrent Training */}
         <Section title="Recurrent Training" subtitle="Track your mandatory recurrent training" onAdd={() => setActiveCred('recurrent')}>
           {recurrent.length === 0 ? <Empty text="No recurrent training records." /> : recurrent.map((i: Any) => (
@@ -226,6 +273,9 @@ export default function ProfileView() {
           ))}
         </Section>
 
+        </>)}
+
+        {tab === 'details' && (<>
         {/* Right to Work */}
         <Section title="Right to Work" subtitle="Countries where you have the right to work" onAdd={() => setActiveCred('rtw')}>
           {rtw.length === 0 ? <Empty text="No right-to-work documents added." /> : rtw.map((i: Any) => (
@@ -233,6 +283,8 @@ export default function ProfileView() {
               sub={<>{i.documentType}{i.documentNumber ? ` · #${i.documentNumber}` : ''}{i.noExpiry ? ' · No expiry' : i.expiryDate ? ` · Exp ${formatDate(i.expiryDate)}` : ''}</>} />
           ))}
         </Section>
+
+        </>)}
 
         {/* My Applications (mobile-only surface for GET /jobs/applications) */}
         <Section title="My Applications" subtitle={`${apps.length} application${apps.length === 1 ? '' : 's'}`}>
@@ -264,6 +316,13 @@ export default function ProfileView() {
             <Ionicons name="chevron-forward" size={18} color={pilot.muted} />
           </Pressable>
         </Section>
+
+        {/* Flight map + airport statistics popup */}
+        <Sheet visible={showMap} title="Flight map & airports" onClose={() => setShowMap(false)}>
+          {!allZero ? <FlightDashboard totals={totals} styles={styles} palette={pilot} /> : null}
+          <View style={{ height: 14 }} />
+          <FlightMap />
+        </Sheet>
 
         <View style={{ marginTop: 8 }}>
           <SecondaryButton label="Log out" onPress={logout} />
@@ -371,6 +430,23 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   emptyNote: { color: pilot.muted, fontSize: fontSizes.sm, fontStyle: 'italic', fontFamily: fontFamilies.body },
 
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  igHeader: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 18 },
+  igAvatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center' },
+  igAvatarText: { color: '#FFFFFF', fontFamily: fontFamilies.display, fontSize: 28, fontWeight: '600' },
+  igName: { fontFamily: fontFamilies.display, fontSize: 22, color: pilot.ink, fontWeight: '600' },
+  igPhone: { fontSize: 13, fontFamily: fontFamilies.body, color: pilot.muted, marginTop: 2 },
+  igRolePill: { alignSelf: 'flex-start', backgroundColor: 'rgba(0,63,136,0.08)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 },
+  igRoleText: { fontSize: 12, fontFamily: fontFamilies.bodySemiBold, color: pilot.navy },
+  igStatsRow: { flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1, borderBottomWidth: 1, borderColor: pilot.line, paddingVertical: 12, marginBottom: 12 },
+  igStatNum: { fontFamily: fontFamilies.mono, fontSize: 20, fontWeight: '800', color: pilot.ink },
+  igStatLabel: { fontSize: 11, fontFamily: fontFamilies.bodyMedium, color: pilot.muted, marginTop: 2 },
+  mapBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: pilot.navy, borderRadius: 10, paddingVertical: 12, marginBottom: 16 },
+  mapBtnText: { color: '#FFFFFF', fontSize: 14, fontFamily: fontFamilies.bodySemiBold },
+  igTabs: { flexDirection: 'row', borderBottomWidth: 1, borderColor: pilot.line, marginBottom: 16 },
+  igTab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  igTabActive: { borderBottomColor: pilot.navy },
+  igTabText: { fontSize: 11.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  igTabTextActive: { color: pilot.navy },
   dashTop: { flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 16 },
   donutWrap: { width: 124, height: 124, alignItems: 'center', justifyContent: 'center' },
   donutCenter: { position: 'absolute', alignItems: 'center' },
