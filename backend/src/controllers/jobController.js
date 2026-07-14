@@ -348,58 +348,59 @@ exports.getJob = async (req, res, next) => {
 exports.getMyAlerts = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, filter = 'all', sort = 'newest' } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
 
-    const where = { pilotId: req.pilot.id };
-
-    // Filter bucket
-    if (filter === 'unread') {
-      where.readAt = null;
-      where.dismissedAt = null;
-    } else if (filter === 'dismissed') {
-      where.dismissedAt = { not: null };
-    } else if (filter === 'noreq') {
-      // Jobs that didn't specify any requirements — can't be scored, surfaced
-      // in their own bucket so pilots can review them manually.
-      where.dismissedAt = null;
-      where.job = NO_REQ_JOB_WHERE;
-    } else if (filter === 'saved') {
-      const savedJobIds = (
-        await prisma.savedJob.findMany({ where: { pilotId: req.pilot.id }, select: { jobId: true } })
-      ).map((s) => s.jobId);
-      where.jobId = { in: savedJobIds };
-      where.dismissedAt = null;
-    } else {
-      // 'all' — exclude dismissed
-      where.dismissedAt = null;
-    }
-
-    // Sort
-    let orderBy;
-    switch (sort) {
-      case 'score':
-        orderBy = [{ matchScore: 'desc' }, { createdAt: 'desc' }];
-        break;
-      case 'deadline':
-        orderBy = [{ job: { expiresAt: { sort: 'asc', nulls: 'last' } } }, { createdAt: 'desc' }];
-        break;
-      default:
-        orderBy = { createdAt: 'desc' };
-    }
-
-    const [alerts, total] = await Promise.all([
-      prisma.jobAlert.findMany({
-        where,
-        include: { job: true },
-        orderBy,
-        skip,
-        take: Number(limit),
+    // Small per-pilot volumes: fetch once, classify in JS so every bucket uses
+    // the SAME strict qualification the badge uses — the list and the number
+    // can never disagree again.
+    const [alerts, pilot, totals, saved] = await Promise.all([
+      prisma.jobAlert.findMany({ where: { pilotId: req.pilot.id }, include: { job: true } }),
+      prisma.pilot.findUnique({
+        where: { id: req.pilot.id },
+        include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
       }),
-      prisma.jobAlert.count({ where }),
+      getPilotFlightTotals(req.pilot.id),
+      prisma.savedJob.findMany({ where: { pilotId: req.pilot.id }, select: { jobId: true } }),
     ]);
+    const savedSet = new Set(saved.map((x) => x.jobId));
 
-    const presented = alerts.map((a) => ({ ...a, job: presentJob(a.job) }));
-    res.json({ alerts: presented, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
+    const isQualified = (job) =>
+      !!job && jobHasRequirements(job) && computeMatchScore(pilot, totals, job) != null;
+    const isNoReq = (job) => !!job && !jobHasRequirements(job);
+
+    let bucket;
+    if (filter === 'unread') {
+      bucket = (a) => !a.dismissedAt && !a.readAt && isQualified(a.job);
+    } else if (filter === 'partial') {
+      // Below 100%: job states requirements and the pilot misses at least one.
+      bucket = (a) => !a.dismissedAt && !!a.job && jobHasRequirements(a.job) && !isQualified(a.job);
+    } else if (filter === 'noreq') {
+      bucket = (a) => !a.dismissedAt && isNoReq(a.job);
+    } else if (filter === 'dismissed') {
+      bucket = (a) => !!a.dismissedAt;
+    } else if (filter === 'saved') {
+      bucket = (a) => !a.dismissedAt && savedSet.has(a.jobId);
+    } else {
+      // 'all' (default view): ONLY 100% matches — the badge counts these.
+      bucket = (a) => !a.dismissedAt && isQualified(a.job);
+    }
+
+    let list = alerts.filter(bucket);
+
+    if (sort === 'score') {
+      list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0) || (b.createdAt - a.createdAt));
+    } else if (sort === 'deadline') {
+      const exp = (a) => (a.job?.expiresAt ? new Date(a.job.expiresAt).getTime() : Infinity);
+      list.sort((a, b) => exp(a) - exp(b) || (b.createdAt - a.createdAt));
+    } else {
+      list.sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    const total = list.length;
+    const skip = (Number(page) - 1) * Number(limit);
+    const pageItems = list.slice(skip, skip + Number(limit))
+      .map((a) => ({ ...a, job: presentJob(a.job) }));
+
+    res.json({ alerts: pageItems, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
   } catch (err) {
     next(err);
   }

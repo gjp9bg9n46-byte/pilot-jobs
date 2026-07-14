@@ -185,6 +185,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
   const chips = [
     { key: 'all',       label: 'All' },
     { key: 'unread',    label: 'Unread' },
+    { key: 'partial',   label: 'Partial matches' },
     { key: 'saved',     label: 'Saved' },
     { key: 'dismissed', label: 'Dismissed' },
   ];
@@ -215,16 +216,18 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* Standalone "No requirements" view toggle — its own space, top right */}
           <button
+            className="ch-chip"
             onClick={() => setFilter(filter === 'noreq' ? 'all' : 'noreq')}
             style={{
-              padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              border: `1.5px dashed ${filter === 'noreq' ? 'var(--accent)' : 'var(--border)'}`,
+              padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              height: 36, display: 'inline-flex', alignItems: 'center',
+              border: `1px solid ${filter === 'noreq' ? 'var(--accent)' : 'var(--border)'}`,
               color: filter === 'noreq' ? '#fff' : 'var(--text-secondary)',
               background: filter === 'noreq' ? 'var(--accent)' : 'var(--surface)',
               fontFamily: 'var(--font-body)', transition: 'all 0.15s', whiteSpace: 'nowrap',
             }}
           >
-            No requirements listed
+            No requirements
           </button>
           <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px' }}>
             <option value="newest">Newest</option>

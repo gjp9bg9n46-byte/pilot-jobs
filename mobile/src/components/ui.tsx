@@ -4,7 +4,7 @@
 // frontend/src/components/auth/*. Pilot surfaces use Fraunces for the logo;
 // employer surfaces pass `variant="employer"` to render Inter headers (the web
 // .app-b2b scope collapses the display font to Inter).
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -81,8 +81,12 @@ export function Checkbox({ label, value, onChange }: { label: string; value: boo
 // Bottom-sheet modal used by the credential add forms.
 export function Sheet({ visible, title, onClose, children }: { visible: boolean; title: string; onClose: () => void; children: React.ReactNode }) {
   const styles = useThemedStyles(createStyles);
+  // Heavy children (maps, charts) used to mount in the same frame the modal
+  // slides in, making the animation stutter. Mount them AFTER the slide lands.
+  const [ready, setReady] = useState(false);
+  useEffect(() => { if (!visible) setReady(false); }, [visible]);
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} onShow={() => setTimeout(() => setReady(true), 50)}>
       <View style={styles.sheetBackdrop}>
         <View style={styles.sheetBody}>
           <View style={styles.sheetHead}>
@@ -90,7 +94,7 @@ export function Sheet({ visible, title, onClose, children }: { visible: boolean;
             <Pressable onPress={onClose} hitSlop={10}><Text style={styles.sheetClose}>✕</Text></Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            {children}
+            {ready ? children : <ActivityIndicator style={{ marginTop: 32 }} />}
           </ScrollView>
         </View>
       </View>

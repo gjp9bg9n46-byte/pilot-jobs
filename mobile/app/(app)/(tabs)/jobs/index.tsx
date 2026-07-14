@@ -277,14 +277,14 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
 
   // Card rows — identical treatment to the Matches (alerts) cards.
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line,
     borderLeftWidth: 4, borderLeftColor: pilot.line, borderRadius: 14,
     padding: 14, marginHorizontal: spacing.xl, marginBottom: 12,
   },
   rowPressed: { backgroundColor: 'rgba(0,63,136,0.04)' },
-  rowTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 23 },
-  rowSub: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 4 },
+  rowTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 21 },
+  rowSub: { fontSize: fontSizes.sm, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, marginTop: 3 },
   matchPill: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
   matchPillText: { fontSize: fontSizes.xs, fontFamily: fontFamilies.bodyBold },
 

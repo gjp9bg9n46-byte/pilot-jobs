@@ -182,7 +182,7 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
 // ─── Matches tab ──────────────────────────────────────────────────────────────
 
 // No 'saved' chip — saved jobs have their own tab at the top of the screen.
-const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['dismissed', 'Dismissed']];
+const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['partial', 'Partial'], ['dismissed', 'Dismissed']];
 const SORTS: [string, string][] = [['newest', 'Newest'], ['score', 'Best Match'], ['deadline', 'Deadline']];
 
 function MatchesTab({ header }: { header?: ReactNode }) {
@@ -483,8 +483,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   controls: { marginBottom: 12 },
   chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' },
   noreqBtn: {
-    marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
-    borderWidth: 1.5, borderStyle: 'dashed', borderColor: pilot.line, backgroundColor: pilot.surface,
+    marginLeft: 'auto', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+    borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface,
   },
   noreqBtnActive: { backgroundColor: pilot.navy, borderColor: pilot.navy },
   chip: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface },
