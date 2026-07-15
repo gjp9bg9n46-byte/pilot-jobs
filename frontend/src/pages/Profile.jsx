@@ -8,6 +8,7 @@ import { profileApi } from '../services/api';
 import AircraftCombobox from '../components/AircraftCombobox';
 import FlightMap from '../components/FlightMap';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const LICENCE_TYPES = [
   { value: 'ATPL', label: 'ATPL — Airline Transport Pilot' },
@@ -880,6 +881,7 @@ function RightToWorkCard({ confirmDelete }) {
 }
 
 export default function Profile() {
+  const isMobile = useIsMobile();
   const pilot = useSelector((s) => s.auth.pilot);
   const [profile, setProfile] = useState(null);
   const [totals, setTotals] = useState(null);
@@ -941,33 +943,40 @@ export default function Profile() {
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       {/* ── Instagram-style header: avatar + name / phone / role ─────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 28, marginBottom: 26, flexWrap: 'wrap' }}>
-        <div style={{ width: 92, height: 92, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 34, fontWeight: 600, flexShrink: 0 }}>
+        <div style={{ width: isMobile ? 76 : 92, height: isMobile ? 76 : 92, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: isMobile ? 28 : 34, fontWeight: 600, flexShrink: 0 }}>
           {initials}
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.15 }}>{fullName}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 22 : 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.15 }}>{fullName}</div>
           {profile?.phone ? <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>{profile.phone}</div> : null}
           {roleLabel ? <div style={{ display: 'inline-block', marginTop: 8, background: 'rgba(0,63,136,0.08)', color: 'var(--accent)', fontWeight: 600, fontSize: 13, padding: '4px 12px', borderRadius: 14 }}>{roleLabel}</div> : null}
         </div>
       </div>
 
-      {/* Hours — Instagram-style counters + map button */}
-      <div style={{ display: 'flex', gap: 36, alignItems: 'center', padding: '16px 4px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', marginBottom: 4, flexWrap: 'wrap' }}>
+      {/* Hours — Instagram-style counters (+ map button: inline on desktop, full-width bar on phones like the app) */}
+      <div style={{ display: 'flex', gap: isMobile ? 0 : 36, alignItems: 'center', justifyContent: isMobile ? 'space-around' : 'flex-start', padding: '16px 4px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', marginBottom: isMobile ? 12 : 4, flexWrap: 'wrap' }}>
         {[['Total hours', totals?.totalTime], ['PIC', totals?.picTime], ['SIC', totals?.sicTime]].map(([label, v]) => (
           <div key={label} style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums', fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{(Number(v) || 0).toFixed(0)}</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums', fontSize: isMobile ? 20 : 22, fontWeight: 800, color: 'var(--text-primary)' }}>{(Number(v) || 0).toFixed(0)}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{label}</div>
           </div>
         ))}
-        <button className="ch-btn" onClick={() => setShowMap(true)} style={{ marginLeft: 'auto', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+        {!isMobile && (
+          <button className="ch-btn" onClick={() => setShowMap(true)} style={{ marginLeft: 'auto', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+            Flight map & airports
+          </button>
+        )}
+      </div>
+      {isMobile && (
+        <button className="ch-btn" onClick={() => setShowMap(true)} style={{ width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', marginBottom: 14 }}>
           Flight map & airports
         </button>
-      </div>
+      )}
 
       {/* Tab row — Licences is the default leftmost tab */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto' }}>
-        {[['licences', 'Licences'], ['medical', 'Medical'], ['ratings', 'Type ratings'], ['training', 'Training'], ['details', 'Details']].map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)} style={{ background: 'none', border: 'none', borderBottom: `2px solid ${tab === key ? 'var(--accent)' : 'transparent'}`, color: tab === key ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 600, fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '10px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
+        {[['licences', 'Licences'], ['medical', 'Medical'], ['ratings', isMobile ? 'Ratings' : 'Type ratings'], ['training', 'Training'], ['details', 'Details']].map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} style={{ flex: isMobile ? 1 : 'none', background: 'none', border: 'none', borderBottom: `2px solid ${tab === key ? 'var(--accent)' : 'transparent'}`, color: tab === key ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 600, fontSize: isMobile ? 11.5 : 13, letterSpacing: '0.04em', textTransform: 'uppercase', padding: isMobile ? '10px 2px' : '10px 16px', cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
             {label}
           </button>
         ))}

@@ -12,9 +12,8 @@ import Svg, { Circle } from 'react-native-svg';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
-import { SecondaryButton, Sheet } from '../../../../src/components/ui';
+import { SecondaryButton } from '../../../../src/components/ui';
 import CredentialModal from '../../../../src/components/CredentialModal';
-import FlightMap from '../../../../src/components/FlightMap';
 import { CREDENTIALS } from '../../../../src/lib/credentialConfigs';
 import { useAuth } from '../../../../src/context/AuthContext';
 import {
@@ -90,7 +89,7 @@ export default function ProfileView() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const [tab, setTab] = useState<'licences' | 'medical' | 'ratings' | 'training' | 'details'>('licences');
-  const [showMap, setShowMap] = useState(false);
+
   const router = useRouter();
   const { logout } = useAuth();
   const [profile, setProfile] = useState<Any | null>(null);
@@ -191,7 +190,7 @@ export default function ProfileView() {
         {/* Map + airport statistics popup trigger */}
         <Pressable
           style={({ pressed }) => [styles.mapBtn, pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 }]}
-          onPress={() => setShowMap(true)}
+          onPress={() => router.push('/profile/flight-map')}
         >
           <Ionicons name="map-outline" size={17} color="#FFFFFF" />
           <Text style={styles.mapBtnText}>Flight map & airports</Text>
@@ -317,12 +316,6 @@ export default function ProfileView() {
           </Pressable>
         </Section>
 
-        {/* Flight map + airport statistics popup */}
-        <Sheet visible={showMap} title="Flight map & airports" onClose={() => setShowMap(false)}>
-          {!allZero ? <FlightDashboard totals={totals} styles={styles} palette={pilot} /> : null}
-          <View style={{ height: 14 }} />
-          <FlightMap />
-        </Sheet>
 
         <View style={{ marginTop: 8 }}>
           <SecondaryButton label="Log out" onPress={logout} />
@@ -337,7 +330,7 @@ export default function ProfileView() {
 // Mirrors the web Profile dashboard. Donut splits TOTAL time by role (PIC/SIC
 // sum to the total); night/instrument/multi/turbine overlap each other, so
 // they render as bars showing their share of total time instead.
-function FlightDashboard({ totals, styles, palette }: { totals: Any; styles: Any; palette: ThemePalette }) {
+export function FlightDashboard({ totals, styles, palette }: { totals: Any; styles: Any; palette: ThemePalette }) {
   const total = Number(totals?.totalTime) || 0;
   const pic = Number(totals?.picTime) || 0;
   const sic = Number(totals?.sicTime) || 0;
