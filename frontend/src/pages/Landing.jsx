@@ -11,7 +11,7 @@ const FEATURES = [
   { icon: Target,       title: 'Matched to your ratings',  body: 'Enter your certificates (ATPL, CPL), total hours, PIC time, aircraft type ratings, and issuing authority. We surface only the jobs you meet the minimums for.', photo: 'feature-ratings.webp' },
   { title: 'Instant push alerts',      body: 'New job that matches your profile? You get a push notification within minutes of it hitting the board — before the rush of applicants.', photo: 'feature-alerts.webp' },
   { title: 'Digital logbook',         body: 'Log flights directly in the app. Import from ForeFlight CSV or manual entry. Your totals update in real-time and power the matching engine.', photo: 'feature-logbook.webp' },
-  { icon: Globe,        title: 'Global coverage',          body: 'Jobs across FAA, EASA, GCAA, CAAC, and CASA authorities. Regional airlines, flag carriers, cargo operators, and eVTOL companies.', photo: 'feature-coverage.webp' },
+  { icon: Globe,        title: 'Global coverage',          body: 'Jobs across FAA, EASA, GCAA, CAAC, and CASA authorities. Regional airlines, flag carriers, cargo operators, and business-jet operators.', photo: 'feature-coverage.webp' },
   { icon: Lock,         title: 'Private by default',       body: 'Your profile is invisible until you choose to share it. Anonymous browsing mode lets you research jobs without leaving a trace.', photo: 'feature-private.webp' },
 ];
 
@@ -144,7 +144,7 @@ export default function Landing() {
     Number.isFinite(stats.airlinesCount) && stats.airlinesCount > 0
       ? { num: String(stats.airlinesCount), label: 'Airline factfiles', amber: true } : null,
     Number.isFinite(stats.activeJobsCount) && stats.activeJobsCount > 0
-      ? { num: String(stats.activeJobsCount), label: 'Pilot jobs live now' } : null,
+      ? { num: String(stats.activeJobsCount), label: 'Verified pilot jobs live now' } : null,
     Number.isFinite(stats.fleetProfilesCount) && stats.fleetProfilesCount > 0
       ? { num: String(stats.fleetProfilesCount), label: 'With detailed fleets' } : null,
     freshness ? { num: freshness, label: 'Data refreshed' } : null,
@@ -272,7 +272,7 @@ export default function Landing() {
         <div style={css.heroContent}>
           <h1 className="hero-headline" style={css.heroH1}>Your next command,<br />matched to your licence</h1>
           <p style={css.heroSub}>Filtered by your ratings, hours, and authority. No noise.</p>
-          <Link to="/login" className="btn-primary" style={css.btnPrimary}>Open the Web App</Link>
+          <Link to="/register" className="btn-primary" style={css.btnPrimary}>Create your free pilot profile</Link>
         </div>
       </header>
 
