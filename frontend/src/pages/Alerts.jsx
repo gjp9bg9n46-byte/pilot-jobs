@@ -21,8 +21,8 @@ const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
 function PlaneSave({ saved, size = 18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={saved ? 'var(--accent)' : 'none'} stroke={saved ? 'var(--accent)' : 'var(--text-secondary)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      {/* Top-down commercial airplane silhouette */}
-      <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 12 2a1.5 1.5 0 0 0-1.5 1.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+      {/* Bookmark "saved" marker */}
+      <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
     </svg>
   );
 }
@@ -222,7 +222,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
             </button>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', ...(isMobile ? { width: '100%' } : {}) }}>
           {/* Standalone "No requirements" view toggle — its own space, top right */}
           {!isMobile && (
             <button
@@ -240,13 +240,13 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
               No requirements
             </button>
           )}
-          <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px' }}>
+          <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px', ...(isMobile ? { flex: 1, width: '50%' } : {}) }}>
             <option value="newest">Newest</option>
             <option value="score">Best Match</option>
             <option value="deadline">Deadline</option>
           </Input>
           {unreadCount > 0 && (
-            <Button variant="secondary" onClick={handleMarkAll} disabled={markingAll}>
+            <Button variant="secondary" onClick={handleMarkAll} disabled={markingAll} style={isMobile ? { flex: 1, width: '50%' } : undefined}>
               {markingAll ? 'Marking…' : 'Mark all read'}
             </Button>
           )}
@@ -729,12 +729,12 @@ export default function Alerts() {
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       {/* Page header */}
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Alerts</h1>
-      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Cockpit roles, matched to your profile.</p>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 26 : 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: isMobile ? 4 : 8 }}>Alerts</h1>
+      <p style={{ fontSize: isMobile ? 14 : 15, color: 'var(--text-secondary)', marginBottom: isMobile ? 10 : 28 }}>Cockpit roles, matched to your profile.</p>
 
       {/* Tab pills */}
       <div style={{
-        display: 'flex', gap: 6, marginBottom: 28,
+        display: 'flex', gap: 6, marginBottom: isMobile ? 12 : 28,
         background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 50,
         padding: 5, width: 'fit-content',
       }}>

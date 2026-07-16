@@ -10,6 +10,8 @@ import { jobApi, profileApi } from '../services/api';
 import { setJobs } from '../store';
 import { LightPage, Card, Input, Button, Badge } from '../components/primitives';
 import AirlineLogo from '../components/AirlineLogo';
+import MatchScore from '../components/MatchScore';
+import { matchStyle } from '../lib/jobMatch';
 import { useIsMobile } from '../hooks/useIsMobile';
 import {
   computeMatchCount, matchLabel, postedAgo, formatSalary,
@@ -53,8 +55,8 @@ export function MatchCountBadge({ matched, total, hideIfEmpty = false }) {
 function PlaneSave({ saved, size = 18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={saved ? 'var(--accent)' : 'none'} stroke={saved ? 'var(--accent)' : 'var(--text-secondary)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      {/* Top-down commercial airplane silhouette */}
-      <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 12 2a1.5 1.5 0 0 0-1.5 1.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+      {/* Bookmark "saved" marker */}
+      <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
     </svg>
   );
 }
@@ -559,7 +561,7 @@ export default function Jobs() {
                 <div
                   key={job.id}
                   className="ch-card"
-                  style={{ ...css.card, ...(isHover ? css.cardHover : {}) }}
+                  style={{ ...css.card, ...(isMobile ? { padding: '14px 96px 14px 14px' } : {}), ...(isHover ? css.cardHover : {}) }}
                   onMouseEnter={() => setHoverId(job.id)}
                   onMouseLeave={() => setHoverId(null)}
                   onClick={() => navigate(`/jobs/${slugFor(job)}`)}
@@ -633,7 +635,16 @@ export default function Jobs() {
                   )}
 
                   {match && <span style={{ alignSelf: 'flex-start' }}><Badge variant={match.variant} style={{ fontWeight: 700 }}>✓ {match.text}</Badge></span>}
-                  {matchCount && <span style={{ alignSelf: 'flex-start' }}><MatchCountBadge matched={matchCount.matched} total={matchCount.total} /></span>}
+                  {matchCount && !isMobile && <span style={{ alignSelf: 'flex-start' }}><MatchCountBadge matched={matchCount.matched} total={matchCount.total} /></span>}
+                  {isMobile && matchCount && matchCount.total > 0 && (() => {
+                    const pct = Math.round((matchCount.matched / matchCount.total) * 100);
+                    const ms = matchStyle(pct);
+                    return (
+                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', textAlign: 'right', minWidth: 64 }}>
+                        <MatchScore score={pct} label={ms.label} size="sm" />
+                      </div>
+                    );
+                  })()}
 
                   {airlineMatch && (
                     <div
