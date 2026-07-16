@@ -29,7 +29,7 @@ const { fetchJooble } = require('./sources/jooble');
 const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement } = require('./normalize');
-const { filterAviationJobs, isAviationJob } = require('./filters');
+const { filterAviationJobs, isAviationJob, isNotHiringNotice } = require('./filters');
 const { collapseXSourceDuplicates, collapseSameAdAcrossLocations } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
@@ -214,6 +214,14 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       const withReqs = kept.filter((j) => hasAnyRequirement(j) || !looksEnglish(`${j.title} ${j.description}`));
       dropped += kept.length - withReqs.length;
       kept = withReqs;
+    }
+
+    // "We are not hiring" pages scraped as vacancies (e.g. a careers page
+    // stating no recruiting is anticipated this year) are not jobs at all.
+    {
+      const hiring = kept.filter((j) => !isNotHiringNotice(j.description));
+      dropped += kept.length - hiring.length;
+      kept = hiring;
     }
     stats.keptAfterFilter = kept.length;
 
@@ -438,12 +446,23 @@ async function revalidateActiveJobs(employers) {
     seenSources.add(emp.source);
     const jobs = await prisma.job.findMany({
       where: { sourcePlatform: emp.source, status: 'ACTIVE' },
-      select: { id: true, title: true, description: true, postedAt: true },
+      select: {
+        id: true, title: true, description: true, postedAt: true,
+        // Everything hasAnyRequirement() and the language guard below read —
+        // without these selected they're undefined and the floor never fires.
+        sourceLanguage: true, descriptionEn: true,
+        reqCertificates: true, reqAuthorities: true, reqAircraftTypes: true,
+        reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true,
+        reqMinTurbineHours: true, reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
+        reqMedicalClass: true, reqEducation: true, reqWorkAuthorization: true, reqEnglishLevel: true,
+      },
     });
     const badIds = jobs
       .filter((j) =>
         (j.postedAt && j.postedAt < cutoff) ||
         (!emp.skipFilter && !isAviationJob(j, { excludeOnly: !!emp.excludeOnly, requireContext: !!emp.requireContext })) ||
+        // "We are not hiring" notices scraped as if they were vacancies.
+        isNotHiringNotice(j.description) ||
         // Requirement floor: English (or already-translated) aggregator jobs
         // with zero structured requirements are noise — expire them.
         (emp.requireContext && !hasAnyRequirement(j) && (j.sourceLanguage === 'EN' || j.descriptionEn != null)))

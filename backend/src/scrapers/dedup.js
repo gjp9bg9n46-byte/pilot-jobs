@@ -189,6 +189,57 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
     });
   }
 
+  // Campaign collapse by SPECIFIC TITLE. Syndicated campaigns defeat the text
+  // fingerprint two ways: per-city description preambles ("...role based in
+  // Sydney, NSW" vs "...Melbourne, VIC") and publisher-name splits (the same
+  // ad credited to "Jetstar Airways" AND "National Jet Systems Pty Ltd"). A
+  // long, distinctive title (≥25 letters/digits — "A220 First Officer –
+  // National Jet Systems") is itself a reliable campaign signature on
+  // aggregators; generic titles ("First Officer", "Pilot") stay untouched.
+  const titled = await prisma.job.findMany({
+    where: { sourcePlatform: { in: sourcePlatforms }, status: 'ACTIVE', mergedInto: null },
+    select: { id: true, sourcePlatform: true, company: true, title: true, location: true, country: true, postedAt: true },
+  });
+  const titleGroups = new Map();
+  for (const job of titled) {
+    const sig = String(job.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (sig.length < 25) continue;
+    const k = [job.sourcePlatform, sig].join('|');
+    if (!titleGroups.has(k)) titleGroups.set(k, []);
+    titleGroups.get(k).push(job);
+  }
+  for (const [, group] of titleGroups) {
+    if (group.length < 2) continue;
+    group.sort((a, b) => new Date(a.postedAt) - new Date(b.postedAt));
+    // Canonical: the copy credited to a real airline (factfile hit) if any —
+    // it carries the honest company name — otherwise the oldest.
+    const canonical = group.find((j) => lookupAirlineBase(airlineBases, j.company)) ?? group[0];
+    const duplicates = group.filter((j) => j.id !== canonical.id);
+
+    const home = lookupAirlineBase(airlineBases, canonical.company);
+    const locations = new Set(group.map((j) => j.location));
+    if (locations.size > 1 || home?.base) {
+      const countries = [...new Set(group.map((j) => j.country).filter(Boolean))];
+      const newLocation = home?.base
+        ? home.base
+        : (countries.length === 1 ? countries[0] : 'Multiple locations');
+      await prisma.job.update({
+        where: { id: canonical.id },
+        data: { location: newLocation, ...(home?.country ? { country: home.country } : {}) },
+      });
+    }
+    for (const dup of duplicates) {
+      await prisma.job.update({
+        where: { id: dup.id },
+        data: { mergedInto: canonical.id, status: 'EXPIRED' },
+      });
+      collapsed++;
+    }
+    await prisma.jobAlert.deleteMany({
+      where: { jobId: { in: duplicates.map((d) => d.id) }, readAt: null },
+    });
+  }
+
   // Repost collapse: aggregators re-list the same vacancy under a fresh
   // externalId. Same source + company + title + location ⇒ keep the NEWEST
   // posting, merge the older copies into it.

@@ -262,4 +262,23 @@ function filterAviationJobs(jobs, source, employer, { excludeOnly = false, requi
   return { kept, dropped };
 }
 
-module.exports = { isAviationRole, isAviationJob, filterAviationJobs, AVIATION_TITLE_PATTERNS };
+// "We are not hiring" notices — careers-page text scraped as if it were a
+// vacancy (e.g. Zimex: "We do not anticipate any recruiting needs for 2026
+// ... absence of open positions"). Checked against the start of the ad, where
+// such disclaimers live; a closing "future openings" footer on a real job
+// should not kill it.
+const NOT_HIRING_PATTERNS = new RegExp([
+  'do\\s+not\\s+anticipate\\s+any\\s+recruiting',
+  'absence\\s+of\\s+open\\s+positions',
+  'no\\s+(?:current(?:ly)?\\s+)?open\\s+positions',
+  'not\\s+currently\\s+(?:hiring|recruiting|accepting\\s+applications)',
+  'we\\s+are\\s+not\\s+(?:hiring|recruiting)',
+  'unlikely\\s+to\\s+lead\\s+to\\s+an?\\s+(?:interview|assessment)',
+  'unsolicited\\s+applications?\\s+only',
+].join('|'), 'i');
+
+function isNotHiringNotice(description) {
+  return NOT_HIRING_PATTERNS.test(String(description || '').slice(0, 800));
+}
+
+module.exports = { isAviationRole, isAviationJob, filterAviationJobs, isNotHiringNotice, AVIATION_TITLE_PATTERNS };
