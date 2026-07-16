@@ -179,7 +179,7 @@ export function postedAgo(postedAt) {
   if (!postedAt) return null;
   const diff = Date.now() - new Date(postedAt).getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return 'Posted today';
+  if (days <= 0) return 'Posted today'; // future timestamps (timezone skew) clamp to today
   if (days === 1) return 'Posted 1 day ago';
   return `Posted ${days} days ago`;
 }

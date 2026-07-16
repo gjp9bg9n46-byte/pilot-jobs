@@ -640,7 +640,7 @@ export default function Jobs() {
                     const pct = Math.round((matchCount.matched / matchCount.total) * 100);
                     const ms = matchStyle(pct);
                     return (
-                      <div style={{ position: 'absolute', right: 12, bottom: 14, textAlign: 'right', minWidth: 64 }}>
+                      <div style={{ position: 'absolute', right: 12, top: 44, textAlign: 'right', minWidth: 64 }}>
                         <MatchScore score={pct} label={ms.label} size="sm" />
                       </div>
                     );

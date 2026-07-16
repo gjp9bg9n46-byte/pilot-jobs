@@ -54,6 +54,9 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
     'pilot\\s+phase',
     'pilot\\s+launch',
     'pilot\\s+initiative',
+    'engagement\\s+pilot',
+    'pilot\\s*\\(virtual\\)',
+    'virtual\\s+pilot',
     'autopilot',
     'auto-pilot',
     // Fixed-wing-only policy (owner directive): no drone/UAS and no rotary-wing roles.
