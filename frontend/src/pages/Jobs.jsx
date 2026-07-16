@@ -568,13 +568,13 @@ export default function Jobs() {
                 >
                   {/* Heart save button */}
                   <button
-                    style={css.heartBtn}
+                    style={{ ...css.heartBtn, ...(isMobile ? { top: 10, transform: 'none' } : {}) }}
                     onClick={(e) => { e.stopPropagation(); if (!token) { navigate('/login'); return; } handleSaveToggle(e, job.id); }}
                     title={token ? (isSaved ? 'Unsave job' : 'Save job') : 'Sign in to save'}
                     aria-label={token ? (isSaved ? 'Unsave job' : 'Save job') : 'Sign in to save'}
                     aria-pressed={isSaved}
                   >
-                    <PlaneSave saved={isSaved} size={36} />
+                    <PlaneSave saved={isSaved} size={isMobile ? 24 : 36} />
                   </button>
 
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -640,7 +640,7 @@ export default function Jobs() {
                     const pct = Math.round((matchCount.matched / matchCount.total) * 100);
                     const ms = matchStyle(pct);
                     return (
-                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', textAlign: 'right', minWidth: 64 }}>
+                      <div style={{ position: 'absolute', right: 12, bottom: 14, textAlign: 'right', minWidth: 64 }}>
                         <MatchScore score={pct} label={ms.label} size="sm" />
                       </div>
                     );

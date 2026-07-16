@@ -86,7 +86,7 @@ const FALSE_POSITIVE_PATTERNS = new RegExp(
     '\\bec\\s?1[0-9]{2}\\b',                        // EC120–EC155
     '\\bas\\s?3[0-9]{2}\\b',                        // AS350/355/365
     '\\bh1[2-7][05]\\b',                            // H120/125/130/135/145/155/160/175
-    '\\bs[-\\s]?92\\b', '\\bs[-\\s]?76\\b',
+    '\\bs[-\\s]?92\\b', '\\bs[-\\s]?76\\b', '\\bs[-\\s]?61\\b', '\\bs[-\\s]?64\\b', 'skycrane', 'sea\\s?king',
     '\\br(?:22|44|66)\\b',                          // Robinson
     '\\bmd\\s?5[03]0\\b',
     'bell\\s?(?:2[01][0-9]|4[01][0-9]|505|525|429)\\b',
@@ -206,6 +206,9 @@ function isAviationJob(job, { excludeOnly = false, requireContext = false } = {}
   if (!isAviationRole(title, { excludeOnly })) return false;
   if (!requireContext) return true;
   if (/\bpilote(s)?\b/i.test(title) && !FRENCH_PILOT_TITLE.test(title)) return false;
+  // Rotary-wing employer names ("Helicopter Jobs", "XYZ Rotor Services") — the
+  // title may not mention the aircraft, but the company gives it away.
+  if (/helicopter|rotorcraft|rotary|\bheli\b|\brotor\b/i.test(String(job.company || ''))) return false;
   const text = `${title} ${job.description || ''}`;
   if (DRONE_CONTEXT_PATTERNS.test(text)) return false;
   return AVIATION_CONTEXT_PATTERNS.test(text);

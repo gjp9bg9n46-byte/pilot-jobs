@@ -153,7 +153,7 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
           <Pressable onPress={onToggleSave} hitSlop={8} style={styles.saveBtn} accessibilityLabel={saved ? 'Unsave job' : 'Save job'}>
             <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={22} color={saved ? pilot.navy : pilot.muted} />
           </Pressable>
-          <MatchBadge score={alert.matchScore} />
+          <MatchBadge score={alert.qualified ? 100 : alert.matchScore} />
         </View>
       </Pressable>
 

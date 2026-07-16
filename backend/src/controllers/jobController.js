@@ -363,22 +363,23 @@ exports.getMyAlerts = async (req, res, next) => {
     ]);
     const savedSet = new Set(saved.map((x) => x.jobId));
 
+    const isActive = (job) => !!job && job.status === 'ACTIVE';
     const isQualified = (job) =>
-      !!job && jobHasRequirements(job) && computeMatchScore(pilot, totals, job) != null;
-    const isNoReq = (job) => !!job && !jobHasRequirements(job);
+      isActive(job) && jobHasRequirements(job) && computeMatchScore(pilot, totals, job) != null;
+    const isNoReq = (job) => isActive(job) && !jobHasRequirements(job);
 
     let bucket;
     if (filter === 'unread') {
       bucket = (a) => !a.dismissedAt && !a.readAt && isQualified(a.job);
     } else if (filter === 'partial') {
       // Below 100%: job states requirements and the pilot misses at least one.
-      bucket = (a) => !a.dismissedAt && !!a.job && jobHasRequirements(a.job) && !isQualified(a.job);
+      bucket = (a) => !a.dismissedAt && isActive(a.job) && jobHasRequirements(a.job) && !isQualified(a.job);
     } else if (filter === 'noreq') {
       bucket = (a) => !a.dismissedAt && isNoReq(a.job);
     } else if (filter === 'dismissed') {
       bucket = (a) => !!a.dismissedAt;
     } else if (filter === 'saved') {
-      bucket = (a) => !a.dismissedAt && savedSet.has(a.jobId);
+      bucket = (a) => !a.dismissedAt && isActive(a.job) && savedSet.has(a.jobId);
     } else {
       // 'all' (default view): ONLY 100% matches — the badge counts these.
       bucket = (a) => !a.dismissedAt && isQualified(a.job);
@@ -398,7 +399,7 @@ exports.getMyAlerts = async (req, res, next) => {
     const total = list.length;
     const skip = (Number(page) - 1) * Number(limit);
     const pageItems = list.slice(skip, skip + Number(limit))
-      .map((a) => ({ ...a, job: presentJob(a.job) }));
+      .map((a) => ({ ...a, qualified: isQualified(a.job), job: presentJob(a.job) }));
 
     res.json({ alerts: pageItems, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
   } catch (err) {

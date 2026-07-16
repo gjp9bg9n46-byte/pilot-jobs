@@ -240,13 +240,13 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
               No requirements
             </button>
           )}
-          <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px', ...(isMobile ? { flex: 1, width: '50%' } : {}) }}>
+          <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px', ...(isMobile ? { flex: '1 1 0%', width: 'auto', minWidth: 0 } : {}) }}>
             <option value="newest">Newest</option>
             <option value="score">Best Match</option>
             <option value="deadline">Deadline</option>
           </Input>
           {unreadCount > 0 && (
-            <Button variant="secondary" onClick={handleMarkAll} disabled={markingAll} style={isMobile ? { flex: 1, width: '50%' } : undefined}>
+            <Button variant="secondary" onClick={handleMarkAll} disabled={markingAll} style={isMobile ? { flex: '1 1 0%', minWidth: 0, justifyContent: 'center' } : undefined}>
               {markingAll ? 'Marking…' : 'Mark all read'}
             </Button>
           )}
@@ -267,7 +267,10 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
 
       {/* Alert cards */}
       {alerts.map((alert) => {
-        const m = matchStyle(alert.matchScore);
+        // Qualified alerts (the All list) always read 100% — the strict check is
+        // the source of truth; the stored lenient score stays for Partial cards.
+        const displayScore = alert.qualified ? 100 : alert.matchScore;
+        const m = matchStyle(displayScore);
         const isOpen = expanded === alert.id;
         const isUnread = !alert.readAt;
         const isHover = hovered === alert.id;
@@ -297,7 +300,7 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 font={12}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, ...(isMobile ? { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : {}) }}>
                   {alert.job?.title ?? alert.jobTitle ?? '—'}
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 600, marginBottom: 8 }}>
@@ -361,8 +364,8 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
                 {/* Match score — editorial typographic lockup (no ring/fill/border).
                     Interim clamp lives in <MatchScore> — computeAlertScore is
                     un-normalised (max 135); display caps at 100 meanwhile. */}
-                <div style={{ minWidth: isMobile ? 64 : 80 }}>
-                  <MatchScore score={alert.matchScore} label={m.label} size={isMobile ? 'sm' : 'lg'} />
+                <div style={{ minWidth: isMobile ? 56 : 80 }}>
+                  <MatchScore score={displayScore} label={m.label} size={isMobile ? 'sm' : 'lg'} />
                 </div>
               </div>
             </div>
