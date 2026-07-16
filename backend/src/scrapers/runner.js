@@ -28,7 +28,7 @@ const { fetchAdzuna } = require('./sources/adzuna');
 const { fetchJooble } = require('./sources/jooble');
 const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
-const { normalize }      = require('./normalize');
+const { normalize, hasAnyRequirement } = require('./normalize');
 const { filterAviationJobs, isAviationJob } = require('./filters');
 const { collapseXSourceDuplicates, collapseSameAdAcrossLocations } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
@@ -203,6 +203,17 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       const fresh = kept.filter((j) => !j.postedAt || j.postedAt >= cutoff);
       dropped += kept.length - fresh.length;
       kept = fresh;
+    }
+
+    // Requirement floor for aggregators (owner directive): a listing that
+    // states NO extractable requirements is noise on a matching platform.
+    // Non-English jobs get a pass here — translation extracts their
+    // requirements later, and the sweep re-checks them afterwards.
+    if (empConfig.requireContext) {
+      const looksEnglish = (t) => ((String(t || '').slice(0, 500).match(/\b(the|and|with|for|you|will|are|this|that|from|have|our|is|of|to)\b/gi) || []).length >= 3);
+      const withReqs = kept.filter((j) => hasAnyRequirement(j) || !looksEnglish(`${j.title} ${j.description}`));
+      dropped += kept.length - withReqs.length;
+      kept = withReqs;
     }
     stats.keptAfterFilter = kept.length;
 
@@ -432,7 +443,10 @@ async function revalidateActiveJobs(employers) {
     const badIds = jobs
       .filter((j) =>
         (j.postedAt && j.postedAt < cutoff) ||
-        (!emp.skipFilter && !isAviationJob(j, { excludeOnly: !!emp.excludeOnly, requireContext: !!emp.requireContext })))
+        (!emp.skipFilter && !isAviationJob(j, { excludeOnly: !!emp.excludeOnly, requireContext: !!emp.requireContext })) ||
+        // Requirement floor: English (or already-translated) aggregator jobs
+        // with zero structured requirements are noise — expire them.
+        (emp.requireContext && !hasAnyRequirement(j) && (j.sourceLanguage === 'EN' || j.descriptionEn != null)))
       .map((j) => j.id);
     if (badIds.length) {
       const { count } = await prisma.job.updateMany({

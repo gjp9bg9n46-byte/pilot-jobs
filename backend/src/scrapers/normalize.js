@@ -575,4 +575,20 @@ function normalize(raw, empConfig) {
   }
 }
 
-module.exports = { normalize, extractRequirements, extractSalary, htmlToText };
+
+/** True when a normalized/stored job carries at least one structured requirement. */
+function hasAnyRequirement(job) {
+  return (
+    (job.reqCertificates?.length || 0) > 0 ||
+    (job.reqAuthorities?.length || 0) > 0 ||
+    (job.reqAircraftTypes?.length || 0) > 0 ||
+    job.reqMinTotalHours != null || job.reqMinPicHours != null ||
+    job.reqMinMultiEngineHours != null || job.reqMinTurbineHours != null ||
+    job.reqMinInstrumentHours != null || job.reqMinCrossCountryHours != null ||
+    job.reqMedicalClass != null || job.reqEducation != null ||
+    job.reqWorkAuthorization != null || job.reqEnglishLevel != null
+  );
+}
+
+module.exports = {
+  hasAnyRequirement, normalize, extractRequirements, extractSalary, htmlToText };

@@ -199,6 +199,34 @@ const FRENCH_PILOT_TITLE = new RegExp(
  * @param {{title: string, description?: string}} job
  * @returns {boolean}
  */
+// Strong pilot signals — an aggregator job must either carry a role-specific
+// title (not just the bare word "pilot") or show real flying credentials in
+// its text (licence, hours, type rating). Bare-"pilot" corporate roles
+// ("Global Engagement Pilot") carry neither and get dropped.
+const STRONG_TITLE_PATTERNS = new RegExp(
+  [
+    'captain', 'first\\s+officer', '1st\\s+officer', 'second\\s+officer', 'f\\/o',
+    'co[-\\s]?pilot', 'copilote?', 'instructor', 'instructeur', 'examiner',
+    'check\\s+airman', 'chief\\s+pilot', 'aircraft\\s+commander', 'line\\s+training',
+    'pilote\\s+de\\s+ligne', 'piloto\\s+de\\s+l[ií]nea',
+    '(?:airline|commercial|corporate|charter|cargo|ferry|survey|ag|bush|fixed[-\\s]?wing|test)\\s+pilot',
+    '(?:b7\\d{2}|a[23]\\d{2}|a220|e\\d{3}|crj|atr|dash\\s*8|dhc|q400|saab|pc-?12|king\\s+air|citation|falcon|gulfstream|caravan|emb[-\\s]?\\d{3})',
+  ].join('|'),
+  'i',
+);
+const CREDENTIAL_EVIDENCE_PATTERNS = new RegExp(
+  [
+    '\\batpl?\\b', '\\bcpl\\b', '\\bppl\\b', '\\bmpl\\b',
+    'type\\s+rating', 'type\\s+rated', 'instrument\\s+rating',
+    '\\d[\\d,.]*\\s*(?:flight\\s+|flying\\s+|total\\s+)?(?:hours|hrs)\\b',
+    'heures\\s+de\\s+vol', 'flugstunden', 'horas\\s+de\\s+vuelo', 'ore\\s+di\\s+volo',
+    'class\\s*[12]\\s+medical', 'medical\\s+class', 'first\\s+class\\s+medical',
+    '\\beasa\\b', '\\bfaa\\b', '\\bicao\\b', '\\bcaa\\b', '\\bgcaa\\b',
+    'part\\s*(?:121|135|91)\\b', 'licen[cs]e[ds]?\\s+pilot', 'pilot\\s+licen[cs]e',
+  ].join('|'),
+  'i',
+);
+
 // Drone/UAS signals in the BODY text (title-level negatives already exist).
 // Applied to general aggregators only: a "Flight Test Pilot" ad whose text is
 // about multicopters/Part 107 is a drone job wearing a manned-pilot title.
@@ -214,6 +242,8 @@ function isAviationJob(job, { excludeOnly = false, requireContext = false } = {}
   if (/helicopter|rotorcraft|rotary|\bheli\b|\brotor\b/i.test(String(job.company || ''))) return false;
   const text = `${title} ${job.description || ''}`;
   if (DRONE_CONTEXT_PATTERNS.test(text)) return false;
+  // Strong-signal gate: role-specific title OR credential evidence in the text.
+  if (!STRONG_TITLE_PATTERNS.test(title) && !CREDENTIAL_EVIDENCE_PATTERNS.test(text)) return false;
   return AVIATION_CONTEXT_PATTERNS.test(text);
 }
 

@@ -140,16 +140,17 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
 
   const groups = new Map();
   for (const job of jobs) {
-    // Location deliberately NOT in the key. Primary signal is the AD TEXT:
-    // same company + identical full description = one campaign, even when the
-    // title varies per posting ("Glass Cockpit First Officer" vs "First
-    // Officer - Airbus A320" wrapping the same Etihad ad). Guard: only trust
-    // descriptions long enough to be unique ad copy (≥200 chars) — short or
-    // stub descriptions fall back to requiring the title to match too.
-    const descKey = String(job.description || '');
-    const key = descKey.length >= 200
-      ? [job.sourcePlatform, normaliseKey(job.company), descKey].join('|')
-      : [job.sourcePlatform, normaliseKey(job.company), normaliseKey(job.title), descKey].join('|');
+    // Location deliberately NOT in the key. Primary signal is the AD TEXT
+    // FINGERPRINT: letters-only, lowercased, first 500 chars — so trivial
+    // variations (whitespace, punctuation, embedded city names' digits) don't
+    // defeat the match. Same company + same fingerprint = one campaign, even
+    // when the title varies per posting. Guard: only trust fingerprints from
+    // real ad copy (≥150 letters) — short or stub descriptions fall back to
+    // requiring the title to match too.
+    const fp = String(job.description || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 500);
+    const key = fp.length >= 150
+      ? [job.sourcePlatform, normaliseKey(job.company), fp].join('|')
+      : [job.sourcePlatform, normaliseKey(job.company), normaliseKey(job.title), fp].join('|');
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(job);
   }
@@ -185,6 +186,33 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
     // One campaign = one notification: drop unread alerts for the clones.
     await prisma.jobAlert.deleteMany({
       where: { jobId: { in: duplicates.map((d) => d.id) }, readAt: null },
+    });
+  }
+
+  // Repost collapse: aggregators re-list the same vacancy under a fresh
+  // externalId. Same source + company + title + location ⇒ keep the NEWEST
+  // posting, merge the older copies into it.
+  const stillActive = await prisma.job.findMany({
+    where: { sourcePlatform: { in: sourcePlatforms }, status: 'ACTIVE', mergedInto: null },
+    select: { id: true, sourcePlatform: true, company: true, title: true, location: true, postedAt: true },
+  });
+  const repostGroups = new Map();
+  for (const job of stillActive) {
+    const k = [job.sourcePlatform, normaliseKey(job.company), normaliseKey(job.title), normaliseKey(job.location)].join('|');
+    if (!repostGroups.has(k)) repostGroups.set(k, []);
+    repostGroups.get(k).push(job);
+  }
+  for (const [, group] of repostGroups) {
+    if (group.length < 2) continue;
+    group.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt)); // newest first
+    const keep = group[0];
+    const dupes = group.slice(1);
+    for (const d of dupes) {
+      await prisma.job.update({ where: { id: d.id }, data: { mergedInto: keep.id, status: 'EXPIRED' } });
+      collapsed++;
+    }
+    await prisma.jobAlert.deleteMany({
+      where: { jobId: { in: dupes.map((d) => d.id) }, readAt: null },
     });
   }
 
