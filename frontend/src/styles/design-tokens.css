@@ -121,3 +121,12 @@
   .ch-btn, .ch-card, .ch-chip, .ch-navitem { transition: none; }
   .ch-btn:hover:not(:disabled), .ch-card:hover, .ch-chip:hover { transform: none; }
 }
+
+/* Gmail-style horizontal chip rail: one line, swipe to see more, no scrollbar */
+.h-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.h-scroll::-webkit-scrollbar { display: none; }

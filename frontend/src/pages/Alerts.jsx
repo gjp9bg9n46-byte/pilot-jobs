@@ -206,29 +206,40 @@ function MatchesTab({ alerts, dispatch, filter, setFilter, sort, setSort, onRefr
           align to the page's left edge instead of being squeezed into a narrow
           column beside the sort dropdown (which previously forced 1-chip-per-line). */}
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 10 : 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+        <div className={isMobile ? 'h-scroll' : undefined} style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', flex: 1, ...(isMobile ? { width: '100%', paddingBottom: 2 } : {}) }}>
           {chips.map((c) => (
-            <button key={c.key} className="ch-chip" style={chipStyle(filter === c.key)} onClick={() => setFilter(c.key)}>
+            <button key={c.key} className="ch-chip" style={{ ...chipStyle(filter === c.key), ...(isMobile ? { flexShrink: 0, whiteSpace: 'nowrap' } : {}) }} onClick={() => setFilter(c.key)}>
               {c.label}
             </button>
           ))}
+          {isMobile && (
+            <button
+              className="ch-chip"
+              onClick={() => setFilter(filter === 'noreq' ? 'all' : 'noreq')}
+              style={{ ...chipStyle(filter === 'noreq'), flexShrink: 0, whiteSpace: 'nowrap' }}
+            >
+              No requirements
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* Standalone "No requirements" view toggle — its own space, top right */}
-          <button
-            className="ch-chip"
-            onClick={() => setFilter(filter === 'noreq' ? 'all' : 'noreq')}
-            style={{
-              padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-              height: 36, display: 'inline-flex', alignItems: 'center',
-              border: `1px solid ${filter === 'noreq' ? 'var(--accent)' : 'var(--border)'}`,
-              color: filter === 'noreq' ? '#fff' : 'var(--text-secondary)',
-              background: filter === 'noreq' ? 'var(--accent)' : 'var(--surface)',
-              fontFamily: 'var(--font-body)', transition: 'all 0.15s', whiteSpace: 'nowrap',
-            }}
-          >
-            No requirements
-          </button>
+          {!isMobile && (
+            <button
+              className="ch-chip"
+              onClick={() => setFilter(filter === 'noreq' ? 'all' : 'noreq')}
+              style={{
+                padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                height: 36, display: 'inline-flex', alignItems: 'center',
+                border: `1px solid ${filter === 'noreq' ? 'var(--accent)' : 'var(--border)'}`,
+                color: filter === 'noreq' ? '#fff' : 'var(--text-secondary)',
+                background: filter === 'noreq' ? 'var(--accent)' : 'var(--surface)',
+                fontFamily: 'var(--font-body)', transition: 'all 0.15s', whiteSpace: 'nowrap',
+              }}
+            >
+              No requirements
+            </button>
+          )}
           <Input as="select" aria-label="Sort alerts" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 13, padding: '8px 12px' }}>
             <option value="newest">Newest</option>
             <option value="score">Best Match</option>
