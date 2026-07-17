@@ -2,9 +2,10 @@
 // secure store the auth token uses.
 //
 // Light = the original editorial-light palette (cream bg, navy accent).
-// Dark   = the same brand navy (#003F88) as the page background, darker navy
-//          cards, white ink, and a lightened accent blue so links/buttons stay
-//          legible on navy. Fonts, spacing, and semantic colors are unchanged.
+// Dark   = deep navy (#0A1628 — the landing-page navy, the darkest brand tone)
+//          as the page background, slightly lifted navy cards, near-white ink,
+//          and a lightened accent blue so links/buttons stay legible.
+//          (Was #003F88 brand navy — owner flagged it as too light/bright.)
 //
 // Usage pattern (applied across the pilot screens):
 //   const createStyles = (pilot: ThemePalette) => StyleSheet.create({ ... });
@@ -28,11 +29,11 @@ export type ThemeMode = 'light' | 'dark';
 export const lightPalette: ThemePalette = { ...lightTokens };
 
 export const darkPalette: ThemePalette = {
-  cream: '#003F88', // page background — the brand navy, per the design brief
-  surface: '#002B5C', // cards — the existing navyHover token
-  ink: '#FFFFFF',
-  muted: '#A9BCD8',
-  line: 'rgba(255,255,255,0.18)',
+  cream: '#0A1628', // page background — deep landing-page navy (true dark)
+  surface: '#14253F', // cards — lifted a step above the background
+  ink: '#F2F5FA',
+  muted: '#93A5C0',
+  line: 'rgba(255,255,255,0.14)',
   navy: '#6FA9E0', // accent lightened for contrast on navy surfaces
   navyHover: '#8FBCE8',
   amber: '#F0A84B',
