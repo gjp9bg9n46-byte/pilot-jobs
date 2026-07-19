@@ -225,6 +225,9 @@ your terms.
 | # | Target | Sent | Follow-up due | Reply? |
 |---|--------|------|---------------|--------|
 | 1 | JSfirm (jobs@jsfirm.com) | 2026-07-16 | 2026-07-24 | pending |
+| 2 | PCC | 2026-07-16 | 2026-07-24 | pending |
+| 3 | Climbto350 | 2026-07-16 | 2026-07-24 | pending |
+| 4 | PilotsGlobal | 2026-07-16 | — | DECLINED (no syndication program) |
 
 ### After sending
 

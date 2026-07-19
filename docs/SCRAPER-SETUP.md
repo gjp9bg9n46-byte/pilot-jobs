@@ -13,6 +13,7 @@ All sources are official APIs (legal, real jobs, original apply links):
 | USAJobs.gov | US government pilot jobs (large volume) | `USAJOBS_API_KEY` + `USAJOBS_USER_AGENT` | https://developer.usajobs.gov (free, instant email key) |
 | Adzuna | Europe (UK, FR, DE, IT, ES, NL, PL, AT) | `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` | https://developer.adzuna.com (free) |
 | Jooble | North Africa (Egypt, Morocco, Tunisia, Algeria) | `JOOBLE_API_KEY` | https://jooble.org/api/about (free, short form) |
+| Careerjet | Gulf + North Africa (UAE, Qatar, Saudi, Kuwait, Egypt, Morocco, Tunisia, Algeria) + UK/US | `CAREERJET_API_KEY` | https://www.careerjet.com/partners (free publisher API key) |
 | Lever / Greenhouse / Workday | ~30 configured airlines & operators (US-heavy) | none | already active |
 
 ## Steps (15 minutes total)
@@ -23,6 +24,8 @@ All sources are official APIs (legal, real jobs, original apply links):
    Application ID and Application Key.
 3. **Jooble**: go to https://jooble.org/api/about → fill the short request form →
    key arrives by email.
+3b. **Careerjet**: go to https://www.careerjet.com/partners → sign up as a
+   partner (free) → your API key shows under Access API in the publisher dashboard.
 4. **Railway**: open your backend service → Variables → add:
 
    ```
@@ -31,6 +34,7 @@ All sources are official APIs (legal, real jobs, original apply links):
    ADZUNA_APP_ID=…
    ADZUNA_APP_KEY=…
    JOOBLE_API_KEY=…
+   CAREERJET_API_KEY=…
    ```
 
 5. Deploy (Railway redeploys on variable change). The next scheduled run pulls all

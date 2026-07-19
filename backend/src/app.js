@@ -48,6 +48,19 @@ app.use('/api/employers', require('./routes/employers'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// Reports this server's OUTBOUND (egress) IP — needed once to register the
+// backend with IP-restricted partner APIs (e.g. Careerjet). Harmless to leave
+// public: it reveals nothing beyond what any server we call already sees.
+app.get('/health/egress-ip', async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { data } = await axios.get('https://api.ipify.org?format=json', { timeout: 10000 });
+    res.json({ egressIp: data.ip });
+  } catch (err) {
+    res.status(502).json({ error: 'lookup failed', detail: err.message });
+  }
+});
+
 app.use(errorHandler);
 
 // Scheduled scraping every N hours

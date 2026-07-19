@@ -127,7 +127,7 @@ function lookupAirlineBase(map, company) {
   return map.get(normalizeCompany(company)) ?? map.get(coreCompanyKey(company)) ?? null;
 }
 
-async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBLE']) {
+async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBLE', 'CAREERJET']) {
   const jobs = await prisma.job.findMany({
     where: { sourcePlatform: { in: sourcePlatforms }, status: 'ACTIVE', mergedInto: null },
     select: {

@@ -227,6 +227,18 @@ module.exports = [
     requireContext: true,
   },
 
+  // ── Careerjet (official aggregator API) — Gulf + North Africa ─────────────
+  // Free API (careerjet.com/partners). Requires CAREERJET_API_KEY.
+  // Locales via CAREERJET_LOCALES (default UAE, Qatar, Saudi, Kuwait, Egypt,
+  // Morocco, Tunisia, Algeria + UK/US depth).
+  // Every job links to the original posting. Shared fixed-wing filter applies.
+  {
+    source: 'CAREERJET',
+    company: 'Careerjet (Gulf & Africa)',
+    aggregate: true,
+    requireContext: true,
+  },
+
   // ── Aviation Job Search (aviationjobsearch.com) ────────────────────────────
   // Verified 2026-07-08: robots.txt allows job pages; T&Cs restrict only the
   // candidate/CV database (never touched). Pages publish schema.org JSON-LD
