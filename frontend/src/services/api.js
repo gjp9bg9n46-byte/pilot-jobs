@@ -21,6 +21,7 @@ api.interceptors.response.use(
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (email, password) => api.post('/auth/login', { email, password }),
+  googleAuth: (idToken) => api.post('/auth/google', { idToken }),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
   verifyEmail: (token) => api.post('/auth/verify-email', { token }),

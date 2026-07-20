@@ -30,13 +30,14 @@ router.post(
   [
     body('email').isEmail(),
     body('password').isLength({ min: 8 }),
-    body('firstName').notEmpty(),
+    body('firstName').optional(),
     body('lastName').optional(),
   ],
   authController.register
 );
 
 router.post('/login', authController.login);
+router.post('/google', authController.googleAuth);
 
 // Password reset (Phase B1) — shared by pilots + employers, public.
 router.post('/forgot-password', forgotPasswordLimit, authController.forgotPassword);

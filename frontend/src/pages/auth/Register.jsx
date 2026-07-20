@@ -5,17 +5,15 @@ import { authApi } from '../../services/api';
 import { setAuth } from '../../store';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Card, Input } from '../../components/primitives';
+import GoogleSignInButton from '../../components/GoogleSignInButton';
 
+// Signup is deliberately minimal (owner directive): email + password only.
+// Name, country, city, phone all live on the Profile page after sign-up.
 const PILOT_FIELDS = [
-  { name: 'firstName', label: 'First Name', required: true, half: true, ac: 'given-name' },
-  { name: 'lastName', label: 'Last Name', half: true, ac: 'family-name' },
   { name: 'email', label: 'Email Address', type: 'email', required: true, full: true, ac: 'email' },
   { name: 'password', label: 'Password', type: 'password', required: true, hint: 'Min. 8 characters', full: true, ac: 'new-password' },
-  { name: 'country', label: 'Country', half: true, ac: 'country-name' },
-  { name: 'city', label: 'City', half: true, ac: 'address-level2' },
-  { name: 'phone', label: 'Phone (optional)', type: 'tel', half: true, ac: 'tel' },
 ];
-const PILOT_INIT = { firstName: '', lastName: '', email: '', password: '', country: '', city: '', phone: '' };
+const PILOT_INIT = { email: '', password: '' };
 
 const css = {
   page: { minHeight: '100vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 24 },
@@ -70,7 +68,7 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.firstName || !form.email || !form.password) { setError('Please fill in all required fields.'); return; }
+    if (!form.email || !form.password) { setError('Please fill in all required fields.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError('Enter a valid email address.'); return; }
     if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     setLoading(true);
@@ -92,6 +90,8 @@ export default function Register() {
         <div style={css.subtitle}>Create your free account — you'll add your pilot details after sign-up.</div>
 
         {error && <div style={css.error} role="alert">{error}</div>}
+
+        <GoogleSignInButton onError={setError} />
 
         <form onSubmit={handleSubmit} noValidate>
           <div style={{ ...css.grid, gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr' }}>

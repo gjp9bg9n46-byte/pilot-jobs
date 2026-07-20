@@ -5,6 +5,7 @@ import { authApi } from '../../services/api';
 import { setAuth } from '../../store';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Card, Input } from '../../components/primitives';
+import GoogleSignInButton from '../../components/GoogleSignInButton';
 
 const css = {
   page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
@@ -77,6 +78,8 @@ export default function Login() {
         <div style={css.subtitle}>Aviation careers worldwide, matched to your licence.</div>
 
         {error && <div style={css.error} role="alert">{error}</div>}
+
+        <GoogleSignInButton onError={setError} />
 
         <form onSubmit={handleSubmit} noValidate>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

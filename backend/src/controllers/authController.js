@@ -46,8 +46,12 @@ exports.register = async (req, res, next) => {
     if (exists) return res.status(409).json({ error: 'Email already registered' });
 
     const passwordHash = await bcrypt.hash(password, 12);
+    // Registration is email+password only (owner directive: keep signup
+    // frictionless) — name defaults to the email's local part and can be
+    // completed later on the Profile page.
+    const defaultName = firstName || String(email).split('@')[0];
     const pilot = await prisma.pilot.create({
-      data: { email, passwordHash, firstName, lastName: lastName || '', phone, country, city },
+      data: { email, passwordHash, firstName: defaultName, lastName: lastName || '', phone, country, city },
       select: { id: true, email: true, firstName: true, lastName: true, emailVerified: true },
     });
 
@@ -56,6 +60,66 @@ exports.register = async (req, res, next) => {
     // Welcome + verify email (Phase B2) — never blocks registration.
     await sendWelcomeVerify({ email: pilot.email, userType: 'pilot', recipientName: [pilot.firstName, pilot.lastName].filter(Boolean).join(' ') || pilot.email });
     res.status(201).json({ token, pilot });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Google sign-in: the client obtains an ID token from Google and posts it
+// here. We verify it against Google's official tokeninfo endpoint (checks the
+// signature server-side), confirm it was issued for OUR client ID and that the
+// email is verified, then find-or-create the pilot and issue our normal JWT.
+// Existing email/password accounts with the same email simply log in — one
+// account per email, regardless of sign-in method.
+exports.googleAuth = async (req, res, next) => {
+  try {
+    const { idToken } = req.body;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) return res.status(503).json({ error: 'Google sign-in not configured' });
+    if (!idToken) return res.status(400).json({ error: 'idToken required' });
+
+    const axios = require('axios');
+    let claims;
+    try {
+      const { data } = await axios.get(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+        { timeout: 10000 },
+      );
+      claims = data;
+    } catch {
+      return res.status(401).json({ error: 'Invalid Google token' });
+    }
+    if (claims.aud !== clientId) return res.status(401).json({ error: 'Token not issued for this app' });
+    if (claims.email_verified !== 'true' && claims.email_verified !== true) {
+      return res.status(401).json({ error: 'Google email not verified' });
+    }
+
+    const email = String(claims.email).toLowerCase();
+    let pilot = await prisma.pilot.findUnique({ where: { email } });
+    if (pilot?.deletedAt) return res.status(403).json({ error: 'This account has been deleted.' });
+
+    let created = false;
+    if (!pilot) {
+      // Random unguessable password — the account can always add a real one
+      // later via password reset; Google remains the sign-in method.
+      const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
+      pilot = await prisma.pilot.create({
+        data: {
+          email,
+          passwordHash,
+          firstName: claims.given_name || String(email).split('@')[0],
+          lastName: claims.family_name || '',
+          emailVerified: true, // Google already verified ownership
+        },
+      });
+      created = true;
+      logger.info({ pilotId: pilot.id, msg: 'pilot created via Google sign-in' });
+    }
+
+    const token = signToken(pilot.id);
+    await createSession(pilot.id, req, token);
+    const { passwordHash: _ph, ...pilotData } = pilot;
+    res.status(created ? 201 : 200).json({ token, pilot: pilotData });
   } catch (err) {
     next(err);
   }

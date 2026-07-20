@@ -226,8 +226,11 @@ your terms.
 |---|--------|------|---------------|--------|
 | 1 | JSfirm (jobs@jsfirm.com) | 2026-07-16 | 2026-07-24 | pending |
 | 2 | PCC | 2026-07-16 | 2026-07-24 | pending |
-| 3 | Climbto350 | 2026-07-16 | 2026-07-24 | pending |
-| 4 | PilotsGlobal | 2026-07-16 | — | DECLINED (no syndication program) |
+| 4 | PilotsGlobal | 2026-07-16 | n/a | DECLINED (no syndication program) |
+| 5 | BizJetJobs | 2026-07-19 | 2026-07-27 | pending |
+| 7 | Aviation Job Search | 2026-07-19 | 2026-07-27 | pending |
+
+Still to send: Climbto350 (#3), FindaPilot (#6), AirlineApps (#8 — high priority).
 
 ### After sending
 
