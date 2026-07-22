@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
+import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { EMPTY_FIELD, contractLabel, hiringFreqLabel, hiringMeta, relativeDate } from '../../../../src/lib/airlineFormat';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
@@ -65,7 +66,11 @@ export default function AirlineDetail() {
         <View style={styles.hero}>
           <View style={styles.heroTop}>
             <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', gap: 14 }}>
-              <View style={styles.logo}><Text style={styles.logoText}>{String(a.name).split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}</Text></View>
+              {a.logoUrl ? (
+                <AirlineLogo logoUrl={a.logoUrl} iataCode={a.iataCode} name={a.name} box={56} />
+              ) : (
+                <View style={styles.logo}><Text style={styles.logoText}>{String(a.name).split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}</Text></View>
+              )}
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.heroName}>{a.name}</Text>
                 <View style={styles.codes}>

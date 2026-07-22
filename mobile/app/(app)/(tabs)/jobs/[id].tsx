@@ -18,6 +18,7 @@ import {
   computeMatchCount, extractUuid, formatSalary, matchLabel, matchStyle, postedAgo,
 } from '../../../../src/lib/jobMatch';
 import { Requirement } from '../../../../src/lib/jobMatch';
+import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
 import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
@@ -83,7 +84,7 @@ export default function JobDetail() {
   const [applyNote, setApplyNote] = useState<string | null>(null);
   // Resolve the job's company → airline factfile (scraped company strings vary
   // from canonical names, so job.airlineId is usually null → use the name map).
-  const [airline, setAirline] = useState<{ id: string; name: string } | null>(null);
+  const [airline, setAirline] = useState<{ id: string; name: string; logoUrl?: string | null; iataCode?: string | null } | null>(null);
   useEffect(() => {
     if (!job?.company) return;
     let alive = true;
@@ -158,7 +159,11 @@ export default function JobDetail() {
 
         {/* Header */}
         <View style={styles.headerRow}>
-          <View style={styles.logoBox}><Text style={styles.logoInitials}>{String(job.company || '?').split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}</Text></View>
+          {airline?.logoUrl ? (
+            <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={job.company} box={48} />
+          ) : (
+            <View style={styles.logoBox}><Text style={styles.logoInitials}>{String(job.company || '?').split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}</Text></View>
+          )}
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.company}>{job.company}</Text>
             <Text style={styles.jobTitle}>{roleLabel || job.title}</Text>
