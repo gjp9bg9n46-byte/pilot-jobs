@@ -48,6 +48,38 @@ app.use('/api/employers', require('./routes/employers'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// Diagnostic: one live Careerjet API call (1 locale, 1 page) reporting the
+// raw outcome — lets us see auth/IP errors directly instead of digging
+// through logs. Reveals no secrets (key presence only, never the key).
+app.get('/health/careerjet-test', async (req, res) => {
+  const axios = require('axios');
+  const apiKey = process.env.CAREERJET_API_KEY;
+  if (!apiKey) return res.json({ ok: false, reason: 'CAREERJET_API_KEY not set' });
+  try {
+    const { data } = await axios.get('https://search.api.careerjet.net/v4/query', {
+      params: {
+        locale_code: String(req.query.locale || 'en_AE'),
+        keywords: 'pilot', sort: 'date', page: 1, page_size: 5,
+        user_ip: '127.0.0.1', user_agent: 'CockpitHireBot/1.0 (+https://cockpithire.com)',
+      },
+      auth: { username: apiKey, password: '' },
+      timeout: 15000,
+    });
+    res.json({
+      ok: true,
+      type: data?.type,
+      hits: data?.hits ?? null,
+      sampleTitles: (data?.jobs || []).slice(0, 5).map((j) => j.title),
+    });
+  } catch (err) {
+    res.json({
+      ok: false,
+      status: err.response?.status ?? null,
+      body: typeof err.response?.data === 'object' ? err.response.data : String(err.response?.data || err.message).slice(0, 300),
+    });
+  }
+});
+
 // Reports this server's OUTBOUND (egress) IP — needed once to register the
 // backend with IP-restricted partner APIs (e.g. Careerjet). Harmless to leave
 // public: it reveals nothing beyond what any server we call already sees.
