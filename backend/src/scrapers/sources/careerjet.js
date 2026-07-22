@@ -142,7 +142,8 @@ async function fetchCareerjet() {
             },
             auth: { username: apiKey, password: '' },
             timeout: 20000,
-            headers: { Accept: 'application/json' },
+            // Careerjet requires a Referer identifying the declared website.
+            headers: { Accept: 'application/json', Referer: 'https://cockpithire.com' },
           });
           data = resp.data;
         } catch (err) {

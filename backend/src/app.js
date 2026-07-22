@@ -63,6 +63,7 @@ app.get('/health/careerjet-test', async (req, res) => {
         user_ip: '127.0.0.1', user_agent: 'CockpitHireBot/1.0 (+https://cockpithire.com)',
       },
       auth: { username: apiKey, password: '' },
+      headers: { Referer: 'https://cockpithire.com' },
       timeout: 15000,
     });
     res.json({
