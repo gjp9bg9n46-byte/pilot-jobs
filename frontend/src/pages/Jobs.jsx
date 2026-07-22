@@ -23,6 +23,29 @@ import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
 //   #E74C3C/#FF4757 → #991B1B (miss/error). Matches the Badge palette.
 const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
 
+// Country → flag emoji (names as they appear in our job data). Unknown
+// countries simply show no flag — never a wrong one.
+const COUNTRY_ISO = {
+  'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB', france: 'FR',
+  germany: 'DE', italy: 'IT', spain: 'ES', netherlands: 'NL', poland: 'PL',
+  austria: 'AT', switzerland: 'CH', schweiz: 'CH', canada: 'CA', australia: 'AU',
+  'new zealand': 'NZ', 'south africa': 'ZA', uae: 'AE', 'united arab emirates': 'AE',
+  qatar: 'QA', 'saudi arabia': 'SA', kuwait: 'KW', oman: 'OM', bahrain: 'BH',
+  egypt: 'EG', morocco: 'MA', tunisia: 'TN', algeria: 'DZ', libya: 'LY',
+  ireland: 'IE', belgium: 'BE', portugal: 'PT', greece: 'GR', turkey: 'TR',
+  norway: 'NO', sweden: 'SE', denmark: 'DK', finland: 'FI', iceland: 'IS',
+  singapore: 'SG', 'hong kong': 'HK', malaysia: 'MY', india: 'IN', japan: 'JP',
+  china: 'CN', mexico: 'MX', brazil: 'BR', iraq: 'IQ', yemen: 'YE', jordan: 'JO',
+  lebanon: 'LB', israel: 'IL', hungary: 'HU', 'czech republic': 'CZ', latvia: 'LV',
+  lithuania: 'LT', estonia: 'EE', bulgaria: 'BG', romania: 'RO', croatia: 'HR',
+  luxembourg: 'LU', malta: 'MT', mauritania: 'MR',
+};
+function countryFlag(country) {
+  const iso = COUNTRY_ISO[String(country || '').trim().toLowerCase()];
+  if (!iso) return null;
+  return String.fromCodePoint(...[...iso].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
 // slugify → kebab-case, NFKD-strip diacritics. Used to build the SEO-friendly
 // /jobs/:slugId path (the full UUID is appended last by slugFor).
 function slugify(str) {
@@ -133,7 +156,13 @@ const css = {
   },
   cardHover: { borderColor: 'var(--accent)', transform: 'translateY(-2px)' },
   cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
-  title: { fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 },
+  // Clamped to 2 lines — aggregator titles can run very long and would
+  // otherwise wreck the card grid's rhythm. Full title lives on the detail page.
+  title: {
+    fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4,
+    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+    overflow: 'hidden', wordBreak: 'break-word',
+  },
   airline: { fontSize: 14, color: 'var(--accent)', fontWeight: 600 },
   postedAgo: { fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 },
   // Understated neutral badge — kept visually consistent so the employer's live
@@ -159,6 +188,27 @@ const css = {
   },
   metaRow: { display: 'flex', gap: 20, flexWrap: 'wrap' },
   meta: { fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 },
+  // Spec sheet (desktop) — the PilotsGlobal-style "can I apply?" glance:
+  // label/value pairs in a quiet bordered strip. Rendered only when the job
+  // states at least two of the fields, so it never looks half-empty.
+  specSheet: {
+    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 18px',
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
+    padding: '10px 14px',
+  },
+  specItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, minWidth: 0 },
+  specLabel: { fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' },
+  specVal: { fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  visaBadge: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 0.4, color: '#166534',
+    background: '#DCFCE7', border: '1px solid #BBF7D0', borderRadius: 5,
+    padding: '2px 7px', whiteSpace: 'nowrap',
+  },
+  ntrBadge: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 0.4, color: SEM.amber,
+    background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 5,
+    padding: '2px 7px', whiteSpace: 'nowrap',
+  },
   reqs: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 },
   req: {
     background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px',
@@ -259,6 +309,8 @@ export default function Jobs() {
   const [contractType, setContractType] = useState(() => searchParams.get('contractType') || '');
   const [postedWithin, setPostedWithin] = useState(() => searchParams.get('postedWithin') || '');
   const [minSalary, setMinSalary] = useState(() => searchParams.get('salaryMin') || '');
+  const [visaOnly, setVisaOnly] = useState(() => searchParams.get('visa') === '1');
+  const [ntrOnly, setNtrOnly] = useState(() => searchParams.get('ntr') === '1');
 
   // Pending (unapplied) filter state
   const [pendingAuthority, setPendingAuthority] = useState('');
@@ -267,6 +319,8 @@ export default function Jobs() {
   const [pendingContractType, setPendingContractType] = useState('');
   const [pendingPostedWithin, setPendingPostedWithin] = useState('');
   const [pendingMinSalary, setPendingMinSalary] = useState('');
+  const [pendingVisaOnly, setPendingVisaOnly] = useState(false);
+  const [pendingNtrOnly, setPendingNtrOnly] = useState(false);
 
   // Qualified only toggle — defaults on so the initial view shows jobs the pilot
   // qualifies for. ?qualified=0 in the URL turns it off. Logged-out has no profile
@@ -279,7 +333,7 @@ export default function Jobs() {
   // Saved jobs local state: map of id -> bool
   const [savedMap, setSavedMap] = useState({});
 
-  const activeFilterCount = [authority, aircraftType, role, contractType, postedWithin, minSalary].filter(Boolean).length;
+  const activeFilterCount = [authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly].filter(Boolean).length;
 
   const openFilters = () => {
     setPendingAuthority(authority);
@@ -288,6 +342,8 @@ export default function Jobs() {
     setPendingContractType(contractType);
     setPendingPostedWithin(postedWithin);
     setPendingMinSalary(minSalary);
+    setPendingVisaOnly(visaOnly);
+    setPendingNtrOnly(ntrOnly);
     setFiltersOpen(true);
   };
 
@@ -300,6 +356,8 @@ export default function Jobs() {
     setContractType(pendingContractType);
     setPostedWithin(pendingPostedWithin);
     setMinSalary(pendingMinSalary);
+    setVisaOnly(pendingVisaOnly);
+    setNtrOnly(pendingNtrOnly);
     setFiltersOpen(false);
   };
 
@@ -310,6 +368,8 @@ export default function Jobs() {
     setPendingContractType('');
     setPendingPostedWithin('');
     setPendingMinSalary('');
+    setPendingVisaOnly(false);
+    setPendingNtrOnly(false);
   };
 
   const fetchJobs = useCallback(async () => {
@@ -323,6 +383,8 @@ export default function Jobs() {
       if (contractType) params.contractType = contractType;
       if (postedWithin) params.postedWithin = postedWithin;
       if (minSalary) params.salaryMin = minSalary;
+      if (visaOnly) params.visa = 'true';
+      if (ntrOnly) params.typeRating = 'ntr';
       if (qualifiedOnly) params.qualifiedOnly = true;
       if (sort) params.sort = sort;
       const { data } = await jobApi.list(params);
@@ -337,7 +399,7 @@ export default function Jobs() {
     } finally {
       setLoading(false);
     }
-  }, [authority, aircraftType, role, contractType, postedWithin, minSalary, qualifiedOnly, sort]);
+  }, [authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly, qualifiedOnly, sort]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -354,10 +416,12 @@ export default function Jobs() {
     if (contractType) next.contractType = contractType;
     if (postedWithin) next.postedWithin = postedWithin;
     if (minSalary) next.salaryMin = minSalary;
+    if (visaOnly) next.visa = '1';
+    if (ntrOnly) next.ntr = '1';
     if (sort !== 'newest') next.sort = sort;
     if (!qualifiedOnly) next.qualified = '0';
     setSearchParams(next, { replace: true });
-  }, [search, authority, aircraftType, role, contractType, postedWithin, minSalary, sort, qualifiedOnly, setSearchParams]);
+  }, [search, authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly, sort, qualifiedOnly, setSearchParams]);
 
   const handleSaveToggle = async (e, jobId) => {
     e.stopPropagation();
@@ -499,6 +563,14 @@ export default function Jobs() {
               {POSTED_WITHIN.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </Input>
             <Input type="number" label="Min Salary" placeholder="e.g. 80000" value={pendingMinSalary} onChange={(e) => setPendingMinSalary(e.target.value)} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer', paddingTop: 22 }}>
+              <input type="checkbox" checked={pendingVisaOnly} onChange={(e) => setPendingVisaOnly(e.target.checked)} />
+              Visa sponsorship offered
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer', paddingTop: 22 }}>
+              <input type="checkbox" checked={pendingNtrOnly} onChange={(e) => setPendingNtrOnly(e.target.checked)} />
+              No type rating required
+            </label>
           </div>
           <div style={css.filterActions}>
             <Button variant="ghost" onClick={clearAll}>Clear All</Button>
@@ -557,6 +629,15 @@ export default function Jobs() {
                 ? computeMatchCount(job, pilotProfile, pilotTotals)
                 : null;
               const airlineMatch = resolveAirline(airlineMap, job.company);
+              // Spec sheet rows — only fields the job actually states; the
+              // block renders only with ≥2 rows so it never looks half-empty.
+              const specRows = [
+                job.reqMinTotalHours ? ['Total time', `${job.reqMinTotalHours.toLocaleString()} hrs`] : null,
+                job.reqMinPicHours ? ['PIC time', `${job.reqMinPicHours.toLocaleString()} hrs`] : null,
+                job.reqCertificates?.length ? ['Licence', job.reqCertificates.slice(0, 2).join(' / ')] : null,
+                job.reqAuthorities?.length ? ['Authority', job.reqAuthorities.slice(0, 2).join(' / ')] : null,
+              ].filter(Boolean);
+              const specSheet = specRows.length >= 2 ? specRows : null;
               return (
                 <div
                   key={job.id}
@@ -610,15 +691,37 @@ export default function Jobs() {
                     </div>
                   </div>
 
+                  {(job.visaSponsorship || job.typeRatingStatus === 'NTR') && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {job.visaSponsorship && <span style={css.visaBadge}>VISA SPONSORSHIP</span>}
+                      {job.typeRatingStatus === 'NTR' && <span style={css.ntrBadge}>NO TYPE RATING REQUIRED</span>}
+                    </div>
+                  )}
+
                   <div style={css.metaRow}>
-                    <span style={css.meta}><MapPin size={11} /> {job.location}</span>
-                    {job.reqMinTotalHours && (
+                    <span style={css.meta}>
+                      <MapPin size={11} />
+                      {countryFlag(job.country) && <span aria-hidden="true">{countryFlag(job.country)}</span>}
+                      {job.location}
+                    </span>
+                    {(isMobile || !specSheet) && job.reqMinTotalHours && (
                       <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
                     )}
-                    {job.reqCertificates?.[0] && (
+                    {(isMobile || !specSheet) && job.reqCertificates?.[0] && (
                       <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
                     )}
                   </div>
+
+                  {!isMobile && specSheet && (
+                    <div style={css.specSheet}>
+                      {specSheet.map(([label, value]) => (
+                        <div key={label} style={css.specItem}>
+                          <span style={css.specLabel}>{label}</span>
+                          <span style={css.specVal} title={value}>{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {job.reqAircraftTypes?.length > 0 && (
                     <div style={css.reqs}>

@@ -13,12 +13,31 @@ const EU_COUNTRIES_RTW = new Set([
   'slovenia', 'spain', 'sweden',
 ]);
 
+// Derived display fields (computed at serve time, no schema change):
+//   visaSponsorship — the ad explicitly offers visa/work-permit sponsorship.
+//   typeRatingStatus — 'NTR' (no type rating required / training provided),
+//                      'RATED' (job requires a type rating), or null.
+const VISA_RE = /visa\s+(?:sponsorship|sponsored|provided|support(?:ed)?)|sponsorship\s+(?:is\s+)?(?:available|provided|offered)|work\s+permit\s+(?:provided|sponsor)|we\s+sponsor/i;
+const NTR_RE = /no\s+type\s+rating\s+required|non[-\s]?type[-\s]?rated|\bNTR\b|type\s+rating\s+(?:not\s+required|provided|paid|funded|offered)|rating\s+course\s+provided/i;
+
+function deriveJobBadges(j) {
+  const text = `${j.titleEn ?? j.title ?? ''} ${j.descriptionEn ?? j.description ?? ''}`;
+  const visaSponsorship = VISA_RE.test(text);
+  const typeRatingStatus = NTR_RE.test(text)
+    ? 'NTR'
+    : ((j.reqAircraftTypes?.length || 0) > 0 ? 'RATED' : null);
+  return { visaSponsorship, typeRatingStatus };
+}
+
 // English-first presentation: when a job has been machine-translated, serve the
 // English text as title/description and keep the original for reference.
 function presentJob(j) {
-  if (!j || (!j.titleEn && !j.descriptionEn)) return j;
+  if (!j) return j;
+  const badges = deriveJobBadges(j);
+  if (!j.titleEn && !j.descriptionEn) return { ...j, ...badges };
   return {
     ...j,
+    ...badges,
     title: j.titleEn ?? j.title,
     description: j.descriptionEn ?? j.description,
     originalTitle: j.title,
@@ -85,6 +104,8 @@ exports.getJobs = async (req, res, next) => {
       postedWithin,
       sort = 'newest',
       qualifiedOnly,
+      visa,
+      typeRating,
     } = req.query;
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -120,6 +141,33 @@ exports.getJobs = async (req, res, next) => {
     if (aircraft) {
       const types = aircraft.split(',').map((a) => a.trim()).filter(Boolean);
       if (types.length > 0) where.reqAircraftTypes = { hasSome: types };
+    }
+
+    // Visa sponsorship — DB proxy for the deriveJobBadges() regex: match the
+    // common ad phrasings. (contains-based; the badge itself is exact.)
+    if (visa === 'true') {
+      const visaPhrases = ['visa sponsor', 'visa provided', 'visa support', 'sponsorship available', 'sponsorship provided', 'sponsorship offered', 'work permit provided', 'we sponsor'];
+      andConditions.push({
+        OR: visaPhrases.flatMap((p) => [
+          { description: { contains: p, mode: 'insensitive' } },
+          { descriptionEn: { contains: p, mode: 'insensitive' } },
+        ]),
+      });
+    }
+
+    // Type-rating status — 'ntr' matches "no type rating / rating provided"
+    // ads; 'rated' means the job names required type ratings.
+    if (typeRating === 'ntr') {
+      const ntrPhrases = ['no type rating', 'non type rated', 'non-type rated', 'type rating provided', 'type rating not required', 'type rating paid', 'type rating funded', 'type rating offered', 'rating course provided', 'NTR'];
+      andConditions.push({
+        OR: ntrPhrases.flatMap((p) => [
+          { title: { contains: p, mode: p === 'NTR' ? undefined : 'insensitive' } },
+          { description: { contains: p, mode: p === 'NTR' ? undefined : 'insensitive' } },
+          { descriptionEn: { contains: p, mode: p === 'NTR' ? undefined : 'insensitive' } },
+        ]),
+      });
+    } else if (typeRating === 'rated') {
+      andConditions.push({ reqAircraftTypes: { isEmpty: false } });
     }
 
     // Max hours required by the job (show jobs requiring ≤ maxReqHours)
