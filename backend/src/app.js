@@ -36,6 +36,15 @@ app.use(
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Routes
+// API responses are live data — forbid ALL intermediary caching. Without this,
+// the Vercel proxy in front of the API could serve stale copies of /jobs to
+// clients that request identical URLs (the app), resurrecting deleted
+// duplicates and stale counts ("21-jobs flip-flop", Emirates-clones sightings).
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, must-revalidate');
+  next();
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/flight-logs', require('./routes/flightLogs'));
