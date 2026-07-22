@@ -67,7 +67,7 @@ export default function AirlineDetail() {
           <View style={styles.heroTop}>
             <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', gap: 14 }}>
               {a.logoUrl ? (
-                <AirlineLogo logoUrl={a.logoUrl} iataCode={a.iataCode} name={a.name} box={56} />
+                <AirlineLogo logoUrl={a.logoUrl} iataCode={a.iataCode} name={a.name} box={76} />
               ) : (
                 <View style={styles.logo}><Text style={styles.logoText}>{String(a.name).split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}</Text></View>
               )}

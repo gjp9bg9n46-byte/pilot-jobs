@@ -160,7 +160,7 @@ export default function JobDetail() {
         {/* Header */}
         <View style={styles.headerRow}>
           {airline?.logoUrl ? (
-            <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={job.company} box={48} />
+            <AirlineLogo logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={job.company} box={72} />
           ) : (
             <View style={styles.logoBox}><Text style={styles.logoInitials}>{String(job.company || '?').split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}</Text></View>
           )}

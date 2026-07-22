@@ -369,7 +369,7 @@ export default function JobDetail() {
 
       {/* Header */}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 16 }}>
-        <AirlineLogo logoUrl={airline?.logoUrl} iataCode={airline?.iataCode} name={job.company} box={56} maxW={96} font={16} />
+        <AirlineLogo logoUrl={airline?.logoUrl} iataCode={airline?.iataCode} name={job.company} box={76} maxW={150} font={16} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 15, color: 'var(--accent)', fontWeight: 600 }}>{job.company}</span>

@@ -59,12 +59,14 @@ export default function AirlineLogo({
     '—';
 
   if (logoUrl && !failed) {
+    // Frameless everywhere (owner directive 2026-07): the logo floats on the
+    // card at full box size — no bordered white box.
     return (
-      <View style={[!bare && styles.imageBox, { width: box, height: box, alignItems: 'center', justifyContent: 'center' }]}>
+      <View style={{ width: box, height: box, alignItems: 'center', justifyContent: 'center' }}>
         <Image
           source={{ uri: proxiedLogoUrl(logoUrl) }}
           resizeMode="contain"
-          style={{ width: bare ? box : box - 8, height: bare ? box : box - 8 }}
+          style={{ width: box, height: box }}
           onError={(e) => {
             // eslint-disable-next-line no-console
             console.warn('[AirlineLogo] failed to load', logoUrl, e?.nativeEvent?.error);

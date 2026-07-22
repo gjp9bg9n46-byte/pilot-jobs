@@ -8,7 +8,9 @@ import React from 'react';
 //   - logoUrl null     → a fixed SQUARE box × box neutral circle with the IATA
 //     code (or first 2 letters of name) in JetBrains Mono. No colour hashing.
 // `box` = fixed height (px); `maxW` = max logo width (px); `font` = initials size.
-export default function AirlineLogo({ logoUrl, iataCode, name, box = 44, maxW = 64, font = 13, frameless = false, hideIfMissing = false }) {
+// frameless defaults ON (owner directive 2026-07: logos float on the card,
+// no bordered box anywhere).
+export default function AirlineLogo({ logoUrl, iataCode, name, box = 44, maxW = 64, font = 13, frameless = true, hideIfMissing = false }) {
   const initials = (iataCode && iataCode.slice(0, 2).toUpperCase())
     || ((name || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase())
     || '—';
