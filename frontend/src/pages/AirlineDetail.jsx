@@ -246,6 +246,18 @@ export default function AirlineDetail() {
                 <span>{airline.region}</span>
                 {airline.headquarters && <><span>·</span><span>{airline.headquarters}</span></>}
               </div>
+              {airline.domain && (
+                <a
+                  href={`https://${airline.domain.replace(/^https?:\/\//, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none' }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  {airline.domain.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
+                </a>
+              )}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>

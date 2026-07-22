@@ -73,6 +73,19 @@ export default function AirlineDetail() {
                   {a.icaoCode ? <Text style={styles.codeChip}>ICAO: {a.icaoCode}</Text> : null}
                 </View>
                 <Text style={styles.heroMeta}>{a.country} · {a.region}{a.headquarters ? ` · ${a.headquarters}` : ''}</Text>
+                {a.domain ? (
+                  <Pressable
+                    onPress={() => Linking.openURL(`https://${String(a.domain).replace(/^https?:\/\//, '')}`)}
+                    hitSlop={8}
+                    style={styles.websiteLink}
+                    accessibilityRole="link"
+                    accessibilityLabel={`Open ${a.name} official website`}
+                  >
+                    <Ionicons name="globe-outline" size={13} color={pilot.navy} />
+                    <Text style={styles.websiteText}>{String(a.domain).replace(/^https?:\/\//, '').replace(/\/$/, '')}</Text>
+                    <Ionicons name="open-outline" size={12} color={pilot.navy} />
+                  </Pressable>
+                ) : null}
               </View>
             </View>
             <View style={[styles.badge, { backgroundColor: badge.bg }]}><Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text></View>
@@ -168,6 +181,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   codeChip: { fontSize: 11, fontFamily: fontFamilies.mono, fontWeight: '700', color: pilot.muted, backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
   codeAccent: { color: pilot.navy, backgroundColor: 'rgba(0,63,136,0.08)', borderColor: 'rgba(0,63,136,0.2)' },
   heroMeta: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 12 },
+  websiteLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, alignSelf: 'flex-start' },
+  websiteText: { fontSize: fontSizes.sm, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
   badge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   badgeText: { fontSize: 12, fontFamily: fontFamilies.bodyBold },
   suggestBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderWidth: 1, borderColor: pilot.navy, borderRadius: 4, paddingHorizontal: 14, paddingVertical: 9, marginTop: 16 },
