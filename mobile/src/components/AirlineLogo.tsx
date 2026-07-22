@@ -12,13 +12,21 @@
 // broken logo host is visible instead of silently falling through to initials.
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { API_URL } from '../lib/api';
 import { fontFamilies, pilot } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
-// Wikimedia's UA policy requires contact info — short generic UAs get
-// intermittently 403'd, which made logos "disappear" after navigation
-// (a failed reload latched the hidden state). Compliant UA fixes the root.
-const LOGO_HEADERS = { 'User-Agent': 'CockpitHire/1.0 (https://cockpithire.com; support@cockpithire.com)' };
+// VERIFIED ROOT CAUSE (2026-07): Wikimedia 403s image requests from
+// non-browser clients (the app's native loader), while browsers (the web app)
+// pass — so the app must never talk to Wikimedia directly. Wikimedia-hosted
+// logos are rewritten to our backend's /logo proxy, which fetches server-side
+// and caches. Non-Wikimedia URLs pass through untouched.
+function proxiedLogoUrl(url: string): string {
+  if (url.includes('upload.wikimedia.org')) {
+    return `${API_URL}/logo?src=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
 
 export default function AirlineLogo({
   logoUrl,
@@ -54,7 +62,7 @@ export default function AirlineLogo({
     return (
       <View style={[!bare && styles.imageBox, { width: box, height: box, alignItems: 'center', justifyContent: 'center' }]}>
         <Image
-          source={{ uri: logoUrl, headers: LOGO_HEADERS }}
+          source={{ uri: proxiedLogoUrl(logoUrl) }}
           resizeMode="contain"
           style={{ width: bare ? box : box - 8, height: bare ? box : box - 8 }}
           onError={(e) => {

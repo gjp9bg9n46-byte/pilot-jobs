@@ -55,6 +55,40 @@ app.use('/api/stats', require('./routes/stats'));
 app.use('/api/admin',   require('./routes/admin'));
 app.use('/api/employers', require('./routes/employers'));
 
+// Logo proxy — the mobile app's native image loader gets 403'd by Wikimedia's
+// non-browser-client blocking (browsers pass, apps don't). We fetch the image
+// server-side with a policy-compliant UA and cache it, so the app only ever
+// talks to our own API. Allowlisted to Wikimedia hosts; long client cache
+// (logos are immutable thumbnails).
+const LOGO_HOSTS = new Set(['upload.wikimedia.org']);
+const logoCache = new Map(); // url -> { buf, type, at }
+const LOGO_CACHE_MAX = 600;
+app.get('/api/logo', async (req, res) => {
+  try {
+    const src = String(req.query.src || '');
+    let host;
+    try { host = new URL(src).hostname; } catch { return res.status(400).json({ error: 'bad src' }); }
+    if (!LOGO_HOSTS.has(host)) return res.status(400).json({ error: 'host not allowed' });
+
+    let hit = logoCache.get(src);
+    if (!hit) {
+      const axios = require('axios');
+      const r = await axios.get(src, {
+        responseType: 'arraybuffer',
+        timeout: 15000,
+        headers: { 'User-Agent': 'CockpitHireLogoProxy/1.0 (https://cockpithire.com; support@cockpithire.com)' },
+      });
+      hit = { buf: Buffer.from(r.data), type: r.headers['content-type'] || 'image/png', at: Date.now() };
+      if (logoCache.size >= LOGO_CACHE_MAX) logoCache.delete(logoCache.keys().next().value);
+      logoCache.set(src, hit);
+    }
+    res.set('Cache-Control', 'public, max-age=604800, immutable'); // overrides the API no-store
+    res.type(hit.type).send(hit.buf);
+  } catch (err) {
+    res.status(502).json({ error: 'logo fetch failed', status: err.response?.status ?? null });
+  }
+});
+
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Diagnostic: one live Careerjet API call (1 locale, 1 page) reporting the
