@@ -152,6 +152,27 @@ exports.getJobs = async (req, res, next) => {
     // Qualified-only: filter by pilot's profile against job requirements.
     // Requires a logged-in pilot; ignored for public (logged-out) requests.
     if (qualifiedOnly === 'true' && req.pilot) {
+      // A job with NO stated requirements would pass every per-field check
+      // below by default — but "qualified" means the job states requirements
+      // AND the pilot meets them (same strict definition the Alerts page
+      // uses). No-requirement jobs live behind their own filter instead.
+      andConditions.push({
+        OR: [
+          { reqCertificates: { isEmpty: false } },
+          { reqAuthorities: { isEmpty: false } },
+          { reqAircraftTypes: { isEmpty: false } },
+          { reqMinTotalHours: { not: null } },
+          { reqMinPicHours: { not: null } },
+          { reqMinMultiEngineHours: { not: null } },
+          { reqMinTurbineHours: { not: null } },
+          { reqMinInstrumentHours: { not: null } },
+          { reqMinCrossCountryHours: { not: null } },
+          { reqMedicalClass: { not: null } },
+          { reqEducation: { not: null } },
+          { reqWorkAuthorization: { not: null } },
+          { reqEnglishLevel: { not: null } },
+        ],
+      });
       // NOTE: matching logic is duplicated in client-side computeMatchCount (Jobs.jsx).
       // Both must stay in sync. Long-term: compute server-side and return in API response.
       const pilot = await prisma.pilot.findUnique({

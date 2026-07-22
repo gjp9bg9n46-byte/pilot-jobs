@@ -232,6 +232,21 @@ const CREDENTIAL_EVIDENCE_PATTERNS = new RegExp(
 // about multicopters/Part 107 is a drone job wearing a manned-pilot title.
 const DRONE_CONTEXT_PATTERNS = /multicopter|multirotor|quadcopter|uncrewed|unmanned|\bdrones?\b|\buas\b|\buav\b|remote(?:ly)?\s+piloted|\bbvlos\b|part\s*107|\brpas\b|\brpic\b/i;
 
+// Aviation-authority DESK jobs titled "Pilot ..." — licensing officers,
+// examiner-oversight and inspectorate roles at CAAs/regulators. They demand a
+// CPL so they pass the credential gate, but nobody flies in them (e.g. the
+// SACAA "Pilot Tshwane" ads: "licensing standards... oversight of designated
+// flight examiners... approval and oversight of examination centres").
+const REGULATORY_DESK_PATTERNS = new RegExp([
+  'licen[cs]ing\\s+standards',
+  'oversight\\s+of\\s+(?:designated\\s+)?flight\\s+examiners',
+  'examination\\s+centres?',
+  'processing\\s+of\\s+(?:all\\s+)?new\\s+ATO',
+  '\\bATO\\/DTO\\b',
+  'auditing\\s+(?:all\\s+)?(?:approved|declared)\\s+training\\s+organi[sz]ations',
+  'radio\\s+telephony\\s+examiner',
+].join('|'), 'i');
+
 function isAviationJob(job, { excludeOnly = false, requireContext = false } = {}) {
   const title = String(job.title || '');
   if (!isAviationRole(title, { excludeOnly })) return false;
@@ -242,6 +257,7 @@ function isAviationJob(job, { excludeOnly = false, requireContext = false } = {}
   if (/helicopter|rotorcraft|rotary|\bheli\b|\brotor\b/i.test(String(job.company || ''))) return false;
   const text = `${title} ${job.description || ''}`;
   if (DRONE_CONTEXT_PATTERNS.test(text)) return false;
+  if (REGULATORY_DESK_PATTERNS.test(text)) return false;
   // Strong-signal gate: role-specific title OR credential evidence in the text.
   if (!STRONG_TITLE_PATTERNS.test(title) && !CREDENTIAL_EVIDENCE_PATTERNS.test(text)) return false;
   return AVIATION_CONTEXT_PATTERNS.test(text);

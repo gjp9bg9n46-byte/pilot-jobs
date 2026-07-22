@@ -32,6 +32,18 @@ function looksEnglish(text) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Foreign-language markers in a (short) TITLE: accented characters common in
+// FR/DE/ES/IT/PT plus high-frequency non-English function words. Titles are
+// too short for the stopword heuristic, so this errs toward translating.
+const TITLE_FOREIGN = new RegExp([
+  '[àâäéèêëîïôöùûüçñáíóúãõßẞ]',
+  '\\b(?:pour|avec|chez|vols?|équipage|copilotes?|pilotes?\\s+de|für|und\\s+der|flugzeugführer|erfahrene',
+  'para|vuelo|tripulación|piloto\\s+de|per\\s+il|di\\s+volo|piloti)\\b',
+].join('|'), 'i');
+function titleLooksForeign(title) {
+  return TITLE_FOREIGN.test(String(title || ''));
+}
+
 async function deeplTranslate(texts, apiKey) {
   const base = apiKey.trim().endsWith(':fx') ? 'https://api-free.deepl.com' : 'https://api.deepl.com';
   const resp = await axios.post(
@@ -50,6 +62,19 @@ async function translateUntranslatedJobs() {
   const apiKey = process.env.DEEPL_API_KEY;
   const batch = Math.max(1, parseInt(process.env.TRANSLATE_BATCH || '80', 10));
 
+  // Self-heal: jobs previously stamped 'EN' by the old body-only heuristic but
+  // whose TITLE is clearly foreign get their stamp cleared so this run
+  // translates them properly.
+  const misStamped = await prisma.job.findMany({
+    where: { status: 'ACTIVE', sourceLanguage: 'EN', titleEn: null },
+    select: { id: true, title: true },
+  });
+  const resetIds = misStamped.filter((j) => titleLooksForeign(j.title)).map((j) => j.id);
+  if (resetIds.length) {
+    await prisma.job.updateMany({ where: { id: { in: resetIds } }, data: { sourceLanguage: null } });
+    logger.info({ reset: resetIds.length, msg: 'cleared EN stamp on foreign-titled jobs for retranslation' });
+  }
+
   const jobs = await prisma.job.findMany({
     where: { status: 'ACTIVE', sourceLanguage: null },
     select: { id: true, title: true, description: true },
@@ -63,7 +88,11 @@ async function translateUntranslatedJobs() {
 
   for (const j of jobs) {
     // English check costs nothing — always do it, even without an API key.
-    if (looksEnglish(`${j.title} ${j.description}`)) {
+    // Guard against bilingual ads: a mostly-English DESCRIPTION must not let a
+    // foreign-language TITLE through untranslated (e.g. "Copilotes pour
+    // l'ambulance aérienne..." with an English body). If the title carries
+    // foreign-language markers, translate regardless of the body.
+    if (looksEnglish(`${j.title} ${j.description}`) && !titleLooksForeign(j.title)) {
       await prisma.job.update({ where: { id: j.id }, data: { sourceLanguage: 'EN' } }).catch(() => {});
       markedEnglish++;
       continue;
