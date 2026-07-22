@@ -115,7 +115,7 @@ async function buildAirlineBaseMap() {
   const map = new Map();
   for (const a of airlines) {
     const base = (a.bases && a.bases[0]) || a.headquarters || null;
-    const entry = { base, country: a.country || null };
+    const entry = { base, country: a.country || null, name: a.name };
     for (const k of new Set([normalizeCompany(a.name), coreCompanyKey(a.name)])) {
       if (k && !map.has(k)) map.set(k, entry);
     }
@@ -148,8 +148,11 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
     // real ad copy (≥150 letters) — short or stub descriptions fall back to
     // requiring the title to match too.
     const fp = String(job.description || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 500);
+    // Company is deliberately NOT in the long-fingerprint key: ad networks
+    // credit the same campaign to different publisher names ("Job-Room",
+    // "Emirates", "Emirates Airlines"), and identical ad text IS the campaign.
     const key = fp.length >= 150
-      ? [job.sourcePlatform, normaliseKey(job.company), fp].join('|')
+      ? [job.sourcePlatform, fp].join('|')
       : [job.sourcePlatform, normaliseKey(job.company), normaliseKey(job.title), fp].join('|');
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(job);
@@ -238,6 +241,62 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
     await prisma.jobAlert.deleteMany({
       where: { jobId: { in: duplicates.map((d) => d.id) }, readAt: null },
     });
+  }
+
+  // AIRLINE-CAMPAIGN COLLAPSE — the "once and for all" rule for recruitment
+  // campaigns (owner directive). When an aggregator job's company resolves to
+  // a known airline factfile, it is that airline's careers CAMPAIGN, not a
+  // distinct vacancy: Emirates syndicates one campaign across countries,
+  // languages, titles, and publisher names. One airline ⇒ ONE campaign
+  // listing across ALL aggregator feeds. Ads naming different aircraft types
+  // stay separate (an A380 Captain ad is not a 737 FO ad). ATS/career-site
+  // jobs are untouched — those are real per-vacancy requisitions.
+  const TYPE_TOKEN_RE = /\b(?:a\s?[23]\d{2}(?:neo)?|b?7[0-9]7|crj\d*|atr\s?\d*|dash\s?8|q400|e\d{3}|emb[-\s]?\d{3})\b/gi;
+  const campaignJobs = await prisma.job.findMany({
+    where: { sourcePlatform: { in: sourcePlatforms }, status: 'ACTIVE', mergedInto: null },
+    select: {
+      id: true, sourcePlatform: true, company: true, title: true, titleEn: true,
+      location: true, country: true, postedAt: true, description: true,
+    },
+  });
+  const campaignGroups = new Map();
+  for (const job of campaignJobs) {
+    const home = lookupAirlineBase(airlineBases, job.company);
+    if (!home?.name) continue; // unknown companies: not provably one campaign
+    const t = `${job.titleEn || job.title || ''}`;
+    const types = [...new Set((t.match(TYPE_TOKEN_RE) || []).map((x) => x.replace(/[\s-]/g, '').toLowerCase()))].sort();
+    const k = [home.name, types.join('+')].join('|'); // deliberately source-agnostic
+    if (!campaignGroups.has(k)) campaignGroups.set(k, []);
+    campaignGroups.get(k).push({ ...job, _home: home });
+  }
+  for (const [, group] of campaignGroups) {
+    if (group.length < 2) continue;
+    // Canonical: richest description wins (fullest ad copy), ties → oldest.
+    group.sort((a, b) =>
+      (String(b.description || '').length - String(a.description || '').length) ||
+      (new Date(a.postedAt) - new Date(b.postedAt)));
+    const canonical = group[0];
+    const duplicates = group.slice(1);
+    const home = canonical._home;
+    await prisma.job.update({
+      where: { id: canonical.id },
+      data: {
+        company: home.name, // honest airline name, not the ad publisher's
+        ...(home.base ? { location: home.base } : {}),
+        ...(home.country ? { country: home.country } : {}),
+      },
+    });
+    for (const dup of duplicates) {
+      await prisma.job.update({
+        where: { id: dup.id },
+        data: { mergedInto: canonical.id, status: 'EXPIRED' },
+      });
+      collapsed++;
+    }
+    await prisma.jobAlert.deleteMany({
+      where: { jobId: { in: duplicates.map((d) => d.id) }, readAt: null },
+    });
+    logger.info({ airline: home.name, kept: canonical.id, merged: duplicates.length, msg: 'airline campaign collapsed' });
   }
 
   // Repost collapse: aggregators re-list the same vacancy under a fresh
