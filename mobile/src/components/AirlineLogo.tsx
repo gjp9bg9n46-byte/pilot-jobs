@@ -15,7 +15,10 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { fontFamilies, pilot } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
-const LOGO_HEADERS = { 'User-Agent': 'CockpitHire/1.0' };
+// Wikimedia's UA policy requires contact info — short generic UAs get
+// intermittently 403'd, which made logos "disappear" after navigation
+// (a failed reload latched the hidden state). Compliant UA fixes the root.
+const LOGO_HEADERS = { 'User-Agent': 'CockpitHire/1.0 (https://cockpithire.com; support@cockpithire.com)' };
 
 export default function AirlineLogo({
   logoUrl,
@@ -37,7 +40,10 @@ export default function AirlineLogo({
   const styles = useThemedStyles(createStyles);
   const [failed, setFailed] = useState(false);
 
-  if ((!logoUrl || failed) && hideIfMissing) return null;
+  // hideIfMissing applies only when the airline HAS no logo. If a logo exists
+  // but a load fails (network blip, rate limit), show the initials chip
+  // instead of vanishing — a card must never lose its brand mark mid-session.
+  if (!logoUrl && hideIfMissing) return null;
 
   const initials =
     (iataCode && iataCode.slice(0, 2).toUpperCase()) ||

@@ -14,7 +14,7 @@
 // a fallback for alerts whose job record is gone.
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View,
+  ActivityIndicator, FlatList, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -275,20 +275,26 @@ function MatchesTab({ header }: { header?: ReactNode }) {
     <View>
       {header}
       <View style={styles.controls}>
-      <View style={styles.chipRow}>
+      {/* Gmail-style horizontal chip rail (owner directive: match mobile web) —
+          one swipeable row holding every filter incl. "No requirements". */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipRail}
+        contentContainerStyle={styles.chipRow}
+      >
         {CHIPS.map(([key, label]) => (
           <Pressable key={key} onPress={() => setFilter(key)} style={({ pressed }) => [styles.chip, filter === key && styles.chipActive, pressed && { transform: [{ scale: 0.96 }] }]}>
             <Text style={[styles.chipText, filter === key && styles.chipTextActive]}>{label}</Text>
           </Pressable>
         ))}
-        {/* Standalone "No requirements" toggle — its own space at the row's right edge */}
         <Pressable
           onPress={() => setFilter(filter === 'noreq' ? 'all' : 'noreq')}
           style={({ pressed }) => [styles.noreqBtn, filter === 'noreq' && styles.noreqBtnActive, pressed && { transform: [{ scale: 0.96 }] }]}
         >
           <Text style={[styles.chipText, filter === 'noreq' && styles.chipTextActive]}>No requirements</Text>
         </Pressable>
-      </View>
+      </ScrollView>
       <View style={styles.sortRow}>
         <View style={{ flex: 1 }}>
           <SelectField label="" value={sort} options={SORTS} onSelect={setSort} />
@@ -474,7 +480,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
 
   listContent: { padding: spacing.xl, paddingTop: spacing.lg, paddingBottom: 116 /* clears floating tab bar */ },
   controls: { marginBottom: 12 },
-  chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' },
+  chipRail: { marginBottom: 10, flexGrow: 0 },
+  chipRow: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingRight: 12 },
   noreqBtn: {
     marginLeft: 'auto', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
     borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface,

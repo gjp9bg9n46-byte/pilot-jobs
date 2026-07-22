@@ -9,7 +9,7 @@
 // job detail page (tap a row to open it).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View,
+  ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -174,6 +174,9 @@ function JobsBrowse() {
         <View style={{ flex: 1 }}>
           <SelectField label="" value={sort} options={SORT_OPTIONS} onSelect={setSort} />
         </View>
+      </View>
+      {/* Horizontal filter rail — same swipeable pattern as the Matches chips */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRail} contentContainerStyle={styles.chipRailRow}>
         <Pressable
           onPress={() => setQualifiedOnly((v) => !v)}
           style={[styles.toggle, qualifiedOnly && styles.toggleActive]}
@@ -182,7 +185,7 @@ function JobsBrowse() {
             {qualifiedOnly ? '✓ ' : ''}Qualified only
           </Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </View>
   );
 
@@ -267,6 +270,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
 
   // stretch → the toggle is always exactly as tall as the select beside it.
   controlsRow: { flexDirection: 'row', gap: 12, alignItems: 'stretch', marginBottom: 8 },
+  chipRail: { marginBottom: 8, flexGrow: 0 },
+  chipRailRow: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingRight: 12 },
   toggle: {
     borderWidth: 1, borderColor: pilot.line, borderRadius: 6, paddingHorizontal: 14,
     justifyContent: 'center', backgroundColor: pilot.surface,
