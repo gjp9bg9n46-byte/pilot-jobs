@@ -370,10 +370,12 @@ exports.getJobs = async (req, res, next) => {
       prisma.job.count({ where }),
     ]);
 
-    // Public (logged-out) requests have no pilot → no isSaved/isApplied state.
+    // Public (logged-out) requests have no pilot → no isSaved/isApplied state,
+    // but they still get the full presentation layer (English-first titles,
+    // visa/NTR badges) — logged-out browsing is a pilot's first impression.
     const enriched = req.pilot
       ? await enrichJobs(jobs, req.pilot.id)
-      : jobs.map((j) => ({ ...j, isSaved: false, isApplied: false }));
+      : jobs.map((j) => ({ ...presentJob(j), isSaved: false, isApplied: false }));
 
     res.json({
       jobs: enriched,
