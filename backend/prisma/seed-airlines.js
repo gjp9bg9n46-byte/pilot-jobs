@@ -236,6 +236,64 @@ const AIRLINES = [
   // Resolved via Wikidata in Step B (ICAO-only). The other 10 deferred ops were unresolvable and dropped.
   { name: 'Jet Aviation',       iataCode: null, icaoCode: 'JAS', country: 'Switzerland', region: 'Europe' },
   { name: 'Luxaviation',        iataCode: null, icaoCode: 'LXA', country: 'Luxembourg',  region: 'Europe' },
+
+  // ───────────── EXPANSION (owner directive 2026-07: NA + ME + Europe depth) ─────────────
+
+  // ── North Africa ──
+  { name: 'Nile Air',                iataCode: 'NP', icaoCode: 'NIA', country: 'Egypt',      region: 'Africa' },
+  { name: 'FlyEgypt',                iataCode: 'FT', icaoCode: 'FEG', country: 'Egypt',      region: 'Africa' },
+  { name: 'AlMasria Universal Airlines', iataCode: 'UJ', icaoCode: 'LMU', country: 'Egypt',  region: 'Africa' },
+  { name: 'Air Arabia Egypt',        iataCode: 'E5', icaoCode: 'RBG', country: 'Egypt',      region: 'Africa' },
+  { name: 'Petroleum Air Services',  iataCode: 'UF', icaoCode: 'PAS', country: 'Egypt',      region: 'Africa' },
+  { name: 'Air Arabia Maroc',        iataCode: '3O', icaoCode: 'MAC', country: 'Morocco',    region: 'Africa' },
+  { name: 'Nouvelair',               iataCode: 'BJ', icaoCode: 'LBT', country: 'Tunisia',    region: 'Africa' },
+  { name: 'Tassili Airlines',        iataCode: 'SF', icaoCode: 'DTH', country: 'Algeria',    region: 'Africa' },
+  { name: 'Afriqiyah Airways',       iataCode: '8U', icaoCode: 'AAW', country: 'Libya',      region: 'Africa' },
+  { name: 'Libyan Airlines',         iataCode: 'LN', icaoCode: 'LAA', country: 'Libya',      region: 'Africa' },
+  { name: 'Berniq Airways',          iataCode: 'NB', icaoCode: 'BNL', country: 'Libya',      region: 'Africa' },
+  { name: 'Libyan Wings',            iataCode: 'YL', icaoCode: 'LWA', country: 'Libya',      region: 'Africa' },
+  { name: 'Mauritania Airlines',     iataCode: 'L6', icaoCode: 'MAI', country: 'Mauritania', region: 'Africa' },
+
+  // ── Middle East ──
+  { name: 'Riyadh Air',              iataCode: 'RX', icaoCode: 'RXI', country: 'Saudi Arabia', region: 'Middle East' },
+  { name: 'flyadeal',                iataCode: 'F3', icaoCode: 'FAD', country: 'Saudi Arabia', region: 'Middle East' },
+  { name: 'Wizz Air Abu Dhabi',      iataCode: '5W', icaoCode: 'WAZ', country: 'UAE',          region: 'Middle East' },
+  { name: 'Fly Baghdad',             iataCode: 'IF', icaoCode: 'FBA', country: 'Iraq',         region: 'Middle East' },
+  { name: 'Yemenia',                 iataCode: 'IY', icaoCode: 'IYE', country: 'Yemen',        region: 'Middle East' },
+
+  // ── France ──
+  { name: 'Transavia France',        iataCode: 'TO', icaoCode: 'TVF', country: 'France', region: 'Europe' },
+  { name: 'French Bee',              iataCode: 'BF', icaoCode: 'FBU', country: 'France', region: 'Europe' },
+  { name: 'Corsair International',   iataCode: 'SS', icaoCode: 'CRL', country: 'France', region: 'Europe' },
+  { name: 'Air Caraïbes',            iataCode: 'TX', icaoCode: 'FWI', country: 'France', region: 'Europe' },
+  { name: 'Air Austral',             iataCode: 'UU', icaoCode: 'REU', country: 'France', region: 'Europe' },
+  { name: 'Air Corsica',             iataCode: 'XK', icaoCode: 'CCM', country: 'France', region: 'Europe' },
+  { name: 'ASL Airlines France',     iataCode: '5O', icaoCode: 'FPO', country: 'France', region: 'Europe' },
+  { name: 'Twin Jet',                iataCode: 'T7', icaoCode: 'TJT', country: 'France', region: 'Europe' },
+  { name: 'La Compagnie',            iataCode: 'B0', icaoCode: 'DJT', country: 'France', region: 'Europe' },
+
+  // ── Europe depth (strong pilot employers incl. ACMI/leisure) ──
+  { name: 'Condor',                  iataCode: 'DE', icaoCode: 'CFG', country: 'Germany',     region: 'Europe' },
+  { name: 'Discover Airlines',      iataCode: '4Y', icaoCode: 'OCN', country: 'Germany',     region: 'Europe' },
+  { name: 'Edelweiss Air',           iataCode: 'WK', icaoCode: 'EDW', country: 'Switzerland', region: 'Europe' },
+  { name: 'Marabu',                  iataCode: 'DI', icaoCode: 'MBU', country: 'Estonia',     region: 'Europe' },
+  { name: 'Norse Atlantic Airways',  iataCode: 'N0', icaoCode: 'NBT', country: 'Norway',      region: 'Europe' },
+  { name: 'SmartLynx Airlines',      iataCode: '6Y', icaoCode: 'ART', country: 'Latvia',      region: 'Europe' },
+  { name: 'Avion Express',           iataCode: 'X9', icaoCode: 'NVD', country: 'Lithuania',   region: 'Europe' },
+  { name: 'GetJet Airlines',         iataCode: 'GW', icaoCode: 'GJT', country: 'Lithuania',   region: 'Europe' },
+  { name: 'Heston Airlines',         iataCode: 'HN', icaoCode: 'HST', country: 'Lithuania',   region: 'Europe' },
+  { name: 'Bulgaria Air',            iataCode: 'FB', icaoCode: 'LZB', country: 'Bulgaria',    region: 'Europe' },
+  { name: 'SKY express',             iataCode: 'GQ', icaoCode: 'SEH', country: 'Greece',      region: 'Europe' },
+  { name: 'Hi Fly',                  iataCode: '5K', icaoCode: 'HFY', country: 'Portugal',    region: 'Europe' },
+  { name: 'euroAtlantic Airways',    iataCode: 'YU', icaoCode: 'MMZ', country: 'Portugal',    region: 'Europe' },
+  { name: 'Wamos Air',               iataCode: 'EB', icaoCode: 'PLM', country: 'Spain',       region: 'Europe' },
+  { name: 'Iberojet',                iataCode: 'E9', icaoCode: 'EVE', country: 'Spain',       region: 'Europe' },
+  { name: 'Enter Air',               iataCode: 'E4', icaoCode: 'ENT', country: 'Poland',      region: 'Europe' },
+  { name: 'Freebird Airlines',       iataCode: 'FH', icaoCode: 'FHY', country: 'Turkey',      region: 'Europe' },
+  { name: 'Chair Airlines',          iataCode: 'GM', icaoCode: 'GSW', country: 'Switzerland', region: 'Europe' },
+  { name: 'SunExpress',              iataCode: 'XQ', icaoCode: 'SXS', country: 'Turkey',      region: 'Europe' },
+  { name: 'Corendon Airlines',       iataCode: 'XC', icaoCode: 'CAI', country: 'Turkey',      region: 'Europe' },
+  { name: 'AJet',                    iataCode: 'VF', icaoCode: 'AJA', country: 'Turkey',      region: 'Europe' },
 ];
 
 async function main() {
