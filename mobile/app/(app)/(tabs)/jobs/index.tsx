@@ -14,7 +14,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
-import AirlineLogo from '../../../../src/components/AirlineLogo';
+import JobCardContent from '../../../../src/components/JobCardShared';
 import AlertsScreen from '../alerts';
 import { useUnread } from '../../../../src/context/UnreadContext';
 import { SelectField, TextField } from '../../../../src/components/ui';
@@ -130,19 +130,19 @@ function JobsBrowse() {
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed, pressed && { transform: [{ scale: 0.985 }] }]}
         onPress={() => router.push(`/jobs/${slugFor(job)}`)}
       >
-        <AirlineLogo hideIfMissing logoUrl={resolveAirline(airlineMap, job.company)?.logoUrl} name={job.company} box={46} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.rowTitle} numberOfLines={2}>{job.title}</Text>
-          <Text style={styles.rowSub}>{job.company}{ago ? `  ·  ${ago}` : ''}</Text>
-          {mc && mc.total > 0 ? (
+        <JobCardContent
+          job={job}
+          air={resolveAirline(airlineMap, job.company)}
+          ago={ago}
+          right={<Ionicons name="chevron-forward" size={18} color={pilot.line} />}
+          footer={mc && mc.total > 0 ? (
             <View style={[styles.matchPill, { backgroundColor: full ? '#DCFCE7' : '#FEF3C7' }]}>
               <Text style={[styles.matchPillText, { color: full ? SEM.green : SEM.amber }]}>
                 {mc.matched}/{mc.total} requirements met
               </Text>
             </View>
           ) : null}
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={pilot.line} />
+        />
       </Pressable>
     );
   };

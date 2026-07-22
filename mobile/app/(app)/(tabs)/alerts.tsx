@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../src/lib/api';
-import AirlineLogo from '../../../src/components/AirlineLogo';
+import JobCardContent from '../../../src/components/JobCardShared';
 import { SelectField } from '../../../src/components/ui';
 import { fetchAirlineMap, resolveAirline } from '../../../src/lib/airlineLookup';
 import { matchStyle, postedAgo } from '../../../src/lib/jobMatch';
@@ -131,30 +131,25 @@ function AlertCard({ alert, expanded, saved, air, onPress, onToggleSave, onViewJ
         onPress={onPress}
         style={({ pressed }) => [styles.card, isUnread && styles.cardUnread, expanded && styles.cardOpen, pressed && { transform: [{ scale: 0.98 }], opacity: 0.92 }]}
       >
-        <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company ?? alert.company} box={40} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.cardTitle} numberOfLines={2}>
-            {job?.title ?? alert.jobTitle ?? '—'}
-          </Text>
-          <Text style={styles.cardCompany}>{job?.company ?? alert.company ?? '—'}</Text>
-          <View style={styles.metaRow}>
-            {location ? <Text style={styles.meta}><Ionicons name="location-outline" size={11} color={pilot.muted} /> {location}</Text> : null}
-            {job?.reqAuthorities?.[0] ? <Text style={styles.meta}>{job.reqAuthorities[0]}</Text> : null}
-          </View>
-          {pills.length > 0 ? (
+        <JobCardContent
+          job={{ ...(job ?? {}), title: job?.title ?? alert.jobTitle, company: job?.company ?? alert.company, location }}
+          air={air}
+          right={
+            <View style={styles.cardRight}>
+              <Pressable onPress={onToggleSave} hitSlop={8} style={styles.saveBtn} accessibilityLabel={saved ? 'Unsave job' : 'Save job'}>
+                <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={22} color={saved ? pilot.navy : pilot.muted} />
+              </Pressable>
+              <MatchBadge score={alert.qualified ? 100 : alert.matchScore} />
+            </View>
+          }
+          footer={pills.length > 0 ? (
             <View style={styles.pillWrap}>
               {pills.map((p) => (
                 <Text key={p.key} style={[styles.pill, { color: p.color, backgroundColor: p.bg }]}>{p.text}</Text>
               ))}
             </View>
           ) : null}
-        </View>
-        <View style={styles.cardRight}>
-          <Pressable onPress={onToggleSave} hitSlop={8} style={styles.saveBtn} accessibilityLabel={saved ? 'Unsave job' : 'Save job'}>
-            <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={22} color={saved ? pilot.navy : pilot.muted} />
-          </Pressable>
-          <MatchBadge score={alert.qualified ? 100 : alert.matchScore} />
-        </View>
+        />
       </Pressable>
 
       {expanded ? (
@@ -386,18 +381,16 @@ function SavedJobsTab({ header }: { header?: ReactNode }) {
         const ago = postedAgo(j.postedAt);
         return (
           <Pressable style={styles.appCard} onPress={() => router.push(`/jobs/${slugFor(j)}`)}>
-            <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={j.company} box={40} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.cardTitle} numberOfLines={2}>{j.title ?? '—'}</Text>
-              <Text style={styles.cardCompany}>{j.company ?? '—'}</Text>
-              <View style={styles.metaRow}>
-                {j.location ? <Text style={styles.meta}><Ionicons name="location-outline" size={11} color={pilot.muted} /> {j.location}</Text> : null}
-                {ago ? <Text style={styles.meta}>{ago}</Text> : null}
-              </View>
-            </View>
-            <Pressable onPress={() => unsave(j.id)} hitSlop={8} style={styles.saveBtn} accessibilityLabel="Remove from saved">
-              <Ionicons name="bookmark" size={22} color={pilot.navy} />
-            </Pressable>
+            <JobCardContent
+              job={j}
+              air={air}
+              ago={ago}
+              right={
+                <Pressable onPress={() => unsave(j.id)} hitSlop={8} style={styles.saveBtn} accessibilityLabel="Remove from saved">
+                  <Ionicons name="bookmark" size={22} color={pilot.navy} />
+                </Pressable>
+              }
+            />
           </Pressable>
         );
       }}
