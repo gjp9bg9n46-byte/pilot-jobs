@@ -82,9 +82,14 @@ app.get('/api/logo', async (req, res) => {
       if (logoCache.size >= LOGO_CACHE_MAX) logoCache.delete(logoCache.keys().next().value);
       logoCache.set(src, hit);
     }
+    // ?debug=1 → always-200 JSON report instead of the image (remote diagnosis)
+    if (req.query.debug === '1') return res.json({ ok: true, type: hit.type, bytes: hit.buf.length });
     res.set('Cache-Control', 'public, max-age=604800, immutable'); // overrides the API no-store
     res.type(hit.type).send(hit.buf);
   } catch (err) {
+    if (req.query.debug === '1') {
+      return res.json({ ok: false, status: err.response?.status ?? null, message: err.message, upstreamBody: err.response?.data ? String(err.response.data).slice(0, 200) : null });
+    }
     res.status(502).json({ error: 'logo fetch failed', status: err.response?.status ?? null });
   }
 });
