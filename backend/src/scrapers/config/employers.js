@@ -252,6 +252,10 @@ module.exports = [
     region: 'Middle East',
     defaultLocation: 'Dubai',
     taleo: { tenant: 'tas-ekgcareers', section: 'cc_external' },
+    // DNS check 2026-07-26: *ekgcareers.taleo.net hostnames no longer exist —
+    // Emirates migrated off Taleo. Re-point at their current ATS (likely
+    // Oracle Recruiting Cloud) once identified from emiratesgroupcareers.com.
+    disabled: true,
   },
 
   // ── Aviation Job Search (aviationjobsearch.com) ────────────────────────────
