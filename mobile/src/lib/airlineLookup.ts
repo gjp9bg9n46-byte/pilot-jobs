@@ -6,7 +6,7 @@
 import api from './api';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AirlineRef = { id: string; name: string; logoUrl: string | null; iataCode: string | null };
+type AirlineRef = { id: string; name: string; logoUrl: string | null; iataCode: string | null; domain: string | null };
 
 export function normalizeCompany(str: string): string {
   return String(str || '')
@@ -35,7 +35,7 @@ export async function fetchAirlineMap(): Promise<Map<string, AirlineRef>> {
     const { data } = await api.get('/airlines', { params: { limit: 100, page } });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data.items || []).forEach((a: any) => {
-      const entry = { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null };
+      const entry = { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null, domain: a.domain ?? null };
       const k = normalizeCompany(a.name);
       if (k && !map.has(k)) map.set(k, entry);
       const core = coreCompanyKey(a.name);

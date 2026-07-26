@@ -84,7 +84,7 @@ export default function JobDetail() {
   const [applyNote, setApplyNote] = useState<string | null>(null);
   // Resolve the job's company → airline factfile (scraped company strings vary
   // from canonical names, so job.airlineId is usually null → use the name map).
-  const [airline, setAirline] = useState<{ id: string; name: string; logoUrl?: string | null; iataCode?: string | null } | null>(null);
+  const [airline, setAirline] = useState<{ id: string; name: string; logoUrl?: string | null; iataCode?: string | null; domain?: string | null } | null>(null);
   useEffect(() => {
     if (!job?.company) return;
     let alive = true;
@@ -171,6 +171,14 @@ export default function JobDetail() {
               {job.location ? <Text style={styles.meta}><Ionicons name="location-outline" size={12} color={pilot.muted} /> {job.location}</Text> : null}
               {job.reqAircraftTypes?.[0] ? <Text style={styles.meta}>{job.reqAircraftTypes.join(', ')}</Text> : null}
               {ago ? <Text style={styles.meta}>{ago}</Text> : null}
+              {airline?.domain ? (
+                <Text
+                  style={[styles.meta, { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold }]}
+                  onPress={() => Linking.openURL(`https://${String(airline.domain).replace(/^https?:\/\//, '')}`)}
+                >
+                  Official careers site ↗
+                </Text>
+              ) : null}
             </View>
           </View>
         </View>

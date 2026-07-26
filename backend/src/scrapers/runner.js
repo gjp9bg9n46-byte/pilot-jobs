@@ -531,4 +531,4 @@ async function runAllEmployers(employers, opts = {}) {
   return allStats;
 }
 
-module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue };
+module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue, fetchForEmployer };

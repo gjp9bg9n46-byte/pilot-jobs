@@ -94,6 +94,28 @@ app.get('/api/logo', async (req, res) => {
   }
 });
 
+// Dry-run one configured source from the LIVE server (no DB writes): fetches
+// raw jobs and reports counts + samples. This is how new sources/tenants get
+// verified before being trusted — the Careerjet debugging lesson, generalised.
+app.get('/health/scrape-test', async (req, res) => {
+  try {
+    const source = String(req.query.source || '').toUpperCase();
+    const company = req.query.company ? String(req.query.company).toLowerCase() : null;
+    const employers = require('./scrapers/config/employers');
+    const emp = employers.find((e) =>
+      e.source === source && !e.disabled && (!company || String(e.company).toLowerCase().includes(company)));
+    if (!emp) return res.json({ ok: false, reason: 'no matching enabled employer config', source, company });
+    const { fetchForEmployer } = require('./scrapers/runner');
+    const raw = await fetchForEmployer(emp);
+    res.json({
+      ok: true, source, employer: emp.company, fetched: raw.length,
+      sampleTitles: raw.slice(0, 8).map((j) => j.title),
+    });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Diagnostic: one live Careerjet API call (1 locale, 1 page) reporting the

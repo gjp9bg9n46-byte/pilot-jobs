@@ -38,7 +38,7 @@ export async function fetchAirlineMap() {
   do {
     const { data } = await airlineApi.list({ limit: 100, page });
     data.items.forEach((a) => {
-      const entry = { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null };
+      const entry = { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null, domain: a.domain ?? null };
       const k = normalizeCompany(a.name);
       if (k && !map.has(k)) map.set(k, entry);
       const core = coreCompanyKey(a.name);

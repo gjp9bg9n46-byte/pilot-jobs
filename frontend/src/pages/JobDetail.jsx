@@ -384,6 +384,16 @@ export default function JobDetail() {
             {job.location && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><MapPin size={13} /> {job.location}</span>}
             {job.reqAircraftTypes?.[0] && <span>{job.reqAircraftTypes.join(', ')}</span>}
             {ago && <span>{ago}</span>}
+            {airline?.domain && (
+              <a
+                href={`https://${String(airline.domain).replace(/^https?:\/\//, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}
+              >
+                Official careers site ↗
+              </a>
+            )}
           </div>
         </div>
       </div>
