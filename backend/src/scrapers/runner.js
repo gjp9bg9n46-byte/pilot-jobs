@@ -27,6 +27,7 @@ const { fetchUSAJobs } = require('./sources/usajobs');
 const { fetchAdzuna } = require('./sources/adzuna');
 const { fetchJooble } = require('./sources/jooble');
 const { fetchCareerjet } = require('./sources/careerjet');
+const { fetchTaleo } = require('./sources/taleo');
 const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement } = require('./normalize');
@@ -160,6 +161,7 @@ async function fetchForEmployer(empConfig) {
     case 'ADZUNA':            return fetchAdzuna(empConfig);
     case 'JOOBLE':            return fetchJooble(empConfig);
     case 'CAREERJET':         return fetchCareerjet(empConfig);
+    case 'TALEO':             return fetchTaleo(empConfig);
     case 'AVIATIONJOBSEARCH':  return fetchAviationJobSearch(empConfig);
     default:
       logger.warn({ msg: `unknown source: ${empConfig.source}` });

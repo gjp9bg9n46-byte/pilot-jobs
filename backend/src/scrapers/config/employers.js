@@ -239,6 +239,21 @@ module.exports = [
     requireContext: true,
   },
 
+  // ── Taleo (Oracle Enterprise careersection REST) ──────────────────────────
+  // Emirates Group runs pilot recruitment on Taleo (emiratesgroupcareers.com →
+  // tas-ekgcareers.taleo.net). Verify with /health/scrape-test?source=TALEO
+  // after any config change. List endpoint carries titles only — description
+  // is thin, so the shared title filter is the gate (career-site source: real
+  // requisitions, not aggregator noise).
+  {
+    source: 'TALEO',
+    company: 'Emirates',
+    country: 'UAE',
+    region: 'Middle East',
+    defaultLocation: 'Dubai',
+    taleo: { tenant: 'tas-ekgcareers', section: 'cc_external' },
+  },
+
   // ── Aviation Job Search (aviationjobsearch.com) ────────────────────────────
   // Verified 2026-07-08: robots.txt allows job pages; T&Cs restrict only the
   // candidate/CV database (never touched). Pages publish schema.org JSON-LD
