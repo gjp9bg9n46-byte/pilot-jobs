@@ -43,6 +43,120 @@ function pickCanonical(group) {
   })[0];
 }
 
+// ─── Fuzzy cross-source matching (aggregator → clean twin displacement) ─────────
+//
+// Exact (company|title|location) grouping misses aggregator variants of the same
+// job (Adzuna "Direct Entry Captain - Pilot" @ "Dubai International Airport" vs
+// the direct "Direct Entry Captain" @ "Dubai, United Arab Emirates"). We match by
+// NOISE-NORMALISATION + exact multiset equality — NOT edit distance/overlap:
+// strip a CLOSED allowlist of noise tokens, then require the remaining title
+// token multiset (and city core) to match EXACTLY. Anything not on the allowlist
+// is signal and is kept — crucially aircraft/type designators (A320, B777) are
+// NEVER stripped, so "First Officer A320" and "First Officer B777" stay distinct.
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// CLOSED allowlist — noise phrases only. Contains NO type/aircraft designators.
+const TITLE_NOISE_PHRASES = [
+  /\bpilot jobs\b/g,
+  /\bapply now\b/g,
+  /\(\s*m\s*\/\s*[fw]\s*\/\s*[dm]\s*\)/g,   // (m/f/d) (m/w/d)
+];
+const TITLE_TRAILING_DECORATOR = /\s*[-–—]\s*(pilots?|officer|careers?)\s*$/; // trailing "- Pilot"/"- Officer"/"- Careers"
+// Only strip a trailing req-id that has an EXPLICIT marker (# / req / ref / job id).
+// A BARE trailing number is left as signal — it may be an aircraft designator
+// ("First Officer 777"/"787"), and a wrong strip that merges two jobs is far worse
+// than a missed merge.
+const TITLE_TRAILING_REQID = /\s*[-–—(]?\s*(?:#\s*|\b(?:req|ref|requisition|job\s*id)\b[\s.:#-]*)\d{2,}\)?\s*$/i;
+
+// Known multi-base cities — first-token city reduction can't tell their bases
+// apart (London Heathrow vs Gatwick both → "london"); flagged for manual review.
+const MULTI_BASE_CITIES = new Set(['london', 'newyork', 'new', 'paris', 'tokyo', 'moscow', 'chicago', 'washington', 'houston', 'dallas', 'berlin', 'milan', 'rome', 'seoul', 'shanghai', 'sao', 'buenos', 'osaka', 'istanbul']);
+
+function cityCore(location) {
+  const first = String(location || '').split(',')[0].trim().toLowerCase();
+  return (first.match(/[a-z]+/g) || [])[0] || '';
+}
+
+function titleCore(title, company, location) {
+  let t = ` ${String(title || '').toLowerCase()} `;
+  // repeated employer name + repeated location (city) suffixes are noise
+  const emp = String(company || '').toLowerCase().replace(/\bgroup\b/g, ' ');
+  for (const w of emp.split(/\s+/)) if (w.length > 2) t = t.replace(new RegExp(`\\b${esc(w)}\\b`, 'g'), ' ');
+  const city = cityCore(location);
+  if (city) t = t.replace(new RegExp(`\\b${esc(city)}\\b`, 'g'), ' ');
+  for (const re of TITLE_NOISE_PHRASES) t = t.replace(re, ' ');
+  let prev;
+  do { prev = t; t = t.replace(TITLE_TRAILING_DECORATOR, ' '); } while (t !== prev); // strip repeated trailing decorators
+  t = t.replace(TITLE_TRAILING_REQID, ' ');
+  // Remaining alphanumeric tokens as a sorted multiset. Keep 1-char tokens only
+  // if numeric; everything else (incl. A320/B777/CRJ9) is signal and kept.
+  const tokens = (t.match(/[a-z0-9]+/g) || []).filter((x) => x.length > 1 || /\d/.test(x));
+  return tokens.sort().join(' ');
+}
+
+/**
+ * Displace aggregator rows that have a clean (direct_ats/operator_direct) twin.
+ *
+ * ASYMMETRIC by construction: canonical is chosen from the CLEAN rows only, so an
+ * aggregator can only ever LOSE to a clean twin — never merge two clean rows, and
+ * never expire a clean row. INVARIANT (asserted at runtime): an aggregator is
+ * expired only if its canonical clean row is live; otherwise skip + log.
+ *
+ * Shadow by default (dryRun:true) — logs/returns the pairs it WOULD merge, writes
+ * nothing. Flip to { dryRun:false } to apply after review.
+ *
+ * @returns {Promise<{pairs:object[], merged:number}>}
+ */
+async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } = {}) {
+  const jobs = await prisma.job.findMany({
+    where: { sourcePlatform: { in: sourcePlatforms }, status: 'ACTIVE', mergedInto: null },
+    select: { id: true, sourcePlatform: true, sourceType: true, company: true, title: true, location: true, applyUrl: true, description: true },
+  });
+
+  const groups = new Map();
+  for (const j of jobs) {
+    const tc = titleCore(j.title, j.company, j.location);
+    if (!tc) continue; // no signal left → never group
+    const key = [normaliseKey(j.company), tc, cityCore(j.location)].join('|');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(j);
+  }
+
+  const pairs = [];
+  let merged = 0;
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const clean = group.filter((j) => j.sourceType && j.sourceType !== 'aggregator');
+    const aggs = group.filter((j) => j.sourceType === 'aggregator');
+    if (!clean.length || !aggs.length) continue; // need BOTH a clean twin and an aggregator
+
+    const canonical = pickCanonical(clean); // best CLEAN row (guaranteed non-aggregator)
+    if (!canonical || canonical.sourceType === 'aggregator') {
+      logger.warn({ msg: 'aggregator-dedup: canonical not clean — skipping group (invariant)', title: aggs[0].title });
+      continue;
+    }
+    for (const agg of aggs) {
+      pairs.push({
+        aggId: agg.id, aggTitle: agg.title, aggLocation: agg.location, aggType: agg.sourceType, aggApplyUrl: agg.applyUrl,
+        canonId: canonical.id, canonTitle: canonical.title, canonLocation: canonical.location, canonType: canonical.sourceType, canonApplyUrl: canonical.applyUrl,
+        winner: 'canonical (clean)', multiBaseCityReview: MULTI_BASE_CITIES.has(cityCore(canonical.location)),
+      });
+      if (!dryRun) {
+        // Runtime INVARIANT: only expire the aggregator if the canonical is live.
+        const live = await prisma.job.findUnique({ where: { id: canonical.id }, select: { status: true, sourceType: true } });
+        if (!live || live.status !== 'ACTIVE' || live.sourceType === 'aggregator') {
+          logger.warn({ msg: 'aggregator-dedup: canonical not live/clean at write time — skipping merge (invariant)', agg: agg.id, canonical: canonical.id });
+          continue;
+        }
+        await prisma.job.update({ where: { id: agg.id }, data: { mergedInto: canonical.id, status: 'EXPIRED' } });
+        merged++;
+      }
+    }
+  }
+  logger.info({ msg: dryRun ? 'aggregator-dedup SHADOW (no writes)' : 'aggregator-dedup applied', candidatePairs: pairs.length, merged });
+  return { pairs, merged };
+}
+
 /**
  * After upserting a batch of jobs, collapse cross-source duplicates.
  * Only looks at ACTIVE jobs that were touched in this run (by sourcePlatform).
@@ -353,4 +467,4 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
   return collapsed;
 }
 
-module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical };
+module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, titleCore, cityCore };

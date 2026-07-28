@@ -122,12 +122,17 @@ async function fetchAvatureApi(empConfig, cfg) {
     return [];
   }
 
+  if (!Array.isArray(rows)) {
+    logger.error({ source: 'AVATURE', employer: empConfig.company, msg: 'api returned no jobs array — shape changed; aborting (not ingesting)' });
+    return [];
+  }
   const out = [];
+  let skipped = 0;
   for (const j of rows) {
     const id = j.reqid ?? j.reqno ?? j.id;
     const title = String(j.title || '').trim();
     const applyUrl = j.redirectionurl || j.applyUrl || j.url;
-    if (!id || !title || !applyUrl) continue;   // must have a real apply destination
+    if (!id || !title || !applyUrl) { skipped++; continue; }   // must have a real apply destination — never ingest a null
     const description = htmlToText(j.jobdescription || j.description || '');
     const location = [...new Set([j.city, j.state, j.country].filter(Boolean))].join(', ') || j.location || empConfig.defaultLocation || '';
     const text = `${title} ${description}`;
@@ -151,7 +156,13 @@ async function fetchAvatureApi(empConfig, cfg) {
       ...(extractSalary(description) || {}),
     });
   }
-  logger.info({ source: 'AVATURE', employer: empConfig.company, fetched: rows.length, mapped: out.length, mode: 'api', msg: 'fetch complete' });
+  // Shape-validation alert: a partial failure (many rows missing title/applyUrl,
+  // or nothing usable from a non-empty payload) usually means the undocumented API
+  // changed shape. Surface it loudly rather than silently ingesting fewer/null rows.
+  if (rows.length > 0 && (out.length === 0 || skipped / rows.length > 0.25)) {
+    logger.error({ source: 'AVATURE', employer: empConfig.company, received: rows.length, usable: out.length, skipped, msg: 'api SHAPE ALERT — many rows missing title/applyUrl (endpoint may have changed)' });
+  }
+  logger.info({ source: 'AVATURE', employer: empConfig.company, fetched: rows.length, mapped: out.length, skipped, mode: 'api', msg: 'fetch complete' });
   return out;
 }
 
