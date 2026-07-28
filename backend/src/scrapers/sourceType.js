@@ -19,11 +19,13 @@
  */
 
 // Third-party aggregators — checked first (highest-confidence "not clean").
+// Anchor with [./] (or start) so a bare host like `jooble.org` — preceded by
+// `//` in a URL, no subdomain — still matches, while `notjooble.org` does not.
 const AGGREGATOR = [
-  /(^|\.)adzuna\./i,
-  /(^|\.)jooble\./i,
-  /(^|\.)careerjet\./i,
-  /aviationjobsearch\.com/i,
+  /(?:^|[./])adzuna\./i,
+  /(?:^|[./])jooble\./i,
+  /(?:^|[./])careerjet\./i,
+  /(?:^|[./])aviationjobsearch\.com/i,
 ];
 
 // Recruiting-platform ATS domains + verified carrier-branded ATS vanity hosts.

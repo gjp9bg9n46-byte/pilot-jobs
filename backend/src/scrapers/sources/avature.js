@@ -96,20 +96,32 @@ const GENERIC_ANCHOR = /^\s*(view\s*(more|details|job)?|apply|read\s*more|see\s*
 
 async function fetchAvature(empConfig) {
   const cfg = empConfig.avature || {};
-  const { host, locale, portalPath } = cfg;
-  if (!host || !locale || !portalPath) {
-    logger.warn({ source: 'AVATURE', employer: empConfig.company, msg: 'missing avature.host/locale/portalPath — skipping' });
+  const { host, portalPath } = cfg;
+  const locale = cfg.locale || '';   // optional — the avature.net host omits it
+  if (!host || !portalPath) {
+    logger.warn({ source: 'AVATURE', employer: empConfig.company, msg: 'missing avature.host/portalPath — skipping' });
     return [];
   }
   const perPage = cfg.recordsPerPage || 100;
   const maxRecords = cfg.maxRecords || 500;
-  const portal = `${host}/${locale}/${portalPath}`;
+  const portal = locale ? `${host}/${locale}/${portalPath}` : `${host}/${portalPath}`;
+  // Per-tenant externalId prefix so two Avature tenants can't collide on jobId
+  // (the @@unique([sourcePlatform, externalId]) is shared across all AVATURE rows).
+  const tenantKey = host.replace(/^https?:\/\//, '').split('.')[0];
 
   const byId = new Map();   // jobId → normalized job (first wins; dedupe)
   let total = null;
   let clampedWarned = false;
 
-  for (let offset = 0; offset < maxRecords; offset += perPage) {
+  // jobRecordsPerPage is REQUESTED but the portal commonly clamps it to the
+  // 6-per-page UI default (verified on a served Avature tenant). So we advance
+  // jobOffset by the ACTUAL number of jobs a page returns, never by the
+  // requested size — stepping by perPage would skip every job past the first
+  // page. Loop until a page is empty, we've collected `total`, or hit maxRecords.
+  let offset = 0;
+  let guard = 0;
+  while (offset < maxRecords && guard < 500) {
+    guard++;
     const url = `${portal}/SearchJobs/?jobRecordsPerPage=${perPage}&jobOffset=${offset}`;
     let html;
     try {
@@ -120,13 +132,15 @@ async function fetchAvature(empConfig) {
     }
     const $ = cheerio.load(html);
 
-    // Total from "1-6 of 300 results" (third group).
+    // Total: "1-6 of 300 results" (third group), or a plain "300 results".
     if (total == null) {
-      const tm = $.text().match(/\d[\d,]*\s*[-–]\s*\d[\d,]*\s+of\s+([\d,]+)\s+results?/i);
+      const tm = $.text().match(/\d[\d,]*\s*[-–]\s*\d[\d,]*\s+of\s+([\d,]+)\s+results?/i)
+        || $.text().match(/([\d,]+)\s+results?\b/i);
       total = tm ? parseInt(tm[1].replace(/,/g, ''), 10) : null;
     }
 
-    // Title anchors: one per job, dedup by jobId, ignore generic View/Apply anchors.
+    // One JobDetail anchor per card (the title). "View more"/"Apply" anchors are
+    // generic-text or point at /ApplicationMethods, so they're filtered/deduped.
     const pageIds = new Set();
     $('a[href*="/JobDetail"]').each((_, a) => {
       const $a = $(a);
@@ -137,22 +151,21 @@ async function fetchAvature(empConfig) {
       if (!label || GENERIC_ANCHOR.test(label)) return;   // not the title anchor
       if (byId.has(jobId)) return;
 
+      // Card-scoped so each job gets ITS OWN closing date (not the first job's).
       const card = cardFor($, a, jobId);
-      const cardText = htmlToText($.html(card));
-      const summary = cardText.replace(CLOSING_RE, '').trim();
-      const expiresAt = parseClosing(cardText);
-      const text = `${label} ${summary}`;
+      const expiresAt = parseClosing(htmlToText($.html(card)));
 
       byId.set(jobId, {
         sourcePlatform: 'AVATURE',
-        externalId: `${locale}-${jobId}`,
+        externalId: `${tenantKey}-${jobId}`,
         title: label,
         company: empConfig.company,
-        // Location markup varies per tenant + wasn't verifiable here; fall back to
-        // the configured default. Requirement matching uses title + summary, not location.
+        // Location/category live behind the card's expand toggle (lazy-loaded),
+        // not in the list HTML — fall back to the configured default. Matching
+        // keys off title + requirements; Avature isn't requireContext-gated.
         location: empConfig.defaultLocation || '',
         country: empConfig.country || null,
-        description: summary || label,
+        description: label,
         applyUrl: `${portal}/ApplicationMethods?jobId=${jobId}`,   // constructed, never scraped
         sourceUrl: `${portal}/JobDetail?jobId=${jobId}`,
         postedAt: new Date(),
@@ -161,22 +174,21 @@ async function fetchAvature(empConfig) {
         contractType: null,
         region: empConfig.region || null,
         salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null,
-        ...extractRequirements(text),
-        ...(extractSalary(summary) || {}),
+        ...extractRequirements(label),
       });
     });
 
-    // Clamp detection: asked for perPage>6 but the page yielded ≤6 distinct jobs.
+    // Clamp detection: asked for >6 but the page yielded ≤6 distinct jobs.
     if (!clampedWarned && perPage > 6 && pageIds.size > 0 && pageIds.size <= 6) {
-      logger.warn({ source: 'AVATURE', employer: empConfig.company, requested: perPage, got: pageIds.size, msg: 'jobRecordsPerPage may be clamped to page default' });
+      logger.warn({ source: 'AVATURE', employer: empConfig.company, requested: perPage, got: pageIds.size, msg: 'jobRecordsPerPage clamped to page default — paginating by actual page size' });
       clampedWarned = true;
     }
 
     logger.info({ source: 'AVATURE', employer: empConfig.company, offset, pageJobs: pageIds.size, cumulative: byId.size, total, msg: 'search page parsed' });
 
-    if (pageIds.size === 0) break;                       // no rows → done
-    if (total != null && byId.size >= total) break;      // collected everything
-    if (pageIds.size < perPage && pageIds.size <= 6) break; // last page (or clamped) — stop
+    if (pageIds.size === 0) break;                    // empty page → done
+    offset += pageIds.size;                            // advance by ACTUAL page size
+    if (total != null && byId.size >= total) break;    // collected everything
   }
 
   const results = [...byId.values()];

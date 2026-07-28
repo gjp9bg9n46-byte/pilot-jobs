@@ -26,6 +26,24 @@ function normaliseKey(str) {
 }
 
 /**
+ * Pick the canonical row for a group of cross-source duplicates.
+ * Ranks the apply destination FIRST (direct_ats > operator_direct > aggregator),
+ * description length only as a tiebreak — so a direct-ATS row displaces its
+ * aggregator clone even when the aggregator's description is longer. Pure +
+ * non-mutating so it's unit-testable.
+ *
+ * @param {Array<{sourceType?:string, description?:string}>} group
+ * @returns {object} the canonical member
+ */
+function pickCanonical(group) {
+  return [...group].sort((a, b) => {
+    const byType = sourceTypeRank(b.sourceType) - sourceTypeRank(a.sourceType);
+    if (byType !== 0) return byType;
+    return (b.description?.length || 0) - (a.description?.length || 0);
+  })[0];
+}
+
+/**
  * After upserting a batch of jobs, collapse cross-source duplicates.
  * Only looks at ACTIVE jobs that were touched in this run (by sourcePlatform).
  *
@@ -68,19 +86,13 @@ async function collapseXSourceDuplicates(sourcePlatforms) {
   for (const [, group] of groups) {
     if (group.length < 2) continue;
 
-    // Canonical selection ranks the apply destination FIRST, description length
-    // only as a tiebreak: direct_ats > operator_direct > aggregator. A direct-ATS
-    // duplicate therefore displaces its aggregator clone (which gets EXPIRED +
-    // mergedInto), even when the aggregator's description is longer — this is the
+    // Canonical selection ranks the apply destination FIRST (see pickCanonical):
+    // a direct-ATS duplicate displaces its aggregator clone (→ EXPIRED +
+    // mergedInto) even when the aggregator's description is longer. This is the
     // only lever left on the aggregator share once expiry + URL-rewrite are off
     // the table (Adzuna's API terms forbid resolving redirect_url).
-    group.sort((a, b) => {
-      const byType = sourceTypeRank(b.sourceType) - sourceTypeRank(a.sourceType);
-      if (byType !== 0) return byType;
-      return (b.description?.length || 0) - (a.description?.length || 0);
-    });
-    const canonical = group[0];
-    const duplicates = group.slice(1);
+    const canonical = pickCanonical(group);
+    const duplicates = group.filter((j) => j.id !== canonical.id);
 
     for (const dup of duplicates) {
       if (dup.sourcePlatform === canonical.sourcePlatform) continue; // same source = not our job
@@ -341,4 +353,4 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
   return collapsed;
 }
 
-module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations };
+module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical };
