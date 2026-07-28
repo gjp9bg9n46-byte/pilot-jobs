@@ -568,6 +568,7 @@ function normalize(raw, empConfig) {
       case 'ADZUNA':  return raw;
       case 'JOOBLE':  return raw;
       case 'AVIATIONJOBSEARCH': return raw;
+      case 'ICIMS':   return raw;  // icims.js pre-normalizes
       default: return null;
     }
   } catch (err) {

@@ -268,4 +268,18 @@ module.exports = [
     company: 'Aviation Job Search',
     aggregate: true,
   },
+
+  // ── iCIMS careersites (direct carrier ATS) ─────────────────────────────────
+  // Public careersite: https://{subdomain}.icims.com/jobs/search (HTML list) +
+  // per-job detail pages carrying schema.org JSON-LD JobPosting. applyUrl is the
+  // direct *.icims.com job URL — never an aggregator. Fetched via http.js
+  // (identifiable UA + robots.txt + rate-limit). Verified 2026-07-27: Solairus
+  // careersite returns live pilot postings (e.g. "Gulfstream G650ER Captain").
+  {
+    source: 'ICIMS',
+    company: 'Solairus Aviation',
+    country: 'United States',
+    region: 'Americas',
+    icims: { subdomain: 'careers-solairus', keyword: 'pilot' },
+  },
 ];
