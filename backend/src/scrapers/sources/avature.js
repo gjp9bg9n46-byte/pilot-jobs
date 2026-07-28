@@ -94,8 +94,70 @@ function roleFromTitle(title) {
 
 const GENERIC_ANCHOR = /^\s*(view\s*(more|details|job)?|apply|read\s*more|see\s*more|details|save)\s*$/i;
 
+/**
+ * JSON-API mode. Some carriers front their Avature portal with a public
+ * marketing jobs API (e.g. Emirates: www.emiratesgroupcareers.com/api/v1/jobs)
+ * that returns structured JSON — richer + more robust than scraping the portal
+ * HTML, and NOT subject to the portal's direct-navigation redirect gate. Each
+ * record carries a `redirectionurl` that IS the direct Avature ApplicationMethods
+ * link, which we use verbatim as applyUrl (so it classifies direct_ats).
+ *
+ * Config: avature: { apiUrl, idPrefix? }
+ */
+async function fetchAvatureApi(empConfig, cfg) {
+  const idPrefix = cfg.idPrefix || String(empConfig.company || 'avature').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
+  let body;
+  try {
+    body = await fetchHTML(cfg.apiUrl, { source: 'AVATURE' });
+  } catch (err) {
+    logger.error({ source: 'AVATURE', employer: empConfig.company, err: err.message, msg: 'api fetch failed' });
+    return [];
+  }
+  let rows;
+  try {
+    const parsed = JSON.parse(body);
+    rows = Array.isArray(parsed) ? parsed : (parsed.data || parsed.jobs || parsed.results || []);
+  } catch (err) {
+    logger.error({ source: 'AVATURE', employer: empConfig.company, err: err.message, msg: 'api JSON parse failed' });
+    return [];
+  }
+
+  const out = [];
+  for (const j of rows) {
+    const id = j.reqid ?? j.reqno ?? j.id;
+    const title = String(j.title || '').trim();
+    const applyUrl = j.redirectionurl || j.applyUrl || j.url;
+    if (!id || !title || !applyUrl) continue;   // must have a real apply destination
+    const description = htmlToText(j.jobdescription || j.description || '');
+    const location = [...new Set([j.city, j.state, j.country].filter(Boolean))].join(', ') || j.location || empConfig.defaultLocation || '';
+    const text = `${title} ${description}`;
+    out.push({
+      sourcePlatform: 'AVATURE',
+      externalId: `${idPrefix}-${id}`,
+      title,
+      company: empConfig.company,
+      location,
+      country: j.country || empConfig.country || null,
+      description: description || title,
+      applyUrl,                       // direct Avature ApplicationMethods URL (from the API)
+      sourceUrl: applyUrl,
+      postedAt: j.postingdate ? new Date(Number(j.postingdate) || j.postingdate) : new Date(),
+      expiresAt: j.closingdate ? new Date(Number(j.closingdate) || j.closingdate) : null,
+      role: roleFromTitle(title),
+      contractType: null,
+      region: empConfig.region || null,
+      salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null,
+      ...extractRequirements(text),
+      ...(extractSalary(description) || {}),
+    });
+  }
+  logger.info({ source: 'AVATURE', employer: empConfig.company, fetched: rows.length, mapped: out.length, mode: 'api', msg: 'fetch complete' });
+  return out;
+}
+
 async function fetchAvature(empConfig) {
   const cfg = empConfig.avature || {};
+  if (cfg.apiUrl) return fetchAvatureApi(empConfig, cfg);   // JSON-API mode (preferred where available)
   const { host, portalPath } = cfg;
   const locale = cfg.locale || '';   // optional — the avature.net host omits it
   if (!host || !portalPath) {

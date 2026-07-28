@@ -242,6 +242,19 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       fetched: raw.length, kept: kept.length, dropped,
     });
 
+    // Zero-result / failed-fetch guard: a source that returned NOTHING this run
+    // is treated as a FAILED run, not an emptied source — skip the write/expiry
+    // block entirely so a transient outage or edge-gated portal can't wipe every
+    // row and resurrect it next cycle (flapping). (markStaleInactive is a no-op
+    // on empty upserts too; this short-circuits + logs it explicitly. A genuinely
+    // idle employer simply keeps its prior rows until it posts again — the safe
+    // direction.)
+    if (raw.length === 0) {
+      logger.warn({ source: empConfig.source, employer: empConfig.company, msg: 'fetch returned 0 jobs — failed/empty-run guard: skipping expiry this run' });
+      logger.info({ msg: 'employer run complete', ...stats });
+      return stats;
+    }
+
     if (!dryRun) {
       const seenExternalIds = [];
       const newJobs = [];

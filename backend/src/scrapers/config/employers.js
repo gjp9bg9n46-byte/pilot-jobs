@@ -254,12 +254,16 @@ module.exports = [
     country: 'UAE',
     region: 'Middle East',
     defaultLocation: 'Dubai',
+    // Emirates fronts its Avature portal with a public JSON jobs API (the same
+    // feed their marketing search widget consumes). It's ungated (robots: Allow /)
+    // and returns each job's direct Avature ApplicationMethods redirectionurl —
+    // used verbatim as applyUrl → classifies direct_ats. Preferred over scraping
+    // the portal HTML (which redirects direct navigation to the marketing site).
+    // The generic HTML-portal mode (host/locale/portalPath) remains for other
+    // Avature tenants that lack such an API.
     avature: {
-      host: 'https://external.emiratesgroupcareers.com',
-      locale: 'en_US',
-      portalPath: 'careersmarketplace',
-      recordsPerPage: 100,
-      maxRecords: 400,
+      apiUrl: 'https://www.emiratesgroupcareers.com/api/v1/jobs',
+      idPrefix: 'emirates',
     },
   },
 
