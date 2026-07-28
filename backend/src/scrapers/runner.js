@@ -31,6 +31,7 @@ const { fetchTaleo } = require('./sources/taleo');
 const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { fetchIcims } = require('./sources/icims');
 const { fetchAvature } = require('./sources/avature');
+const { fetchJibe } = require('./sources/jibe');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice } = require('./filters');
@@ -175,6 +176,7 @@ async function fetchForEmployer(empConfig) {
     case 'AVIATIONJOBSEARCH':  return fetchAviationJobSearch(empConfig);
     case 'ICIMS':             return fetchIcims(empConfig);
     case 'AVATURE':           return fetchAvature(empConfig);
+    case 'JIBE':              return fetchJibe(empConfig);
     default:
       logger.warn({ msg: `unknown source: ${empConfig.source}` });
       return [];

@@ -291,4 +291,21 @@ module.exports = [
     region: 'Americas',
     icims: { subdomain: 'careers-solairus', keyword: 'pilot' },
   },
+
+  // ── Jibe careers front-ends (direct carrier ATS, via the carrier's own site) ─
+  // flydubai runs iCIMS, but its iCIMS tenant (careers-flydubai.icims.com) serves
+  // robots.txt `Disallow: /`, so the portal is off-limits. Its own careers site
+  // careers.flydubai.com (robots `Allow: /`) is a Jibe front-end exposing a public
+  // JSON API (/api/jobs) with the same postings as structured data — and each
+  // row's apply_url is already the DIRECT *.icims.com carrier link (→ direct_ats).
+  // Verified 2026-07-28: keywords=pilot → First Officer (Type Rated) + Synthetic
+  // Flight Instructor, both Dubai; apply_url on pilots-/careers-flydubai.icims.com.
+  {
+    source: 'JIBE',
+    company: 'flydubai',
+    country: 'UAE',
+    region: 'Middle East',
+    defaultLocation: 'Dubai',
+    jibe: { host: 'careers.flydubai.com', keyword: 'pilot', idPrefix: 'flydubai' },
+  },
 ];
