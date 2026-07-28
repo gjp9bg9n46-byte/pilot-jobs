@@ -35,12 +35,12 @@ const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice } = require('./filters');
 const { classifySourceType } = require('./sourceType');
-const { collapseXSourceDuplicates, collapseSameAdAcrossLocations } = require('./dedup');
+const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
 // ─── Upsert a single normalized job ──────────────────────────────────────────
 
-async function upsertJob(job) {
+async function upsertJob(job, { preserveMerge = false } = {}) {
   const {
     sourcePlatform, externalId,
     title, company, location, country, description, notes,
@@ -100,7 +100,6 @@ async function upsertJob(job) {
       notes: notes || null,
       applyUrl, sourceUrl: sourceUrl || applyUrl,
       sourceType: classifySourceType(applyUrl, sourcePlatform),
-      status: 'ACTIVE', // re-activate if it was expired
       expiresAt: expiresAt || null,
       reqCertificates: reqCertificates || [],
       reqAuthorities: reqAuthorities || [],
@@ -116,7 +115,13 @@ async function upsertJob(job) {
       reqWorkAuthorization: reqWorkAuthorization || null,
       reqEnglishLevel: reqEnglishLevel || null,
       reqWillingToRelocate: !!reqWillingToRelocate,
-      mergedInto: null,
+      // Sticky merge: a row that dedup EXPIRED + mergedInto must NOT resurrect
+      // just because its source still lists it — otherwise it flaps ACTIVE↔EXPIRED
+      // every cron cycle (and serves the aggregator link in the window between
+      // upsert and dedup). Content fields above still refresh; status/mergedInto
+      // are only reset for a NON-merged row (the normal "reappeared after going
+      // stale" reactivation).
+      ...(preserveMerge ? {} : { status: 'ACTIVE', mergedInto: null }),
     },
   });
 }
@@ -269,7 +274,7 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
               reqMedicalClass: true, reqMinTotalHours: true, reqMinPicHours: true,
               reqMinMultiEngineHours: true, reqMinTurbineHours: true, reqMinInstrumentHours: true,
               reqMinCrossCountryHours: true, reqEducation: true, reqWorkAuthorization: true,
-              reqEnglishLevel: true, reqWillingToRelocate: true,
+              reqEnglishLevel: true, reqWillingToRelocate: true, mergedInto: true,
             },
           });
           const isNew = !existing;
@@ -302,7 +307,9 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
             reqWillingToRelocate:   existing.reqWillingToRelocate,
           } : job;
 
-          const upserted = await upsertJob(jobToUpsert);
+          // preserveMerge: a row dedup already merged stays EXPIRED + mergedInto
+          // on re-scrape (sticky) rather than resurrecting and flapping.
+          const upserted = await upsertJob(jobToUpsert, { preserveMerge: !!existing?.mergedInto });
           seenExternalIds.push(job.externalId);
           stats.upserted++;
 
@@ -536,6 +543,16 @@ async function runAllEmployers(employers, opts = {}) {
   if (!opts.dryRun && sourcePlatformsSeen.size > 1) {
     // Cross-source dedup only makes sense when multiple sources ran
     await collapseXSourceDuplicates([...sourcePlatformsSeen]);
+  }
+
+  if (!opts.dryRun) {
+    // Fuzzy aggregator→clean displacement, AFTER exact-key dedup. Runs across ALL
+    // active platforms (not just those seen this run) so a newly-ingested direct
+    // row can displace an aggregator row left over from a prior cycle.
+    try {
+      const activePlatforms = (await prisma.job.findMany({ where: { status: 'ACTIVE' }, select: { sourcePlatform: true }, distinct: ['sourcePlatform'] })).map((r) => r.sourcePlatform).filter(Boolean);
+      await collapseAggregatorDuplicates(activePlatforms, { dryRun: false });
+    } catch (err) { logger.error({ err: err.message, msg: 'aggregator-dedup failed' }); }
   }
 
   if (!opts.dryRun) {

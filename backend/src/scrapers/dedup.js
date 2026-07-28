@@ -105,6 +105,18 @@ function titleCore(title, company, location) {
  * Shadow by default (dryRun:true) — logs/returns the pairs it WOULD merge, writes
  * nothing. Flip to { dryRun:false } to apply after review.
  *
+ * OVER-TIME behaviour (canonical later expires): DECISION = accept it.
+ *  - If the direct source has a TOTAL failure (gated/down → 0 rows), the runner's
+ *    zero-result guard skips expiry, so the canonical SURVIVES and the merge stays
+ *    valid — the realistic glitch (Emirates edge-gating) is covered here.
+ *  - If the canonical is legitimately gone (role filled), both sides expiring is
+ *    correct — the job is off the board.
+ *  - A rare persistent single-row drop is indistinguishable from a fill; we treat
+ *    it as one. The merged aggregator row is EXPIRED but RETAINED (never deleted),
+ *    and self-heals if the direct source returns the row (upsert reactivates the
+ *    canonical; the sticky-merge keeps the aggregator hidden while the direct row
+ *    covers the job). Merges are also logged (below) as a permanent audit trail.
+ *
  * @returns {Promise<{pairs:object[], merged:number}>}
  */
 async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } = {}) {
@@ -150,6 +162,13 @@ async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } =
         }
         await prisma.job.update({ where: { id: agg.id }, data: { mergedInto: canonical.id, status: 'EXPIRED' } });
         merged++;
+        // Permanent audit trail: every displacement, both sides.
+        logger.info({
+          msg: 'aggregator displaced by clean twin',
+          canonicalId: canonical.id,
+          aggregator: { id: agg.id, title: agg.title, applyUrl: agg.applyUrl },
+          canonical: { title: canonical.title, sourceType: canonical.sourceType, applyUrl: canonical.applyUrl },
+        });
       }
     }
   }
