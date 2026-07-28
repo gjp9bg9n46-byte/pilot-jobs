@@ -30,9 +30,11 @@ const { fetchCareerjet } = require('./sources/careerjet');
 const { fetchTaleo } = require('./sources/taleo');
 const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { fetchIcims } = require('./sources/icims');
+const { fetchAvature } = require('./sources/avature');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice } = require('./filters');
+const { classifySourceType } = require('./sourceType');
 const { collapseXSourceDuplicates, collapseSameAdAcrossLocations } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
@@ -83,6 +85,7 @@ async function upsertJob(job) {
     reqEnglishLevel: reqEnglishLevel || null,
     reqWillingToRelocate: !!reqWillingToRelocate,
     sourcePlatform,
+    sourceType: classifySourceType(applyUrl, sourcePlatform),
     externalId,
     mergedInto: null,
   };
@@ -96,6 +99,7 @@ async function upsertJob(job) {
       description: description || '',
       notes: notes || null,
       applyUrl, sourceUrl: sourceUrl || applyUrl,
+      sourceType: classifySourceType(applyUrl, sourcePlatform),
       status: 'ACTIVE', // re-activate if it was expired
       expiresAt: expiresAt || null,
       reqCertificates: reqCertificates || [],
@@ -165,6 +169,7 @@ async function fetchForEmployer(empConfig) {
     case 'TALEO':             return fetchTaleo(empConfig);
     case 'AVIATIONJOBSEARCH':  return fetchAviationJobSearch(empConfig);
     case 'ICIMS':             return fetchIcims(empConfig);
+    case 'AVATURE':           return fetchAvature(empConfig);
     default:
       logger.warn({ msg: `unknown source: ${empConfig.source}` });
       return [];

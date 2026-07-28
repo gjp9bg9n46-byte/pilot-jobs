@@ -373,6 +373,7 @@ model Job {
 
   // Ingestion provenance
   sourcePlatform       String?    // 'LEVER' | 'GREENHOUSE' | 'WORKDAY' | 'EMPLOYER_DIRECT' | null (manual / legacy)
+  sourceType           String?    // apply-destination class: 'direct_ats' | 'operator_direct' | 'aggregator' | null. Classified at ingest from applyUrl; drives dedup canonical ranking. Does NOT gate ingestion.
   externalId           String?    // stable posting ID from source — used for upsert dedup
   mergedInto           String?    // self-ref to canonical Job.id when cross-source dedup collapses this row
 

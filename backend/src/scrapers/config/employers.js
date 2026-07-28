@@ -245,17 +245,22 @@ module.exports = [
   // after any config change. List endpoint carries titles only — description
   // is thin, so the shared title filter is the gate (career-site source: real
   // requisitions, not aggregator noise).
+  // Emirates migrated off Taleo (DNS gone) to an Avature marketplace portal.
+  // Direct carrier ATS — applyUrl = ApplicationMethods?jobId (never an aggregator).
+  // Server-rendered; offset pagination; robots.txt allows /careersmarketplace.
   {
-    source: 'TALEO',
+    source: 'AVATURE',
     company: 'Emirates',
     country: 'UAE',
     region: 'Middle East',
     defaultLocation: 'Dubai',
-    taleo: { tenant: 'tas-ekgcareers', section: 'cc_external' },
-    // DNS check 2026-07-26: *ekgcareers.taleo.net hostnames no longer exist —
-    // Emirates migrated off Taleo. Re-point at their current ATS (likely
-    // Oracle Recruiting Cloud) once identified from emiratesgroupcareers.com.
-    disabled: true,
+    avature: {
+      host: 'https://external.emiratesgroupcareers.com',
+      locale: 'en_US',
+      portalPath: 'careersmarketplace',
+      recordsPerPage: 100,
+      maxRecords: 400,
+    },
   },
 
   // ── Aviation Job Search (aviationjobsearch.com) ────────────────────────────

@@ -19,6 +19,7 @@
 const prisma = require('../config/database');
 const logger = require('../config/logger');
 const { normalizeCompany, coreCompanyKey } = require('../services/airlineEnrichmentService');
+const { sourceTypeRank } = require('./sourceType');
 
 function normaliseKey(str) {
   return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
@@ -43,6 +44,7 @@ async function collapseXSourceDuplicates(sourcePlatforms) {
     select: {
       id: true,
       sourcePlatform: true,
+      sourceType: true,
       company: true,
       title: true,
       location: true,
@@ -66,8 +68,17 @@ async function collapseXSourceDuplicates(sourcePlatforms) {
   for (const [, group] of groups) {
     if (group.length < 2) continue;
 
-    // Keep the job with the longest description (most complete data)
-    group.sort((a, b) => (b.description?.length || 0) - (a.description?.length || 0));
+    // Canonical selection ranks the apply destination FIRST, description length
+    // only as a tiebreak: direct_ats > operator_direct > aggregator. A direct-ATS
+    // duplicate therefore displaces its aggregator clone (which gets EXPIRED +
+    // mergedInto), even when the aggregator's description is longer — this is the
+    // only lever left on the aggregator share once expiry + URL-rewrite are off
+    // the table (Adzuna's API terms forbid resolving redirect_url).
+    group.sort((a, b) => {
+      const byType = sourceTypeRank(b.sourceType) - sourceTypeRank(a.sourceType);
+      if (byType !== 0) return byType;
+      return (b.description?.length || 0) - (a.description?.length || 0);
+    });
     const canonical = group[0];
     const duplicates = group.slice(1);
 
