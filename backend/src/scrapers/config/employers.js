@@ -117,7 +117,9 @@ module.exports = [
   // Manufacturer / training / OEM
   { source: 'GREENHOUSE', slug: 'textron-aviation',       company: 'Textron Aviation' },
   { source: 'GREENHOUSE', slug: 'cirrus-aircraft',        company: 'Cirrus Aircraft' },
-  { source: 'GREENHOUSE', slug: 'cae',                    company: 'CAE' },
+  // CAE migrated Greenhouse → Workday (board token 'cae' 404s). Repointed
+  // 2026-07-29 to cae.wd3.myworkdayjobs.com; see workday-rest-configs/cae-rest.js.
+  { source: 'WORKDAY_REST', config: 'cae-rest',          company: 'CAE' },
 
   // eVTOL / advanced air mobility
   // Verified 2026-06-02: correct slug (was archer-aviation-inc which returned 404)

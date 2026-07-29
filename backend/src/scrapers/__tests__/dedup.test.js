@@ -52,7 +52,17 @@ function partC() {
   assert.strictEqual(cityCore('Dubai, United Arab Emirates'), 'dubai');
   // Interior rank word "officer" must survive (only a trailing "- Officer" is noise).
   assert.ok(titleCore('First Officer', 'X', '').split(' ').includes('officer'), 'rank word kept');
-  console.log('  Part C (titleCore/cityCore): 5/5 passed');
+  // Diacritics must fold so an aggregator's accented city matches the ATS's plain
+  // one (regression: cityCore('Montréal') split the é and returned "montr", so a
+  // CAE Adzuna row never matched its Workday twin).
+  assert.strictEqual(cityCore('Montréal, Québec'), 'montreal', 'accent fold: Montréal → montreal');
+  assert.strictEqual(cityCore('Montréal, Québec'), cityCore('Montreal (St. Laurent)'), 'accented city matches plain');
+  assert.strictEqual(
+    titleCore('Full-Time Instructor Pilot (Global/Challenger)', 'CAE', 'Montréal, Québec'),
+    titleCore('Full-Time Instructor Pilot (Global/Challenger)', 'CAE', 'Montreal (St. Laurent)'),
+    'accented vs plain city → same titleCore',
+  );
+  console.log('  Part C (titleCore/cityCore): 8/8 passed');
 }
 
 async function partB(prisma) {

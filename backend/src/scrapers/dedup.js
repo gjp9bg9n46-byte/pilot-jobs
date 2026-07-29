@@ -72,13 +72,18 @@ const TITLE_TRAILING_REQID = /\s*[-–—(]?\s*(?:#\s*|\b(?:req|ref|requisition|
 // apart (London Heathrow vs Gatwick both → "london"); flagged for manual review.
 const MULTI_BASE_CITIES = new Set(['london', 'newyork', 'new', 'paris', 'tokyo', 'moscow', 'chicago', 'washington', 'houston', 'dallas', 'berlin', 'milan', 'rome', 'seoul', 'shanghai', 'sao', 'buenos', 'osaka', 'istanbul']);
 
+// Fold diacritics so an aggregator's "Montréal" matches an ATS "Montreal"
+// (both → "montreal"). Without this, the ASCII-only tokenisers below split
+// "montréal" into ["montr","al"] and the twin never matches.
+const fold = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 function cityCore(location) {
-  const first = String(location || '').split(',')[0].trim().toLowerCase();
+  const first = fold(location).split(',')[0].trim().toLowerCase();
   return (first.match(/[a-z]+/g) || [])[0] || '';
 }
 
 function titleCore(title, company, location) {
-  let t = ` ${String(title || '').toLowerCase()} `;
+  let t = ` ${fold(title).toLowerCase()} `;
   // repeated employer name + repeated location (city) suffixes are noise
   const emp = String(company || '').toLowerCase().replace(/\bgroup\b/g, ' ');
   for (const w of emp.split(/\s+/)) if (w.length > 2) t = t.replace(new RegExp(`\\b${esc(w)}\\b`, 'g'), ' ');

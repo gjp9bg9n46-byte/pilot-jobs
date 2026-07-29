@@ -205,7 +205,10 @@ async function fetchWorkdayRest(empConfig) {
           limit: LIST_PAGE_SIZE,
           offset,
           appliedFacets: {},
-          searchText: '',  // could filter by 'pilot' but listing already has mixed roles
+          // Small boards fetch everything (searchText '') and filter by title.
+          // Large boards (e.g. CAE, 100+ roles) would overflow the pagination
+          // cap, so a config may narrow the listing with searchText: 'pilot'.
+          searchText: config.searchText || '',
         },
         {
           headers: { 'User-Agent': USER_AGENT, 'Content-Type': 'application/json' },
@@ -243,8 +246,12 @@ async function fetchWorkdayRest(empConfig) {
         continue;
       }
 
-      // Build detail URL
-      const detailUrl = `${baseUrl}${job.externalPath}`;
+      // Build detail URL. Workday's public job pages live under the locale +
+      // site path ({base}/en-US/{site}/job/...); the bare {base}{externalPath}
+      // (/job/...) 404s on every tenant tested (CAE, Southwest) — which also
+      // silently defeated JSON-LD requirement extraction and left broken
+      // applyUrls. externalPath already begins with "/job/...".
+      const detailUrl = `${baseUrl}/en-US/${site}${job.externalPath}`;
 
       // Fetch and parse detail page
       const parsed = await fetchDetailPage(detailUrl);
