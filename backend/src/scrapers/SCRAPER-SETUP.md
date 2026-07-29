@@ -72,6 +72,19 @@ wiping the source. See `sources/jibe.js` / `sources/avature.js` for the pattern.
 - **The zero-result guard covers the source** — a failed/empty fetch must not
   expire everything for that employer.
 
+## Closed sources — do not re-litigate without an ATS change
+
+Recorded so these aren't re-probed every few months. Re-open only if the carrier
+migrates ATS.
+
+| Carrier | Why closed (as of 2026-07-28) |
+|---|---|
+| **Ryanair** | Own front-end `jobs.ryanair.com` is SAP SF Recruiting Marketing (RMK/"j2w"). The jobresults widget loads tiles from `/services/tile-search-results` (confirmed to exist — 406, not 404), and `robots.txt` there is `Disallow: /services/`. The `/search-jobs` shell is allowed but carries no job data. No allowed-path data endpoint → closed. (The SF backend `career2.successfactors.eu` is also `Disallow: /` + `Disallow: /*company`.) |
+| **Wizz Air** | careers.wizzair.com only embeds `career5.successfactors.eu` (SF host robots `Disallow: /`). No own job-data domain/API. |
+| **TUI** | careers.tuigroup.com **disallows its own `/search-jobs/`**, and only points to the blocked SF host. The public SF code `tuiinfotec` is the IT arm (0 pilot roles) anyway. |
+| **easyJet** | Taleo `searchjobs` REST 500s whenever the portal param is supplied (their bug; unresolvable without their session). careers.easyjet.com is an App-Router marketing site — SSRs only 3 generic featured cards, full list client-rendered, only job host referenced is the same Taleo. `becomeapilot.easyjet.com` routes to that Taleo + a CAE-run cadet scheme. No scrapeable full pilot list. |
+| **flydubai pilots portal** | `pilots-flydubai.icims.com` (and `careers-flydubai.icims.com`) are `Disallow: /`. Not needed: the Jibe feed already surfaces those roles (the FO's apply_url IS the pilots-portal link). flydubai is covered via `source: 'JIBE'`. |
+
 ## Wiring a new source
 
 1. `sources/{name}.js` exporting `fetch{Name}(empConfig)` → array of
