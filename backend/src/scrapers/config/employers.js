@@ -97,26 +97,26 @@ module.exports = [
   // (frontier-airlines and sun-country verified 2026-05-14 but returned 0 — keep for future)
   // Verified 2026-07-10: 44 jobs incl. "Airbus A220 First Officer" + "A220 Flight Instructor"
   { source: 'GREENHOUSE', slug: 'breezeairways',          company: 'Breeze Airways' },
-  { source: 'GREENHOUSE', slug: 'frontier-airlines',      company: 'Frontier Airlines' },
-  { source: 'GREENHOUSE', slug: 'sun-country-airlines',   company: 'Sun Country Airlines' },
-  { source: 'GREENHOUSE', slug: 'silver-airways',         company: 'Silver Airways' },
-  { source: 'GREENHOUSE', slug: 'southern-airways-express', company: 'Southern Airways Express' },
+  { source: 'GREENHOUSE', slug: 'frontier-airlines',      company: 'Frontier Airlines', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'sun-country-airlines',   company: 'Sun Country Airlines', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'silver-airways',         company: 'Silver Airways', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'southern-airways-express', company: 'Southern Airways Express', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
 
   // US business aviation / charter
-  { source: 'GREENHOUSE', slug: 'netjets',                company: 'NetJets' },
-  { source: 'GREENHOUSE', slug: 'flexjet',                company: 'Flexjet' },
-  { source: 'GREENHOUSE', slug: 'wheelsup',               company: 'Wheels Up' },
-  { source: 'GREENHOUSE', slug: 'vistajet',               company: 'VistaJet' },
-  { source: 'GREENHOUSE', slug: 'surf-air',               company: 'Surf Air' },
+  { source: 'GREENHOUSE', slug: 'netjets',                company: 'NetJets', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'flexjet',                company: 'Flexjet', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'wheelsup',               company: 'Wheels Up', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'vistajet',               company: 'VistaJet', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'surf-air',               company: 'Surf Air', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
 
   // US regional / cargo
-  { source: 'GREENHOUSE', slug: 'ameriflight',            company: 'Ameriflight' },
-  { source: 'GREENHOUSE', slug: 'contour-aviation',       company: 'Contour Aviation' },
-  { source: 'GREENHOUSE', slug: 'airmethods-inc',         company: 'Air Methods' },
+  { source: 'GREENHOUSE', slug: 'ameriflight',            company: 'Ameriflight', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'contour-aviation',       company: 'Contour Aviation', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'airmethods-inc',         company: 'Air Methods', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
 
   // Manufacturer / training / OEM
-  { source: 'GREENHOUSE', slug: 'textron-aviation',       company: 'Textron Aviation' },
-  { source: 'GREENHOUSE', slug: 'cirrus-aircraft',        company: 'Cirrus Aircraft' },
+  { source: 'GREENHOUSE', slug: 'textron-aviation',       company: 'Textron Aviation', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
+  { source: 'GREENHOUSE', slug: 'cirrus-aircraft',        company: 'Cirrus Aircraft', disabled: true }, // dead board (HTTP 404) — sweep 2026-08-03
   // CAE migrated Greenhouse → Workday (board token 'cae' 404s). Repointed
   // 2026-07-29 to cae.wd3.myworkdayjobs.com; see workday-rest-configs/cae-rest.js.
   { source: 'WORKDAY_REST', config: 'cae-rest',          company: 'CAE' },
@@ -158,6 +158,7 @@ module.exports = [
     source: 'WORKDAY',
     config: 'united',
     company: 'United Airlines',
+    disabled: true, // never-verified placeholder (tenant/WAF unknown) — always returns 0; sweep 2026-08-03
   },
 
   // ── Workday (REST API) ─────────────────────────────────────────────────────
