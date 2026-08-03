@@ -165,6 +165,11 @@ const css = {
   },
   airline: { fontSize: 14, color: 'var(--accent)', fontWeight: 600 },
   postedAgo: { fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 },
+  ongoingBadge: { fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginTop: 2, opacity: 0.9 },
+  ongoingDivider: {
+    gridColumn: '1 / -1', marginTop: 8, paddingTop: 12, borderTop: '1px solid var(--border)',
+    fontSize: 13, fontWeight: 700, letterSpacing: 0.3, color: 'var(--text-secondary)', textTransform: 'uppercase',
+  },
   // Understated neutral badge — kept visually consistent so the employer's live
   // preview matches the real card. Only for sourcePlatform EMPLOYER_DIRECT.
   employerBadge: {
@@ -453,6 +458,13 @@ export default function Jobs() {
     return true;
   });
 
+  // Evergreen rows (old posting date, but still listed — rolling recruitment)
+  // are demoted below fresh listings and reframed on the card. The server sets
+  // job.evergreen; they're open vacancies, just not new.
+  const freshJobs = filtered.filter((j) => !j.evergreen);
+  const evergreenJobs = filtered.filter((j) => j.evergreen);
+  const orderedJobs = [...freshJobs, ...evergreenJobs];
+
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Jobs</h1>
@@ -620,7 +632,7 @@ export default function Jobs() {
           )}
 
           <div style={css.grid}>
-            {filtered.map((job) => {
+            {orderedJobs.map((job, jobIndex) => {
               const match = matchLabel(job.matchScore);
               const isHover = hoverId === job.id;
               const isSaved = savedMap[job.id] !== undefined ? savedMap[job.id] : (job.isSaved || false);
@@ -639,8 +651,13 @@ export default function Jobs() {
               ].filter(Boolean);
               const specSheet = specRows.length >= 2 ? specRows : null;
               return (
+                <React.Fragment key={job.id}>
+                {jobIndex === freshJobs.length && evergreenJobs.length > 0 && (
+                  <div style={css.ongoingDivider}>
+                    Ongoing recruitment — open vacancies, not new postings
+                  </div>
+                )}
                 <div
-                  key={job.id}
                   className="ch-card"
                   style={{ ...css.card, ...(isMobile ? { padding: '14px 96px 14px 14px' } : {}), ...(isHover ? css.cardHover : {}) }}
                   onMouseEnter={() => setHoverId(job.id)}
@@ -683,7 +700,9 @@ export default function Jobs() {
                       </div>
                       <div>
                         <div style={css.airline}>{job.company}</div>
-                        {ago && <div style={css.postedAgo}>{ago}</div>}
+                        {job.evergreen
+                          ? <div style={css.ongoingBadge}>↻ Ongoing · {job.lastSeenAt ? `confirmed listed ${postedAgo(job.lastSeenAt)}` : 'still listed'}</div>
+                          : (ago && <div style={css.postedAgo}>{ago}</div>)}
                         {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
                           <div style={css.employerBadge}>Posted directly by employer</div>
                         )}
@@ -762,6 +781,7 @@ export default function Jobs() {
                     <Button variant="secondary" style={{ width: '100%' }}>View Details →</Button>
                   </div>
                 </div>
+                </React.Fragment>
               );
             })}
           </div>

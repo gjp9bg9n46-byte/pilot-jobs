@@ -31,13 +31,23 @@ function deriveJobBadges(j) {
 
 // English-first presentation: when a job has been machine-translated, serve the
 // English text as title/description and keep the original for reference.
+// A still-listed vacancy whose posting date is older than this reads as stale
+// even though it's live (rolling "Direct Entry Captain, ongoing" recruitment).
+// The client reframes these as "Ongoing recruitment · still listed" rather than
+// showing a misleading old posting date, and demotes them below fresh listings.
+const evergreenDays = () => Math.max(1, parseInt(process.env.JOB_EVERGREEN_DAYS || '90', 10));
+function isEvergreen(j) {
+  if (!j.postedAt || j.status !== 'ACTIVE') return false;
+  return (Date.now() - new Date(j.postedAt).getTime()) / 864e5 > evergreenDays();
+}
+
 function presentJob(j) {
   if (!j) return j;
   const badges = deriveJobBadges(j);
-  if (!j.titleEn && !j.descriptionEn) return { ...j, ...badges };
+  const base = { ...j, ...badges, evergreen: isEvergreen(j) };
+  if (!j.titleEn && !j.descriptionEn) return base;
   return {
-    ...j,
-    ...badges,
+    ...base,
     title: j.titleEn ?? j.title,
     description: j.descriptionEn ?? j.description,
     originalTitle: j.title,
