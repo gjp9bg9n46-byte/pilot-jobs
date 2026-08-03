@@ -36,6 +36,7 @@ const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice } = require('./filters');
 const { classifySourceType } = require('./sourceType');
+const { sendEmail } = require('../services/emailService');
 const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
@@ -562,6 +563,39 @@ async function expireUnseen() {
   return count;
 }
 
+/**
+ * Zero-result alert — the thing that surfaces the next CAE before someone finds
+ * it six months late. The pipeline CANNOT distinguish "this employer has no
+ * openings" from "this scraper is dead" — both return 0 rows. So every enabled
+ * source that returns 0 on a run is reported loudly (warn log + one digest
+ * email) for a human to judge. The 14-day backstop cleans up after the
+ * confusion; this alert exposes it.
+ *
+ * Batched to one email per run (not one per source) to avoid fatigue. Email
+ * no-ops without RESEND_API_KEY (local dev) — the warn log always fires.
+ * Recipient: SCRAPER_ALERT_EMAIL, falling back to CONTACT_EMAIL.
+ */
+async function alertZeroResults(zeros) {
+  if (!zeros.length) return;
+  logger.warn({ msg: 'SCRAPER ALERT: enabled sources returned 0 rows', count: zeros.length, zeros });
+  const to = process.env.SCRAPER_ALERT_EMAIL || process.env.CONTACT_EMAIL;
+  if (!to) return;
+  const lines = zeros.map((z) => `- ${z.source} / ${z.company}${z.errors ? `  (fetch errors: ${z.errors})` : ''}`);
+  try {
+    await sendEmail({
+      to,
+      subject: `⚠️ Scraper: ${zeros.length} source${zeros.length > 1 ? 's' : ''} returned 0 rows`,
+      text:
+        'These ENABLED sources returned 0 jobs on the latest scrape. A source with '
+        + 'genuinely no openings and a dead scraper look identical here — check each '
+        + '(the CAE-Greenhouse-404 class of failure is silent 0):\n\n'
+        + lines.join('\n')
+        + '\n\nRepoint or disable dead configs so this alert stays signal, not noise.',
+    });
+    logger.info({ msg: 'zero-result alert email sent', to, count: zeros.length });
+  } catch (err) { logger.error({ err: err.message, msg: 'zero-result alert email failed' }); }
+}
+
 // ─── Full ingestion pass ──────────────────────────────────────────────────────
 
 /**
@@ -573,6 +607,7 @@ async function expireUnseen() {
 async function runAllEmployers(employers, opts = {}) {
   const allStats = [];
   const sourcePlatformsSeen = new Set();
+  const zeroResults = [];
 
   // Workday runs sequentially (Puppeteer is heavy); others can run per-employer sequentially too
   // for rate-limit safety. Parallelism would complicate per-host rate limiting.
@@ -580,6 +615,10 @@ async function runAllEmployers(employers, opts = {}) {
     const stats = await processEmployer(emp, opts);
     allStats.push(stats);
     sourcePlatformsSeen.add(emp.source);
+    // A 0-row fetch from an enabled source is the ambiguous "dead vs empty" signal.
+    if (!emp.disabled && stats.fetched === 0) {
+      zeroResults.push({ source: emp.source, company: emp.company || emp.source, errors: stats.errors });
+    }
   }
 
   if (!opts.dryRun) {
@@ -614,9 +653,11 @@ async function runAllEmployers(employers, opts = {}) {
       const { translateUntranslatedJobs } = require('../services/translationService');
       await translateUntranslatedJobs();
     } catch (err) { logger.error({ err: err.message, msg: 'translation sweep failed' }); }
+    // Surface dead/empty sources loudly — the pipeline can't tell them apart.
+    try { await alertZeroResults(zeroResults); } catch (err) { logger.error({ err: err.message, msg: 'zero-result alert failed' }); }
   }
 
   return allStats;
 }
 
-module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue, expireUnseen, fetchForEmployer };
+module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue, expireUnseen, alertZeroResults, fetchForEmployer };
