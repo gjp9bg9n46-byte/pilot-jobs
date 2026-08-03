@@ -36,12 +36,13 @@ export function countryFlag(country?: string | null): string | null {
   return String.fromCodePoint(...[...iso].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
 }
 
-export default function JobCardContent({ job, air, ago, right, footer }: {
+export default function JobCardContent({ job, air, ago, right, footer, ongoing }: {
   job: Any;
   air?: Any | null;
   ago?: string | null;
   right?: ReactNode;   // screen-specific right column (save button, match badge)
   footer?: ReactNode;  // screen-specific bottom row (breakdown pills, etc.)
+  ongoing?: string | null;  // evergreen reframe: shown instead of a stale posting date
 }) {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -59,7 +60,8 @@ export default function JobCardContent({ job, air, ago, right, footer }: {
       <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company} box={40} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.jcTitle} numberOfLines={2}>{job?.title ?? '—'}</Text>
-        <Text style={styles.jcCompany}>{job?.company ?? '—'}{ago ? `  ·  ${ago}` : ''}</Text>
+        <Text style={styles.jcCompany}>{job?.company ?? '—'}{ago && !ongoing ? `  ·  ${ago}` : ''}</Text>
+        {ongoing ? <Text style={styles.jcOngoing}>{ongoing}</Text> : null}
 
         {(job?.visaSponsorship || job?.typeRatingStatus === 'NTR') ? (
           <View style={styles.jcBadgeRow}>
@@ -105,6 +107,7 @@ export default function JobCardContent({ job, air, ago, right, footer }: {
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   jcTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 21 },
   jcCompany: { fontSize: fontSizes.sm, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, marginTop: 3 },
+  jcOngoing: { fontSize: fontSizes.xs, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, marginTop: 2 },
   jcBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
   jcBadge: { fontSize: 9.5, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.4, borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden', borderWidth: 1 },
   jcBadgeVisa: { color: '#166534', backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' },

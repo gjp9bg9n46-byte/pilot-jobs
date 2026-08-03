@@ -121,29 +121,47 @@ function JobsBrowse() {
     );
   }, [jobs, search]);
 
-  const renderRow = ({ item: job }: { item: Job }) => {
-    const ago = postedAgo(job.postedAt);
+  // Evergreen rows (old posting date but still listed — rolling recruitment) are
+  // demoted below fresh listings and reframed on the card. Server sets evergreen.
+  const { orderedJobs, freshCount, evergreenCount } = useMemo(() => {
+    const fresh = filtered.filter((j) => !(j as any).evergreen);
+    const ever = filtered.filter((j) => (j as any).evergreen);
+    return { orderedJobs: [...fresh, ...ever], freshCount: fresh.length, evergreenCount: ever.length };
+  }, [filtered]);
+
+  const renderRow = ({ item: job, index }: { item: Job; index: number }) => {
+    const eg = (job as any).evergreen as boolean | undefined;
+    const seen = (job as any).lastSeenAt as string | null | undefined;
+    const ago = eg ? null : postedAgo(job.postedAt);
+    const ongoing = eg ? `↻ Ongoing · ${seen ? `confirmed listed ${postedAgo(seen)}` : 'still listed'}` : null;
+    const showDivider = index === freshCount && evergreenCount > 0;
     const mc = profile && totals ? computeMatchCount(job, profile, totals) : null;
     const full = !!mc && mc.total > 0 && mc.matched === mc.total;
     return (
-      <Pressable
-        style={({ pressed }) => [styles.row, pressed && styles.rowPressed, pressed && { transform: [{ scale: 0.985 }] }]}
-        onPress={() => router.push(`/jobs/${slugFor(job)}`)}
-      >
-        <JobCardContent
-          job={job}
-          air={resolveAirline(airlineMap, job.company)}
-          ago={ago}
-          right={<Ionicons name="chevron-forward" size={18} color={pilot.line} />}
-          footer={mc && mc.total > 0 ? (
-            <View style={[styles.matchPill, { backgroundColor: full ? '#DCFCE7' : '#FEF3C7' }]}>
-              <Text style={[styles.matchPillText, { color: full ? SEM.green : SEM.amber }]}>
-                {mc.matched}/{mc.total} requirements met
-              </Text>
-            </View>
-          ) : null}
-        />
-      </Pressable>
+      <>
+        {showDivider ? (
+          <Text style={styles.ongoingDivider}>ONGOING RECRUITMENT — OPEN VACANCIES, NOT NEW POSTINGS</Text>
+        ) : null}
+        <Pressable
+          style={({ pressed }) => [styles.row, pressed && styles.rowPressed, pressed && { transform: [{ scale: 0.985 }] }]}
+          onPress={() => router.push(`/jobs/${slugFor(job)}`)}
+        >
+          <JobCardContent
+            job={job}
+            air={resolveAirline(airlineMap, job.company)}
+            ago={ago}
+            ongoing={ongoing}
+            right={<Ionicons name="chevron-forward" size={18} color={pilot.line} />}
+            footer={mc && mc.total > 0 ? (
+              <View style={[styles.matchPill, { backgroundColor: full ? '#DCFCE7' : '#FEF3C7' }]}>
+                <Text style={[styles.matchPillText, { color: full ? SEM.green : SEM.amber }]}>
+                  {mc.matched}/{mc.total} requirements met
+                </Text>
+              </View>
+            ) : null}
+          />
+        </Pressable>
+      </>
     );
   };
 
@@ -192,7 +210,7 @@ function JobsBrowse() {
   return (
     <View style={styles.safe}>
       <FlatList
-        data={loading ? [] : filtered}
+        data={loading ? [] : orderedJobs}
         keyExtractor={(j) => j.id}
         renderItem={renderRow}
         ListHeaderComponent={ListHeader}
@@ -288,6 +306,11 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
     padding: 14, marginHorizontal: spacing.xl, marginBottom: 12,
   },
   rowPressed: { backgroundColor: 'rgba(0,63,136,0.04)' },
+  ongoingDivider: {
+    fontSize: fontSizes.xs, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.4,
+    color: pilot.muted, marginHorizontal: spacing.xl, marginTop: 6, marginBottom: 10,
+    paddingTop: 12, borderTopWidth: 1, borderTopColor: pilot.line,
+  },
   rowTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 21 },
   rowSub: { fontSize: fontSizes.sm, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, marginTop: 3 },
   matchPill: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
