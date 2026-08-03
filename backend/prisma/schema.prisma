@@ -342,8 +342,9 @@ model Job {
   applyUrl             String
   sourceUrl            String?
   status               JobStatus  @default(ACTIVE)
-  postedAt             DateTime   @default(now())
+  postedAt             DateTime   @default(now())   // source's posting date; stable across re-scrapes (never answers "seen today")
   expiresAt            DateTime?
+  lastSeenAt           DateTime?  // set to now() on every scrape that returns this row. NULL = not seen since the field was added. Drives the staleness backstop (expireUnseen).
 
   // Classification
   role                 String?

@@ -119,6 +119,29 @@ async function partD(prisma) {
   } finally { await prisma.job.deleteMany({ where: { id: { in: ids } } }); }
 }
 
+async function partE(prisma) {
+  // Freshness precondition: a STALE clean row must not win canonical (else we'd
+  // hide a working aggregator behind a dead direct link).
+  const PA = '__FR_ATS__', PAGG = '__FR_AGG__';
+  const old = new Date(Date.now() - 60 * 864e5); // 60d > 14d backstop window
+  const base = { company: '__FRESH_CO__', description: '', status: 'ACTIVE', mergedInto: null, location: 'Dubai' };
+  const ids = [];
+  const staleAts = await prisma.job.create({ data: { ...base, sourcePlatform: PA, externalId: 'fr-ats', sourceType: 'direct_ats', title: 'Line Captain', applyUrl: 'https://carrier.icims.com/9', lastSeenAt: old } });
+  const freshAgg = await prisma.job.create({ data: { ...base, sourcePlatform: PAGG, externalId: 'fr-agg', sourceType: 'aggregator', title: 'Line Captain', applyUrl: 'https://adzuna.com/land/ad/9', lastSeenAt: new Date() } });
+  ids.push(staleAts.id, freshAgg.id);
+  try {
+    const res = await collapseAggregatorDuplicates([PA, PAGG], { dryRun: false });
+    assert.strictEqual(res.merged, 0, 'stale canonical → no displacement');
+    assert.strictEqual((await prisma.job.findUnique({ where: { id: freshAgg.id } })).status, 'ACTIVE', 'aggregator survives a stale direct twin');
+    // Control: refresh the direct row → it SHOULD now win canonical.
+    await prisma.job.update({ where: { id: staleAts.id }, data: { lastSeenAt: new Date() } });
+    const res2 = await collapseAggregatorDuplicates([PA, PAGG], { dryRun: false });
+    assert.strictEqual(res2.merged, 1, 'fresh canonical → displacement fires');
+    assert.strictEqual((await prisma.job.findUnique({ where: { id: freshAgg.id } })).status, 'EXPIRED', 'aggregator displaced once canonical is fresh');
+    console.log('  Part E (freshness precondition: stale canonical cannot displace): passed');
+  } finally { await prisma.job.deleteMany({ where: { id: { in: ids } } }); }
+}
+
 (async () => {
   partA();
   partC();
@@ -126,6 +149,7 @@ async function partD(prisma) {
   try {
     await partB(prisma);
     await partD(prisma);
+    await partE(prisma);
     console.log('ALL DEDUP FIXTURE TESTS PASSED');
   } finally { await prisma.$disconnect(); }
   process.exit(0);

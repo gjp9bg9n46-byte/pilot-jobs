@@ -72,6 +72,17 @@ const TITLE_TRAILING_REQID = /\s*[-–—(]?\s*(?:#\s*|\b(?:req|ref|requisition|
 // apart (London Heathrow vs Gatwick both → "london"); flagged for manual review.
 const MULTI_BASE_CITIES = new Set(['london', 'newyork', 'new', 'paris', 'tokyo', 'moscow', 'chicago', 'washington', 'houston', 'dallas', 'berlin', 'milan', 'rome', 'seoul', 'shanghai', 'sao', 'buenos', 'osaka', 'istanbul']);
 
+// Freshness window for canonical selection — mirrors the runner's expireUnseen
+// backstop (JOB_UNSEEN_MAX_DAYS, default 14). A row not seen within it cannot be
+// chosen as a displacement canonical. lastSeenAt is authoritative; updatedAt is
+// the fallback for rows that predate lastSeenAt (refreshed on every re-see).
+const freshMaxDays = () => Math.max(1, parseInt(process.env.JOB_UNSEEN_MAX_DAYS || '14', 10));
+function isFresh(row) {
+  const ts = row.lastSeenAt || row.updatedAt;
+  if (!ts) return false; // no freshness signal at all → not eligible as canonical
+  return (Date.now() - new Date(ts).getTime()) / 864e5 <= freshMaxDays();
+}
+
 // Fold diacritics so an aggregator's "Montréal" matches an ATS "Montreal"
 // (both → "montreal"). Without this, the ASCII-only tokenisers below split
 // "montréal" into ["montr","al"] and the twin never matches.
@@ -127,7 +138,7 @@ function titleCore(title, company, location) {
 async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } = {}) {
   const jobs = await prisma.job.findMany({
     where: { sourcePlatform: { in: sourcePlatforms }, status: 'ACTIVE', mergedInto: null },
-    select: { id: true, sourcePlatform: true, sourceType: true, company: true, title: true, location: true, applyUrl: true, description: true },
+    select: { id: true, sourcePlatform: true, sourceType: true, company: true, title: true, location: true, applyUrl: true, description: true, lastSeenAt: true, updatedAt: true },
   });
 
   const groups = new Map();
@@ -143,9 +154,13 @@ async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } =
   let merged = 0;
   for (const group of groups.values()) {
     if (group.length < 2) continue;
-    const clean = group.filter((j) => j.sourceType && j.sourceType !== 'aggregator');
+    // FRESHNESS PRECONDITION: a stale clean row cannot win canonical — otherwise
+    // we'd hide a working aggregator link behind a dead/ancient direct one, which
+    // is worse than the duplicate. Freshness = seen within the backstop window
+    // (lastSeenAt, or updatedAt for rows predating the field).
+    const clean = group.filter((j) => j.sourceType && j.sourceType !== 'aggregator' && isFresh(j));
     const aggs = group.filter((j) => j.sourceType === 'aggregator');
-    if (!clean.length || !aggs.length) continue; // need BOTH a clean twin and an aggregator
+    if (!clean.length || !aggs.length) continue; // need BOTH a FRESH clean twin and an aggregator
 
     const canonical = pickCanonical(clean); // best CLEAN row (guaranteed non-aggregator)
     if (!canonical || canonical.sourceType === 'aggregator') {

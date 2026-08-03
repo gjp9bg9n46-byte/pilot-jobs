@@ -89,6 +89,7 @@ async function upsertJob(job, { preserveMerge = false } = {}) {
     sourceType: classifySourceType(applyUrl, sourcePlatform),
     externalId,
     mergedInto: null,
+    lastSeenAt: new Date(),
   };
 
   return prisma.job.upsert({
@@ -116,6 +117,9 @@ async function upsertJob(job, { preserveMerge = false } = {}) {
       reqWorkAuthorization: reqWorkAuthorization || null,
       reqEnglishLevel: reqEnglishLevel || null,
       reqWillingToRelocate: !!reqWillingToRelocate,
+      // Appearing in this fetch is a "seen today" fact regardless of merge state,
+      // so lastSeenAt always refreshes — even for a sticky-merged row.
+      lastSeenAt: new Date(),
       // Sticky merge: a row that dedup EXPIRED + mergedInto must NOT resurrect
       // just because its source still lists it — otherwise it flaps ACTIVE↔EXPIRED
       // every cron cycle (and serves the aggregator link in the window between
@@ -522,6 +526,42 @@ async function expirePastDue() {
   return count;
 }
 
+const unseenMaxDays = () => Math.max(1, parseInt(process.env.JOB_UNSEEN_MAX_DAYS || '14', 10));
+
+/**
+ * Hard staleness backstop — the thing that stops a dead/gated source producing
+ * immortal rows. A healthy cron re-sees every live posting within hours, so a
+ * row not seen in `unseenMaxDays` (default 14) is dead, not gated.
+ *
+ * This deliberately OVERRIDES the zero-result guard: markStaleInactive skips
+ * expiry when a source returns 0 (so a transient failure can't wipe good data),
+ * but a source returning nothing for two weeks is dead — the backstop catches
+ * exactly the rows the guard protects.
+ *
+ * lastSeenAt is authoritative once set. Rows that predate the field (lastSeenAt
+ * NULL) fall back to updatedAt, which every re-see refreshes — so a still-live
+ * NULL row is spared and only genuinely-unseen NULL rows expire. Scoped to
+ * scraped rows only: employer-posted (first-party) and manual/legacy rows are
+ * never re-scraped and must not be swept.
+ */
+async function expireUnseen() {
+  const cutoff = new Date(Date.now() - unseenMaxDays() * 24 * 3600 * 1000);
+  const { count } = await prisma.job.updateMany({
+    where: {
+      status: 'ACTIVE',
+      sourcePlatform: { not: null }, // scraped rows only
+      postedByEmployerId: null,      // never expire first-party employer posts
+      OR: [
+        { lastSeenAt: { lt: cutoff } },
+        { lastSeenAt: null, updatedAt: { lt: cutoff } },
+      ],
+    },
+    data: { status: 'EXPIRED' },
+  });
+  if (count) logger.info({ expired: count, unseenMaxDays: unseenMaxDays(), msg: 'expired rows unseen past backstop window (overrides zero-result guard)' });
+  return count;
+}
+
 // ─── Full ingestion pass ──────────────────────────────────────────────────────
 
 /**
@@ -540,6 +580,13 @@ async function runAllEmployers(employers, opts = {}) {
     const stats = await processEmployer(emp, opts);
     allStats.push(stats);
     sourcePlatformsSeen.add(emp.source);
+  }
+
+  if (!opts.dryRun) {
+    // Staleness backstop runs FIRST (after all employers refreshed lastSeenAt),
+    // so dead/unseen rows are EXPIRED before dedup — a stale row can never be
+    // selected as a displacement canonical.
+    try { await expireUnseen(); } catch (err) { logger.error({ err: err.message, msg: 'unseen backstop failed' }); }
   }
 
   if (!opts.dryRun && sourcePlatformsSeen.size > 1) {
@@ -572,4 +619,4 @@ async function runAllEmployers(employers, opts = {}) {
   return allStats;
 }
 
-module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue, fetchForEmployer };
+module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue, expireUnseen, fetchForEmployer };
