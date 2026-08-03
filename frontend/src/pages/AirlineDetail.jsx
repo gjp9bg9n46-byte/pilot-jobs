@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { airlineApi, adminApi } from '../services/api';
 import AirlineLogo from '../components/AirlineLogo';
 import { LightPage, Badge, Button } from '../components/primitives';
-import { resolveFieldDate, formatFieldDate } from '../lib/fieldDates';
+import { resolveFieldDate, formatFieldDate, hashStage } from '../lib/fieldDates';
 
 const EMPTY = (
   <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: 13 }}>
@@ -88,6 +88,7 @@ const S = {
     alignSelf: 'flex-start',
   },
   dateBoxEmpty: { fontStyle: 'italic', opacity: 0.65 },
+  legend: { fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14, marginTop: -4, lineHeight: 1.5 },
   tags: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   tag: {
     fontSize: 12, color: 'var(--accent)', background: 'rgba(0,63,136,0.08)',
@@ -300,7 +301,6 @@ export default function AirlineDetail() {
                 <span>{airline.country}</span>
                 <span>·</span>
                 <span>{airline.region}</span>
-                {airline.headquarters && <><span>·</span><span>{airline.headquarters}</span></>}
               </div>
               {airline.domain && (
                 <a
@@ -352,9 +352,17 @@ export default function AirlineDetail() {
           </div>
         </div>
 
+        {/* Legend — what the date column means. Keeps "—" honest without softening it. */}
+        <div style={S.legend}>
+          Dates show when each detail was last confirmed. “—” means the date is unknown.
+        </div>
+
         {/* Operations */}
         <div style={S.section}>
           <div style={S.sectionTitle}>Operations</div>
+          <Field label="Headquarters" {...dprops('headquarters')}>
+            {airline.headquarters || null}
+          </Field>
           {airline.fleetDetail?.length > 0
             ? <FleetBlock detail={airline.fleetDetail} fd={fd} canReaffirm={isAdmin} onReaffirm={reaffirm} />
             : (
@@ -428,7 +436,7 @@ export default function AirlineDetail() {
                     <span style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 800, marginRight: 8 }}>{i + 1}</span>
                     {s}
                   </div>
-                  <DateBox {...dprops('interviewStages', i)} />
+                  <DateBox {...dprops('interviewStages', hashStage(s))} />
                 </div>
               ))
             : <Field label="Interview Stages" {...dprops('interviewStages')}>{null}</Field>}

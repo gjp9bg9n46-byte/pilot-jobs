@@ -13,7 +13,7 @@ import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { EMPTY_FIELD, contractLabel, hiringFreqLabel, hiringMeta, relativeDate } from '../../../../src/lib/airlineFormat';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
-import { resolveFieldDate, formatFieldDate } from '../../../../src/lib/fieldDates';
+import { resolveFieldDate, formatFieldDate, hashStage } from '../../../../src/lib/fieldDates';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Airline = Record<string, any>;
@@ -92,7 +92,7 @@ export default function AirlineDetail() {
                   {a.iataCode ? <Text style={[styles.codeChip, styles.codeAccent]}>IATA: {a.iataCode}</Text> : null}
                   {a.icaoCode ? <Text style={styles.codeChip}>ICAO: {a.icaoCode}</Text> : null}
                 </View>
-                <Text style={styles.heroMeta}>{a.country} · {a.region}{a.headquarters ? ` · ${a.headquarters}` : ''}</Text>
+                <Text style={styles.heroMeta}>{a.country} · {a.region}</Text>
                 {a.domain ? (
                   <Pressable
                     onPress={() => Linking.openURL(`https://${String(a.domain).replace(/^https?:\/\//, '')}`)}
@@ -120,9 +120,13 @@ export default function AirlineDetail() {
           </Pressable>
         </View>
 
+        {/* Legend — what the date column means; keeps "—" honest without softening it. */}
+        <Text style={styles.legend}>Dates show when each detail was last confirmed. “—” means the date is unknown.</Text>
+
         {/* Operations */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>OPERATIONS</Text>
+          <Field label="Headquarters" date={dateFor('headquarters')}>{a.headquarters ? <Val>{a.headquarters}</Val> : null}</Field>
           {a.fleetDetail?.length > 0 ? (
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Fleet</Text>
@@ -174,7 +178,7 @@ export default function AirlineDetail() {
             <View>{a.interviewStages.map((s: string, i: number) => (
               <View key={i} style={[styles.stageRow, { justifyContent: 'space-between' }]}>
                 <View style={{ flexDirection: 'row', flex: 1 }}><Text style={styles.stageNum}>{i + 1} </Text><Text style={styles.valText}>{s}</Text></View>
-                <DateBadge date={dateFor('interviewStages', i)} />
+                <DateBadge date={dateFor('interviewStages', hashStage(s))} />
               </View>
             ))}</View>
           ) : null}</Field>
@@ -226,6 +230,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   jobsLinkText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base },
   section: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 20, marginBottom: 14 },
   sectionTitle: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.muted, letterSpacing: 1, marginBottom: 16 },
+  legend: { fontSize: fontSizes.xs, color: pilot.muted, marginHorizontal: spacing.xl, marginBottom: 12, lineHeight: 17 },
   field: { marginBottom: 14 },
   fieldHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   fieldLabel: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.bodySemiBold, marginBottom: 6 },

@@ -31,10 +31,25 @@ const RAW_TO_LOGICAL = {
 };
 const toLogical = (rawField) => RAW_TO_LOGICAL[rawField] || rawField;
 
+// Interview stages are keyed by a STABLE content hash of the stage text, not by
+// array index — reordering stages must not silently move dates onto the wrong
+// item. Editing a stage's text is a genuine content change → a new key (its old
+// date is correctly orphaned). Same hash is mirrored in the client fieldDates
+// libs so display resolves to the same key.
+function normalizeStage(s) {
+  return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
+}
+function hashStage(s) {
+  const t = normalizeStage(s);
+  let h = 0x811c9dc5; // FNV-1a 32-bit
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16);
+}
+
 const itemKey = {
   fleet: (type) => `fleet:${type}`,
   pay: (role) => `payRanges:${role}`,             // 'captain' | 'fo'
-  interview: (index) => `interviewStages:${index}`,
+  interview: (stageText) => `interviewStages:${hashStage(stageText)}`,
 };
 
 // Resolve the date for a per-item (or whole) value from the field-dates map:
@@ -90,8 +105,11 @@ function keysToStampOnEdit(rawField, newA, oldA) {
   if (logical === 'interviewStages') {
     const nv = Array.isArray(newA?.interviewStages) ? newA.interviewStages : [];
     const ov = Array.isArray(oldA?.interviewStages) ? oldA.interviewStages : [];
+    // Content-keyed: a stage whose normalized text isn't already present is
+    // added-or-edited → stamp it. Reordered stages keep their keys → not re-dated.
+    const oldSet = new Set(ov.map(normalizeStage));
     const keys = [];
-    nv.forEach((s, i) => { if (oldA == null || !eq(s, ov[i])) keys.push(itemKey.interview(i)); });
+    for (const s of nv) { if (oldA == null || !oldSet.has(normalizeStage(s))) keys.push(itemKey.interview(s)); }
     return keys.length ? keys : ['interviewStages'];
   }
 
@@ -100,5 +118,6 @@ function keysToStampOnEdit(rawField, newA, oldA) {
 
 module.exports = {
   WHOLE_FIELDS, PER_ITEM_FIELDS, toLogical, itemKey, resolveDate, keysToStampOnEdit,
+  normalizeStage, hashStage,
   ALL_LOGICAL_FIELDS: [...WHOLE_FIELDS, ...PER_ITEM_FIELDS],
 };
