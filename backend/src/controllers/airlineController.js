@@ -156,11 +156,18 @@ exports.getAirline = async (req, res, next) => {
         notes: true, verifiedContributors: true,
         lastUpdatedAt: true, createdAt: true,
         // contributions intentionally omitted — never expose contributor identities
+        fieldDates: { select: { field: true, recordedAt: true } },
       },
     });
 
     if (!airline) return res.status(404).json({ error: 'Airline not found' });
-    res.json(airline);
+    // Flatten per-field dates to a { field: recordedAt } map. Absent = unknown
+    // (client renders "—"); never a fabricated date. Keys: whole-field
+    // ('rosterPattern') or per-item ('fleet:A320', 'payRanges:captain').
+    const { fieldDates, ...rest } = airline;
+    const fieldDateMap = {};
+    for (const fd of fieldDates) fieldDateMap[fd.field] = fd.recordedAt;
+    res.json({ ...rest, fieldDates: fieldDateMap });
   } catch (err) {
     next(err);
   }

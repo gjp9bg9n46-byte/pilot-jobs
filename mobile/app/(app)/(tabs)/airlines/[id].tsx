@@ -13,15 +13,28 @@ import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { EMPTY_FIELD, contractLabel, hiringFreqLabel, hiringMeta, relativeDate } from '../../../../src/lib/airlineFormat';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { resolveFieldDate, formatFieldDate } from '../../../../src/lib/fieldDates';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Airline = Record<string, any>;
 
-function Field({ label, children }: { label: string; children?: React.ReactNode }) {
+// Small per-field date badge — recorded/verified date for this field or item.
+// NULL renders a visible "—" (never blank/hidden), same rule as web.
+function DateBadge({ date }: { date?: string | null }) {
+  const styles = useThemedStyles(createStyles);
+  return <Text style={[styles.dateBadge, !date && styles.dateBadgeEmpty]}>{formatFieldDate(date)}</Text>;
+}
+
+// date === false → suppress the field-level badge (used when each item below
+// carries its own date, e.g. interview stages).
+function Field({ label, children, date }: { label: string; children?: React.ReactNode; date?: string | null | false }) {
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={styles.fieldHeadRow}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        {date !== false ? <DateBadge date={date} /> : null}
+      </View>
       {children != null && children !== false ? <View style={styles.fieldValue}>{children}</View> : <Text style={styles.emptyField}>{EMPTY_FIELD}</Text>}
     </View>
   );
@@ -56,6 +69,8 @@ export default function AirlineDetail() {
   const badge = hiringMeta(a.hiringStatus);
   const pay = a.payRanges;
   const payStr = (p: Airline) => `${p.min?.toLocaleString() ?? '?'} – ${p.max?.toLocaleString() ?? '?'} ${p.currency ?? ''} / ${p.period ?? 'year'}`;
+  const fd = a.fieldDates || {};
+  const dateFor = (logical: string, item?: string | number) => resolveFieldDate(fd, logical, item);
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -116,48 +131,62 @@ export default function AirlineDetail() {
                 if (r.inService != null) segs.push(`${r.inService} in service`);
                 if (r.ordered != null) segs.push(`${r.ordered} on order`);
                 if (r.retired != null) segs.push(`${r.retired} retired`);
-                return <View key={r.type + i} style={styles.fleetCard}><Text style={styles.fleetType}>{r.type}</Text><Text style={styles.fleetLine}>{segs.join(' · ') || '—'}</Text></View>;
+                return (
+                  <View key={r.type + i} style={[styles.fleetCard, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fleetType}>{r.type}</Text>
+                      <Text style={styles.fleetLine}>{segs.join(' · ') || '—'}</Text>
+                    </View>
+                    <DateBadge date={dateFor('fleet', r.type)} />
+                  </View>
+                );
               })}
             </View>
           ) : (
-            <Field label="Fleet">{a.fleet?.length > 0 ? <Tags items={a.fleet} /> : null}</Field>
+            <Field label="Fleet" date={dateFor('fleet')}>{a.fleet?.length > 0 ? <Tags items={a.fleet} /> : null}</Field>
           )}
-          <Field label="Bases">{a.bases?.length > 0 ? <Tags items={a.bases} /> : null}</Field>
-          <Field label="Contract Type">{a.contractType ? <Val>{contractLabel(a.contractType)}</Val> : null}</Field>
-          <Field label="Roster Pattern">{a.rosterPattern ? <Val>{a.rosterPattern}</Val> : null}</Field>
-          <Field label="Work Auth Required">{a.workAuthRequired?.length > 0 ? <Tags items={a.workAuthRequired} /> : null}</Field>
+          <Field label="Bases" date={dateFor('bases')}>{a.bases?.length > 0 ? <Tags items={a.bases} /> : null}</Field>
+          <Field label="Contract Type" date={dateFor('contractType')}>{a.contractType ? <Val>{contractLabel(a.contractType)}</Val> : null}</Field>
+          <Field label="Roster Pattern" date={dateFor('rosterPattern')}>{a.rosterPattern ? <Val>{a.rosterPattern}</Val> : null}</Field>
+          <Field label="Work Auth Required" date={dateFor('workAuthRequired')}>{a.workAuthRequired?.length > 0 ? <Tags items={a.workAuthRequired} /> : null}</Field>
         </View>
 
         {/* Compensation */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>COMPENSATION</Text>
-          <Field label="Captain Pay">{pay?.captain ? <Val>{payStr(pay.captain)}</Val> : null}</Field>
-          <Field label="First Officer Pay">{pay?.fo ? <Val>{payStr(pay.fo)}</Val> : null}</Field>
+          <Field label="Captain Pay" date={dateFor('payRanges', 'captain')}>{pay?.captain ? <Val>{payStr(pay.captain)}</Val> : null}</Field>
+          <Field label="First Officer Pay" date={dateFor('payRanges', 'fo')}>{pay?.fo ? <Val>{payStr(pay.fo)}</Val> : null}</Field>
         </View>
 
         {/* Career */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>CAREER</Text>
-          <Field label="Hiring Status"><View style={[styles.badge, { backgroundColor: badge.bg, alignSelf: 'flex-start' }]}><Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text></View></Field>
-          <Field label="Hiring Frequency">{hiringFreqLabel(a.hiringFrequency) ? <Val>{hiringFreqLabel(a.hiringFrequency) as string}</Val> : null}</Field>
-          <Field label="Upgrade Timeline">{(a.upgradeTimeMinYears != null || a.upgradeTimeMaxYears != null) ? <Val>{`${a.upgradeTimeMinYears ?? '?'} – ${a.upgradeTimeMaxYears ?? '?'} years`}</Val> : null}</Field>
+          <Field label="Hiring Status" date={dateFor('hiringStatus')}><View style={[styles.badge, { backgroundColor: badge.bg, alignSelf: 'flex-start' }]}><Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text></View></Field>
+          <Field label="Hiring Frequency" date={dateFor('hiringFrequency')}>{hiringFreqLabel(a.hiringFrequency) ? <Val>{hiringFreqLabel(a.hiringFrequency) as string}</Val> : null}</Field>
+          <Field label="Upgrade Timeline" date={dateFor('upgradeTime')}>{(a.upgradeTimeMinYears != null || a.upgradeTimeMaxYears != null) ? <Val>{`${a.upgradeTimeMinYears ?? '?'} – ${a.upgradeTimeMaxYears ?? '?'} years`}</Val> : null}</Field>
         </View>
 
         {/* Application Process */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>APPLICATION PROCESS</Text>
-          <Field label="Avg Response Time">{a.avgResponseDays != null ? <Val>{`~${a.avgResponseDays} day${a.avgResponseDays !== 1 ? 's' : ''}`}</Val> : null}</Field>
-          <Field label="Interview Stages">{a.interviewStages?.length > 0 ? (
+          <Field label="Avg Response Time" date={dateFor('avgResponseDays')}>{a.avgResponseDays != null ? <Val>{`~${a.avgResponseDays} day${a.avgResponseDays !== 1 ? 's' : ''}`}</Val> : null}</Field>
+          <Field label="Interview Stages" date={a.interviewStages?.length > 0 ? false : dateFor('interviewStages')}>{a.interviewStages?.length > 0 ? (
             <View>{a.interviewStages.map((s: string, i: number) => (
-              <View key={i} style={styles.stageRow}><Text style={styles.stageNum}>{i + 1} </Text><Text style={styles.valText}>{s}</Text></View>
+              <View key={i} style={[styles.stageRow, { justifyContent: 'space-between' }]}>
+                <View style={{ flexDirection: 'row', flex: 1 }}><Text style={styles.stageNum}>{i + 1} </Text><Text style={styles.valText}>{s}</Text></View>
+                <DateBadge date={dateFor('interviewStages', i)} />
+              </View>
             ))}</View>
           ) : null}</Field>
-          <Field label="Sim Type">{a.simType ? <Val>{a.simType}</Val> : null}</Field>
+          <Field label="Sim Type" date={dateFor('simType')}>{a.simType ? <Val>{a.simType}</Val> : null}</Field>
         </View>
 
         {/* Notes */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>NOTES</Text>
+          <View style={styles.fieldHeadRow}>
+            <Text style={styles.sectionTitle}>NOTES</Text>
+            <DateBadge date={dateFor('notes')} />
+          </View>
           {a.notes ? <Text style={styles.notes}>{a.notes}</Text> : <Text style={styles.emptyField}>{EMPTY_FIELD}</Text>}
         </View>
 
@@ -198,7 +227,14 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   section: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 20, marginBottom: 14 },
   sectionTitle: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.muted, letterSpacing: 1, marginBottom: 16 },
   field: { marginBottom: 14 },
+  fieldHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   fieldLabel: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.bodySemiBold, marginBottom: 6 },
+  dateBadge: {
+    fontSize: 11, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted,
+    backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden', marginBottom: 6,
+  },
+  dateBadgeEmpty: { fontStyle: 'italic', opacity: 0.6 },
   fieldValue: {},
   valText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 22 },
   emptyField: { fontSize: fontSizes.sm, color: pilot.muted, fontStyle: 'italic', fontFamily: fontFamilies.body },

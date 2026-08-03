@@ -3,6 +3,7 @@
 const prisma = require('../config/database');
 const { sendEmail } = require('../services/emailService');
 const { renderTestEmail } = require('../services/emailTemplates');
+const { keysToStampOnEdit, ALL_LOGICAL_FIELDS } = require('../services/fieldDateKeys');
 
 // POST /admin/notifications/test — admin-only health check for the Resend
 // integration. Sends a test email to the calling admin's own address.
@@ -135,6 +136,11 @@ exports.approve = async (req, res, next) => {
         if (MERGEABLE_FIELDS.has(key)) updateData[key] = value;
       }
 
+      // Old state (pre-merge) — needed to diff per-item fields so only the items
+      // that actually changed get re-dated.
+      const oldAirline = await tx.airline.findUnique({ where: { id: contribution.airlineId } });
+
+      const reviewedAt = new Date();
       const [airline, updated] = await Promise.all([
         tx.airline.update({
           where: { id: contribution.airlineId },
@@ -142,9 +148,23 @@ exports.approve = async (req, res, next) => {
         }),
         tx.airlineFactContribution.update({
           where: { id: req.params.id },
-          data: { status: 'APPROVED', reviewerId: req.pilot.id, reviewedAt: new Date() },
+          data: { status: 'APPROVED', reviewerId: req.pilot.id, reviewedAt },
         }),
       ]);
+
+      // Per-field dating: each changed field/item gets recordedAt = reviewedAt.
+      // Only these keys move — every other field's date is untouched.
+      const stampKeys = new Set();
+      for (const key of Object.keys(updateData)) {
+        for (const k of keysToStampOnEdit(key, airline, oldAirline)) stampKeys.add(k);
+      }
+      for (const field of stampKeys) {
+        await tx.airlineFieldDate.upsert({
+          where: { airlineId_field: { airlineId: contribution.airlineId, field } },
+          update: { recordedAt: reviewedAt, source: 'contribution' },
+          create: { airlineId: contribution.airlineId, field, recordedAt: reviewedAt, source: 'contribution' },
+        });
+      }
 
       return { airline, contribution: updated };
     });
@@ -154,6 +174,30 @@ exports.approve = async (req, res, next) => {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }
+};
+
+// Re-affirm a field WITHOUT changing its value ("fleet is still 12 A320s").
+// Sets only that field/item's recordedAt to now, so accurate-but-old data stops
+// reading as stale. `field` is a field-date key: whole ('rosterPattern') or
+// per-item ('fleet:A320', 'payRanges:captain', 'interviewStages:0').
+exports.reaffirmField = async (req, res, next) => {
+  try {
+    const { field } = req.body;
+    if (!field || typeof field !== 'string') return res.status(400).json({ error: 'field is required' });
+    if (!ALL_LOGICAL_FIELDS.includes(field.split(':')[0])) {
+      return res.status(400).json({ error: `unknown factfile field: ${field}` });
+    }
+    const airline = await prisma.airline.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!airline) return res.status(404).json({ error: 'Airline not found' });
+
+    const now = new Date();
+    const fd = await prisma.airlineFieldDate.upsert({
+      where: { airlineId_field: { airlineId: req.params.id, field } },
+      update: { recordedAt: now, source: 'reaffirm' },
+      create: { airlineId: req.params.id, field, recordedAt: now, source: 'reaffirm' },
+    });
+    res.json({ field: fd.field, recordedAt: fd.recordedAt });
+  } catch (err) { next(err); }
 };
 
 exports.reject = async (req, res, next) => {

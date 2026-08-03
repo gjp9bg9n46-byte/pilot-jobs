@@ -15,6 +15,9 @@ router.get('/contributions',            c.getContributions);
 router.post('/contributions/:id/approve', c.approve);
 router.post('/contributions/:id/reject',  c.reject);
 
+// Re-affirm a single airline fact field's date without changing its value.
+router.post('/airlines/:id/reaffirm',     c.reaffirmField);
+
 // Employer portal moderation
 router.get('/employers',                ec.listEmployers);
 router.get('/employers/pending',        ec.listPendingEmployers);

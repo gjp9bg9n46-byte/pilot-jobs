@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { airlineApi } from '../services/api';
+import { airlineApi, adminApi } from '../services/api';
 import AirlineLogo from '../components/AirlineLogo';
 import { LightPage, Badge, Button } from '../components/primitives';
+import { resolveFieldDate, formatFieldDate } from '../lib/fieldDates';
 
 const EMPTY = (
   <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: 13 }}>
@@ -80,6 +81,13 @@ const S = {
   row: { display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'flex-start' },
   label: { fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, width: 160, flexShrink: 0, paddingTop: 1 },
   value: { fontSize: 14, color: 'var(--text-primary)', flex: 1, minWidth: 0 },
+  dateBox: {
+    fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg)',
+    border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap',
+    flexShrink: 0, width: 82, textAlign: 'center', lineHeight: '16px', fontFamily: 'var(--font-body)',
+    alignSelf: 'flex-start',
+  },
+  dateBoxEmpty: { fontStyle: 'italic', opacity: 0.65 },
   tags: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   tag: {
     fontSize: 12, color: 'var(--accent)', background: 'rgba(0,63,136,0.08)',
@@ -99,11 +107,33 @@ const S = {
   },
 };
 
-function Field({ label, children }) {
+// Small per-field date box on the far right, so dates scan as a column down the
+// page. NULL renders a visible "—" (never blank/hidden). For admins it's a
+// button that re-affirms the field's date without changing its value.
+function DateBox({ date, field, canReaffirm, onReaffirm }) {
+  const text = formatFieldDate(date);
+  const base = { ...S.dateBox, ...(date ? {} : S.dateBoxEmpty) };
+  if (canReaffirm && field) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onReaffirm(field); }}
+        style={{ ...base, cursor: 'pointer' }}
+        title={(date ? `Recorded ${text}` : 'No date recorded') + ' — click to mark re-checked now'}
+      >
+        {text}
+      </button>
+    );
+  }
+  return <span style={base} title={date ? `Recorded ${text}` : 'No date recorded'}>{text}</span>;
+}
+
+function Field({ label, children, date, field, canReaffirm, onReaffirm }) {
   return (
     <div style={S.row}>
       <div style={S.label}>{label}</div>
       <div style={S.value}>{children ?? EMPTY}</div>
+      <DateBox date={date} field={field} canReaffirm={canReaffirm} onReaffirm={onReaffirm} />
     </div>
   );
 }
@@ -138,15 +168,18 @@ function useNarrow(bp = 640) {
 // null → em-dash; 0 → "0"; positive → number
 const numCell = (v) => (v == null ? <span style={FS.dash}>—</span> : v);
 
-function FleetBlock({ detail }) {
+function FleetBlock({ detail, fd, canReaffirm, onReaffirm }) {
   const narrow = useNarrow(640);
   const hasIS = detail.some((r) => r.inService != null);
   const hasOrd = detail.some((r) => r.ordered != null);
   const hasRet = detail.some((r) => r.retired != null);
+  const box = (type) => (
+    <DateBox date={resolveFieldDate(fd, 'fleet', type)} field={`fleet:${type}`} canReaffirm={canReaffirm} onReaffirm={onReaffirm} />
+  );
   const header = (
     <div style={FS.head}>
       <span style={FS.label}>Fleet</span>
-      <span style={FS.sub}>Last updated from public sources</span>
+      <span style={FS.sub}>Recorded date shown per type</span>
     </div>
   );
 
@@ -160,9 +193,12 @@ function FleetBlock({ detail }) {
           if (r.ordered != null) segs.push(`${r.ordered} on order`);
           if (r.retired != null) segs.push(`${r.retired} retired`);
           return (
-            <div key={r.type + i} style={FS.card}>
-              <div style={FS.cardType}>{r.type}</div>
-              <div style={FS.cardLine}>{segs.join(' · ') || '—'}</div>
+            <div key={r.type + i} style={{ ...FS.card, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <div>
+                <div style={FS.cardType}>{r.type}</div>
+                <div style={FS.cardLine}>{segs.join(' · ') || '—'}</div>
+              </div>
+              {box(r.type)}
             </div>
           );
         })}
@@ -180,6 +216,7 @@ function FleetBlock({ detail }) {
             {hasIS && <th style={FS.th}>In Service</th>}
             {hasOrd && <th style={FS.th}>On Order</th>}
             {hasRet && <th style={FS.th}>Retired</th>}
+            <th style={{ ...FS.th, textAlign: 'right' }}>Recorded</th>
           </tr>
         </thead>
         <tbody>
@@ -189,6 +226,7 @@ function FleetBlock({ detail }) {
               {hasIS && <td style={FS.td}>{numCell(r.inService)}</td>}
               {hasOrd && <td style={FS.td}>{numCell(r.ordered)}</td>}
               {hasRet && <td style={FS.td}>{numCell(r.retired)}</td>}
+              <td style={{ ...FS.td, textAlign: 'right' }}>{box(r.type)}</td>
             </tr>
           ))}
         </tbody>
@@ -202,9 +240,18 @@ export default function AirlineDetail() {
   const navigate = useNavigate();
   const narrow = useNarrow();
   const isAuthed = useSelector((s) => !!s.auth.token);
+  const isAdmin = useSelector((s) => !!s.auth.pilot?.isAdmin);
   const [airline, setAirline] = useState(null);
   const [jobCount, setJobCount] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Admin re-check: stamp a field/item's date to now without changing its value.
+  const reaffirm = async (field) => {
+    try {
+      const { data } = await adminApi.reaffirm(id, field);
+      setAirline((a) => ({ ...a, fieldDates: { ...(a.fieldDates || {}), [data.field]: data.recordedAt } }));
+    } catch { /* non-fatal; leave date as-is */ }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -221,6 +268,15 @@ export default function AirlineDetail() {
 
   const badge = hiringMeta(airline.hiringStatus);
   const payRanges = airline.payRanges;
+  const fd = airline.fieldDates || {};
+  const dateFor = (logical, item) => resolveFieldDate(fd, logical, item);
+  // Common props so every Field gets a date box + (admin) re-check button.
+  const dprops = (logical, item) => ({
+    date: dateFor(logical, item),
+    field: item != null ? `${logical}:${item}` : logical,
+    canReaffirm: isAdmin,
+    onReaffirm: reaffirm,
+  });
 
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
@@ -277,8 +333,11 @@ export default function AirlineDetail() {
             </div>
           </div>
           {airline.description && (
-            <div style={{ marginTop: 14, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              {airline.description}
+            <div style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, flex: 1 }}>
+                {airline.description}
+              </div>
+              <DateBox {...dprops('description')} />
             </div>
           )}
           <div style={{ marginTop: 14 }}>
@@ -297,26 +356,26 @@ export default function AirlineDetail() {
         <div style={S.section}>
           <div style={S.sectionTitle}>Operations</div>
           {airline.fleetDetail?.length > 0
-            ? <FleetBlock detail={airline.fleetDetail} />
+            ? <FleetBlock detail={airline.fleetDetail} fd={fd} canReaffirm={isAdmin} onReaffirm={reaffirm} />
             : (
-              <Field label="Fleet">
+              <Field label="Fleet" {...dprops('fleet')}>
                 {airline.fleet?.length > 0
                   ? <div style={S.tags}>{airline.fleet.map((t) => <span key={t} style={S.tag}>{t}</span>)}</div>
                   : null}
               </Field>
             )}
-          <Field label="Bases">
+          <Field label="Bases" {...dprops('bases')}>
             {airline.bases?.length > 0
               ? <div style={S.tags}>{airline.bases.map((b) => <span key={b} style={S.tag}>{b}</span>)}</div>
               : null}
           </Field>
-          <Field label="Contract Type">
+          <Field label="Contract Type" {...dprops('contractType')}>
             {airline.contractType ? contractLabel(airline.contractType) : null}
           </Field>
-          <Field label="Roster Pattern">
+          <Field label="Roster Pattern" {...dprops('rosterPattern')}>
             {airline.rosterPattern || null}
           </Field>
-          <Field label="Work Auth Required">
+          <Field label="Work Auth Required" {...dprops('workAuthRequired')}>
             {airline.workAuthRequired?.length > 0
               ? <div style={S.tags}>{airline.workAuthRequired.map((w) => <span key={w} style={S.tag}>{w}</span>)}</div>
               : null}
@@ -326,12 +385,12 @@ export default function AirlineDetail() {
         {/* Compensation */}
         <div style={S.section}>
           <div style={S.sectionTitle}>Compensation</div>
-          <Field label="Captain Pay">
+          <Field label="Captain Pay" {...dprops('payRanges', 'captain')}>
             {payRanges?.captain
               ? `${payRanges.captain.min?.toLocaleString() ?? '?'} – ${payRanges.captain.max?.toLocaleString() ?? '?'} ${payRanges.captain.currency ?? ''} / ${payRanges.captain.period ?? 'year'}`
               : null}
           </Field>
-          <Field label="First Officer Pay">
+          <Field label="First Officer Pay" {...dprops('payRanges', 'fo')}>
             {payRanges?.fo
               ? `${payRanges.fo.min?.toLocaleString() ?? '?'} – ${payRanges.fo.max?.toLocaleString() ?? '?'} ${payRanges.fo.currency ?? ''} / ${payRanges.fo.period ?? 'year'}`
               : null}
@@ -341,13 +400,13 @@ export default function AirlineDetail() {
         {/* Career */}
         <div style={S.section}>
           <div style={S.sectionTitle}>Career</div>
-          <Field label="Hiring Status">
+          <Field label="Hiring Status" {...dprops('hiringStatus')}>
             <Badge variant={badge.variant}>{badge.label}</Badge>
           </Field>
-          <Field label="Hiring Frequency">
+          <Field label="Hiring Frequency" {...dprops('hiringFrequency')}>
             {hiringFreqLabel(airline.hiringFrequency) || null}
           </Field>
-          <Field label="Upgrade Timeline">
+          <Field label="Upgrade Timeline" {...dprops('upgradeTime')}>
             {(airline.upgradeTimeMinYears != null || airline.upgradeTimeMaxYears != null)
               ? `${airline.upgradeTimeMinYears ?? '?'} – ${airline.upgradeTimeMaxYears ?? '?'} years`
               : null}
@@ -357,27 +416,33 @@ export default function AirlineDetail() {
         {/* Application Process */}
         <div style={S.section}>
           <div style={S.sectionTitle}>Application Process</div>
-          <Field label="Avg Response Time">
+          <Field label="Avg Response Time" {...dprops('avgResponseDays')}>
             {airline.avgResponseDays != null ? `~${airline.avgResponseDays} day${airline.avgResponseDays !== 1 ? 's' : ''}` : null}
           </Field>
-          <Field label="Interview Stages">
-            {airline.interviewStages?.length > 0
-              ? airline.interviewStages.map((s, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 800 }}>{i + 1}</span>
-                    <span>{s}</span>
+          {/* Interview stages are per-item dated: each stage its own row + date box. */}
+          {airline.interviewStages?.length > 0
+            ? airline.interviewStages.map((s, i) => (
+                <div key={i} style={S.row}>
+                  <div style={S.label}>{i === 0 ? 'Interview Stages' : ''}</div>
+                  <div style={S.value}>
+                    <span style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 800, marginRight: 8 }}>{i + 1}</span>
+                    {s}
                   </div>
-                ))
-              : null}
-          </Field>
-          <Field label="Sim Type">
+                  <DateBox {...dprops('interviewStages', i)} />
+                </div>
+              ))
+            : <Field label="Interview Stages" {...dprops('interviewStages')}>{null}</Field>}
+          <Field label="Sim Type" {...dprops('simType')}>
             {airline.simType || null}
           </Field>
         </div>
 
         {/* Notes */}
         <div style={S.section}>
-          <div style={S.sectionTitle}>Notes</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <div style={S.sectionTitle}>Notes</div>
+            <DateBox {...dprops('notes')} />
+          </div>
           <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.7 }}>
             {airline.notes || EMPTY}
           </div>

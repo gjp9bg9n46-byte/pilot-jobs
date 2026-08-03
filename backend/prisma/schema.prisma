@@ -534,7 +534,28 @@ model Airline {
   createdAt            DateTime             @default(now())
 
   contributions        AirlineFactContribution[]
+  fieldDates           AirlineFieldDate[]
   employers            Employer[]
+}
+
+// Per-field (and per-item) "recorded/verified" dates for an airline fact file.
+// Generic key/value-date table so a single field's date can move without
+// touching any other field's date (lastUpdatedAt @updatedAt can't — it moves on
+// any change). `field` is a logical key: whole-field ('rosterPattern') or
+// per-item ('fleet:A320', 'payRanges:captain', 'interviewStages:0'). A missing
+// row = unknown date → the UI renders "—"/No date (never a fabricated stamp).
+model AirlineFieldDate {
+  id         String   @id @default(uuid())
+  airlineId  String
+  field      String   // logical factfile field key (see fieldDateKeys.js)
+  recordedAt DateTime // when THIS field/item was last recorded or re-affirmed
+  source     String?  // 'contribution' | 'reaffirm' | 'backfill' — provenance
+  updatedAt  DateTime @updatedAt
+
+  airline    Airline  @relation(fields: [airlineId], references: [id], onDelete: Cascade)
+
+  @@unique([airlineId, field])
+  @@index([airlineId])
 }
 
 model AirlineFactContribution {
