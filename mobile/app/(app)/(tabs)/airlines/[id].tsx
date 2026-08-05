@@ -127,6 +127,25 @@ export default function AirlineDetail() {
         {/* Legend — what the date column means; keeps "—" honest without softening it. */}
         <Text style={styles.legend}>Dates show when each detail was last confirmed — “—” means the date is unknown; a blank field hasn’t been contributed yet.</Text>
 
+        {/* Requirements DERIVED from current vacancies — populated + dated, distinct from hand-entered facts. */}
+        {a.derivedRequirements ? (() => {
+          const dr = a.derivedRequirements;
+          const n = dr.vacancyCount;
+          const frac = (c: number) => ` (${c} of ${n} state${c === 1 ? 's' : ''})`;
+          return (
+            <View style={styles.derived}>
+              <View style={styles.fieldHeadRow}>
+                <Text style={styles.derivedTitle}>FROM CURRENT VACANCIES</Text>
+                <DateBadge date={dr.lastConfirmed} />
+              </View>
+              {dr.minTotalHours != null ? <Text style={styles.derivedRow}>Minimum total time <Text style={styles.derivedStrong}>{dr.minTotalHours.toLocaleString()} hrs</Text>{frac(dr.hoursStatedCount)}</Text> : null}
+              {dr.certificates.length > 0 ? <Text style={styles.derivedRow}>Licence {dr.certificates.join(' / ')}{frac(dr.certStatedCount)}</Text> : null}
+              {dr.aircraftTypes.length > 0 ? <Text style={styles.derivedRow}>Aircraft {dr.aircraftTypes.join(', ')}{frac(dr.typeStatedCount)}</Text> : null}
+              <Text style={styles.derivedFoot}>Derived from {n} current vacanc{n === 1 ? 'y' : 'ies'} · last confirmed {formatFieldDate(dr.lastConfirmed)}. Not a hand-entered fact.</Text>
+            </View>
+          );
+        })() : null}
+
         {/* Operations */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>OPERATIONS</Text>
@@ -235,6 +254,11 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   section: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 20, marginBottom: 14 },
   sectionTitle: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.muted, letterSpacing: 1, marginBottom: 16 },
   legend: { fontSize: fontSizes.xs, color: pilot.muted, marginHorizontal: spacing.xl, marginBottom: 12, lineHeight: 17 },
+  derived: { backgroundColor: 'rgba(0,63,136,0.05)', borderWidth: 1, borderColor: 'rgba(0,63,136,0.18)', borderRadius: 12, padding: 16, marginHorizontal: spacing.xl, marginBottom: 14 },
+  derivedTitle: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.navy, letterSpacing: 1 },
+  derivedRow: { fontSize: fontSizes.sm, color: pilot.ink, marginTop: 6, lineHeight: 20 },
+  derivedStrong: { fontFamily: fontFamilies.bodyBold },
+  derivedFoot: { fontSize: fontSizes.xs, color: pilot.muted, marginTop: 10, fontStyle: 'italic', lineHeight: 16 },
   field: { marginBottom: 14 },
   fieldHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   fieldLabel: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.bodySemiBold, marginBottom: 6 },

@@ -89,6 +89,15 @@ const S = {
   },
   dateBoxEmpty: { fontStyle: 'italic', opacity: 0.65 },
   legend: { fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14, marginTop: -4, lineHeight: 1.5 },
+  derived: {
+    background: 'rgba(0,63,136,0.04)', border: '1px solid rgba(0,63,136,0.18)', borderRadius: 12,
+    padding: '16px 20px', marginBottom: 14,
+  },
+  derivedHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 },
+  derivedTitle: { fontSize: 11, fontWeight: 800, color: 'var(--accent)', letterSpacing: 1, textTransform: 'uppercase' },
+  derivedRow: { fontSize: 14, color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.5 },
+  derivedFrac: { fontSize: 12, color: 'var(--text-secondary)' },
+  derivedFoot: { fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, fontStyle: 'italic', lineHeight: 1.5 },
   tags: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   tag: {
     fontSize: 12, color: 'var(--accent)', background: 'rgba(0,63,136,0.08)',
@@ -360,6 +369,34 @@ export default function AirlineDetail() {
         <div style={S.legend}>
           Dates show when each detail was last confirmed — “—” means the date is unknown; a blank field hasn’t been contributed yet.
         </div>
+
+        {/* Requirements DERIVED from current vacancies — populated + dated from
+            data we already hold. Distinct from the hand-entered facts below. */}
+        {airline.derivedRequirements && (() => {
+          const dr = airline.derivedRequirements;
+          const n = dr.vacancyCount;
+          const of = (c) => <span style={S.derivedFrac}>({c} of {n} state{c === 1 ? 's' : ''})</span>;
+          return (
+            <div style={S.derived}>
+              <div style={S.derivedHead}>
+                <span style={S.derivedTitle}>From current vacancies</span>
+                <DateBox date={dr.lastConfirmed} />
+              </div>
+              {dr.minTotalHours != null && (
+                <div style={S.derivedRow}>Minimum total time <b>{dr.minTotalHours.toLocaleString()} hrs</b> {of(dr.hoursStatedCount)}</div>
+              )}
+              {dr.certificates.length > 0 && (
+                <div style={S.derivedRow}>Licence {dr.certificates.join(' / ')} {of(dr.certStatedCount)}</div>
+              )}
+              {dr.aircraftTypes.length > 0 && (
+                <div style={S.derivedRow}>Aircraft {dr.aircraftTypes.join(', ')} {of(dr.typeStatedCount)}</div>
+              )}
+              <div style={S.derivedFoot}>
+                Derived from {n} current vacanc{n === 1 ? 'y' : 'ies'} · last confirmed {formatFieldDate(dr.lastConfirmed)}. Not a hand-entered fact.
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Operations */}
         <div style={S.section}>

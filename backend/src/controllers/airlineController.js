@@ -140,6 +140,48 @@ exports.listAirlines = async (req, res, next) => {
   }
 };
 
+// Requirements DERIVED from an airline's own current vacancies — populated AND
+// dated (max lastSeenAt), from data we already hold. It is a separate signal
+// from the hand-entered requirements field (never merged into it): both answer
+// different questions. Because it reads only ACTIVE jobs, it self-expires when
+// the vacancies do — no persisted-after-gone failure. Returns null when the
+// airline has no current vacancies.
+async function deriveRequirementsFromJobs(airlineName) {
+  if (!airlineName) return null;
+  const jobs = await prisma.job.findMany({
+    where: { status: 'ACTIVE', company: { equals: airlineName, mode: 'insensitive' } },
+    select: {
+      reqMinTotalHours: true, reqCertificates: true, reqAircraftTypes: true,
+      reqAuthorities: true, lastSeenAt: true, updatedAt: true,
+    },
+  });
+  if (!jobs.length) return null;
+
+  const hoursVals = jobs.map((j) => j.reqMinTotalHours).filter((h) => h != null);
+  const union = (key) => [...new Set(jobs.flatMap((j) => j[key] || []))];
+  const statedCount = (key) => jobs.filter((j) => (j[key] || []).length > 0).length;
+  // "last confirmed" = most recent time a contributing vacancy was seen in a
+  // scrape (lastSeenAt; updatedAt fallback for pre-field rows). Never now().
+  const lastConfirmed = jobs.reduce((max, j) => {
+    const t = j.lastSeenAt || j.updatedAt;
+    return t && (!max || new Date(t) > new Date(max)) ? t : max;
+  }, null);
+
+  return {
+    vacancyCount: jobs.length,
+    // Report the floor (lowest entry bar across current vacancies) + how many
+    // vacancies actually state it, so one job's number isn't shown as consensus.
+    minTotalHours: hoursVals.length ? Math.min(...hoursVals) : null,
+    hoursStatedCount: hoursVals.length,
+    certificates: union('reqCertificates'),
+    certStatedCount: statedCount('reqCertificates'),
+    aircraftTypes: union('reqAircraftTypes'),
+    typeStatedCount: statedCount('reqAircraftTypes'),
+    authorities: union('reqAuthorities'),
+    lastConfirmed,
+  };
+}
+
 exports.getAirline = async (req, res, next) => {
   try {
     const airline = await prisma.airline.findUnique({
@@ -167,7 +209,8 @@ exports.getAirline = async (req, res, next) => {
     const { fieldDates, ...rest } = airline;
     const fieldDateMap = {};
     for (const fd of fieldDates) fieldDateMap[fd.field] = fd.recordedAt;
-    res.json({ ...rest, fieldDates: fieldDateMap });
+    const derivedRequirements = await deriveRequirementsFromJobs(airline.name);
+    res.json({ ...rest, fieldDates: fieldDateMap, derivedRequirements });
   } catch (err) {
     next(err);
   }
