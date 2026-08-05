@@ -567,6 +567,7 @@ function normalize(raw, empConfig) {
       case 'USAJOBS': return raw;
       case 'ADZUNA':  return raw;
       case 'JOOBLE':  return raw;
+      case 'CAREERJET': return raw;  // careerjet.js pre-normalizes
       case 'AVIATIONJOBSEARCH': return raw;
       case 'ICIMS':   return raw;  // icims.js pre-normalizes
       case 'AVATURE': return raw;  // avature.js pre-normalizes
