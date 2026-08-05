@@ -295,6 +295,27 @@ module.exports = [
     icims: { subdomain: 'careers-solairus', keyword: 'pilot' },
   },
 
+  // Repointed 2026-08-05 (were dead Greenhouse tokens; recon found current ATS).
+  // Cirrus Aircraft → iCIMS `careers-cirrusaircraft.icims.com` (robots allows
+  // /jobs; verified 3 pilot-titled roles: Sales Support Pilot, Flight Test Pilot).
+  {
+    source: 'ICIMS',
+    company: 'Cirrus Aircraft',
+    country: 'United States',
+    region: 'Americas',
+    icims: { subdomain: 'careers-cirrusaircraft', keyword: 'pilot' },
+  },
+  // VistaJet → iCIMS `careers-vistaglobal.icims.com`. Tenant responds; 0
+  // pilot-titled roles today (its line pilots may recruit via a separate
+  // channel, like flydubai) — kept so it populates automatically when posted.
+  {
+    source: 'ICIMS',
+    company: 'VistaJet',
+    country: 'Malta',
+    region: 'Europe',
+    icims: { subdomain: 'careers-vistaglobal', keyword: 'pilot' },
+  },
+
   // ── Jibe careers front-ends (direct carrier ATS, via the carrier's own site) ─
   // flydubai runs iCIMS, but its iCIMS tenant (careers-flydubai.icims.com) serves
   // robots.txt `Disallow: /`, so the portal is off-limits. Its own careers site
@@ -310,5 +331,15 @@ module.exports = [
     region: 'Middle East',
     defaultLocation: 'Dubai',
     jibe: { host: 'careers.flydubai.com', keyword: 'pilot', idPrefix: 'flydubai' },
+  },
+  // Wheels Up → Jibe `careers.wheelsup.com/api/jobs` (repoint 2026-08-05, was a
+  // dead Greenhouse token). 0 pilot roles today — added per owner so it's ready
+  // when they post; the zero-result alert tracks it meanwhile.
+  {
+    source: 'JIBE',
+    company: 'Wheels Up',
+    country: 'United States',
+    region: 'Americas',
+    jibe: { host: 'careers.wheelsup.com', keyword: 'pilot', idPrefix: 'wheelsup' },
   },
 ];
