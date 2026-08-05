@@ -84,6 +84,10 @@ migrates ATS.
 | **TUI** | careers.tuigroup.com **disallows its own `/search-jobs/`**, and only points to the blocked SF host. The public SF code `tuiinfotec` is the IT arm (0 pilot roles) anyway. |
 | **easyJet** | Taleo `searchjobs` REST 500s whenever the portal param is supplied (their bug; unresolvable without their session). careers.easyjet.com is an App-Router marketing site — SSRs only 3 generic featured cards, full list client-rendered, only job host referenced is the same Taleo. `becomeapilot.easyjet.com` routes to that Taleo + a CAE-run cadet scheme. No scrapeable full pilot list. |
 | **flydubai pilots portal** | `pilots-flydubai.icims.com` (and `careers-flydubai.icims.com`) are `Disallow: /`. Not needed: the Jibe feed already surfaces those roles (the FO's apply_url IS the pilots-portal link). flydubai is covered via `source: 'JIBE'`. |
+| **PilotsGlobal** (pilotsglobal.com) | robots.txt **names `ClaudeBot`, `GPTBot`, `ChatGPT-User` with `Disallow: /`** — explicitly bars us. PERMANENTLY off-limits; if it resurfaces as a candidate, the answer is no. Do not scrape, mirror, or work around. |
+| **Airline Pilot Central** (airlinepilotcentral.com) | NOT a job board — a commercial payscale + hiring-status DB for 100+ NA carriers (owned by Internet Brands / MH Sub I, has a Terms of Use). robots blocks `GPTBot` (signal they don't want bulk AI ingestion); their data IS their product. robots doesn't name us, but scraping a protected commercial dataset against its evident wishes is out. **Manual-research REFERENCE only** — a human contributor may consult it and hand-enter facts (with attribution); no scraper, no automated ingestion. It maps straight onto our emptiest fields (hiringStatus 6%, payRanges ~0%), so it's the right thing to point *manual* verification effort at. |
+
+**Note on job-board self-reported volumes:** bulk figures a job board quotes about *itself* ("50,000 aviation jobs!") are marketing claims, not verified counts — treat them as leads to check by actually querying the source, never as fact.
 
 ## Wiring a new source
 
