@@ -29,13 +29,17 @@ function DateBadge({ date }: { date?: string | null }) {
 // carries its own date, e.g. interview stages).
 function Field({ label, children, date }: { label: string; children?: React.ReactNode; date?: string | null | false }) {
   const styles = useThemedStyles(createStyles);
+  // Empty field → "Not yet contributed" + NO date badge (nothing to date).
+  // Populated → value + badge ("—" if unknown). date===false suppresses the
+  // field-level badge (per-item dates below carry their own).
+  const hasValue = children != null && children !== false;
   return (
     <View style={styles.field}>
       <View style={styles.fieldHeadRow}>
         <Text style={styles.fieldLabel}>{label}</Text>
-        {date !== false ? <DateBadge date={date} /> : null}
+        {hasValue && date !== false ? <DateBadge date={date} /> : null}
       </View>
-      {children != null && children !== false ? <View style={styles.fieldValue}>{children}</View> : <Text style={styles.emptyField}>{EMPTY_FIELD}</Text>}
+      {hasValue ? <View style={styles.fieldValue}>{children}</View> : <Text style={styles.emptyField}>{EMPTY_FIELD}</Text>}
     </View>
   );
 }
@@ -121,7 +125,7 @@ export default function AirlineDetail() {
         </View>
 
         {/* Legend — what the date column means; keeps "—" honest without softening it. */}
-        <Text style={styles.legend}>Dates show when each detail was last confirmed. “—” means the date is unknown.</Text>
+        <Text style={styles.legend}>Dates show when each detail was last confirmed — “—” means the date is unknown; a blank field hasn’t been contributed yet.</Text>
 
         {/* Operations */}
         <View style={styles.section}>
@@ -189,7 +193,7 @@ export default function AirlineDetail() {
         <View style={styles.section}>
           <View style={styles.fieldHeadRow}>
             <Text style={styles.sectionTitle}>NOTES</Text>
-            <DateBadge date={dateFor('notes')} />
+            {a.notes ? <DateBadge date={dateFor('notes')} /> : null}
           </View>
           {a.notes ? <Text style={styles.notes}>{a.notes}</Text> : <Text style={styles.emptyField}>{EMPTY_FIELD}</Text>}
         </View>

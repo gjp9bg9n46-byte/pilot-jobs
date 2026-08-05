@@ -130,11 +130,15 @@ function DateBox({ date, field, canReaffirm, onReaffirm }) {
 }
 
 function Field({ label, children, date, field, canReaffirm, onReaffirm }) {
+  // Empty (nobody contributed) vs populated-but-undated are different messages:
+  // an empty field shows "Not yet contributed" and NO date box (nothing to
+  // date); a populated field shows its value + a date box ("—" if unknown).
+  const hasValue = children != null && children !== false;
   return (
     <div style={S.row}>
       <div style={S.label}>{label}</div>
-      <div style={S.value}>{children ?? EMPTY}</div>
-      <DateBox date={date} field={field} canReaffirm={canReaffirm} onReaffirm={onReaffirm} />
+      <div style={S.value}>{hasValue ? children : EMPTY}</div>
+      {hasValue ? <DateBox date={date} field={field} canReaffirm={canReaffirm} onReaffirm={onReaffirm} /> : null}
     </div>
   );
 }
@@ -354,7 +358,7 @@ export default function AirlineDetail() {
 
         {/* Legend — what the date column means. Keeps "—" honest without softening it. */}
         <div style={S.legend}>
-          Dates show when each detail was last confirmed. “—” means the date is unknown.
+          Dates show when each detail was last confirmed — “—” means the date is unknown; a blank field hasn’t been contributed yet.
         </div>
 
         {/* Operations */}
@@ -449,7 +453,7 @@ export default function AirlineDetail() {
         <div style={S.section}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <div style={S.sectionTitle}>Notes</div>
-            <DateBox {...dprops('notes')} />
+            {airline.notes ? <DateBox {...dprops('notes')} /> : null}
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.7 }}>
             {airline.notes || EMPTY}

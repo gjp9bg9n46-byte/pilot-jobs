@@ -1,6 +1,18 @@
 'use strict';
 
 /**
+ * COVERAGE POLICY (2026-08 — decided, not a backlog):
+ *   Only ~6 of 483 airlines have verifiable provenance; the high-stakes career
+ *   fields (hiring status, requirements, pay) are 0–6% POPULATED, not merely
+ *   undated. The long tail stays undated ("—") indefinitely — that is the
+ *   truthful state, not a TODO. There is NO plan to sweep all 483. Effort goes
+ *   to the ~20–50 airlines with active jobs / real traffic. Fleet (the one
+ *   bulk-datable field) is dated from its Wikipedia source date via
+ *   scripts/date-fleet-from-enrichment.js. "Most-looked-at" is currently a guess
+ *   (no page-view analytics); adding view tracking would turn it into a real
+ *   priority list — cheap, worth doing if the manual-verification effort is
+ *   greenlit.
+ *
  * Logical field-date keys for airline fact files.
  *
  * A key is EITHER a whole-field key ('rosterPattern') or a per-item composite
