@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 'use strict';
 /**
  * ⚠ DATABASE SAFETY
@@ -7,7 +8,6 @@
  * Run scripts/backup-db.js before any destructive schema operation.
  */
 
-#!/usr/bin/env node
 'use strict';
 /**
  * Step 1 of stub cleanup.

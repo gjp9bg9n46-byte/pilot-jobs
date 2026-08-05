@@ -16,7 +16,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "node prisma/seed.js",
-    "scrape": "node src/services/scraperService.js"
+    "scrape": "node scripts/scrape.js",
+    "scrape:dry": "node scripts/scrape.js --dry-run",
+    "purge:legacy": "node scripts/clear-fake-jobs.js"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
