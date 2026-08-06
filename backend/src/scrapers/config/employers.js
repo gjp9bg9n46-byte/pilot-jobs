@@ -187,8 +187,18 @@ module.exports = [
     company: 'Republic Airways (RJet)',
   },
 
+  // Clay Lacy Aviation (US bizav/charter) — tenant hunt 2026-08-06; 11 pilot
+  // captain roles (Gulfstream/Challenger/Falcon/Pilatus). See claylacy-rest.js.
+  {
+    source: 'WORKDAY_REST',
+    config: 'claylacy-rest',
+    company: 'Clay Lacy Aviation',
+  },
+
   // API returned 422 — needs investigation. Site code may be incorrect.
-  // Disabled pending further research.
+  // (Tenant hunt 2026-08-06 confirmed site='search', but aaregional Workday has
+  // NO pilot roles — AA regionals hire pilots via the AA flow-through program,
+  // not this board — so it stays disabled.)
   {
     source: 'WORKDAY_REST',
     config: 'aaregional-rest',
