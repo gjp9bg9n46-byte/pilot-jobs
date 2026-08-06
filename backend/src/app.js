@@ -182,6 +182,14 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
   } catch (err) {
     logger.error(`Aggregator description enrichment failed: ${err.message}`);
   }
+  // LLM structured requirement extraction over the (now full) descriptions —
+  // replaces regex junk. Once per job; no-ops without ANTHROPIC_API_KEY.
+  try {
+    const { extractRequirementsLLM } = require('../scripts/extract-requirements-llm');
+    await extractRequirementsLLM({ limit: 25 });
+  } catch (err) {
+    logger.error(`LLM requirement extraction failed: ${err.message}`);
+  }
   // Airline factfiles derive hiring status / pay ranges from the fresh job data.
   try {
     await recomputeJobDerivedStats();
