@@ -280,11 +280,26 @@ function extractSalary(text) {
 
 // ─── HTML → plain text ────────────────────────────────────────────────────────
 
+// Convert HTML to STRUCTURED plain text — preserves paragraph breaks and bullet
+// lists (as "• ") instead of collapsing everything to one blob. The old version
+// did .replace(/\s+/g,' '), which ran headings into body ("OverviewThe Flight
+// Test Pilot...") and flattened every list. Output is newline-delimited plain
+// text; the clients render blank-line-separated paragraphs and "• " lines as
+// bullet lists (no HTML stored, no sanitisation surface).
 function htmlToText(html) {
   if (!html) return '';
   const $ = cheerio.load(html);
-  $('style, script').remove();
-  return $.text().replace(/\s+/g, ' ').trim();
+  $('style, script, noscript').remove();
+  $('li').each((_, el) => { $(el).prepend('• ').append('\n'); });
+  $('br').replaceWith('\n');
+  $('p, div, ul, ol, tr, h1, h2, h3, h4, h5, h6, section, article, header, footer, blockquote')
+    .each((_, el) => { $(el).append('\n'); });
+  return $.text()
+    .replace(/\r/g, '')
+    .replace(/[ \t ]+/g, ' ')   // collapse spaces/tabs, but NOT newlines
+    .replace(/ *\n */g, '\n')        // trim whitespace around line breaks
+    .replace(/\n{3,}/g, '\n\n')      // at most one blank line between blocks
+    .trim();
 }
 
 // ─── Country extraction ───────────────────────────────────────────────────────

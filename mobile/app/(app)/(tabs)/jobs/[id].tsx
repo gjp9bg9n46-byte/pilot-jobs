@@ -20,6 +20,7 @@ import {
 import { Requirement } from '../../../../src/lib/jobMatch';
 import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
+import { jobRequirements, parseDescriptionBlocks } from '../../../../src/lib/jobRequirements';
 import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
@@ -28,21 +29,6 @@ const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
 type Job = Record<string, any>;
 
 const ROLE_LABEL: Record<string, string> = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor', FLIGHT_ENGINEER: 'Flight Engineer' };
-
-// Basic HTML → readable text (web renders sanitized HTML; RN has no HTML view, so
-// we strip tags, keeping paragraph/list breaks). Rich formatting → plain text is a
-// noted parity simplification.
-function htmlToText(raw: string): string {
-  if (!raw) return '';
-  return raw
-    .replace(/<\s*br\s*\/?>/gi, '\n')
-    .replace(/<\/\s*(p|div|h[1-6]|li)\s*>/gi, '\n')
-    .replace(/<\s*li[^>]*>/gi, '• ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
 
 function ReqRow({ req }: { req: Requirement }) {
   const pilot = useThemeColors();
@@ -219,15 +205,40 @@ export default function JobDetail() {
           )}
         </View>
 
-        {/* Description — long ones collapse to 3 lines with a Show more toggle */}
+        {/* Requirements — structured fields, above the description */}
+        {jobRequirements(job).length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>REQUIREMENTS</Text>
+            {jobRequirements(job).map((r) => (
+              <View key={r.label} style={styles.bulletRow}>
+                <Text style={styles.bulletDot}>•</Text>
+                <Text style={styles.bulletText}><Text style={styles.reqFieldLabel}>{r.label}: </Text>{r.value}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {/* Description — structured (paragraphs + bullets); long ones collapse */}
         {job.description ? (() => {
-          const descText = htmlToText(job.description);
-          const isLong = descText.length > 220;
+          const blocks = parseDescriptionBlocks(job.description);
+          const collapsible = blocks.length > 3;
+          const shown = collapsible && !descExpanded ? blocks.slice(0, 3) : blocks;
           return (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>JOB DESCRIPTION</Text>
-              <Text style={styles.bodyText} numberOfLines={isLong && !descExpanded ? 3 : undefined}>{descText}</Text>
-              {isLong ? (
+              {job.descriptionIsExcerpt ? (
+                <Text style={styles.excerptNote}>Excerpt — see the full posting on the official careers site.</Text>
+              ) : null}
+              {shown.map((b, i) => b.type === 'ul' ? (
+                <View key={i} style={{ marginBottom: 8 }}>
+                  {b.items.map((it, j) => (
+                    <View key={j} style={styles.bulletRow}><Text style={styles.bulletDot}>•</Text><Text style={styles.bulletText}>{it}</Text></View>
+                  ))}
+                </View>
+              ) : (
+                <Text key={i} style={styles.paraText}>{b.text}</Text>
+              ))}
+              {collapsible ? (
                 <Pressable onPress={() => setDescExpanded((v) => !v)} hitSlop={8} style={styles.showMoreBtn}>
                   <Text style={styles.showMoreText}>{descExpanded ? 'Show less' : 'Show more'}</Text>
                   <Ionicons name={descExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={pilot.navy} />
@@ -303,6 +314,12 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   reqPilot: { fontSize: fontSizes.xs, fontFamily: fontFamilies.body, textAlign: 'right' },
 
   bodyText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24 },
+  paraText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24, marginBottom: 10 },
+  excerptNote: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, fontStyle: 'italic', marginBottom: 10 },
+  bulletRow: { flexDirection: 'row', marginBottom: 5, paddingRight: 4 },
+  bulletDot: { fontSize: fontSizes.base, color: pilot.navy, marginRight: 8, lineHeight: 22 },
+  bulletText: { flex: 1, fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 22 },
+  reqFieldLabel: { color: pilot.muted, fontFamily: fontFamilies.bodySemiBold },
   showMoreBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', marginTop: 8, paddingVertical: 4 },
   showMoreText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm },
   notesBox: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 8, padding: 12 },

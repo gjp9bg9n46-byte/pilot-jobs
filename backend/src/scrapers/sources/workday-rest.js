@@ -16,7 +16,7 @@
 
 const axios = require('axios');
 const logger = require('../../config/logger');
-const { extractRequirements, extractSalary } = require('../normalize');
+const { extractRequirements, extractSalary, htmlToText } = require('../normalize');
 
 const RATE_LIMIT_MS = 1500;  // 1.5s stagger between requests
 const MAX_PAGINATION_ITERATIONS = 10;
@@ -58,10 +58,8 @@ function shouldIncludeByRole(title) {
 
 // ─── JSON-LD extraction (reused from workday-enrichment.js) ───────────────────
 
-function stripHtml(html) {
-  if (!html || typeof html !== 'string') return '';
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-}
+// Structure-preserving (paragraphs + bullets) — see normalize.htmlToText.
+const stripHtml = (html) => (typeof html === 'string' ? htmlToText(html) : '');
 
 const PERIOD_MAP = { YEAR: 'year', ANNUAL: 'year', MONTH: 'month', HOUR: 'hour', WEEK: 'week' };
 

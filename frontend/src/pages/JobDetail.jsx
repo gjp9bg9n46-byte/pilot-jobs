@@ -14,6 +14,7 @@ import AirlineLogo from '../components/AirlineLogo';
 import MatchScore from '../components/MatchScore';
 import { computeMatchCount, matchLabel, matchStyle, postedAgo, formatSalary } from '../lib/jobMatch';
 import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
+import { jobRequirements } from '../lib/jobRequirements';
 import { MatchCountBadge, ReqRow } from './Jobs';
 
 // Semantic status colors remapped to light-AA shades (meaning preserved) — mirrors Jobs.jsx.
@@ -38,6 +39,32 @@ function sanitizeDescription(raw) {
   // Plain text (no markup survived) — preserve the line breaks pre-wrap used to show.
   if (!/<[a-z][\s\S]*>/i.test(clean)) return clean.replace(/\n/g, '<br>');
   return clean;
+}
+
+// Render a description with structure. Descriptions are stored as structured
+// plain text (newline-delimited blocks, "• " for bullets) since normalize
+// htmlToText preserves them; older/HTML-bearing rows fall back to the sanitiser.
+function StructuredDescription({ text }) {
+  if (!text) return null;
+  if (/<[a-z][\s\S]*?>/i.test(text)) {
+    return <div className="job-desc-html" dangerouslySetInnerHTML={{ __html: sanitizeDescription(text) }} />;
+  }
+  const out = [];
+  let bullets = [];
+  const flush = () => {
+    if (bullets.length) {
+      out.push(<ul key={`u${out.length}`} style={{ margin: '4px 0 12px', paddingLeft: 22 }}>{bullets.map((b, i) => <li key={i} style={{ marginBottom: 5 }}>{b}</li>)}</ul>);
+      bullets = [];
+    }
+  };
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line) { flush(); continue; }
+    if (/^•/.test(line)) bullets.push(line.replace(/^•\s*/, ''));
+    else { flush(); out.push(<p key={`p${out.length}`} style={{ margin: '0 0 12px' }}>{line}</p>); }
+  }
+  flush();
+  return <>{out}</>;
 }
 
 // Job IDs are UUIDs (they contain hyphens), so we extract the trailing UUID from
@@ -237,7 +264,6 @@ export default function JobDetail() {
   }, [token]);
 
   // Sanitized HTML for the body; a tag-stripped, truncated version for SEO meta.
-  const descHtml = useMemo(() => sanitizeDescription(job?.description), [job?.description]);
   const descText = useMemo(
     () => DOMPurify.sanitize(job?.description || '', { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).replace(/\s+/g, ' ').trim().slice(0, 160),
     [job?.description],
@@ -460,12 +486,31 @@ export default function JobDetail() {
         )}
       </Card>
 
+      {/* Requirements — structured fields, above the description */}
+      {jobRequirements(job).length > 0 && (
+        <Card style={{ marginBottom: 24 }}>
+          <div style={css.sectionLabel}>Requirements</div>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {jobRequirements(job).map((r) => (
+              <li key={r.label} style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 5 }}>
+                <span style={{ color: 'var(--text-secondary)' }}>{r.label}:</span> <strong>{r.value}</strong>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {/* Description */}
       {job.description && (
         <div style={{ marginBottom: 24 }}>
           <div style={css.sectionLabel}>Job Description</div>
+          {job.descriptionIsExcerpt && (
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 10 }}>
+              Excerpt — see the full posting on the official careers site.
+            </div>
+          )}
           <CollapsibleText id="job-description" style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8 }}>
-            <div className="job-desc-html" dangerouslySetInnerHTML={{ __html: descHtml }} />
+            <StructuredDescription text={job.description} />
           </CollapsibleText>
         </div>
       )}

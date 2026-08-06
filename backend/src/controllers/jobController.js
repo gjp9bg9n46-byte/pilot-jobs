@@ -41,15 +41,40 @@ function isEvergreen(j) {
   return (Date.now() - new Date(j.postedAt).getTime()) / 864e5 > evergreenDays();
 }
 
+// Aggregator feeds ship truncated snippets (Adzuna ~500 chars, Careerjet ~127),
+// usually cut mid-sentence. Flag them so the client labels "Excerpt — see full
+// posting on the official careers site", and trim to whole sentences so the
+// text never ends (or starts) mid-thought.
+const AGGREGATOR_SOURCES = new Set(['ADZUNA', 'CAREERJET', 'JOOBLE', 'AVIATIONJOBSEARCH']);
+function isSnippetExcerpt(sourcePlatform, description) {
+  if (!AGGREGATOR_SOURCES.has(sourcePlatform)) return false;
+  const d = String(description || '').trim();
+  // Enriched aggregator descriptions are long and end cleanly; snippets don't.
+  return d.length > 0 && d.length < 800 && !/[.!?"'”’)\]]$/.test(d);
+}
+function toWholeSentences(text) {
+  let t = String(text || '').trim();
+  if (!t) return t;
+  const lastEnd = Math.max(t.lastIndexOf('.'), t.lastIndexOf('!'), t.lastIndexOf('?'));
+  if (lastEnd >= 40) t = t.slice(0, lastEnd + 1).trim();       // drop trailing partial sentence
+  if (/^[a-z]/.test(t)) {                                       // starts mid-sentence → drop the fragment
+    const cap = t.search(/[A-Z]/);
+    if (cap > 0 && cap < 60) t = t.slice(cap).trim();
+  }
+  return t;
+}
+
 function presentJob(j) {
   if (!j) return j;
   const badges = deriveJobBadges(j);
-  const base = { ...j, ...badges, evergreen: isEvergreen(j) };
+  const rawDescription = j.descriptionEn ?? j.description;
+  const descriptionIsExcerpt = isSnippetExcerpt(j.sourcePlatform, rawDescription);
+  const description = descriptionIsExcerpt ? toWholeSentences(rawDescription) : rawDescription;
+  const base = { ...j, ...badges, evergreen: isEvergreen(j), description, descriptionIsExcerpt };
   if (!j.titleEn && !j.descriptionEn) return base;
   return {
     ...base,
     title: j.titleEn ?? j.title,
-    description: j.descriptionEn ?? j.description,
     originalTitle: j.title,
     originalDescription: j.description,
     originalLanguage: j.sourceLanguage,
