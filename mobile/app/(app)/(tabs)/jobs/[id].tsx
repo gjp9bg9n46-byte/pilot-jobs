@@ -205,18 +205,29 @@ export default function JobDetail() {
           )}
         </View>
 
-        {/* Requirements — structured fields, above the description */}
-        {jobRequirements(job).length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>REQUIREMENTS</Text>
-            {jobRequirements(job).map((r) => (
-              <View key={r.label} style={styles.bulletRow}>
-                <Text style={styles.bulletDot}>•</Text>
-                <Text style={styles.bulletText}><Text style={styles.reqFieldLabel}>{r.label}: </Text>{r.value}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
+        {/* Requirements — verbatim block if found, else structured fields,
+            else an honesty message instead of sparse junk. */}
+        {(() => {
+          const verbatim = String(job.requirementsText || '').split('\n').map((l: string) => l.replace(/^•\s*/, '').trim()).filter(Boolean);
+          const synth = jobRequirements(job);
+          const hasFullDesc = !job.descriptionIsExcerpt && String(job.description || '').length >= 300;
+          const showSynth = synth.length >= 2 || (synth.length >= 1 && hasFullDesc);
+          return (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>REQUIREMENTS</Text>
+              {verbatim.length >= 2 ? verbatim.map((b, i) => (
+                <View key={i} style={styles.bulletRow}><Text style={styles.bulletDot}>•</Text><Text style={styles.bulletText}>{b}</Text></View>
+              )) : showSynth ? synth.map((r) => (
+                <View key={r.label} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}><Text style={styles.reqFieldLabel}>{r.label}: </Text>{r.value}</Text>
+                </View>
+              )) : (
+                <Text style={styles.excerptNote}>Requirements not listed — see the full posting.</Text>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Description — structured (paragraphs + bullets); long ones collapse */}
         {job.description ? (() => {

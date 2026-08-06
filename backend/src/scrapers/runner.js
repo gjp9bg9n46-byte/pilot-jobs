@@ -33,7 +33,7 @@ const { fetchIcims } = require('./sources/icims');
 const { fetchAvature } = require('./sources/avature');
 const { fetchJibe } = require('./sources/jibe');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
-const { normalize, hasAnyRequirement } = require('./normalize');
+const { normalize, hasAnyRequirement, extractRequirementsBlock } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
 const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
@@ -91,6 +91,7 @@ async function upsertJob(job, { preserveMerge = false } = {}) {
     externalId,
     mergedInto: null,
     lastSeenAt: new Date(),
+    requirementsText: extractRequirementsBlock(description) || null,
   };
 
   return prisma.job.upsert({
@@ -100,6 +101,7 @@ async function upsertJob(job, { preserveMerge = false } = {}) {
       // On re-run: refresh all mutable fields; keep postedAt stable
       title, company, location, country: country || null,
       description: description || '',
+      requirementsText: extractRequirementsBlock(description) || null,
       notes: notes || null,
       applyUrl, sourceUrl: sourceUrl || applyUrl,
       sourceType: classifySourceType(applyUrl, sourcePlatform),

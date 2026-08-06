@@ -385,6 +385,8 @@ model Job {
 
   lastEnrichedFromWorkdayAt DateTime?
   descriptionEnrichedAt     DateTime?  // set once an aggregator job's truncated snippet has been enriched (or the attempt was made) — so we never re-fetch its listing page
+  requirementsText          String?    // the posting's OWN requirements/qualifications section, verbatim (bullets), when present — rendered in preference to synthesised req fields
+  requirementsExtractedAt   DateTime?  // marker: structured req fields were filled by the LLM extractor (once per job)
 
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt

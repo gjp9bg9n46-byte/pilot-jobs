@@ -136,13 +136,8 @@ export function computeMatchCount(job, profile, totals) {
     const willing = profile.willingToRelocate ?? true;
     req('Willing to Relocate', 'Required', 'MapPin', willing, willing ? 'Yes' : 'No');
   }
-  if (job.role) {
-    const roleLabel = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor' }[job.role] || job.role;
-    const pilotRole = profile.role;
-    const isMatch = pilotRole === job.role;
-    const pilotLabel = pilotRole ? ({ CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer' }[pilotRole] || pilotRole) : null;
-    req('Role', roleLabel, 'Plane', isMatch, pilotLabel);
-  }
+  // The role (First Officer / Captain) is the JOB, not a requirement — never
+  // show it as a requirement row or count it in "X/Y requirements matched".
 
   const matched = requirements.filter((r) => r.matched).length;
   return { matched, total: requirements.length, requirements };

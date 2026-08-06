@@ -486,19 +486,36 @@ export default function JobDetail() {
         )}
       </Card>
 
-      {/* Requirements — structured fields, above the description */}
-      {jobRequirements(job).length > 0 && (
-        <Card style={{ marginBottom: 24 }}>
-          <div style={css.sectionLabel}>Requirements</div>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            {jobRequirements(job).map((r) => (
-              <li key={r.label} style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 5 }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{r.label}:</span> <strong>{r.value}</strong>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+      {/* Requirements — the posting's own verbatim block if found, else the
+          structured fields; honesty message instead of sparse junk. */}
+      {(() => {
+        const verbatim = (job.requirementsText || '').split('\n').map((l) => l.replace(/^•\s*/, '').trim()).filter(Boolean);
+        const synth = jobRequirements(job);
+        const hasFullDesc = !job.descriptionIsExcerpt && (job.description || '').length >= 300;
+        const showSynth = synth.length >= 2 || (synth.length >= 1 && hasFullDesc);
+        return (
+          <Card style={{ marginBottom: 24 }}>
+            <div style={css.sectionLabel}>Requirements</div>
+            {verbatim.length >= 2 ? (
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {verbatim.map((b, i) => <li key={i} style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 5 }}>{b}</li>)}
+              </ul>
+            ) : showSynth ? (
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {synth.map((r) => (
+                  <li key={r.label} style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 5 }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{r.label}:</span> <strong>{r.value}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', fontStyle: 'italic', margin: 0 }}>
+                Requirements not listed — see the full posting.
+              </p>
+            )}
+          </Card>
+        );
+      })()}
 
       {/* Description */}
       {job.description && (

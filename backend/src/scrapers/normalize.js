@@ -609,5 +609,58 @@ function hasAnyRequirement(job) {
   );
 }
 
+// ─── Verbatim requirements block ────────────────────────────────────────────
+// Find the posting's OWN requirements/qualifications section in a full,
+// structured description and return it verbatim (heading dropped, bullets kept).
+// Preferred over regex-synthesised fields on the job page. Returns null when no
+// real (≥2-item) block is present — the honesty gate then applies.
+const REQ_HEADING = new RegExp(
+  '^(?:the\\s+)?(?:minimum|preferred|specific|essential|basic|general|key|mandatory)?\\s*'
+  + '(?:requirements?|qualifications?|eligibility|criteria)\\b'
+  + '|^(?:to\\s+be\\s+(?:eligible|considered)|what\\s+you\'?ll\\s+need|what\\s+we\'?re\\s+looking\\s+for'
+  + '|you\\s+(?:will|must)\\s+(?:need|have|possess)|candidate\\s+profile|who\\s+you\\s+are|about\\s+you'
+  + '|skills\\s*(?:&|and|/)?\\s*(?:experience|talents)?)\\b'
+  + '|must\\s+meet\\s+all\\s+the\\s+following',
+  'i',
+);
+const REQ_HEADING_EXCLUDE = /responsibilit|duties|benefit|what\s+we\s+offer|overview|about\s+(?:us|the\s+(?:company|role|team|position))|the\s+company|package|why\s+/i;
+// A short title-ish line = a new section boundary.
+const SECTION_HEADING = /^[A-Z0-9][A-Za-z0-9 /&'’,()+-]{1,48}:?\s*$/;
+
+function extractRequirementsBlock(description) {
+  const text = String(description || '');
+  if (text.length < 200) return null; // need a real (non-snippet) description
+  const lines = text.split('\n').map((l) => l.replace(/<[^>]+>/g, '').trim());
+
+  const isBullet = (l) => /^[•\-–—*·▪◦‣]\s+/.test(l) || /^\d+[.)]\s+/.test(l);
+  const norm = (l) => l.replace(/^[•\-–—*·▪◦‣]\s+/, '• ').replace(/^\d+[.)]\s+/, '• ');
+
+  for (let i = 0; i < lines.length; i++) {
+    const head = lines[i];
+    if (!head || head.length > 60) continue;
+    if (!REQ_HEADING.test(head) || REQ_HEADING_EXCLUDE.test(head)) continue;
+
+    // Skip blanks, then the section MUST begin with a bullet — otherwise it's a
+    // prose section, not a real requirements list; keep looking for a better one.
+    let k = i + 1;
+    while (k < lines.length && !lines[k]) k++;
+    if (k >= lines.length || !isBullet(lines[k])) continue;
+
+    // Collect the consecutive bullet list (allowing a wrapped continuation line
+    // that clearly belongs to the previous bullet — short, lower-case start).
+    const block = [];
+    for (; k < lines.length && block.length < 30; k++) {
+      const l = lines[k];
+      if (!l) break;
+      if (isBullet(l)) { block.push(norm(l)); continue; }
+      if (block.length && l.length < 90 && /^[a-z(]/.test(l)) { block[block.length - 1] += ` ${l}`; continue; }
+      break; // first real non-bullet line ends the list
+    }
+    if (block.length >= 2) return block.join('\n');
+  }
+  return null;
+}
+
 module.exports = {
-  hasAnyRequirement, normalize, extractRequirements, extractSalary, htmlToText };
+  hasAnyRequirement, normalize, extractRequirements, extractSalary, htmlToText,
+  extractRequirementsBlock };

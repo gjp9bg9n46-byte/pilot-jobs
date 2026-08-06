@@ -26,7 +26,7 @@ const cheerio = require('cheerio');
 const prisma = require('../src/config/database');
 const logger = require('../src/config/logger');
 const { fetchHTML } = require('../src/scrapers/http');
-const { htmlToText, extractRequirements } = require('../src/scrapers/normalize');
+const { htmlToText, extractRequirements, extractRequirementsBlock } = require('../src/scrapers/normalize');
 
 const AGGREGATORS = ['ADZUNA', 'CAREERJET', 'JOOBLE'];
 const SNIPPET_MAX = 800;      // below this = a truncated snippet worth enriching
@@ -73,7 +73,7 @@ async function enrichAggregatorDescriptions({ limit = 50, dryRun = false } = {})
     if (full && full.length >= (j.description || '').length + MIN_GAIN) {
       const reqs = extractRequirements(full);
       if (!dryRun) {
-        await prisma.job.update({ where: { id: j.id }, data: { description: full, descriptionEnrichedAt: now, ...reqs } });
+        await prisma.job.update({ where: { id: j.id }, data: { description: full, descriptionEnrichedAt: now, requirementsText: extractRequirementsBlock(full) || null, ...reqs } });
       }
       enriched++;
       logger.info({ source: 'ENRICH', id: j.id, platform: j.sourcePlatform, from: (j.description || '').length, to: full.length, msg: 'description enriched' });
