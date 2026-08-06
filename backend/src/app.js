@@ -174,6 +174,14 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
   } catch (err) {
     logger.error(`Scheduled scrape failed: ${err.message}`);
   }
+  // Post-ingest: fetch full descriptions for freshly-ingested aggregator snippets
+  // (once each, robots-respecting, rate-limited). Bounded per cycle.
+  try {
+    const { enrichAggregatorDescriptions } = require('../scripts/enrich-aggregator-descriptions');
+    await enrichAggregatorDescriptions({ limit: 40 });
+  } catch (err) {
+    logger.error(`Aggregator description enrichment failed: ${err.message}`);
+  }
   // Airline factfiles derive hiring status / pay ranges from the fresh job data.
   try {
     await recomputeJobDerivedStats();

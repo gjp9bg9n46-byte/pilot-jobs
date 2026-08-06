@@ -384,6 +384,7 @@ model Job {
   moderationStatus     String?    @default("APPROVED")  // 'APPROVED' | 'PENDING' — visibility gated by `status`, this is descriptive metadata
 
   lastEnrichedFromWorkdayAt DateTime?
+  descriptionEnrichedAt     DateTime?  // set once an aggregator job's truncated snippet has been enriched (or the attempt was made) — so we never re-fetch its listing page
 
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
