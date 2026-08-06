@@ -34,7 +34,7 @@ const { fetchAvature } = require('./sources/avature');
 const { fetchJibe } = require('./sources/jibe');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement } = require('./normalize');
-const { filterAviationJobs, isAviationJob, isNotHiringNotice } = require('./filters');
+const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
 const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
 const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates } = require('./dedup');
@@ -234,7 +234,10 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
     // requirements later, and the sweep re-checks them afterwards.
     if (empConfig.requireContext) {
       const looksEnglish = (t) => ((String(t || '').slice(0, 500).match(/\b(the|and|with|for|you|will|are|this|that|from|have|our|is|of|to)\b/gi) || []).length >= 3);
-      const withReqs = kept.filter((j) => hasAnyRequirement(j) || !looksEnglish(`${j.title} ${j.description}`));
+      // Strong pilot titles bypass the floor — an aggregator's truncated snippet
+      // often has no extractable requirements, but "First Officer - Airbus" is
+      // self-evidently a pilot job and must not be dropped for lacking numbers.
+      const withReqs = kept.filter((j) => hasAnyRequirement(j) || !looksEnglish(`${j.title} ${j.description}`) || isStrongPilotTitle(j.title));
       dropped += kept.length - withReqs.length;
       kept = withReqs;
     }
@@ -502,8 +505,11 @@ async function revalidateActiveJobs(employers) {
         // "We are not hiring" notices scraped as if they were vacancies.
         isNotHiringNotice(j.description) ||
         // Requirement floor: English (or already-translated) aggregator jobs
-        // with zero structured requirements are noise — expire them.
-        (emp.requireContext && !hasAnyRequirement(j) && (j.sourceLanguage === 'EN' || j.descriptionEn != null)))
+        // with zero structured requirements are noise — expire them. EXCEPT a
+        // strong pilot title ("First Officer - Airbus"), which bypasses the floor
+        // at ingest and must bypass it here too, or it gets expired 6h later (the
+        // sawtooth: 62 ingested → 18 alive next day).
+        (emp.requireContext && !hasAnyRequirement(j) && (j.sourceLanguage === 'EN' || j.descriptionEn != null) && !isStrongPilotTitle(j.title)))
       .map((j) => j.id);
     if (badIds.length) {
       const { count } = await prisma.job.updateMany({

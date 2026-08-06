@@ -297,4 +297,26 @@ function isNotHiringNotice(description) {
   return NOT_HIRING_PATTERNS.test(String(description || '').slice(0, 800));
 }
 
-module.exports = { isAviationRole, isAviationJob, filterAviationJobs, isNotHiringNotice, AVIATION_TITLE_PATTERNS };
+// A pilot title strong enough to KEEP even when an aggregator's truncated
+// snippet yields no extractable hours/certs. The requirement floor was expiring
+// unambiguous pilot jobs ("First Officer - Airbus", "Fixed Wing Pilot") purely
+// because Adzuna/Careerjet ship a 500-char excerpt with no numbers in it —
+// causing a sawtooth (ingested, then expired 6h later by revalidateActiveJobs).
+//
+// "Strong" = an explicit flight-crew ROLE, or "pilot" qualified by a fixed-wing
+// type / "fixed wing" — never bare "pilot" (kept ambiguous behind the floor).
+// Only ever evaluated AFTER isAviationJob has passed, so the aviation context is
+// already guaranteed (a bare "Captain" here is an aviation captain).
+// NB: bare "co-pilot" is deliberately excluded — it collides with software
+// ("Co-Pilot Studio", MS/GitHub Copilot). Real co-pilot roles are caught via
+// "first officer"/"f/o" or the pilot+fixed-wing-type branch below.
+const FLIGHT_CREW_ROLE = /\b(first officer|f\/o|second officer|captain|commander|direct entry|line pilot|airline pilot|relief pilot|cruise pilot|training captain|check\s+(?:airman|captain|pilot)|type[\s-]?rated)\b/i;
+const FIXED_WING_TYPE = /\b(a2[12]0|a3[0-9]{2}|b7[0-9]{2}|7[0-9]7|dash[\s-]?8|q400|atr\s?\d*|crj\d*|erj\d*|e1[0-9]{2}|embraer|king\s?air|citation|challenger|global\s?\d*|falcon|gulfstream|legacy\s?\d*|phenom|praetor|pc[\s-]?12|pc[\s-]?24|saab|metro(?:liner)?|beech(?:craft)?|b1900|caravan|c208|do228|dhc[\s-]?\d|kodiak|twin\s+otter)\b/i;
+function isStrongPilotTitle(title) {
+  const t = String(title || '');
+  if (FLIGHT_CREW_ROLE.test(t)) return true;
+  if (/\bpilots?\b/i.test(t) && (FIXED_WING_TYPE.test(t) || /\bfixed[\s-]?wing\b/i.test(t))) return true;
+  return false;
+}
+
+module.exports = { isAviationRole, isAviationJob, filterAviationJobs, isNotHiringNotice, isStrongPilotTitle, AVIATION_TITLE_PATTERNS };
