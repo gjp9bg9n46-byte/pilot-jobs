@@ -365,4 +365,16 @@ module.exports = [
     region: 'Americas',
     jibe: { host: 'jobs.skywest.com', keyword: 'pilot', idPrefix: 'skywest' },
   },
+  // Flexjet → Phenom People careers front-end on its own domain
+  // (careers.flexjet.com/us/en). robots allows /search-results + /job/ (only
+  // apply/px-widgets/chatbot are disallowed). applyUrl = the carrier's own
+  // Phenom detail page → operator_direct. Pilot roles: First Officer (US +
+  // Europe Helicopters), Instructor Pilot.
+  {
+    source: 'PHENOM',
+    company: 'Flexjet',
+    country: 'United States',
+    region: 'Americas',
+    phenom: { host: 'careers.flexjet.com', path: 'us/en', keyword: 'pilot', idPrefix: 'flexjet' },
+  },
 ];
