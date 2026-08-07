@@ -33,6 +33,9 @@ const { fetchIcims } = require('./sources/icims');
 const { fetchAvature } = require('./sources/avature');
 const { fetchJibe } = require('./sources/jibe');
 const { fetchPhenom } = require('./sources/phenom');
+const { fetchRecruitee } = require('./sources/recruitee');
+const { fetchTeamtailor } = require('./sources/teamtailor');
+const { fetchAshby } = require('./sources/ashby');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement, extractRequirementsBlock } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
@@ -186,6 +189,9 @@ async function fetchForEmployer(empConfig) {
     case 'AVATURE':           return fetchAvature(empConfig);
     case 'JIBE':              return fetchJibe(empConfig);
     case 'PHENOM':            return fetchPhenom(empConfig);
+    case 'RECRUITEE':         return fetchRecruitee(empConfig);
+    case 'TEAMTAILOR':        return fetchTeamtailor(empConfig);
+    case 'ASHBY':             return fetchAshby(empConfig);
     default:
       logger.warn({ msg: `unknown source: ${empConfig.source}` });
       return [];

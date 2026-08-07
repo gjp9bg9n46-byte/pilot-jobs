@@ -377,4 +377,25 @@ module.exports = [
     region: 'Americas',
     phenom: { host: 'careers.flexjet.com', path: 'us/en', keyword: 'pilot', idPrefix: 'flexjet' },
   },
+  // Transavia → Recruitee public JSON `transavia.recruitee.com/api/offers/`
+  // (Phase 2 Track 3, 2026-08-07). careers_url is the operator's own careers
+  // site (werkenbijtransavia.com) → direct_ats. Pilot roles: First Officer /
+  // Captain B737NG (Brussels base). robots clear.
+  {
+    source: 'RECRUITEE',
+    company: 'Transavia',
+    country: 'Netherlands',
+    region: 'Europe',
+    recruitee: { company: 'transavia', idPrefix: 'transavia' },
+  },
+  // Norse Atlantic Airways → Teamtailor JSON Feed `norse.teamtailor.com/jobs.json`
+  // (Phase 2 Track 3, 2026-08-07). url is the operator's own Teamtailor careers
+  // site → direct_ats. Pilot roles: Boeing 787 First Officer. robots clear.
+  {
+    source: 'TEAMTAILOR',
+    company: 'Norse Atlantic Airways',
+    country: 'Norway',
+    region: 'Europe',
+    teamtailor: { subdomain: 'norse', idPrefix: 'norse' },
+  },
 ];

@@ -50,7 +50,7 @@ const OPERATOR_DIRECT = [
 ];
 
 // Fallback by our own source-platform label when the URL host is inconclusive.
-const ATS_PLATFORMS = new Set(['LEVER', 'GREENHOUSE', 'WORKDAY', 'WORKDAY_REST', 'TALEO', 'SMARTRECRUITERS', 'ICIMS', 'AVATURE']);
+const ATS_PLATFORMS = new Set(['LEVER', 'GREENHOUSE', 'WORKDAY', 'WORKDAY_REST', 'TALEO', 'SMARTRECRUITERS', 'ICIMS', 'AVATURE', 'RECRUITEE', 'TEAMTAILOR', 'ASHBY']);
 const AGGREGATOR_PLATFORMS = new Set(['ADZUNA', 'JOOBLE', 'CAREERJET', 'AVIATIONJOBSEARCH']);
 // PHENOM: the applyUrl we emit is the carrier's OWN Phenom careers page
 // (careers.{carrier}.com/…/job/…) — the candidate reaches the operator directly.
