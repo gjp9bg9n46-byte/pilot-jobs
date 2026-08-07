@@ -118,6 +118,80 @@ app.get('/health/scrape-test', async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// Launch-gate metric: what fraction of ACTIVE jobs show TRUSTWORTHY requirements
+// — the posting's own verbatim block, a solid structured set (≥3 fields), or an
+// honest "not listed" fallback. The only "uncovered" state is a THIN synthesis
+// (1–2 fields shown as if they were the whole picture). Broken down per source.
+// This mirrors the client's Requirements-section display gate exactly.
+app.get('/health/requirements-coverage', async (req, res) => {
+  try {
+    const prisma = require('./config/database');
+    const jobs = await prisma.job.findMany({
+      where: { status: 'ACTIVE' },
+      select: {
+        sourcePlatform: true, description: true, descriptionEn: true, requirementsText: true,
+        reqCertificates: true, reqAuthorities: true, reqAircraftTypes: true,
+        reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true,
+        reqMinTurbineHours: true, reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
+        reqMedicalClass: true, reqEducation: true, reqWorkAuthorization: true, reqEnglishLevel: true,
+      },
+    });
+
+    const AGG = new Set(['ADZUNA', 'CAREERJET', 'JOOBLE', 'AVIATIONJOBSEARCH']);
+    const structuredFieldCount = (j) =>
+      (j.reqCertificates?.length ? 1 : 0) + (j.reqAuthorities?.length ? 1 : 0) + (j.reqAircraftTypes?.length ? 1 : 0) +
+      (j.reqMinTotalHours != null ? 1 : 0) + (j.reqMinPicHours != null ? 1 : 0) + (j.reqMinMultiEngineHours != null ? 1 : 0) +
+      (j.reqMinTurbineHours != null ? 1 : 0) + (j.reqMinInstrumentHours != null ? 1 : 0) + (j.reqMinCrossCountryHours != null ? 1 : 0) +
+      (j.reqMedicalClass != null ? 1 : 0) + (j.reqEducation != null ? 1 : 0) + (j.reqWorkAuthorization != null ? 1 : 0) +
+      (j.reqEnglishLevel != null ? 1 : 0);
+
+    // Replicates the JobDetail Requirements gate (web + mobile).
+    const classify = (j) => {
+      const verbatim = String(j.requirementsText || '').split('\n').map((l) => l.replace(/^•\s*/, '').trim()).filter(Boolean);
+      if (verbatim.length >= 2) return 'verbatim';
+      const fields = structuredFieldCount(j);
+      if (fields >= 3) return 'structured_strong';
+      const rawDesc = j.descriptionEn ?? j.description ?? '';
+      const isExcerpt = AGG.has(j.sourcePlatform) && rawDesc.length > 0 && rawDesc.length < 800 && !/[.!?"'”’)\]]$/.test(rawDesc.trim());
+      const hasFullDesc = !isExcerpt && rawDesc.length >= 300;
+      const showSynth = fields >= 2 || (fields >= 1 && hasFullDesc);
+      return showSynth ? 'structured_thin' : 'honest';
+    };
+
+    const bucket = { verbatim: 0, structured_strong: 0, honest: 0, structured_thin: 0 };
+    const perSource = {};
+    for (const j of jobs) {
+      const c = classify(j);
+      bucket[c]++;
+      const src = j.sourcePlatform || '(none)';
+      const s = perSource[src] || (perSource[src] = { total: 0, covered: 0, verbatim: 0, structured_strong: 0, honest: 0, structured_thin: 0 });
+      s.total++; s[c]++;
+      if (c !== 'structured_thin') s.covered++;
+    }
+
+    const total = jobs.length;
+    const covered = bucket.verbatim + bucket.structured_strong + bucket.honest;
+    const pct = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : null);
+    const perSourceOut = Object.fromEntries(
+      Object.entries(perSource)
+        .sort((a, b) => b[1].total - a[1].total)
+        .map(([src, s]) => [src, { ...s, coveragePct: pct(s.covered, s.total) }])
+    );
+
+    res.json({
+      ok: true,
+      coveragePct: pct(covered, total),   // ← the launch gate number
+      activeJobs: total,
+      covered,
+      buckets: bucket,
+      definition: 'covered = verbatim requirements block OR ≥3 structured fields OR honest "not listed" fallback; uncovered = a thin 1–2-field synthesis',
+      perSource: perSourceOut,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Diagnostic: one live Careerjet API call (1 locale, 1 page) reporting the
 // raw outcome — lets us see auth/IP errors directly instead of digging
 // through logs. Reveals no secrets (key presence only, never the key).
@@ -235,6 +309,20 @@ cron.schedule('0 2 * * *', async () => {
     await runFullMatch();
   } catch (err) {
     logger.error(`Scheduled match failed: ${err.message}`);
+  }
+});
+
+// Nightly apply-link liveness sweep (03:00 UTC): probe every ACTIVE job's
+// applyUrl and expire dead links (404/410/parked), retrying transient failures
+// up to 3 nights. Off-peak so its rate-limited fetches don't compete with the
+// scrape cron. Robots/UA/rate-limit enforced via http.js.
+cron.schedule('0 3 * * *', async () => {
+  try {
+    const { checkActiveJobLiveness } = require('../scripts/check-liveness');
+    const r = await checkActiveJobLiveness({});
+    logger.info(`Liveness sweep: ${r.expired} expired (${r.dead} dead, ${r.transient} transient) of ${r.considered} checked`);
+  } catch (err) {
+    logger.error(`Liveness sweep failed: ${err.message}`);
   }
 });
 

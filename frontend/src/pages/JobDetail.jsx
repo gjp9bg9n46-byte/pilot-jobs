@@ -119,6 +119,14 @@ const css = {
   disclaimer: {
     fontSize: 12, fontStyle: 'italic', color: 'var(--text-secondary)', marginTop: 8,
   },
+  applyTrustDirect: {
+    display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
+    fontSize: 13, fontWeight: 600, color: '#166534',
+    background: '#DCFCE7', border: '1px solid #BBF7D0', borderRadius: 6, padding: '5px 11px',
+  },
+  applyTrustVia: {
+    marginTop: 10, fontSize: 13, color: 'var(--text-secondary)',
+  },
   primaryCta: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 14,
@@ -369,6 +377,11 @@ export default function JobDetail() {
           </span>
         )}
       </div>
+      {job.applyIsDirect ? (
+        <div style={css.applyTrustDirect}>✓ Apply directly with the airline/operator</div>
+      ) : job.applyVia ? (
+        <div style={css.applyTrustVia}>Listed via {job.applyVia} — you'll be redirected to their site to apply.</div>
+      ) : null}
       {applyNote === 'signin' && (
         <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
           <Link to={`/login?redirect=/jobs/${slugId}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>

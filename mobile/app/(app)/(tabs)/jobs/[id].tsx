@@ -280,6 +280,11 @@ export default function JobDetail() {
           <Pressable style={styles.saveBtn} onPress={toggleSave}><Text style={styles.saveBtnText}>{saved ? '✓ Saved' : 'Save'}</Text></Pressable>
         </View>
         {applied ? <Text style={styles.appliedNote}>✓ Applied</Text> : null}
+        {job.applyIsDirect ? (
+          <Text style={styles.applyTrustDirect}>✓ Apply directly with the airline/operator</Text>
+        ) : job.applyVia ? (
+          <Text style={styles.applyTrustVia}>Listed via {job.applyVia} — you'll be redirected to apply.</Text>
+        ) : null}
         <Text style={styles.disclaimer}>Never share bank or credit card details when applying.</Text>
       </View>
     </SafeAreaView>
@@ -343,6 +348,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   saveBtn: { borderWidth: 1, borderColor: pilot.navy, borderRadius: 4, paddingVertical: 13, paddingHorizontal: 18, alignItems: 'center' },
   saveBtnText: { color: pilot.navy, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.base },
   appliedNote: { color: SEM.green, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm },
+  applyTrustDirect: { color: '#166534', fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm },
+  applyTrustVia: { color: pilot.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.sm },
   warnNote: { color: SEM.amber, fontFamily: fontFamilies.body, fontSize: fontSizes.sm },
   disclaimer: { fontSize: fontSizes.xs, fontStyle: 'italic', color: pilot.muted, fontFamily: fontFamilies.body },
 

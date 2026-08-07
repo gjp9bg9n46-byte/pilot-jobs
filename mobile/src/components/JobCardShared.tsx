@@ -63,8 +63,10 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
         <Text style={styles.jcCompany}>{job?.company ?? '—'}{ago && !ongoing ? `  ·  ${ago}` : ''}</Text>
         {ongoing ? <Text style={styles.jcOngoing}>{ongoing}</Text> : null}
 
-        {(job?.visaSponsorship || job?.typeRatingStatus === 'NTR') ? (
+        {(job?.applyIsDirect || job?.applyVia || job?.visaSponsorship || job?.typeRatingStatus === 'NTR') ? (
           <View style={styles.jcBadgeRow}>
+            {job.sourcePlatform !== 'EMPLOYER_DIRECT' && job.applyIsDirect ? <Text style={[styles.jcBadge, styles.jcBadgeDirect]}>✓ APPLY DIRECT</Text> : null}
+            {job.applyVia ? <Text style={[styles.jcBadge, styles.jcBadgeVia]}>via {job.applyVia}</Text> : null}
             {job.visaSponsorship ? <Text style={[styles.jcBadge, styles.jcBadgeVisa]}>VISA SPONSORSHIP</Text> : null}
             {job.typeRatingStatus === 'NTR' ? <Text style={[styles.jcBadge, styles.jcBadgeNtr]}>NO TYPE RATING REQUIRED</Text> : null}
           </View>
@@ -112,6 +114,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   jcBadge: { fontSize: 9.5, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.4, borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden', borderWidth: 1 },
   jcBadgeVisa: { color: '#166534', backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' },
   jcBadgeNtr: { color: '#92400E', backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
+  jcBadgeDirect: { color: pilot.navy, backgroundColor: 'rgba(0,63,136,0.08)', borderColor: 'rgba(0,63,136,0.25)' },
+  jcBadgeVia: { color: pilot.muted, backgroundColor: pilot.cream, borderColor: pilot.line, fontFamily: fontFamilies.bodySemiBold, letterSpacing: 0.2 },
   jcMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 6 },
   jcMeta: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body },
   jcSpec: {

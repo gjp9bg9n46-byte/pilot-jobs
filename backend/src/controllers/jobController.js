@@ -64,13 +64,26 @@ function toWholeSentences(text) {
   return t;
 }
 
+// Apply-link trust (source badges). direct_ats / operator_direct → the pilot
+// applies straight with the airline/operator; aggregator → a third-party board
+// redirect. Surfaced on cards + detail and used to boost direct listings.
+const AGGREGATOR_VIA_LABELS = { ADZUNA: 'Adzuna', CAREERJET: 'Careerjet', JOOBLE: 'Jooble', AVIATIONJOBSEARCH: 'Aviation Job Search' };
+function deriveApplyTrust(j) {
+  const st = j.sourceType || null;
+  const applyIsDirect = st === 'direct_ats' || st === 'operator_direct';
+  const applyVia = !applyIsDirect && st === 'aggregator'
+    ? (AGGREGATOR_VIA_LABELS[j.sourcePlatform] || 'a job board')
+    : null;
+  return { applyIsDirect, applyVia };
+}
+
 function presentJob(j) {
   if (!j) return j;
   const badges = deriveJobBadges(j);
   const rawDescription = j.descriptionEn ?? j.description;
   const descriptionIsExcerpt = isSnippetExcerpt(j.sourcePlatform, rawDescription);
   const description = descriptionIsExcerpt ? toWholeSentences(rawDescription) : rawDescription;
-  const base = { ...j, ...badges, evergreen: isEvergreen(j), description, descriptionIsExcerpt };
+  const base = { ...j, ...badges, ...deriveApplyTrust(j), evergreen: isEvergreen(j), description, descriptionIsExcerpt };
   if (!j.titleEn && !j.descriptionEn) return base;
   return {
     ...base,
@@ -397,7 +410,14 @@ exports.getJobs = async (req, res, next) => {
         orderBy = { postedAt: 'asc' };
         break;
       default:
-        orderBy = { postedAt: 'desc' };
+        // Default ("newest"): boost DIRECT apply links above aggregator ones,
+        // then newest-first within each tier. sourceType sorted descending gives
+        // operator_direct > direct_ats > aggregator (every ACTIVE row is
+        // classified; nulls, if any legacy rows exist, sort last). This is the
+        // apply-link-trust ranking — a pilot sees airline/operator-direct jobs
+        // first. NOTE: relies on that alphabetical ordering of the three values;
+        // a new sourceType value must be checked against it.
+        orderBy = [{ sourceType: { sort: 'desc', nulls: 'last' } }, { postedAt: 'desc' }];
     }
 
     const [jobs, total] = await Promise.all([

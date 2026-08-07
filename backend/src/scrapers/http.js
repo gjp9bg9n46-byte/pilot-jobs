@@ -225,6 +225,93 @@ async function fetchWithRetry(url, axiosOptions, source) {
   throw lastErr || new Error(`Failed to fetch ${url} after ${maxAttempts} attempts`);
 }
 
+// ─── Liveness check (apply-link trust) ────────────────────────────────────────
+
+// Domain-parking / "for sale" landing pages a dead applyUrl often 200s into.
+const PARKED_PATTERNS = [
+  /this domain (is|may be|name is) for sale/i,
+  /buy this domain/i,
+  /the domain .* is for sale/i,
+  /domain( name)? (is )?parked/i,
+  /sedoparking\.com|parkingcrew\.net|hugedomains\.com|bodis\.com|dan\.com\/buy-domain/i,
+  /namecheap.*this domain is parked/i,
+];
+
+function classifyLivenessResponse(resp) {
+  const status = resp.status;
+  // Gone / not found → the posting is dead.
+  if (status === 404 || status === 410) return { verdict: 'dead', status, reason: `HTTP ${status}` };
+  // Anti-bot / auth walls tell us nothing about the posting — never expire on these.
+  if (status === 401 || status === 403 || status === 429) return { verdict: 'skip', status, reason: `HTTP ${status}` };
+  if (status >= 500) return { verdict: 'transient', status, reason: `HTTP ${status}` };
+  if (status >= 200 && status < 400) {
+    // 2xx/3xx: alive — unless the body is a parked/for-sale landing page (only
+    // visible when we did a GET; HEAD has no body).
+    const body = typeof resp.data === 'string' ? resp.data : '';
+    if (body && PARKED_PATTERNS.some((re) => re.test(body))) {
+      return { verdict: 'dead', status, reason: 'parked/for-sale page' };
+    }
+    return { verdict: 'alive', status, reason: `HTTP ${status}` };
+  }
+  // Any other 4xx (e.g. 400/405/406) is inconclusive — don't expire.
+  return { verdict: 'skip', status, reason: `HTTP ${status}` };
+}
+
+/**
+ * Probe an applyUrl for liveness WITHOUT throwing on 4xx/5xx. HEAD first (cheap),
+ * falling back to GET when HEAD is rejected or errors (many ATS/CDNs 405 or
+ * mishandle HEAD). Robots is honoured — a disallowed URL returns verdict 'skip'
+ * (we never expire a job we're not permitted to check). Rate-limit + UA apply.
+ *
+ * @returns {{ verdict: 'alive'|'dead'|'transient'|'skip', status: number|null, reason: string }}
+ */
+async function checkLiveness(url, { source = 'liveness' } = {}) {
+  let parsed;
+  try { parsed = new URL(url); } catch { return { verdict: 'skip', status: null, reason: 'unparseable url' }; }
+  if (!/^https?:$/.test(parsed.protocol)) return { verdict: 'skip', status: null, reason: 'non-http url' };
+  const hostname = parsed.hostname;
+
+  const isAllowed = await getRobotsChecker(hostname);
+  if (!isAllowed(parsed.pathname + parsed.search)) {
+    return { verdict: 'skip', status: null, reason: 'robots-disallowed' };
+  }
+
+  const ua = buildUserAgent();
+  const opts = {
+    headers: { 'User-Agent': ua },
+    timeout: 15000,
+    maxRedirects: 5,
+    validateStatus: null,        // never throw on status
+    responseType: 'text',
+  };
+
+  // HEAD first.
+  await rateLimit(hostname);
+  let resp;
+  try {
+    resp = await axios.head(url, opts);
+    // Servers that don't implement HEAD → fall through to GET.
+    if ([405, 400, 403, 501].includes(resp.status)) resp = null;
+  } catch (headErr) {
+    resp = null; // network/timeout on HEAD → try GET before judging
+  }
+
+  if (!resp) {
+    await rateLimit(hostname);
+    try {
+      resp = await axios.get(url, opts);
+    } catch (getErr) {
+      // Timeout / DNS / connection reset → transient (retried next night).
+      return { verdict: 'transient', status: null, reason: getErr.code || getErr.message || 'request failed' };
+    }
+  }
+
+  // A Cloudflare/anti-bot challenge is not a dead link — skip, don't expire.
+  if (detectAntiBot(resp)) return { verdict: 'skip', status: resp.status, reason: 'anti-bot challenge' };
+
+  return classifyLivenessResponse(resp);
+}
+
 async function fetchJSON(url, { source = 'unknown', rateLimitMs } = {}) {
   const resp = await fetchWithRetry(url, { responseType: 'json' }, source);
   return resp.data;
@@ -235,4 +322,4 @@ async function fetchHTML(url, { source = 'unknown', rateLimitMs } = {}) {
   return resp.data;
 }
 
-module.exports = { fetchJSON, fetchHTML, RobotsDisallowedError, AntiBotBlockedError };
+module.exports = { fetchJSON, fetchHTML, checkLiveness, RobotsDisallowedError, AntiBotBlockedError };

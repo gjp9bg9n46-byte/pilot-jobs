@@ -214,6 +214,16 @@ const css = {
     background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 5,
     padding: '2px 7px', whiteSpace: 'nowrap',
   },
+  directBadge: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 0.4, color: 'var(--accent)',
+    background: 'rgba(0,63,136,0.08)', border: '1px solid rgba(0,63,136,0.25)', borderRadius: 5,
+    padding: '2px 7px', whiteSpace: 'nowrap',
+  },
+  viaBadge: {
+    fontSize: 10, fontWeight: 600, letterSpacing: 0.2, color: 'var(--text-secondary)',
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 5,
+    padding: '2px 7px', whiteSpace: 'nowrap',
+  },
   reqs: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 },
   req: {
     background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px',
@@ -710,8 +720,10 @@ export default function Jobs() {
                     </div>
                   </div>
 
-                  {(job.visaSponsorship || job.typeRatingStatus === 'NTR') && (
+                  {(job.applyIsDirect || job.applyVia || job.visaSponsorship || job.typeRatingStatus === 'NTR') && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {job.sourcePlatform !== 'EMPLOYER_DIRECT' && job.applyIsDirect && <span style={css.directBadge}>✓ APPLY DIRECT</span>}
+                      {job.applyVia && <span style={css.viaBadge}>via {job.applyVia}</span>}
                       {job.visaSponsorship && <span style={css.visaBadge}>VISA SPONSORSHIP</span>}
                       {job.typeRatingStatus === 'NTR' && <span style={css.ntrBadge}>NO TYPE RATING REQUIRED</span>}
                     </div>
