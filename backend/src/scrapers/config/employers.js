@@ -325,6 +325,17 @@ module.exports = [
     region: 'Europe',
     icims: { subdomain: 'careers-vistaglobal', keyword: 'pilot' },
   },
+  // Vista America → iCIMS `careers-vistaamerica.icims.com` (Vista Global's US
+  // arm — SEPARATE tenant from careers-vistaglobal). robots-allowed; sweep
+  // 2026-08-07 dry-run kept 7 home-based bizav pilot roles (FO/Captain on CL65,
+  // Global 6000, BD700, CL300/350). direct_ats.
+  {
+    source: 'ICIMS',
+    company: 'Vista America',
+    country: 'United States',
+    region: 'Americas',
+    icims: { subdomain: 'careers-vistaamerica', keyword: 'pilot' },
+  },
 
   // ── Jibe careers front-ends (direct carrier ATS, via the carrier's own site) ─
   // flydubai runs iCIMS, but its iCIMS tenant (careers-flydubai.icims.com) serves
