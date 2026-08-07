@@ -48,6 +48,8 @@ function regionFor(code) {
   if (EUROPE.has(code)) return 'Europe';
   if (code === 'us' || code === 'ca' || code === 'mx' || code === 'br') return 'Americas';
   if (code === 'za') return 'Africa';
+  if (code === 'in' || code === 'sg') return 'Asia';
+  if (code === 'au' || code === 'nz') return 'Oceania';
   return null;
 }
 
@@ -102,9 +104,15 @@ async function fetchAdzuna() {
     return [];
   }
 
-  const countries = (process.env.ADZUNA_COUNTRIES || 'us,gb,fr,de,it,es,nl,pl,at,ch,ca,au,za')
+  // All 19 are Adzuna-supported per-country endpoints. Added 2026-08-07:
+  // be, nz, in, sg, mx, br. NOTE: env ADZUNA_COUNTRIES overrides this default.
+  const countries = (process.env.ADZUNA_COUNTRIES || 'us,gb,fr,de,it,es,nl,pl,at,ch,be,ca,au,za,nz,in,sg,mx,br')
     .split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
-  const maxPages = Math.max(1, parseInt(process.env.ADZUNA_MAX_PAGES || '2', 10));
+  // Default dropped 2→1 (2026-08-07): the free tier is ~250 calls/day and 19
+  // countries × 2 queries × 1 page × ~5 runs/day ≈ 190 — page 1 (50 results/
+  // query) already covers pilot roles in every market. Set ADZUNA_MAX_PAGES=2
+  // in Railway only on a paid tier.
+  const maxPages = Math.max(1, parseInt(process.env.ADZUNA_MAX_PAGES || '1', 10));
 
   const seen = new Set();
   const results = [];

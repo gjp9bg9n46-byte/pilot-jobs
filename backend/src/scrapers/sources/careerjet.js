@@ -59,11 +59,23 @@ const LOCALES = {
   en_HK: { country: 'Hong Kong',      region: 'Asia' },
   en_MY: { country: 'Malaysia',       region: 'Asia' },
   en_IN: { country: 'India',          region: 'Asia' },
+  en_PH: { country: 'Philippines',    region: 'Asia' },
+  en_TH: { country: 'Thailand',       region: 'Asia' },
+  id_ID: { country: 'Indonesia',      region: 'Asia' },
+  ja_JP: { country: 'Japan',          region: 'Asia' },
+  ko_KR: { country: 'South Korea',    region: 'Asia' },
   fr_FR: { country: 'France',         region: 'Europe' },
   de_DE: { country: 'Germany',        region: 'Europe' },
   es_ES: { country: 'Spain',          region: 'Europe' },
   it_IT: { country: 'Italy',          region: 'Europe' },
   nl_NL: { country: 'Netherlands',    region: 'Europe' },
+  de_AT: { country: 'Austria',        region: 'Europe' },
+  de_CH: { country: 'Switzerland',    region: 'Europe' },
+  fr_BE: { country: 'Belgium',        region: 'Europe' },
+  sv_SE: { country: 'Sweden',         region: 'Europe' },
+  pl_PL: { country: 'Poland',         region: 'Europe' },
+  pt_BR: { country: 'Brazil',         region: 'Americas' },
+  es_MX: { country: 'Mexico',         region: 'Americas' },
 };
 
 const QUERIES = ['pilot', '"first officer"'];
@@ -117,7 +129,20 @@ async function fetchCareerjet() {
     return [];
   }
 
-  const locales = (process.env.CAREERJET_LOCALES || 'en_AE,en_QA,en_SA,en_KW,en_EG,fr_MA,fr_TN,fr_DZ,en_GB,en_US')
+  // Global default (Gulf/Africa + major Europe/Asia/Americas/Oceania). All are
+  // live-verified Careerjet locales. NOTE: if CAREERJET_LOCALES is set in the
+  // Railway env it OVERRIDES this — clear/expand it there to pick up new markets.
+  const DEFAULT_LOCALES = [
+    // Middle East + Africa
+    'en_AE', 'en_QA', 'en_SA', 'en_KW', 'en_OM', 'en_BH', 'en_EG', 'fr_MA', 'fr_TN', 'fr_DZ', 'en_ZA',
+    // Europe
+    'en_GB', 'en_IE', 'fr_FR', 'de_DE', 'es_ES', 'it_IT', 'nl_NL', 'de_AT', 'de_CH', 'fr_BE', 'sv_SE', 'pl_PL',
+    // Asia
+    'en_SG', 'en_HK', 'en_MY', 'en_IN', 'en_PH', 'en_TH', 'id_ID', 'ja_JP', 'ko_KR',
+    // Americas + Oceania
+    'en_US', 'en_CA', 'pt_BR', 'es_MX', 'en_AU', 'en_NZ',
+  ].join(',');
+  const locales = (process.env.CAREERJET_LOCALES || DEFAULT_LOCALES)
     .split(',').map((l) => l.trim()).filter((l) => LOCALES[l]);
   const maxPages = Math.min(10, Math.max(1, parseInt(process.env.CAREERJET_MAX_PAGES || '2', 10)));
 
