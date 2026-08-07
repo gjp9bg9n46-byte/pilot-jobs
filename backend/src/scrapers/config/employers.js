@@ -352,4 +352,17 @@ module.exports = [
     region: 'Americas',
     jibe: { host: 'careers.wheelsup.com', keyword: 'pilot', idPrefix: 'wheelsup' },
   },
+  // SkyWest Airlines → Jibe `jobs.skywest.com/api/jobs` (headless discovery
+  // 2026-08-07: careers page is a Jibe front-end over iCIMS). robots Allow: /.
+  // apply_url is the direct iCIMS posting (careers-skywest / aspire-skywest
+  // .icims.com) → classified direct_ats. Pilot roles present: First Officer
+  // Pilot (22 bases), Pilot Pathway Program. The iCIMS tenants themselves are
+  // robots-Disallow (see ledger) — the Jibe API is the compliant path in.
+  {
+    source: 'JIBE',
+    company: 'SkyWest Airlines',
+    country: 'United States',
+    region: 'Americas',
+    jibe: { host: 'jobs.skywest.com', keyword: 'pilot', idPrefix: 'skywest' },
+  },
 ];
