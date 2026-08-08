@@ -148,6 +148,29 @@ const css = {
   },
   filterActions: { display: 'flex', gap: 12, marginTop: 20, justifyContent: 'flex-end' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: 20 },
+  // Desktop redesign: single-column list + persistent filter sidebar.
+  // Mobile keeps css.grid (renders 1-col anyway) and the Filters button flow.
+  list: { display: 'grid', gridTemplateColumns: '1fr', gap: 14 },
+  listWrap: { display: 'flex', gap: 24, alignItems: 'flex-start' },
+  sidebar: {
+    width: 248, flexShrink: 0, background: 'var(--surface)',
+    border: '1px solid var(--border)', borderRadius: 12, padding: 20,
+    display: 'flex', flexDirection: 'column', gap: 16,
+  },
+  sidebarHead: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
+  sidebarTitle: {
+    fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+    color: 'var(--text-secondary)',
+  },
+  sidebarClear: {
+    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+    fontSize: 12, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--font-body)',
+  },
+  sidebarCheck: {
+    display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+    color: 'var(--text-primary)', cursor: 'pointer',
+  },
+  main: { flex: 1, minWidth: 0 },
   card: {
     background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
     padding: '24px 72px 24px 24px', display: 'flex', flexDirection: 'column', gap: 12,
@@ -387,17 +410,42 @@ export default function Jobs() {
     setPendingNtrOnly(false);
   };
 
+  // Desktop sidebar applies filters live (no pending/apply step) — this clears
+  // the APPLIED state directly. Mobile keeps clearAll (pending) above.
+  const clearAllApplied = () => {
+    setAuthority('');
+    setAircraftType('');
+    setRole('');
+    setContractType('');
+    setPostedWithin('');
+    setMinSalary('');
+    setVisaOnly(false);
+    setNtrOnly(false);
+  };
+
+  // Debounce the two free-text sidebar fields so live filtering doesn't
+  // refetch on every keystroke. Selects/checkboxes stay immediate.
+  const [debAircraftType, setDebAircraftType] = useState(aircraftType);
+  const [debMinSalary, setDebMinSalary] = useState(minSalary);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebAircraftType(aircraftType);
+      setDebMinSalary(minSalary);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [aircraftType, minSalary]);
+
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params = { limit: 1000 };
       if (authority) params.authority = authority;
-      if (aircraftType) params.aircraft = aircraftType;
+      if (debAircraftType) params.aircraft = debAircraftType;
       if (role) params.role = role;
       if (contractType) params.contractType = contractType;
       if (postedWithin) params.postedWithin = postedWithin;
-      if (minSalary) params.salaryMin = minSalary;
+      if (debMinSalary) params.salaryMin = debMinSalary;
       if (visaOnly) params.visa = 'true';
       if (ntrOnly) params.typeRating = 'ntr';
       if (qualifiedOnly) params.qualifiedOnly = true;
@@ -414,7 +462,7 @@ export default function Jobs() {
     } finally {
       setLoading(false);
     }
-  }, [authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly, qualifiedOnly, sort]);
+  }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -482,6 +530,52 @@ export default function Jobs() {
         {token ? 'Cockpit roles, filtered to your profile.' : 'Cockpit roles from airlines worldwide.'}
       </p>
 
+      {/* Desktop: sidebar + main column. Mobile: wrapper divs are style-less
+          no-ops, so the mobile flow below renders exactly as before. */}
+      <div style={!isMobile ? css.listWrap : undefined}>
+        {!isMobile && (
+          <aside style={css.sidebar} aria-label="Job filters">
+            <div style={css.sidebarHead}>
+              <span style={css.sidebarTitle}>Filters</span>
+              {activeFilterCount > 0 && (
+                <button style={css.sidebarClear} onClick={clearAllApplied}>Clear all</button>
+              )}
+            </div>
+            <Input as="select" label="Sort by" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
+              {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </Input>
+            {token && (
+              <label style={css.sidebarCheck}>
+                <input type="checkbox" checked={qualifiedOnly} onChange={(e) => setQualifiedOnly(e.target.checked)} />
+                Qualified only
+              </label>
+            )}
+            <Input as="select" label="Authority" value={authority} onChange={(e) => setAuthority(e.target.value)} style={{ fontSize: 14 }}>
+              {AUTHORITIES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+            </Input>
+            <Input label="Aircraft Type" placeholder="e.g. Boeing 737" value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} style={{ fontSize: 14 }} />
+            <Input as="select" label="Role" value={role} onChange={(e) => setRole(e.target.value)} style={{ fontSize: 14 }}>
+              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </Input>
+            <Input as="select" label="Contract Type" value={contractType} onChange={(e) => setContractType(e.target.value)} style={{ fontSize: 14 }}>
+              {CONTRACT_TYPES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </Input>
+            <Input as="select" label="Posted Within" value={postedWithin} onChange={(e) => setPostedWithin(e.target.value)} style={{ fontSize: 14 }}>
+              {POSTED_WITHIN.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </Input>
+            <Input type="number" label="Min Salary" placeholder="e.g. 80000" value={minSalary} onChange={(e) => setMinSalary(e.target.value)} style={{ fontSize: 14 }} />
+            <label style={css.sidebarCheck}>
+              <input type="checkbox" checked={visaOnly} onChange={(e) => setVisaOnly(e.target.checked)} />
+              Visa sponsorship offered
+            </label>
+            <label style={css.sidebarCheck}>
+              <input type="checkbox" checked={ntrOnly} onChange={(e) => setNtrOnly(e.target.checked)} />
+              No type rating required
+            </label>
+          </aside>
+        )}
+        <div style={!isMobile ? css.main : undefined}>
+
       {/* Top bar */}
       {isMobile ? (
         /* ─── Mobile (top-down): Row 1 status (counter + compact refresh) ·
@@ -540,35 +634,13 @@ export default function Jobs() {
               value={search} onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <button
-            style={css.toggleBtn(filtersOpen || activeFilterCount > 0)}
-            onClick={filtersOpen ? closeFilters : openFilters}
-          >
-            <SlidersHorizontal size={15} /> Filters
-            {activeFilterCount > 0 && (
-              <span style={css.filtersBadge}>{activeFilterCount}</span>
-            )}
-          </button>
-          {token && (
-            <button
-              style={css.toggleBtn(qualifiedOnly)}
-              onClick={() => setQualifiedOnly((v) => !v)}
-            >
-              {qualifiedOnly ? '✓ ' : ''}Qualified only
-            </button>
-          )}
-          <div>
-            <Input as="select" aria-label="Sort jobs" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
-              {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </Input>
-          </div>
           <Button variant="secondary" onClick={fetchJobs}>↻ Refresh</Button>
           <span style={css.count}>{filtered.length} of {total} jobs</span>
         </div>
       )}
 
-      {/* Filter panel */}
-      {filtersOpen && (
+      {/* Filter panel — mobile only; desktop filters live in the sidebar */}
+      {isMobile && filtersOpen && (
         <Card style={{ marginTop: 16, marginBottom: 20 }}>
           <div style={css.filterGrid}>
             <Input as="select" label="Authority" value={pendingAuthority} onChange={(e) => setPendingAuthority(e.target.value)}>
@@ -641,7 +713,7 @@ export default function Jobs() {
             </div>
           )}
 
-          <div style={css.grid}>
+          <div style={isMobile ? css.grid : css.list}>
             {orderedJobs.map((job, jobIndex) => {
               const match = matchLabel(job.matchScore);
               const isHover = hoverId === job.id;
@@ -789,9 +861,12 @@ export default function Jobs() {
                     </div>
                   )}
 
-                  <div style={{ marginTop: 'auto' }}>
-                    <Button variant="secondary" style={{ width: '100%' }}>View Details →</Button>
-                  </div>
+                  {/* Desktop: whole card is clickable — button removed */}
+                  {isMobile && (
+                    <div style={{ marginTop: 'auto' }}>
+                      <Button variant="secondary" style={{ width: '100%' }}>View Details →</Button>
+                    </div>
+                  )}
                 </div>
                 </React.Fragment>
               );
@@ -799,6 +874,8 @@ export default function Jobs() {
           </div>
         </>
       )}
+        </div>
+      </div>
     </LightPage>
   );
 }
