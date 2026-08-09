@@ -409,4 +409,59 @@ module.exports = [
     region: 'Europe',
     teamtailor: { subdomain: 'norse', idPrefix: 'norse' },
   },
+
+  // ── BambooHR (public JSON careers list + per-job detail; direct_ats) ──
+  // European bizav/charter. Volume push 2026-08-09; cf-ray anti-bot false
+  // positive fixed in http.js so these Cloudflare-fronted JSON APIs work.
+  {
+    source: 'BAMBOOHR',
+    company: 'Luxaviation',
+    country: 'Luxembourg',
+    region: 'Europe',
+    bamboohr: { company: 'luxaviation', idPrefix: 'luxaviation' }, // 8 pilot roles (G200/Legacy 650/C525/Global 8000)
+  },
+  {
+    source: 'BAMBOOHR',
+    company: 'AirX Charter',
+    country: 'Malta',
+    region: 'Europe',
+    bamboohr: { company: 'airx', idPrefix: 'airx' }, // 4 pilot roles (A340/Challenger CL604-605/850)
+  },
+  // Active BambooHR boards, 0 pilot roles today — kept so they populate when posted.
+  {
+    source: 'BAMBOOHR',
+    company: 'Comlux',
+    country: 'Switzerland',
+    region: 'Europe',
+    bamboohr: { company: 'comlux', idPrefix: 'comlux' },
+  },
+  {
+    source: 'BAMBOOHR',
+    company: 'Jetfly',
+    country: 'Luxembourg',
+    region: 'Europe',
+    bamboohr: { company: 'jetfly', idPrefix: 'jetfly' },
+  },
+
+  // ── Personio (public XML feed; direct_ats) ──
+  // GetJet Airlines (ACMI, Lithuania) — feed also carries Airhub Aviation as a
+  // subcompany. 0 pilot roles today; ready when posted.
+  {
+    source: 'PERSONIO',
+    company: 'GetJet Airlines',
+    country: 'Lithuania',
+    region: 'Europe',
+    personio: { company: 'getjet', tld: 'de', idPrefix: 'getjet' },
+  },
+
+  // ── Phenom — Air Canada (careers.aircanada.com/ca/en; operator_direct) ──
+  // Found 2026-08-09 (careers host = phApp.ddo). robots allows search-results +
+  // /job/. 1 standing pilot posting (non AC-Express).
+  {
+    source: 'PHENOM',
+    company: 'Air Canada',
+    country: 'Canada',
+    region: 'Americas',
+    phenom: { host: 'careers.aircanada.com', path: 'ca/en', keyword: 'pilot', idPrefix: 'aircanada' },
+  },
 ];

@@ -151,11 +151,21 @@ const ANTIBOT_BODY_PATTERNS = [
 ];
 
 function detectAntiBot(response) {
-  if (response.headers['cf-ray']) return 'Cloudflare (cf-ray header)';
-  if (String(response.headers['server'] || '').toLowerCase() === 'cloudflare') return 'Cloudflare (server header)';
   const body = typeof response.data === 'string' ? response.data : JSON.stringify(response.data || '');
+  // Challenge BODY patterns are the reliable signal (CF/DDoS-Guard/captcha
+  // interstitials) — these fire regardless of status.
   for (const pattern of ANTIBOT_BODY_PATTERNS) {
     if (pattern.test(body)) return `body matched ${pattern}`;
+  }
+  // A `cf-ray` header / `server: cloudflare` alone is NOT a block: a huge share
+  // of the web (incl. legitimate public JSON APIs like Ashby, BambooHR) serves
+  // ordinary 200 responses through Cloudflare. Only treat Cloudflare/CDN
+  // fronting as a challenge when it comes with a challenge STATUS (403/429/503)
+  // AND no usable body — otherwise we'd reject perfectly good data.
+  const status = response.status;
+  const fronted = response.headers['cf-ray'] || String(response.headers['server'] || '').toLowerCase() === 'cloudflare';
+  if (fronted && (status === 403 || status === 429 || status === 503)) {
+    return `Cloudflare challenge (HTTP ${status})`;
   }
   return null;
 }
