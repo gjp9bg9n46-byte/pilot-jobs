@@ -45,7 +45,7 @@ function isEvergreen(j) {
 // usually cut mid-sentence. Flag them so the client labels "Excerpt — see full
 // posting on the official careers site", and trim to whole sentences so the
 // text never ends (or starts) mid-thought.
-const AGGREGATOR_SOURCES = new Set(['ADZUNA', 'CAREERJET', 'JOOBLE', 'AVIATIONJOBSEARCH']);
+const AGGREGATOR_SOURCES = new Set(['ADZUNA', 'CAREERJET', 'JOOBLE', 'AVIATIONJOBSEARCH', 'REED']);
 function isSnippetExcerpt(sourcePlatform, description) {
   if (!AGGREGATOR_SOURCES.has(sourcePlatform)) return false;
   const d = String(description || '').trim();

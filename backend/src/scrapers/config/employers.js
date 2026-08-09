@@ -252,6 +252,16 @@ module.exports = [
     requireContext: true,
   },
 
+  // Free instant jobseeker API (reed.co.uk/developers). Requires REED_API_KEY.
+  // UK pilot/first-officer/instructor volume. Snippets → aggregator; shared
+  // fixed-wing filter with requireContext applies, same as Adzuna/Careerjet.
+  {
+    source: 'REED',
+    company: 'Reed (UK)',
+    aggregate: true,
+    requireContext: true,
+  },
+
   // ── Taleo (Oracle Enterprise careersection REST) ──────────────────────────
   // Emirates Group runs pilot recruitment on Taleo (emiratesgroupcareers.com →
   // tas-ekgcareers.taleo.net). Verify with /health/scrape-test?source=TALEO
