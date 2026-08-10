@@ -308,6 +308,7 @@ export default function Jobs() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const isMobile = useIsMobile();
+  const isDesktop = !useIsMobile(1024); // ≥1024px = Wuzzuf-style card (logo right)
   const [searchParams, setSearchParams] = useSearchParams();
   const { list: jobs, total } = useSelector((s) => s.jobs);
   const token = useSelector((s) => s.auth.token); // logged-out: public list, no match/qualified
@@ -757,63 +758,135 @@ export default function Jobs() {
                     <PlaneSave saved={isSaved} size={isMobile ? 24 : 36} />
                   </button>
 
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    {/* Brand mark — logo (or initials fallback) at the left of the title area */}
-                    <AirlineLogo
-                      hideIfMissing
-                      logoUrl={airlineMatch?.logoUrl}
-                      iataCode={airlineMatch?.iataCode}
-                      name={job.company}
-                      box={isMobile ? 36 : 44}
-                      maxW={isMobile ? 52 : 64}
-                      font={12}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={css.cardTop}>
-                        <div style={css.title}>{job.title}</div>
-                        {job.role && (
-                          <div style={css.rolePill}>
-                            {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
+                  {isDesktop ? (
+                    /* ── Wide desktop (≥1024): Wuzzuf-style — text left, logo right ── */
+                    <>
+                      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={css.cardTop}>
+                            <div style={css.title}>{job.title}</div>
+                            {job.role && (
+                              <div style={css.rolePill}>
+                                {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
+                              </div>
+                            )}
+                            {job.reqAuthorities?.[0] && (
+                              <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
+                            )}
                           </div>
-                        )}
-                        {job.reqAuthorities?.[0] && (
-                          <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
-                        )}
+                          {/* company · location */}
+                          <div style={css.airline}>
+                            {job.company}
+                            {job.location && (
+                              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                {'  ·  '}
+                                {countryFlag(job.country) && <span aria-hidden="true">{countryFlag(job.country)} </span>}
+                                {job.location}
+                              </span>
+                            )}
+                          </div>
+                          {job.evergreen
+                            ? <div style={css.ongoingBadge}>↻ Ongoing · {job.lastSeenAt ? `confirmed listed ${postedAgo(job.lastSeenAt)}` : 'still listed'}</div>
+                            : (ago && <div style={css.postedAgo}>{ago}</div>)}
+                          {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
+                            <div style={css.employerBadge}>Posted directly by employer</div>
+                          )}
+                          {/* badge row: direct-apply, via-source, visa/NTR, match info */}
+                          {(job.applyIsDirect || job.applyVia || job.visaSponsorship || job.typeRatingStatus === 'NTR' || matchCount) && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                              {job.sourcePlatform !== 'EMPLOYER_DIRECT' && job.applyIsDirect && <span style={css.directBadge}>✓ APPLY DIRECT</span>}
+                              {job.applyVia && <span style={css.viaBadge}>via {job.applyVia}</span>}
+                              {job.visaSponsorship && <span style={css.visaBadge}>VISA SPONSORSHIP</span>}
+                              {job.typeRatingStatus === 'NTR' && <span style={css.ntrBadge}>NO TYPE RATING REQUIRED</span>}
+                              {matchCount && <MatchCountBadge matched={matchCount.matched} total={matchCount.total} />}
+                            </div>
+                          )}
+                        </div>
+                        {/* Brand mark — right edge; renders nothing (no gap) when no logo */}
+                        <AirlineLogo
+                          hideIfMissing
+                          logoUrl={airlineMatch?.logoUrl}
+                          iataCode={airlineMatch?.iataCode}
+                          name={job.company}
+                          box={44}
+                          maxW={64}
+                          font={12}
+                        />
                       </div>
-                      <div>
-                        <div style={css.airline}>{job.company}</div>
-                        {job.evergreen
-                          ? <div style={css.ongoingBadge}>↻ Ongoing · {job.lastSeenAt ? `confirmed listed ${postedAgo(job.lastSeenAt)}` : 'still listed'}</div>
-                          : (ago && <div style={css.postedAgo}>{ago}</div>)}
-                        {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
-                          <div style={css.employerBadge}>Posted directly by employer</div>
-                        )}
+                      {/* remaining chips when no spec sheet (location now lives on the company line) */}
+                      {!specSheet && (job.reqMinTotalHours || job.reqCertificates?.[0]) && (
+                        <div style={css.metaRow}>
+                          {job.reqMinTotalHours && (
+                            <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
+                          )}
+                          {job.reqCertificates?.[0] && (
+                            <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* ── Mobile + tablet (<1024): unchanged — logo left ── */
+                    <>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        {/* Brand mark — logo (or initials fallback) at the left of the title area */}
+                        <AirlineLogo
+                          hideIfMissing
+                          logoUrl={airlineMatch?.logoUrl}
+                          iataCode={airlineMatch?.iataCode}
+                          name={job.company}
+                          box={isMobile ? 36 : 44}
+                          maxW={isMobile ? 52 : 64}
+                          font={12}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={css.cardTop}>
+                            <div style={css.title}>{job.title}</div>
+                            {job.role && (
+                              <div style={css.rolePill}>
+                                {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
+                              </div>
+                            )}
+                            {job.reqAuthorities?.[0] && (
+                              <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
+                            )}
+                          </div>
+                          <div>
+                            <div style={css.airline}>{job.company}</div>
+                            {job.evergreen
+                              ? <div style={css.ongoingBadge}>↻ Ongoing · {job.lastSeenAt ? `confirmed listed ${postedAgo(job.lastSeenAt)}` : 'still listed'}</div>
+                              : (ago && <div style={css.postedAgo}>{ago}</div>)}
+                            {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
+                              <div style={css.employerBadge}>Posted directly by employer</div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  {(job.applyIsDirect || job.applyVia || job.visaSponsorship || job.typeRatingStatus === 'NTR') && (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {job.sourcePlatform !== 'EMPLOYER_DIRECT' && job.applyIsDirect && <span style={css.directBadge}>✓ APPLY DIRECT</span>}
-                      {job.applyVia && <span style={css.viaBadge}>via {job.applyVia}</span>}
-                      {job.visaSponsorship && <span style={css.visaBadge}>VISA SPONSORSHIP</span>}
-                      {job.typeRatingStatus === 'NTR' && <span style={css.ntrBadge}>NO TYPE RATING REQUIRED</span>}
-                    </div>
+                      {(job.applyIsDirect || job.applyVia || job.visaSponsorship || job.typeRatingStatus === 'NTR') && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {job.sourcePlatform !== 'EMPLOYER_DIRECT' && job.applyIsDirect && <span style={css.directBadge}>✓ APPLY DIRECT</span>}
+                          {job.applyVia && <span style={css.viaBadge}>via {job.applyVia}</span>}
+                          {job.visaSponsorship && <span style={css.visaBadge}>VISA SPONSORSHIP</span>}
+                          {job.typeRatingStatus === 'NTR' && <span style={css.ntrBadge}>NO TYPE RATING REQUIRED</span>}
+                        </div>
+                      )}
+
+                      <div style={css.metaRow}>
+                        <span style={css.meta}>
+                          <MapPin size={11} />
+                          {countryFlag(job.country) && <span aria-hidden="true">{countryFlag(job.country)}</span>}
+                          {job.location}
+                        </span>
+                        {(isMobile || !specSheet) && job.reqMinTotalHours && (
+                          <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
+                        )}
+                        {(isMobile || !specSheet) && job.reqCertificates?.[0] && (
+                          <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
+                        )}
+                      </div>
+                    </>
                   )}
-
-                  <div style={css.metaRow}>
-                    <span style={css.meta}>
-                      <MapPin size={11} />
-                      {countryFlag(job.country) && <span aria-hidden="true">{countryFlag(job.country)}</span>}
-                      {job.location}
-                    </span>
-                    {(isMobile || !specSheet) && job.reqMinTotalHours && (
-                      <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
-                    )}
-                    {(isMobile || !specSheet) && job.reqCertificates?.[0] && (
-                      <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
-                    )}
-                  </div>
 
                   {!isMobile && specSheet && (
                     <div style={css.specSheet}>
@@ -841,7 +914,7 @@ export default function Jobs() {
                   )}
 
                   {match && <span style={{ alignSelf: 'flex-start' }}><Badge variant={match.variant} style={{ fontWeight: 700 }}>✓ {match.text}</Badge></span>}
-                  {matchCount && !isMobile && <span style={{ alignSelf: 'flex-start' }}><MatchCountBadge matched={matchCount.matched} total={matchCount.total} /></span>}
+                  {matchCount && !isMobile && !isDesktop && <span style={{ alignSelf: 'flex-start' }}><MatchCountBadge matched={matchCount.matched} total={matchCount.total} /></span>}
                   {isMobile && matchCount && matchCount.total > 0 && (() => {
                     const pct = Math.round((matchCount.matched / matchCount.total) * 100);
                     const ms = matchStyle(pct);

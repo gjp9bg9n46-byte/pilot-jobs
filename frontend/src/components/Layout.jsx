@@ -46,6 +46,10 @@ const SIDEBAR_NAV = [
   ...BOTTOM_NAV_ITEMS,
 ];
 
+// Wide-desktop (≥1024) top bar: inline primary links + hamburger dropdown.
+const TOP_NAV = [NAV_ITEMS[0], NAV_ITEMS[1], NAV_ITEMS[2]];          // Jobs, Airlines, Alerts
+const MENU_ITEMS = [NAV_ITEMS[3], NAV_ITEMS[4], NAV_ITEMS[5], ...BOTTOM_NAV_ITEMS]; // Logbook, CV Builder, Profile, Settings, Support
+
 const PAGE_TITLES = {
   '/jobs': 'Job Openings', '/airlines': 'Airline Factfile', '/alerts': 'My Alerts',
   '/logbook': 'Flight Logbook', '/profile': 'My Profile',
@@ -78,6 +82,26 @@ function drawerLinkStyle(isActive) {
     transition: 'background 0.1s, color 0.1s',
   };
 }
+// Wide-desktop top-bar inline link.
+function topLinkStyle(isActive) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '8px 14px', borderRadius: 8, textDecoration: 'none',
+    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+    color: isActive ? 'var(--accent)' : 'var(--text-primary)',
+    background: isActive ? 'rgba(0,63,136,0.06)' : 'transparent',
+    transition: 'background 0.15s, color 0.15s',
+  };
+}
+// Wide-desktop hamburger-dropdown item.
+function menuItemStyle(isActive) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '11px 20px', textDecoration: 'none', fontSize: 14, fontWeight: 600,
+    cursor: 'pointer', color: isActive ? 'var(--accent)' : 'var(--text-primary)',
+    background: 'transparent', border: 'none', width: '100%', textAlign: 'left',
+  };
+}
 
 const unreadBadge = { background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px' };
 const pendingBadge = { background: '#FEF3C7', color: '#92400E', borderRadius: 10, fontSize: 11, fontWeight: 800, padding: '1px 7px' };
@@ -96,6 +120,7 @@ export default function Layout() {
     jobApi.getUnreadCount().then(({ data }) => setUnread(data?.unread ?? 0)).catch(() => {});
   }, [pilot, alerts]);
   const isMobile   = useIsMobile();
+  const isDesktop  = !useIsMobile(1024); // ≥1024px = wide-desktop top-bar layout
   const path       = window.location.pathname;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [empPending, setEmpPending] = useState(0);
@@ -329,6 +354,104 @@ export default function Layout() {
           <Outlet />
         </div>
 
+      </div>
+    );
+  }
+
+  // ─── Wide desktop (≥1024): Wuzzuf-style sticky top bar, no left sidebar ─────────
+  if (isDesktop) {
+    return (
+      <div className="app-light" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        {/* Sticky top bar (stays put — content scrolls in the panel below) */}
+        <header style={{
+          height: 60, flexShrink: 0, background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', padding: '0 32px', gap: 20, position: 'relative', zIndex: 50,
+        }}>
+          {/* Logo (left) */}
+          <NavLink to="/jobs" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'var(--text-primary)', fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, letterSpacing: '-0.3px', flexShrink: 0 }}>
+            <PlaneMark size={18} /> CockpitHire
+          </NavLink>
+
+          {/* Inline primary nav */}
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 'auto', marginLeft: 16 }}>
+            {TOP_NAV.map(({ to, label }) => (
+              <NavLink key={to} to={to} className="nav-link ch-navitem" style={({ isActive }) => topLinkStyle(isActive)}>
+                {label}
+                {to === '/alerts' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 6 }}>{unread}</span>}
+              </NavLink>
+            ))}
+          </nav>
+
+          {/* Right: user + hamburger */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={avatar(34)}>{initials}</div>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{pilot ? `${pilot.firstName} ${pilot.lastName}` : 'Pilot'}</span>
+            </div>
+            <button
+              onClick={() => setDrawerOpen((o) => !o)}
+              aria-label="Open menu"
+              aria-expanded={drawerOpen}
+              className="icon-button"
+              style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', borderRadius: 8, flexShrink: 0 }}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <line x1="3" y1="5" x2="17" y2="5" /><line x1="3" y1="10" x2="17" y2="10" /><line x1="3" y1="15" x2="17" y2="15" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Hamburger dropdown */}
+          {drawerOpen && (
+            <>
+              <div aria-hidden="true" onClick={closeDrawer} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+              <div role="menu" style={{
+                position: 'absolute', top: 58, right: 24, width: 250,
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+                boxShadow: '0 10px 30px rgba(15,20,25,0.16)', zIndex: 60, padding: '8px 0',
+                display: 'flex', flexDirection: 'column',
+              }}>
+                {MENU_ITEMS.map(({ to, icon, label }) => (
+                  <NavLink key={to} to={to} onClick={closeDrawer} className="nav-link ch-navitem" style={({ isActive }) => menuItemStyle(isActive)}>
+                    <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+                    {label}
+                  </NavLink>
+                ))}
+                <button onClick={() => { closeDrawer(); handleLogout(); }} className="nav-link ch-navitem" style={{ ...menuItemStyle(false), color: 'var(--text-secondary)' }}>
+                  <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{SIGN_OUT_ICON}</span>
+                  Sign Out
+                </button>
+
+                {pilot?.isAdmin && (
+                  <>
+                    <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }} />
+                    <div style={{ padding: '4px 20px 6px', fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Admin</div>
+                    <NavLink to="/admin" end onClick={closeDrawer} className="nav-link ch-navitem" style={({ isActive }) => menuItemStyle(isActive)}>
+                      <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
+                      Admin Dashboard
+                    </NavLink>
+                    <NavLink to="/admin/moderation" onClick={closeDrawer} className="nav-link ch-navitem" style={({ isActive }) => menuItemStyle(isActive)}>
+                      <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
+                      Airline Moderation
+                    </NavLink>
+                    <NavLink to="/admin/employers" onClick={closeDrawer} className="nav-link ch-navitem" style={({ isActive }) => menuItemStyle(isActive)}>
+                      <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{MODERATION_ICON}</span>
+                      <span style={{ flex: 1 }}>Employer Moderation</span>
+                      {empPending > 0 && <span style={pendingBadge}>{empPending}</span>}
+                    </NavLink>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </header>
+
+        <VerifyEmailBanner verified={pilot?.emailVerified} resendFn={authApi.resendVerification} />
+        {/* intentional — dark page body; light page bodies (LightPage) bleed over the 32px padding */}
+        <div style={{ flex: 1, padding: '32px', overflowY: 'auto', background: '#0A1628', color: '#fff' }}>
+          <Outlet />
+        </div>
       </div>
     );
   }
