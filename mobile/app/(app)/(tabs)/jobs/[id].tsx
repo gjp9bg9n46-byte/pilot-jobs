@@ -30,6 +30,18 @@ type Job = Record<string, any>;
 
 const ROLE_LABEL: Record<string, string> = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor', FLIGHT_ENGINEER: 'Flight Engineer' };
 
+const AGGREGATOR_SOURCES = ['ADZUNA', 'CAREERJET', 'JOOBLE', 'REED'];
+
+// Short whole-sentence excerpt (≤ ~320 chars) for aggregator postings where we
+// don't reproduce the full third-party text.
+function toExcerpt(text: string, maxChars = 320): string {
+  const t = String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (t.length <= maxChars) return t;
+  const cut = t.slice(0, maxChars);
+  const lastEnd = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return lastEnd > 80 ? cut.slice(0, lastEnd + 1) : `${cut.trim()}…`;
+}
+
 function ReqRow({ req }: { req: Requirement }) {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -231,6 +243,28 @@ export default function JobDetail() {
 
         {/* Description — structured (paragraphs + bullets); long ones collapse */}
         {job.description ? (() => {
+          const isAggregator = AGGREGATOR_SOURCES.includes(job.sourcePlatform);
+          const verbatim = String(job.requirementsText || '').split('\n').map((l: string) => l.replace(/^•\s*/, '').trim()).filter(Boolean);
+          const synth = jobRequirements(job);
+          const hasFullDesc = !job.descriptionIsExcerpt && String(job.description || '').length >= 300;
+          const hasRealReqs = verbatim.length >= 2 || synth.length >= 2 || (synth.length >= 1 && hasFullDesc);
+
+          // Aggregator posting WITH real requirements → excerpt + prominent link
+          // out, no full third-party text. Others keep the full display.
+          if (isAggregator && hasRealReqs) {
+            return (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>JOB DESCRIPTION</Text>
+                <Text style={styles.paraText}>{toExcerpt(String(job.description))}</Text>
+                {job.applyUrl ? (
+                  <Pressable onPress={() => Linking.openURL(job.applyUrl).catch(() => {})} style={styles.viewFullLink}>
+                    <Text style={styles.viewFullLinkText}>View full posting{job.applyVia ? ` on ${job.applyVia}` : ''} →</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            );
+          }
+
           const blocks = parseDescriptionBlocks(job.description);
           const collapsible = blocks.length > 3;
           const shown = collapsible && !descExpanded ? blocks.slice(0, 3) : blocks;
@@ -332,6 +366,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   bodyText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24 },
   paraText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24, marginBottom: 10 },
   excerptNote: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, fontStyle: 'italic', marginBottom: 10 },
+  viewFullLink: { alignSelf: 'flex-start', marginTop: 12, paddingVertical: 9, paddingHorizontal: 16, borderWidth: 1, borderColor: pilot.navy, borderRadius: 6, backgroundColor: 'rgba(0,63,136,0.04)' },
+  viewFullLinkText: { color: pilot.navy, fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.sm },
   bulletRow: { flexDirection: 'row', marginBottom: 5, paddingRight: 4 },
   bulletDot: { fontSize: fontSizes.base, color: pilot.navy, marginRight: 8, lineHeight: 22 },
   bulletText: { flex: 1, fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 22 },

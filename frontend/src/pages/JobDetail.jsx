@@ -41,6 +41,18 @@ function sanitizeDescription(raw) {
   return clean;
 }
 
+const AGGREGATOR_SOURCES = ['ADZUNA', 'CAREERJET', 'JOOBLE', 'REED'];
+
+// Short whole-sentence excerpt (≤ ~320 chars, cut at a sentence boundary) — used
+// for aggregator postings where we don't reproduce the full third-party text.
+function toExcerpt(text, maxChars = 320) {
+  const t = String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (t.length <= maxChars) return t;
+  const cut = t.slice(0, maxChars);
+  const lastEnd = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return lastEnd > 80 ? cut.slice(0, lastEnd + 1) : `${cut.trim()}…`;
+}
+
 // Render a description with structure. Descriptions are stored as structured
 // plain text (newline-delimited blocks, "• " for bullets) since normalize
 // htmlToText preserves them; older/HTML-bearing rows fall back to the sanitiser.
@@ -126,6 +138,12 @@ const css = {
   },
   applyTrustVia: {
     marginTop: 10, fontSize: 13, color: 'var(--text-secondary)',
+  },
+  viewFullLink: {
+    display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12,
+    fontSize: 14, fontWeight: 700, color: 'var(--accent)', textDecoration: 'none',
+    padding: '9px 16px', border: '1px solid var(--accent)', borderRadius: 6,
+    background: 'rgba(0,63,136,0.04)',
   },
   primaryCta: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -531,19 +549,45 @@ export default function JobDetail() {
       })()}
 
       {/* Description */}
-      {job.description && (
-        <div style={{ marginBottom: 24 }}>
-          <div style={css.sectionLabel}>Job Description</div>
-          {job.descriptionIsExcerpt && (
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 10 }}>
-              Excerpt — see the full posting on the official careers site.
+      {job.description && (() => {
+        const isAggregator = AGGREGATOR_SOURCES.includes(job.sourcePlatform);
+        const verbatim = (job.requirementsText || '').split('\n').map((l) => l.replace(/^•\s*/, '').trim()).filter(Boolean);
+        const synth = jobRequirements(job);
+        const hasFullDesc = !job.descriptionIsExcerpt && (job.description || '').length >= 300;
+        const hasRealReqs = verbatim.length >= 2 || synth.length >= 2 || (synth.length >= 1 && hasFullDesc);
+
+        // Aggregator posting WITH real structured requirements: show a short
+        // excerpt + a prominent link out, instead of reproducing the third-party
+        // description in full. Jobs without real requirements yet keep the full
+        // display until extraction covers them. Direct-ATS jobs are unaffected.
+        if (isAggregator && hasRealReqs) {
+          return (
+            <div style={{ marginBottom: 24 }}>
+              <div style={css.sectionLabel}>Job Description</div>
+              <p style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8, margin: 0 }}>
+                {toExcerpt(job.description)}
+              </p>
+              <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" style={css.viewFullLink}>
+                View full posting{job.applyVia ? ` on ${job.applyVia}` : ''} →
+              </a>
             </div>
-          )}
-          <CollapsibleText id="job-description" style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8 }}>
-            <StructuredDescription text={job.description} />
-          </CollapsibleText>
-        </div>
-      )}
+          );
+        }
+
+        return (
+          <div style={{ marginBottom: 24 }}>
+            <div style={css.sectionLabel}>Job Description</div>
+            {job.descriptionIsExcerpt && (
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 10 }}>
+                Excerpt — see the full posting on the official careers site.
+              </div>
+            )}
+            <CollapsibleText id="job-description" style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.8 }}>
+              <StructuredDescription text={job.description} />
+            </CollapsibleText>
+          </div>
+        );
+      })()}
 
       {/* Notes / Benefits */}
       {job.notes && (
