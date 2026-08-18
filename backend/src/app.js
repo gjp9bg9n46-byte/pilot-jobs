@@ -238,24 +238,6 @@ app.get('/health/egress-ip', async (req, res) => {
   }
 });
 
-// TEMPORARY one-time LLM requirements backfill trigger (removed after the launch
-// backfill). Token-gated; idempotent (requirementsExtractedAt marker → each job
-// processed once); bounded per call. Call repeatedly with limit until
-// considered=0. Costs LLM tokens, hence the guard.
-app.get('/health/extract-requirements', async (req, res) => {
-  const TOKEN = process.env.TASK_TOKEN || 'ch-llm-backfill-2026';
-  if (req.query.token !== TOKEN) return res.status(403).json({ ok: false, error: 'forbidden' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, reason: 'ANTHROPIC_API_KEY not set' });
-  try {
-    const { extractRequirementsLLM } = require('../scripts/extract-requirements-llm');
-    const limit = Math.min(parseInt(req.query.limit, 10) || 40, 60);
-    const r = await extractRequirementsLLM({ limit });
-    res.json({ ok: true, ...r });
-  } catch (err) {
-    res.json({ ok: false, error: err.message });
-  }
-});
-
 app.use(errorHandler);
 
 // Scheduled scraping every N hours
