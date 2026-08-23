@@ -40,6 +40,7 @@ const { fetchBamboohr } = require('./sources/bamboohr');
 const { fetchPersonio } = require('./sources/personio');
 const { fetchReed } = require('./sources/reed');
 const { fetchBreezy } = require('./sources/breezy');
+const { fetchTraffit } = require('./sources/traffit');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
 const { normalize, hasAnyRequirement, extractRequirementsBlock } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
@@ -200,6 +201,7 @@ async function fetchForEmployer(empConfig) {
     case 'PERSONIO':          return fetchPersonio(empConfig);
     case 'REED':              return fetchReed(empConfig);
     case 'BREEZY':            return fetchBreezy(empConfig);
+    case 'TRAFFIT':           return fetchTraffit(empConfig);
     default:
       logger.warn({ msg: `unknown source: ${empConfig.source}` });
       return [];

@@ -464,6 +464,17 @@ module.exports = [
     personio: { company: 'getjet', tld: 'de', idPrefix: 'getjet' },
   },
 
+  // ── Traffit (Polish/CEE ATS; public JSON; direct_ats) ──
+  // Heston Airlines (ACMI, Vilnius) — endpoint from headless XHR discovery.
+  // 0 pilot roles today (ground/ops only); ready when they post flight crew.
+  {
+    source: 'TRAFFIT',
+    company: 'Heston Airlines',
+    country: 'Lithuania',
+    region: 'Europe',
+    traffit: { company: 'hestonairlines', idPrefix: 'heston' },
+  },
+
   // ── Phenom — Air Canada (careers.aircanada.com/ca/en; operator_direct) ──
   // Found 2026-08-09 (careers host = phApp.ddo). robots allows search-results +
   // /job/. 1 standing pilot posting (non AC-Express).
