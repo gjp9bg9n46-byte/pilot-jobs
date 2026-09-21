@@ -260,6 +260,27 @@ app.get('/health/uploadcare-test', async (req, res) => {
   }
 });
 
+// TEMP diagnostic: runs the EXACT CV-photo server checks (multer multipart parse
+// → mime sniff → dimensions) on a posted file, no auth. Curl a real image to see
+// where it breaks. Remove after diagnosis.
+const _diagUpload = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+app.post('/health/cv-photo-test', _diagUpload.single('photo'), (req, res) => {
+  const buffer = req.file?.buffer;
+  const out = { hasFile: !!buffer, size: buffer ? buffer.length : 0, originalname: req.file?.originalname, clientMime: req.file?.mimetype };
+  if (!buffer) return res.json({ ...out, verdict: 'multer received NO file — multipart parse failed (boundary?)' });
+  const b = buffer;
+  const mime = (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) ? 'image/jpeg'
+    : (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) ? 'image/png'
+    : (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) ? 'image/webp'
+    : null;
+  out.sniffedMime = mime;
+  out.firstBytesHex = b.slice(0, 12).toString('hex');
+  try { const { imageSize } = require('image-size'); out.dims = imageSize(b); } catch (e) { out.imageSizeError = e.message; }
+  out.verdict = !mime ? 'REJECT: unsupported format (not JPEG/PNG/WebP — e.g. HEIC)'
+    : (!out.dims || out.dims.width < 200 || out.dims.height < 200) ? 'REJECT: under 200×200' : 'OK — would upload';
+  res.json(out);
+});
+
 app.use(errorHandler);
 
 // Scheduled scraping every N hours
