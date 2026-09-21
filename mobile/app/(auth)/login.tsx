@@ -41,7 +41,7 @@ export default function Login() {
     setBanner('');
     setLoading(true);
     try {
-      let dest = '/jobs';
+      let dest = '/profile';
       try {
         const pilot = await loginPilot(email, password);
         if (pilot.isAdmin) dest = '/admin/dashboard'; // operator-only dark surface

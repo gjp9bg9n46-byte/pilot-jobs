@@ -17,7 +17,7 @@ export default function Index() {
   }
 
   if (!token) return <Redirect href="/(auth)/login" />;
-  // Employers land by status (dashboard / pending / rejected-suspended); pilots on jobs.
+  // Employers land by status (dashboard / pending / rejected-suspended); pilots on profile.
   if (accountType === 'employer') return <Redirect href={employerDest((user as Employer | null)?.status) as never} />;
-  return <Redirect href="/(app)/jobs" />;
+  return <Redirect href="/(app)/profile" />;
 }

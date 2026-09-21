@@ -49,9 +49,10 @@ export default function Login() {
     return () => { document.body.style.background = '#0A1628'; };
   }, []);
 
-  // Auto-forward an already-authenticated pilot away from the auth page.
+  // Auto-forward an already-authenticated pilot away from the auth page → Profile
+  // (same landing as a fresh sign-in below).
   useEffect(() => {
-    if (pilotToken) navigate('/jobs', { replace: true });
+    if (pilotToken) navigate('/profile', { replace: true });
   }, [pilotToken, navigate]);
 
   const handleSubmit = async (e) => {
