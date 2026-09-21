@@ -63,15 +63,23 @@ exports.getAirports = async (req, res, next) => {
       orderBy: { date: 'asc' },
     });
 
-    const agg = new Map(); // CODE → { count, firstDate, lastDate }
+    // Count VISITS, not raw dep+arr occurrences: each airport counts once per
+    // flight DATE. A same-day CAI→JED→CAI rotation touches CAI as both the first
+    // departure and the last arrival — that's ONE day at CAI, not two. Dedupe on
+    // (day, code) so round-trips no longer inflate the home base. First/last
+    // dates still track every occurrence.
+    const agg = new Map();   // CODE → { count, firstDate, lastDate }
+    const seenDayCode = new Set(); // `${day}|${code}` — one visit per airport per day
     for (const f of flights) {
+      const day = f.date instanceof Date ? f.date.toISOString().slice(0, 10) : String(f.date).slice(0, 10);
       for (const raw of [f.departure, f.arrival]) {
         const code = String(raw || '').trim().toUpperCase();
         if (!code) continue;
         const cur = agg.get(code) ?? { count: 0, firstDate: f.date, lastDate: f.date };
-        cur.count += 1;
         if (f.date < cur.firstDate) cur.firstDate = f.date;
         if (f.date > cur.lastDate) cur.lastDate = f.date;
+        const key = `${day}|${code}`;
+        if (!seenDayCode.has(key)) { seenDayCode.add(key); cur.count += 1; }
         agg.set(code, cur);
       }
     }
@@ -89,7 +97,7 @@ exports.getAirports = async (req, res, next) => {
     }
     airports.sort((a, b) => b.count - a.count);
 
-    res.json({ airports, unresolved, totalFlights: flights.length });
+    res.json({ airports, unresolved, totalFlights: flights.length, uniqueAirports: agg.size });
   } catch (err) {
     next(err);
   }

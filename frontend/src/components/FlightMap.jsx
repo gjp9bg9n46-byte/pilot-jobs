@@ -85,7 +85,7 @@ export default function FlightMap() {
                   return (
                     <Marker key={a.code} coordinates={[a.lon, a.lat]}>
                       <circle r={r} fill={hot ? '#F0A84B' : 'var(--accent)'} fillOpacity={0.85} stroke="#fff" strokeWidth={1 / zoom}>
-                        <title>{`${a.code} · ${a.city || a.name || ''} · ${a.count} flight${a.count === 1 ? '' : 's'}`}</title>
+                        <title>{`${a.code} · ${a.city || a.name || ''} · ${a.count} visit${a.count === 1 ? '' : 's'}`}</title>
                       </circle>
                       {(showLabels || (hot && zoom >= 1.4)) && (
                         <text
@@ -136,7 +136,7 @@ export default function FlightMap() {
                   <th style={css.th}>Code</th>
                   <th style={css.th}>City</th>
                   <th style={css.th}>Country</th>
-                  <th style={{ ...css.th, textAlign: 'right' }}>Flights</th>
+                  <th style={{ ...css.th, textAlign: 'right' }}>Visits</th>
                   <th style={css.th}>First</th>
                   <th style={css.th}>Last</th>
                 </tr>

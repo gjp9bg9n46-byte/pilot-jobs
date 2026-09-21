@@ -1,7 +1,7 @@
 // Flight map — mobile port of the web Profile map. World geometry (public
 // world-atlas topojson) is fetched once at runtime and cached at module level;
 // d3-geo does the projection math and react-native-svg renders it. Pins mark
-// every airport recorded in the logbook (dot size = flight count, top 3 amber),
+// every airport recorded in the logbook (dot size = visit count, top 3 amber),
 // with the per-airport report list below. Unresolvable codes are listed greyed.
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
