@@ -361,10 +361,10 @@ export default function Jobs() {
   const [pendingVisaOnly, setPendingVisaOnly] = useState(false);
   const [pendingNtrOnly, setPendingNtrOnly] = useState(false);
 
-  // Qualified only toggle — defaults on so the initial view shows jobs the pilot
-  // qualifies for. ?qualified=0 in the URL turns it off. Logged-out has no profile
-  // to qualify against, so it's forced off and the toggle is hidden.
-  const [qualifiedOnly, setQualifiedOnly] = useState(() => token ? searchParams.get('qualified') !== '0' : false);
+  // Qualified only toggle — defaults OFF; the initial view shows ALL jobs with no
+  // filters applied. Only ?qualified=1 in the URL turns it on. Logged-out has no
+  // profile to qualify against, so it's forced off and the toggle is hidden.
+  const [qualifiedOnly, setQualifiedOnly] = useState(() => token ? searchParams.get('qualified') === '1' : false);
 
   // Sort
   const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest');
@@ -483,7 +483,7 @@ export default function Jobs() {
     if (visaOnly) next.visa = '1';
     if (ntrOnly) next.ntr = '1';
     if (sort !== 'newest') next.sort = sort;
-    if (!qualifiedOnly) next.qualified = '0';
+    if (qualifiedOnly) next.qualified = '1';
     setSearchParams(next, { replace: true });
   }, [search, authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly, sort, qualifiedOnly, setSearchParams]);
 

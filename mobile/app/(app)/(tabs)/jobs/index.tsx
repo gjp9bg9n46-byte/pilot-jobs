@@ -1,5 +1,5 @@
 // Jobs list — data mirrors frontend/src/pages/Jobs.jsx (GET /jobs limit 1000 +
-// client-side text filter; qualifiedOnly defaults ON, ?qualified=0 turns it off;
+// client-side text filter; qualifiedOnly defaults OFF (all jobs), ?qualified=1 turns it on;
 // sort defaults 'newest'; URL state via expo-router search params).
 //
 // LAYOUT (redesigned, Climbto350-style): padded header (title, search, sort +
@@ -49,7 +49,7 @@ function JobsBrowse() {
 
   const [search, setSearch] = useState(typeof params.q === 'string' ? params.q : '');
   const [sort, setSort] = useState(typeof params.sort === 'string' ? params.sort : 'newest');
-  const [qualifiedOnly, setQualifiedOnly] = useState(params.qualified !== '0');
+  const [qualifiedOnly, setQualifiedOnly] = useState(params.qualified === '1');
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
@@ -104,7 +104,7 @@ function JobsBrowse() {
     const next: Record<string, string> = {};
     if (search) next.q = search;
     if (sort !== 'newest') next.sort = sort;
-    if (!qualifiedOnly) next.qualified = '0';
+    if (qualifiedOnly) next.qualified = '1';
     router.setParams(next);
   }, [search, sort, qualifiedOnly, router]);
 
