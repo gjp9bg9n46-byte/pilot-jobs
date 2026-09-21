@@ -1,9 +1,9 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import DOMPurify from 'dompurify';
 import { MapPin, AlertTriangle, ArrowLeft } from 'lucide-react';
-import { jobApi, profileApi, airlineApi } from '../services/api';
+import { jobApi, profileApi, airlineApi, adminApi } from '../services/api';
 import { LightPage, Card, Button } from '../components/primitives';
 import { useBodyBackground } from '../hooks/useBodyBackground';
 
@@ -224,6 +224,9 @@ function CollapsibleText({ id, children, style }) {
 export default function JobDetail() {
   const { slugId } = useParams();
   const token = useSelector((s) => s.auth.token);
+  const pilot = useSelector((s) => s.auth.pilot);
+  const navigate = useNavigate();
+  const [removing, setRemoving] = useState(false);
   const jobId = extractUuid(slugId);
 
   // Match the body to the cool-gray page surface so overscroll doesn't flash cream.
@@ -362,6 +365,19 @@ export default function JobDetail() {
       .catch(() => setApplyNote('warn'));
   };
 
+  const handleAdminRemove = async () => {
+    if (removing) return;
+    if (!window.confirm(`Remove this listing from the board?\n\n"${job.title}" — ${job.company}\n\nIt disappears from all job listings and won't be resurrected by a re-scrape.`)) return;
+    setRemoving(true);
+    try {
+      await adminApi.removeJob(jobId);
+      navigate('/jobs', { replace: true });
+    } catch {
+      setRemoving(false);
+      window.alert('Could not remove the listing. Please try again.');
+    }
+  };
+
   const ApplyButton = () => (
     expired ? (
       <Button variant="primary" disabled>Applications closed</Button>
@@ -393,6 +409,22 @@ export default function JobDetail() {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: SEM.green }}>
             ✓ Applied
           </span>
+        )}
+        {pilot?.isAdmin && (
+          <button
+            type="button"
+            onClick={handleAdminRemove}
+            disabled={removing}
+            title="Admin: remove this listing from the board"
+            style={{
+              marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+              padding: '9px 14px', borderRadius: 6, cursor: removing ? 'default' : 'pointer',
+              background: '#FEF2F2', color: SEM.red, border: '1px solid #FECACA', opacity: removing ? 0.6 : 1,
+            }}
+          >
+            {removing ? 'Removing…' : '🗑 Remove listing (admin)'}
+          </button>
         )}
       </div>
       {job.applyIsDirect ? (

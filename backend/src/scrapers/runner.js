@@ -51,7 +51,7 @@ const { matchJobToAllPilots } = require('../services/matchingService');
 
 // ─── Upsert a single normalized job ──────────────────────────────────────────
 
-async function upsertJob(job, { preserveMerge = false } = {}) {
+async function upsertJob(job, { preserveMerge = false, keepInactive = false } = {}) {
   const {
     sourcePlatform, externalId,
     title, company, location, country, description, notes,
@@ -138,7 +138,7 @@ async function upsertJob(job, { preserveMerge = false } = {}) {
       // upsert and dedup). Content fields above still refresh; status/mergedInto
       // are only reset for a NON-merged row (the normal "reappeared after going
       // stale" reactivation).
-      ...(preserveMerge ? {} : { status: 'ACTIVE', mergedInto: null }),
+      ...((preserveMerge || keepInactive) ? {} : { status: 'ACTIVE', mergedInto: null }),
     },
   });
 }
@@ -305,6 +305,7 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
               reqMinMultiEngineHours: true, reqMinTurbineHours: true, reqMinInstrumentHours: true,
               reqMinCrossCountryHours: true, reqEducation: true, reqWorkAuthorization: true,
               reqEnglishLevel: true, reqWillingToRelocate: true, mergedInto: true,
+              moderationStatus: true,
             },
           });
           const isNew = !existing;
@@ -339,7 +340,11 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
 
           // preserveMerge: a row dedup already merged stays EXPIRED + mergedInto
           // on re-scrape (sticky) rather than resurrecting and flapping.
-          const upserted = await upsertJob(jobToUpsert, { preserveMerge: !!existing?.mergedInto });
+          // keepInactive: an admin-REMOVED row must not resurrect to ACTIVE.
+          const upserted = await upsertJob(jobToUpsert, {
+            preserveMerge: !!existing?.mergedInto,
+            keepInactive: existing?.moderationStatus === 'REMOVED',
+          });
           seenExternalIds.push(job.externalId);
           stats.upserted++;
 

@@ -231,3 +231,22 @@ exports.reject = async (req, res, next) => {
     next(err);
   }
 };
+
+// DELETE /admin/jobs/:id — admin removes a job listing from the board.
+// Soft-remove: status → EXPIRED (hidden from all listings, which show only
+// ACTIVE) + moderationStatus → 'REMOVED' so a re-scrape can't resurrect it
+// (the ingest upsert keeps REMOVED rows inactive). Works for scraped AND
+// employer-posted jobs.
+exports.removeJob = async (req, res, next) => {
+  try {
+    const job = await prisma.job.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    await prisma.job.update({
+      where: { id: req.params.id },
+      data: { status: 'EXPIRED', moderationStatus: 'REMOVED' },
+    });
+    res.json({ ok: true, id: req.params.id });
+  } catch (err) {
+    next(err);
+  }
+};

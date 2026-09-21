@@ -18,6 +18,9 @@ router.post('/contributions/:id/reject',  c.reject);
 // Re-affirm a single airline fact field's date without changing its value.
 router.post('/airlines/:id/reaffirm',     c.reaffirmField);
 
+// Remove any job listing from the board (soft-remove; survives re-scrape).
+router.delete('/jobs/:id',                c.removeJob);
+
 // Employer portal moderation
 router.get('/employers',                ec.listEmployers);
 router.get('/employers/pending',        ec.listPendingEmployers);

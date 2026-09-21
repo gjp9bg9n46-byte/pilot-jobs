@@ -118,6 +118,8 @@ export const adminApi = {
   approve: (id) => api.post(`/admin/contributions/${id}/approve`),
   reject: (id, note) => api.post(`/admin/contributions/${id}/reject`, { note }),
   reaffirm: (id, field) => api.post(`/admin/airlines/${id}/reaffirm`, { field }),
+  // Remove any job listing from the board (soft-remove; survives re-scrape).
+  removeJob: (id) => api.delete(`/admin/jobs/${id}`),
   // Employer moderation
   listEmployers: () => api.get('/admin/employers'),
   listPendingEmployers: () => api.get('/admin/employers/pending'),
