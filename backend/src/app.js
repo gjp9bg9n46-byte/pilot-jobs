@@ -238,6 +238,28 @@ app.get('/health/egress-ip', async (req, res) => {
   }
 });
 
+// TEMP diagnostic (CV photo upload): reports whether Uploadcare keys are present
+// in THIS (Railway) process and does one live upload to prove auth works.
+// Reveals no secrets (presence + key length only). Remove after diagnosis.
+app.get('/health/uploadcare-test', async (req, res) => {
+  const pub = process.env.UPLOADCARE_PUBLIC_KEY;
+  const out = { publicKeyPresent: !!pub, publicKeyLen: (pub || '').length, secretKeyPresent: !!process.env.UPLOADCARE_SECRET_KEY };
+  if (!pub) return res.json({ ...out, upload: 'skipped — no public key' });
+  try {
+    // 1×1 PNG — enough to prove the upload endpoint authenticates the key.
+    const buffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC', 'base64');
+    const form = new FormData();
+    form.append('UPLOADCARE_PUB_KEY', pub);
+    form.append('UPLOADCARE_STORE', '1');
+    form.append('file', new Blob([buffer], { type: 'image/png' }), 'probe.png');
+    const r = await fetch('https://upload.uploadcare.com/base/', { method: 'POST', body: form });
+    const body = (await r.text()).slice(0, 200);
+    res.json({ ...out, uploadStatus: r.status, uploadOk: r.ok, uploadBody: body });
+  } catch (err) {
+    res.json({ ...out, uploadError: err.message });
+  }
+});
+
 app.use(errorHandler);
 
 // Scheduled scraping every N hours
