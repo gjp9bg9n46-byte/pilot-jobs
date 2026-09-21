@@ -21,6 +21,31 @@ function detectMime(buf) {
   return null;
 }
 
+const UUID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+
+// Resolve THIS project's CDN host. Newer Uploadcare projects deliver from a
+// dedicated domain (e.g. abc123.ucarecd.net), NOT the shared ucarecdn.com —
+// hitting the wrong host 404s every file. The REST file-info's original_file_url
+// carries the correct host, so we read it once per upload (env override +
+// ucarecdn.com fallback for older projects).
+async function resolveCdnHost(uuid) {
+  if (process.env.UPLOADCARE_CDN_HOST) return process.env.UPLOADCARE_CDN_HOST;
+  try {
+    const info = await fetch(`https://api.uploadcare.com/files/${uuid}/`, {
+      headers: {
+        Authorization: `Uploadcare.Simple ${process.env.UPLOADCARE_PUBLIC_KEY}:${process.env.UPLOADCARE_SECRET_KEY}`,
+        Accept: 'application/vnd.uploadcare-v0.7+json',
+      },
+    });
+    if (info.ok) {
+      const j = await info.json();
+      const m = String(j.original_file_url || '').match(/^https?:\/\/([^/]+)\//);
+      if (m) return m[1];
+    }
+  } catch { /* fall through to default */ }
+  return 'ucarecdn.com';
+}
+
 async function uploadToUploadcare(buffer, mime) {
   const form = new FormData();
   form.append('UPLOADCARE_PUB_KEY', process.env.UPLOADCARE_PUBLIC_KEY);
@@ -31,12 +56,14 @@ async function uploadToUploadcare(buffer, mime) {
   if (!res.ok) throw new Error(`Uploadcare upload failed: ${res.status}`);
   const data = await res.json();
   if (!data.file) throw new Error('No UUID in Uploadcare response');
-  // /-/strip_meta/all/ strips EXIF/GPS; /-/format/jpeg/ ensures JPEG output (required by @react-pdf/renderer)
-  return `https://ucarecdn.com/${data.file}/-/strip_meta/all/-/format/jpeg/`;
+  const host = await resolveCdnHost(data.file);
+  // /-/format/jpeg/ ensures JPEG output — required by @react-pdf/renderer and
+  // it converts HEIC/WebP too. (strip_meta isn't available on this plan.)
+  return `https://${host}/${data.file}/-/format/jpeg/`;
 }
 
 async function deleteFromUploadcare(url) {
-  const m = url.match(/ucarecdn\.com\/([a-f0-9-]{36})/);
+  const m = url.match(UUID_RE); // host-agnostic — matches ucarecdn.com AND project CDN domains
   if (!m) return;
   await fetch(`https://api.uploadcare.com/files/${m[1]}/`, {
     method: 'DELETE',
