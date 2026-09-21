@@ -1,13 +1,23 @@
 const prisma = require('../config/database');
 const { imageSize } = require('image-size');
 
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+// HEIC/HEIF (iPhone/Mac default) is accepted too — Uploadcare converts it to
+// JPEG on delivery (the `/-/format/jpeg/` op below), which @react-pdf needs.
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+
+// ISO-BMFF (HEIC/HEIF) brands that appear right after the `ftyp` box marker.
+const HEIF_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'hevm', 'hevs', 'mif1', 'msf1', 'heif']);
 
 function detectMime(buf) {
   if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return 'image/jpeg';
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return 'image/png';
   if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
       buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return 'image/webp';
+  // HEIC/HEIF: bytes 4–7 are 'ftyp', bytes 8–11 are the major brand.
+  if (buf.length >= 12 && buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70) {
+    const brand = buf.toString('ascii', 8, 12).toLowerCase();
+    if (HEIF_BRANDS.has(brand)) return 'image/heif';
+  }
   return null;
 }
 
@@ -169,10 +179,16 @@ exports.uploadPhoto = async (req, res, next) => {
       return res.status(400).json({ error: 'File must be JPEG, PNG, or WebP' });
     }
 
-    let dims;
+    // Dimension guard. When we can read dimensions, enforce a 200×200 floor.
+    // HEIC dims aren't always readable here — Uploadcare validates + resizes it,
+    // so we let a dimension-less HEIC through rather than falsely rejecting it.
+    let dims = null;
     try { dims = imageSize(buffer); } catch { dims = null; }
-    if (!dims || dims.width < 200 || dims.height < 200) {
+    if (dims && (dims.width < 200 || dims.height < 200)) {
       return res.status(400).json({ error: 'Image must be at least 200×200 pixels' });
+    }
+    if (!dims && mime !== 'image/heic' && mime !== 'image/heif') {
+      return res.status(400).json({ error: "Couldn't read that image — please try a JPEG or PNG." });
     }
 
     const existing = await prisma.cvData.findUnique({ where: { pilotId }, select: { photoUrl: true } });

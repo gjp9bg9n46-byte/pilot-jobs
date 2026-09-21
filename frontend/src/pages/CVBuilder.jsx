@@ -665,7 +665,7 @@ export default function CVBuilder() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
           style={{ display: 'none' }}
           onChange={e => { handlePhotoSelect(e.target.files[0]); e.target.value = ''; }}
         />
