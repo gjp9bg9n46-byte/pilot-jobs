@@ -25,20 +25,33 @@ function normaliseKey(str) {
   return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 }
 
+// Aggregator precedence: among aggregators (all tie at sourceTypeRank 1),
+// WhatJobs — our PARTNER API whose applyUrl is the paid click-through — supersedes
+// the scraped aggregators (Adzuna/Careerjet/Jooble/Reed). Higher = preferred.
+// This NEVER outranks a clean row: direct_ats/operator_direct still win via
+// sourceTypeRank, which is compared first.
+const AGGREGATOR_PRIORITY = { WHATJOBS: 2 };
+function aggregatorPriority(sourcePlatform) {
+  return AGGREGATOR_PRIORITY[String(sourcePlatform || '').toUpperCase()] || 1;
+}
+
 /**
  * Pick the canonical row for a group of cross-source duplicates.
  * Ranks the apply destination FIRST (direct_ats > operator_direct > aggregator),
- * description length only as a tiebreak — so a direct-ATS row displaces its
- * aggregator clone even when the aggregator's description is longer. Pure +
+ * then aggregator precedence (WhatJobs > other aggregators), then description
+ * length — so a direct-ATS row displaces its aggregator clone even when the
+ * aggregator's description is longer, and among aggregators WhatJobs wins. Pure +
  * non-mutating so it's unit-testable.
  *
- * @param {Array<{sourceType?:string, description?:string}>} group
+ * @param {Array<{sourceType?:string, sourcePlatform?:string, description?:string}>} group
  * @returns {object} the canonical member
  */
 function pickCanonical(group) {
   return [...group].sort((a, b) => {
     const byType = sourceTypeRank(b.sourceType) - sourceTypeRank(a.sourceType);
     if (byType !== 0) return byType;
+    const byAgg = aggregatorPriority(b.sourcePlatform) - aggregatorPriority(a.sourcePlatform);
+    if (byAgg !== 0) return byAgg;
     return (b.description?.length || 0) - (a.description?.length || 0);
   })[0];
 }
@@ -193,6 +206,81 @@ async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } =
     }
   }
   logger.info({ msg: dryRun ? 'aggregator-dedup SHADOW (no writes)' : 'aggregator-dedup applied', candidatePairs: pairs.length, merged });
+  return { pairs, merged };
+}
+
+/**
+ * WhatJobs precedence over other aggregators (fuzzy twin).
+ *
+ * Same fuzzy fingerprint (employer + title-core-with-aircraft + city) as the
+ * clean-displacement pass, but here the WINNER is the WhatJobs twin and the
+ * LOSERS are the OTHER aggregators (Adzuna/Careerjet/Jooble/Reed). WhatJobs is
+ * our partner API and its applyUrl is the paid click-through, so its version
+ * supersedes a scraped-aggregator clone: the loser is EXPIRED + mergedInto the
+ * WhatJobs row (collapsed, never shown twice; its applyUrl is replaced).
+ *
+ * SAFE by construction — the query is scoped to `sourceType: 'aggregator'`, so a
+ * clean (direct_ats/operator_direct) row is NEVER loaded here and can never be
+ * displaced. Run this AFTER collapseAggregatorDuplicates so a direct twin still
+ * beats WhatJobs (WhatJobs would already be merged into the clean row by then).
+ * ASYMMETRIC: lower aggregators never displace WhatJobs. Freshness precondition:
+ * a stale WhatJobs row can't hide a live lower-aggregator twin.
+ *
+ * Runs across ALL active aggregators (not just this run) → retroactive +
+ * continuous: a stored Adzuna/Careerjet job migrates to an incoming WhatJobs twin.
+ *
+ * @returns {Promise<{pairs:object[], merged:number}>}
+ */
+async function collapseAggregatorPriority({ dryRun = true } = {}) {
+  const jobs = await prisma.job.findMany({
+    where: { sourceType: 'aggregator', status: 'ACTIVE', mergedInto: null },
+    select: { id: true, sourcePlatform: true, sourceType: true, company: true, title: true, location: true, applyUrl: true, description: true, lastSeenAt: true, updatedAt: true },
+  });
+
+  const groups = new Map();
+  for (const j of jobs) {
+    const tc = titleCore(j.title, j.company, j.location);
+    if (!tc) continue;
+    const key = [normaliseKey(j.company), tc, cityCore(j.location)].join('|');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(j);
+  }
+
+  const isWhatJobs = (j) => String(j.sourcePlatform || '').toUpperCase() === 'WHATJOBS';
+  const pairs = [];
+  let merged = 0;
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const winners = group.filter((j) => isWhatJobs(j) && isFresh(j)); // FRESH WhatJobs only
+    const losers = group.filter((j) => !isWhatJobs(j));               // other aggregators
+    if (!winners.length || !losers.length) continue;
+
+    const canonical = pickCanonical(winners); // best (fresh) WhatJobs row
+    for (const loser of losers) {
+      pairs.push({
+        loserId: loser.id, loserPlatform: loser.sourcePlatform, loserTitle: loser.title, loserApplyUrl: loser.applyUrl,
+        canonId: canonical.id, canonApplyUrl: canonical.applyUrl,
+        multiBaseCityReview: MULTI_BASE_CITIES.has(cityCore(canonical.location)),
+      });
+      if (!dryRun) {
+        // Runtime INVARIANT: only expire the loser if the WhatJobs canonical is live.
+        const live = await prisma.job.findUnique({ where: { id: canonical.id }, select: { status: true, sourcePlatform: true } });
+        if (!live || live.status !== 'ACTIVE' || String(live.sourcePlatform || '').toUpperCase() !== 'WHATJOBS') {
+          logger.warn({ msg: 'whatjobs-priority: canonical not live/whatjobs at write time — skipping (invariant)', loser: loser.id, canonical: canonical.id });
+          continue;
+        }
+        await prisma.job.update({ where: { id: loser.id }, data: { mergedInto: canonical.id, status: 'EXPIRED' } });
+        merged++;
+        logger.info({
+          msg: 'aggregator displaced by WhatJobs',
+          canonicalId: canonical.id,
+          loser: { id: loser.id, platform: loser.sourcePlatform, applyUrl: loser.applyUrl },
+          canonical: { applyUrl: canonical.applyUrl },
+        });
+      }
+    }
+  }
+  logger.info({ msg: dryRun ? 'whatjobs-priority SHADOW (no writes)' : 'whatjobs-priority applied', candidatePairs: pairs.length, merged });
   return { pairs, merged };
 }
 
@@ -506,4 +594,4 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
   return collapsed;
 }
 
-module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, titleCore, cityCore };
+module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore };

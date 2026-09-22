@@ -47,7 +47,7 @@ const { normalize, hasAnyRequirement, extractRequirementsBlock } = require('./no
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
 const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
-const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates } = require('./dedup');
+const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates, collapseAggregatorPriority } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
 // ─── Upsert a single normalized job ──────────────────────────────────────────
@@ -674,6 +674,13 @@ async function runAllEmployers(employers, opts = {}) {
       const activePlatforms = (await prisma.job.findMany({ where: { status: 'ACTIVE' }, select: { sourcePlatform: true }, distinct: ['sourcePlatform'] })).map((r) => r.sourcePlatform).filter(Boolean);
       await collapseAggregatorDuplicates(activePlatforms, { dryRun: false });
     } catch (err) { logger.error({ err: err.message, msg: 'aggregator-dedup failed' }); }
+  }
+
+  if (!opts.dryRun) {
+    // WhatJobs precedence over other aggregators, AFTER clean-displacement (so a
+    // direct twin still beats WhatJobs). Retroactive: migrates leftover
+    // Adzuna/Careerjet/Jooble/Reed rows to their WhatJobs twin each cycle.
+    try { await collapseAggregatorPriority({ dryRun: false }); } catch (err) { logger.error({ err: err.message, msg: 'whatjobs-priority dedup failed' }); }
   }
 
   if (!opts.dryRun) {
