@@ -45,7 +45,7 @@ function isEvergreen(j) {
 // usually cut mid-sentence. Flag them so the client labels "Excerpt — see full
 // posting on the official careers site", and trim to whole sentences so the
 // text never ends (or starts) mid-thought.
-const AGGREGATOR_SOURCES = new Set(['ADZUNA', 'CAREERJET', 'JOOBLE', 'AVIATIONJOBSEARCH', 'REED']);
+const AGGREGATOR_SOURCES = new Set(['ADZUNA', 'CAREERJET', 'JOOBLE', 'AVIATIONJOBSEARCH', 'REED', 'WHATJOBS']);
 function isSnippetExcerpt(sourcePlatform, description) {
   if (!AGGREGATOR_SOURCES.has(sourcePlatform)) return false;
   const d = String(description || '').trim();
@@ -67,7 +67,7 @@ function toWholeSentences(text) {
 // Apply-link trust (source badges). direct_ats / operator_direct → the pilot
 // applies straight with the airline/operator; aggregator → a third-party board
 // redirect. Surfaced on cards + detail and used to boost direct listings.
-const AGGREGATOR_VIA_LABELS = { ADZUNA: 'Adzuna', CAREERJET: 'Careerjet', JOOBLE: 'Jooble', AVIATIONJOBSEARCH: 'Aviation Job Search' };
+const AGGREGATOR_VIA_LABELS = { ADZUNA: 'Adzuna', CAREERJET: 'Careerjet', JOOBLE: 'Jooble', AVIATIONJOBSEARCH: 'Aviation Job Search', REED: 'Reed', WHATJOBS: 'WhatJobs' };
 function deriveApplyTrust(j) {
   const st = j.sourceType || null;
   const applyIsDirect = st === 'direct_ats' || st === 'operator_direct';

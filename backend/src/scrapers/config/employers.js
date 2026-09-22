@@ -262,6 +262,17 @@ module.exports = [
     requireContext: true,
   },
 
+  // WhatJobs partner API (activated) — our biggest new aggregator. One publisher
+  // ID per country (baked into sources/whatjobs.js; no API key). Countries via
+  // WHATJOBS_COUNTRIES (default: all 37). applyUrl = the WhatJobs paid redirect
+  // (never bypassed). Overlaps Adzuna/Careerjet heavily → dedup collapses it.
+  {
+    source: 'WHATJOBS',
+    company: 'WhatJobs',
+    aggregate: true,
+    requireContext: true,
+  },
+
   // ── Taleo (Oracle Enterprise careersection REST) ──────────────────────────
   // Emirates Group runs pilot recruitment on Taleo (emiratesgroupcareers.com →
   // tas-ekgcareers.taleo.net). Verify with /health/scrape-test?source=TALEO

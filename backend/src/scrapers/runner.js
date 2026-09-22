@@ -27,6 +27,7 @@ const { fetchUSAJobs } = require('./sources/usajobs');
 const { fetchAdzuna } = require('./sources/adzuna');
 const { fetchJooble } = require('./sources/jooble');
 const { fetchCareerjet } = require('./sources/careerjet');
+const { fetchWhatJobs } = require('./sources/whatjobs');
 const { fetchTaleo } = require('./sources/taleo');
 const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { fetchIcims } = require('./sources/icims');
@@ -188,6 +189,7 @@ async function fetchForEmployer(empConfig) {
     case 'ADZUNA':            return fetchAdzuna(empConfig);
     case 'JOOBLE':            return fetchJooble(empConfig);
     case 'CAREERJET':         return fetchCareerjet(empConfig);
+    case 'WHATJOBS':          return fetchWhatJobs(empConfig);
     case 'TALEO':             return fetchTaleo(empConfig);
     case 'AVIATIONJOBSEARCH':  return fetchAviationJobSearch(empConfig);
     case 'ICIMS':             return fetchIcims(empConfig);
