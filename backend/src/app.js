@@ -238,6 +238,50 @@ app.get('/health/egress-ip', async (req, res) => {
   }
 });
 
+// TEMP prod-debug (token-gated): probes WhatJobs / Anthropic / Adzuna FROM
+// Railway so we see what the prod egress IP + keys actually get. Remove after.
+app.get('/health/prod-debug', async (req, res) => {
+  if (req.query.token !== (process.env.TASK_TOKEN || 'ch-prod-debug-2026')) return res.status(403).json({ error: 'forbidden' });
+  const axios = require('axios');
+  const out = {};
+  try { out.egressIp = (await axios.get('https://api.ipify.org?format=json', { timeout: 8000 })).data.ip; } catch (e) { out.egressIp = 'lookup-failed'; }
+  // 1) WhatJobs from Railway
+  try {
+    const r = await axios.get('https://api.whatjobs.com/api/v1/jobs.json', {
+      params: { publisher: 7225, user_ip: out.egressIp, keyword: 'pilot', page: 1 },
+      headers: { Accept: 'application/json', 'User-Agent': 'CockpitHireBot/1.0 (+https://cockpithire.com)' }, timeout: 15000,
+    });
+    const d = r.data;
+    out.whatjobs = { status: r.status, bytes: (typeof d === 'string' ? d.length : JSON.stringify(d).length), total: d && d.total, items: Array.isArray(d && d.data) ? d.data.length : 'no-array', firstTitle: d && d.data && d.data[0] && d.data[0].title, server: r.headers.server, ctype: r.headers['content-type'], bodyHead: (typeof d === 'string' ? d.slice(0, 120) : '') };
+  } catch (e) { out.whatjobs = { error: e.response?.status || e.code, msg: e.message }; }
+  // 2) Anthropic from Railway
+  const ak = process.env.ANTHROPIC_API_KEY;
+  out.anthropic = { keyPresent: !!ak, model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5' };
+  if (ak) {
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'x-api-key': ak, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: out.anthropic.model, max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] }),
+      });
+      out.anthropic.status = r.status;
+      out.anthropic.ok = r.ok;
+      if (!r.ok) out.anthropic.errorBody = (await r.text()).slice(0, 300);
+    } catch (e) { out.anthropic.fetchError = e.message; }
+  }
+  // 3) Adzuna from Railway (gb, 1 call)
+  const aid = process.env.ADZUNA_APP_ID, akey = process.env.ADZUNA_APP_KEY;
+  out.adzuna = { keysPresent: !!(aid && akey) };
+  if (aid && akey) {
+    try {
+      const r = await axios.get(`https://api.adzuna.com/v1/api/jobs/gb/search/1`, { params: { app_id: aid, app_key: akey, results_per_page: 10, what: 'pilot' }, timeout: 15000, validateStatus: null });
+      out.adzuna.status = r.status;
+      out.adzuna.count = Array.isArray(r.data?.results) ? r.data.results.length : null;
+      out.adzuna.apiMsg = r.data?.exception || r.data?.display || (typeof r.data === 'string' ? r.data.slice(0, 150) : undefined);
+    } catch (e) { out.adzuna.error = e.response?.status || e.code; out.adzuna.msg = e.message; }
+  }
+  res.json(out);
+});
+
 app.use(errorHandler);
 
 // Scheduled scraping every N hours
