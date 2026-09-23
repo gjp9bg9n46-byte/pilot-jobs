@@ -268,6 +268,31 @@ app.get('/health/prod-debug', async (req, res) => {
       if (!r.ok) out.anthropic.errorBody = (await r.text()).slice(0, 300);
     } catch (e) { out.anthropic.fetchError = e.message; }
   }
+  // 1b) WhatJobs RAPID-FIRE (does Cloudflare throttle the datacenter IP after N calls?)
+  if (req.query.rapid === '1') {
+    out.whatjobsRapid = [];
+    for (let i = 0; i < 12; i++) {
+      try {
+        const r = await axios.get('https://api.whatjobs.com/api/v1/jobs.json', {
+          params: { publisher: 7225, user_ip: out.egressIp, keyword: 'pilot', page: 1 },
+          headers: { Accept: 'application/json', 'User-Agent': 'CockpitHireBot/1.0 (+https://cockpithire.com)' }, timeout: 12000, validateStatus: null,
+        });
+        const d = r.data;
+        out.whatjobsRapid.push({ i, status: r.status, items: Array.isArray(d && d.data) ? d.data.length : (typeof d === 'string' ? 'html:' + d.length : 'no-array'), cfMitigated: r.headers['cf-mitigated'] || undefined });
+      } catch (e) { out.whatjobsRapid.push({ i, error: e.response?.status || e.code }); }
+    }
+  }
+  // 1c) Run the actual WhatJobs SOURCE (limited to uk,us) exactly as the cron would.
+  if (req.query.runwj === '1') {
+    const save = { c: process.env.WHATJOBS_COUNTRIES, p: process.env.WHATJOBS_MAX_PAGES };
+    process.env.WHATJOBS_COUNTRIES = 'uk,us'; process.env.WHATJOBS_MAX_PAGES = '1';
+    try {
+      const { fetchWhatJobs } = require('./scrapers/sources/whatjobs');
+      const jobs = await fetchWhatJobs();
+      out.whatjobsSourceRun = { produced: jobs.length, sample: jobs.slice(0, 5).map((j) => j.title) };
+    } catch (e) { out.whatjobsSourceRun = { error: e.message, stack: String(e.stack).slice(0, 300) }; }
+    process.env.WHATJOBS_COUNTRIES = save.c; process.env.WHATJOBS_MAX_PAGES = save.p;
+  }
   // 3) Adzuna from Railway (gb, 1 call)
   const aid = process.env.ADZUNA_APP_ID, akey = process.env.ADZUNA_APP_KEY;
   out.adzuna = { keysPresent: !!(aid && akey) };
