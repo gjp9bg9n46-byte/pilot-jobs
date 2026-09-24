@@ -43,7 +43,7 @@ const { fetchReed } = require('./sources/reed');
 const { fetchBreezy } = require('./sources/breezy');
 const { fetchTraffit } = require('./sources/traffit');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
-const { normalize, hasAnyRequirement, extractRequirementsBlock } = require('./normalize');
+const { normalize, hasAnyRequirement, extractRequirementsBlock, takeUnmappedSources } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
 const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
@@ -232,6 +232,14 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
     const normalized = raw
       .map((r) => normalize(r, empConfig))
       .filter(Boolean);
+
+    // Silent-drop tripwire: fetched jobs but NONE survived normalize() → almost
+    // always an unmapped source (no case in normalize.js). Loud + fed to the
+    // zero-result alert below via takeUnmappedSources(). (The WhatJobs/Taleo bug.)
+    if (raw.length > 0 && normalized.length === 0) {
+      logger.error({ source: empConfig.source, employer: empConfig.company, fetched: raw.length,
+        msg: 'normalize() discarded ALL fetched jobs — unmapped source or broken normaliser' });
+    }
 
     // skipFilter: true → source is already a pilot-only board (e.g. PilotCareerCentre)
     let { kept, dropped } = empConfig.skipFilter
@@ -693,6 +701,11 @@ async function runAllEmployers(employers, opts = {}) {
       const { translateUntranslatedJobs } = require('../services/translationService');
       await translateUntranslatedJobs();
     } catch (err) { logger.error({ err: err.message, msg: 'translation sweep failed' }); }
+    // Any source with NO normalize() handling path fetched jobs but discarded
+    // them all — surface it through the SAME zero-result alert (email + warn).
+    for (const sp of takeUnmappedSources()) {
+      zeroResults.push({ source: sp, company: sp, errors: 'NO normalize() handling path — every fetched job discarded (add a case in normalize.js)' });
+    }
     // Surface dead/empty sources loudly — the pipeline can't tell them apart.
     try { await alertZeroResults(zeroResults); } catch (err) { logger.error({ err: err.message, msg: 'zero-result alert failed' }); }
   }

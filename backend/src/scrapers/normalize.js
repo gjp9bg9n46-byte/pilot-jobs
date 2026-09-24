@@ -9,6 +9,7 @@
  */
 
 const cheerio = require('cheerio');
+const logger = require('../config/logger');
 
 // ─── Requirement extraction (shared by all sources) ───────────────────────────
 
@@ -568,44 +569,48 @@ function normalizeSmartRecruiters(raw, empConfig) {
  * @param {object} empConfig
  * @returns {import('./types').NormalizedJob|null}  null if cannot be normalized
  */
+// Sources whose fetchers ALREADY emit NormalizedJob shapes → pass straight
+// through. EVERY source in runner.js dispatch needs a home here (this set or
+// NORMALIZERS below) or its jobs are silently dropped before upsert — the bug
+// that zeroed WhatJobs + 10 others. normalize-coverage.test.js asserts this.
+const PRENORMALIZED = new Set([
+  'WORKDAY_REST', 'MAGELLAN', 'USAJOBS', 'ADZUNA', 'JOOBLE', 'CAREERJET',
+  'AVIATIONJOBSEARCH', 'ICIMS', 'AVATURE', 'JIBE', 'TALEO', 'PHENOM',
+  'RECRUITEE', 'TEAMTAILOR', 'ASHBY', 'BAMBOOHR', 'PERSONIO', 'BREEZY',
+  'TRAFFIT', 'REED', 'WHATJOBS',
+]);
+// Sources needing a real field-mapping normaliser.
+const NORMALIZERS = {
+  LEVER: normalizeLever,
+  GREENHOUSE: normalizeGreenhouse,
+  WORKDAY: normalizeWorkday,
+  SMARTRECRUITERS: normalizeSmartRecruiters,
+  PILOTCAREERCENTRE: normalizePCC,
+};
+
+// Loud, once-per-source record of any sourcePlatform with NO handling path. The
+// runner drains this into the zero-result alert (email + warn) so an unmapped
+// source can never AGAIN silently discard every job it fetched.
+const _unmappedSources = new Set();
+function takeUnmappedSources() { const a = [..._unmappedSources]; _unmappedSources.clear(); return a; }
+/** Every source normalize() can handle — used by the coverage test. */
+function normalizeHandledSources() { return new Set([...PRENORMALIZED, ...Object.keys(NORMALIZERS)]); }
+
 function normalize(raw, empConfig) {
+  const sp = raw && raw.sourcePlatform;
   try {
-    switch (raw.sourcePlatform) {
-      case 'LEVER':            return normalizeLever(raw, empConfig);
-      case 'GREENHOUSE':       return normalizeGreenhouse(raw, empConfig);
-      case 'WORKDAY':          return normalizeWorkday(raw, empConfig);
-      case 'WORKDAY_REST':     return raw;  // workday-rest.js pre-normalizes
-      case 'MAGELLAN':         return raw;  // magellan.js pre-normalizes
-      case 'SMARTRECRUITERS':    return normalizeSmartRecruiters(raw, empConfig);
-      case 'PILOTCAREERCENTRE':  return normalizePCC(raw, empConfig);
-      // These sources pre-normalize inside their fetchers — pass through as-is
-      case 'USAJOBS': return raw;
-      case 'ADZUNA':  return raw;
-      case 'JOOBLE':  return raw;
-      case 'CAREERJET': return raw;  // careerjet.js pre-normalizes
-      case 'AVIATIONJOBSEARCH': return raw;
-      case 'ICIMS':   return raw;  // icims.js pre-normalizes
-      case 'AVATURE': return raw;  // avature.js pre-normalizes
-      case 'JIBE':    return raw;  // jibe.js pre-normalizes
-      // All of these fetchers ALSO pre-normalize — they must pass through, not
-      // hit `default: return null` (which silently dropped EVERY job from these
-      // sources before upsert → 0 rows in prod). Keep in sync with runner.js
-      // dispatch: any new pre-normalising source MUST be added here too.
-      case 'PHENOM':     return raw;
-      case 'RECRUITEE':  return raw;
-      case 'TEAMTAILOR': return raw;
-      case 'ASHBY':      return raw;
-      case 'BAMBOOHR':   return raw;
-      case 'PERSONIO':   return raw;
-      case 'BREEZY':     return raw;
-      case 'TRAFFIT':    return raw;
-      case 'REED':       return raw;
-      case 'WHATJOBS':   return raw;
-      default: return null;
-    }
+    if (PRENORMALIZED.has(sp)) return raw;
+    if (NORMALIZERS[sp]) return NORMALIZERS[sp](raw, empConfig);
   } catch (err) {
-    return null;
+    return null; // a mapper threw on one malformed row — drop just that row
   }
+  // No handling path for this source → its jobs would be silently dropped.
+  const key = sp || '(none)';
+  if (!_unmappedSources.has(key)) {
+    _unmappedSources.add(key);
+    logger.error({ source: key, msg: `normalize: no case for source ${key} — jobs would be dropped. Add it to PRENORMALIZED or NORMALIZERS in normalize.js.` });
+  }
+  return null;
 }
 
 
@@ -677,4 +682,4 @@ function extractRequirementsBlock(description) {
 
 module.exports = {
   hasAnyRequirement, normalize, extractRequirements, extractSalary, htmlToText,
-  extractRequirementsBlock };
+  extractRequirementsBlock, normalizeHandledSources, takeUnmappedSources };
