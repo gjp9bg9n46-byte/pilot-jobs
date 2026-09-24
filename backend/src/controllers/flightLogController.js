@@ -2,6 +2,7 @@ const { randomUUID } = require('crypto');
 const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
 const { parseCSV, detectMapping, coerceRow, extractKeyFields, enrichColumns } = require('../services/importService');
+const { buildLogbookSummary } = require('../services/logbookSummary');
 
 const IMPORT_ROW_LIMIT = 5000;
 
@@ -354,6 +355,17 @@ exports.importLogbook = async (req, res, next) => {
     }
 
     res.json({ imported, total: entries.length });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /logbook/summary — the single hours-dashboard payload shared by web + app.
+// Everything is derived from real data at read time (see services/logbookSummary).
+exports.summary = async (req, res, next) => {
+  try {
+    const summary = await buildLogbookSummary(req.pilot.id);
+    res.json(summary);
   } catch (err) {
     next(err);
   }

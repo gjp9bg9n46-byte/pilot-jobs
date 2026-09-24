@@ -48,6 +48,7 @@ app.use('/api', (req, res, next) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/flight-logs', require('./routes/flightLogs'));
+app.use('/api/logbook', require('./routes/logbook'));
 app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/cv',   require('./routes/cv'));
 app.use('/api/airlines', require('./routes/airlines'));
