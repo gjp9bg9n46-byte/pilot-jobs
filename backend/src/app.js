@@ -118,26 +118,6 @@ app.get('/health/scrape-test', async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// TEMP: verify the new ANTHROPIC key + drain the extraction backlog. Token-gated,
-// idempotent (requirementsExtractedAt marker). Remove after confirming.
-app.get('/health/extract-run', async (req, res) => {
-  if (req.query.token !== (process.env.TASK_TOKEN || 'ch-extract-2026')) return res.status(403).json({ error: 'forbidden' });
-  const out = { keyPresent: !!process.env.ANTHROPIC_API_KEY };
-  try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5', max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] }),
-    });
-    out.authStatus = r.status; out.authOk = r.ok;
-    if (!r.ok) { out.authError = (await r.text()).slice(0, 200); return res.json(out); }
-  } catch (e) { out.authError = e.message; return res.json(out); }
-  try {
-    const { extractRequirementsLLM } = require('../scripts/extract-requirements-llm');
-    out.extract = await extractRequirementsLLM({ limit: Math.min(parseInt(req.query.limit, 10) || 40, 60) });
-  } catch (e) { out.extractError = e.message; }
-  res.json(out);
-});
-
 // Launch-gate metric: what fraction of ACTIVE jobs show TRUSTWORTHY requirements
 // — the posting's own verbatim block, a solid structured set (≥3 fields), or an
 // honest "not listed" fallback. The only "uncovered" state is a THIN synthesis
