@@ -587,6 +587,20 @@ function normalize(raw, empConfig) {
       case 'ICIMS':   return raw;  // icims.js pre-normalizes
       case 'AVATURE': return raw;  // avature.js pre-normalizes
       case 'JIBE':    return raw;  // jibe.js pre-normalizes
+      // All of these fetchers ALSO pre-normalize — they must pass through, not
+      // hit `default: return null` (which silently dropped EVERY job from these
+      // sources before upsert → 0 rows in prod). Keep in sync with runner.js
+      // dispatch: any new pre-normalising source MUST be added here too.
+      case 'PHENOM':     return raw;
+      case 'RECRUITEE':  return raw;
+      case 'TEAMTAILOR': return raw;
+      case 'ASHBY':      return raw;
+      case 'BAMBOOHR':   return raw;
+      case 'PERSONIO':   return raw;
+      case 'BREEZY':     return raw;
+      case 'TRAFFIT':    return raw;
+      case 'REED':       return raw;
+      case 'WHATJOBS':   return raw;
       default: return null;
     }
   } catch (err) {
