@@ -4,6 +4,9 @@ const prisma = require('../config/database');
 const notificationService = require('./notificationService');
 const logger = require('../config/logger');
 const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
+// Lazy require to avoid a circular dependency (jobMatch requires this module).
+let _jm = null;
+const jm = () => (_jm || (_jm = require('./jobMatch')));
 
 // Match-logic cutover (guardrail 2): the moment the met/unmet/unknown matching went
 // live. Push notifications only fire for jobs first created AT OR AFTER this instant,
@@ -556,13 +559,16 @@ async function matchJobToAllPilots(job) {
     include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
   });
 
+  // Alert-worthiness uses the SHARED strict-qualify match (guardrail 1), so the
+  // Alerts numbers agree with the jobs list and the "Qualified only" filter. The
+  // stored matchScore stays computeMatchScore for the Alerts display (0–100).
   const matched = [];
   for (const pilot of pilots) {
     const totals = await getPilotFlightTotals(pilot.id);
+    const ctx = jm().contextFromPilot(pilot, totals);
+    if (!ctx || jm().matchJob(job, ctx).fitGroup !== 'qualify') continue;
     const score = computeMatchScore(pilot, totals, job);
-    if (score !== null && score >= 60) {
-      matched.push({ pilot, score, totals });
-    }
+    matched.push({ pilot, score: score == null ? 100 : score, totals });
   }
 
   for (const { pilot, score, totals } of matched) {
@@ -616,11 +622,13 @@ async function runMatchForPilot(pilotId) {
 
   const totals = await getPilotFlightTotals(pilotId);
   const jobs = await prisma.job.findMany({ where: { status: 'ACTIVE' } });
+  const ctx = jm().contextFromPilot(pilot, totals); // built once; strict-qualify gate
 
   let matched = 0;
   for (const job of jobs) {
-    const score = computeAlertScore(pilot, totals, job);
-    if (score === null || score < 40) continue;
+    if (!ctx || jm().matchJob(job, ctx).fitGroup !== 'qualify') continue;
+    const rawScore = computeAlertScore(pilot, totals, job);
+    const score = rawScore == null ? 100 : rawScore;
     try {
       const exists = await prisma.jobAlert.findUnique({
         where: { pilotId_jobId: { pilotId, jobId: job.id } },

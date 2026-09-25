@@ -16,10 +16,10 @@ const { getPilotFlightTotals, getQualifiedMedicalClasses } = require('./matching
 const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
 
 // ── Region (derived from the job's country) ──────────────────────────────────
-const MIDDLE_EAST = new Set(['united arab emirates', 'uae', 'qatar', 'saudi arabia', 'ksa', 'bahrain', 'kuwait', 'oman', 'jordan', 'lebanon', 'israel', 'iraq', 'egypt', 'turkey', 'türkiye']);
+const MIDDLE_EAST = new Set(['united arab emirates', 'uae', 'ae', 'qatar', 'qa', 'saudi arabia', 'ksa', 'sa', 'bahrain', 'bh', 'kuwait', 'kw', 'oman', 'om', 'jordan', 'jo', 'lebanon', 'lb', 'israel', 'il', 'iraq', 'iq', 'egypt', 'egitto', 'egypte', 'eg', 'turkey', 'türkiye', 'tr', 'syria', 'sy', 'yemen', 'ye', 'iran', 'ir']);
 const US = new Set(['united states', 'usa', 'us', 'u.s.', 'united states of america', 'america']);
-const ASIA_PACIFIC = new Set(['china', 'hong kong', 'japan', 'south korea', 'korea', 'singapore', 'malaysia', 'thailand', 'vietnam', 'indonesia', 'philippines', 'india', 'pakistan', 'australia', 'new zealand', 'taiwan', 'cambodia', 'macau', 'brunei', 'sri lanka', 'bangladesh', 'nepal', 'maldives']);
-const EUROPE = new Set(['united kingdom', 'uk', 'great britain', 'ireland', 'france', 'germany', 'spain', 'portugal', 'italy', 'netherlands', 'belgium', 'luxembourg', 'switzerland', 'austria', 'poland', 'czech republic', 'czechia', 'slovakia', 'hungary', 'romania', 'bulgaria', 'greece', 'croatia', 'slovenia', 'denmark', 'sweden', 'norway', 'finland', 'iceland', 'estonia', 'latvia', 'lithuania', 'malta', 'cyprus', 'serbia', 'ukraine', 'albania', 'north macedonia', 'montenegro', 'bosnia and herzegovina', 'moldova']);
+const ASIA_PACIFIC = new Set(['china', 'cn', 'hong kong', 'hk', 'japan', 'jp', 'south korea', 'korea', 'kr', 'singapore', 'sg', 'malaysia', 'my', 'thailand', 'th', 'vietnam', 'vn', 'indonesia', 'id', 'philippines', 'ph', 'india', 'in', 'pakistan', 'pk', 'australia', 'au', 'new zealand', 'nz', 'taiwan', 'tw', 'cambodia', 'kh', 'macau', 'mo', 'brunei', 'bn', 'sri lanka', 'lk', 'bangladesh', 'bd', 'nepal', 'np', 'maldives', 'mv']);
+const EUROPE = new Set(['united kingdom', 'uk', 'gb', 'great britain', 'england', 'scotland', 'wales', 'ireland', 'ie', 'france', 'fr', 'germany', 'de', 'spain', 'es', 'portugal', 'pt', 'italy', 'it', 'netherlands', 'nl', 'belgium', 'be', 'luxembourg', 'lu', 'switzerland', 'ch', 'austria', 'at', 'poland', 'pl', 'czech republic', 'czechia', 'cz', 'slovakia', 'sk', 'hungary', 'hu', 'romania', 'ro', 'bulgaria', 'bg', 'greece', 'gr', 'croatia', 'hr', 'slovenia', 'si', 'denmark', 'dk', 'sweden', 'se', 'norway', 'no', 'finland', 'fi', 'iceland', 'is', 'estonia', 'ee', 'latvia', 'lv', 'lithuania', 'lt', 'malta', 'mt', 'cyprus', 'cy', 'serbia', 'rs', 'ukraine', 'ua', 'albania', 'al', 'north macedonia', 'mk', 'montenegro', 'me', 'bosnia and herzegovina', 'ba', 'moldova', 'md']);
 
 const REGIONS = ['Middle East', 'Europe', 'United States', 'Asia-Pacific', 'Other'];
 
@@ -30,7 +30,7 @@ function regionForCountry(country) {
   if (MIDDLE_EAST.has(c)) return 'Middle East';
   if (EUROPE.has(c)) return 'Europe';
   if (ASIA_PACIFIC.has(c)) return 'Asia-Pacific';
-  return 'Other';
+  return 'Other'; // genuine Other today: Canada, South Africa, other Africa/LatAm
 }
 
 // Map a pilot's country/base to a default region (else null → "All regions").
@@ -44,6 +44,15 @@ const normCert = (t) => (t === 'ATP' ? ['ATP', 'ATPL'] : t === 'ATPL' ? ['ATPL',
 const normAuth = (a) => (a === 'CAA_UK' || a === 'CAA-UK' || a === 'CAA') ? ['CAA', 'CAA_UK', 'CAA-UK'] : [a];
 const EU_RTW = new Set(['austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic', 'czechia', 'denmark', 'estonia', 'finland', 'france', 'germany', 'greece', 'hungary', 'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg', 'malta', 'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia', 'spain', 'sweden', 'eu', 'european union']);
 
+// Build a match context from an ALREADY-LOADED pilot (with certificates/ratings/
+// medicals/rightToWork included) + totals. Pure — no DB. Used by the alert engine,
+// which already has the pilot in hand, so matching never re-queries.
+function contextFromPilot(pilot, totals) {
+  if (!pilot) return null;
+  const flightCerts = pilot.certificates.filter((c) => c.type !== 'ELP');
+  return buildContextInner(pilot, flightCerts, totals);
+}
+
 // Build the pilot's matching context once per request (reused across all jobs).
 async function buildMatchContext(pilotId, prisma) {
   const [pilot, totals] = await Promise.all([
@@ -54,8 +63,10 @@ async function buildMatchContext(pilotId, prisma) {
     getPilotFlightTotals(pilotId),
   ]);
   if (!pilot) return null;
+  return contextFromPilot(pilot, totals);
+}
 
-  const flightCerts = pilot.certificates.filter((c) => c.type !== 'ELP');
+function buildContextInner(pilot, flightCerts, totals) {
   const certTypes = new Set(flightCerts.flatMap((c) => normCert(c.type)));
   const certAuthorities = new Set(flightCerts.flatMap((c) => normAuth(c.issuingAuthority)).filter(Boolean));
   const ratingTypes = new Set(pilot.ratings.map((r) => String(r.aircraftType).toUpperCase()));
@@ -152,16 +163,31 @@ function matchJob(job, ctx) {
 
   const counts = { met: 0, unmet: 0, unknown: 0 };
   const unmetKeys = [];
+  const unknownKeys = [];
   for (const r of reqs) {
     counts[r.status] += 1;
     if (r.status === 'unmet') unmetKeys.push(r.key);
+    if (r.status === 'unknown') unknownKeys.push(r.key);
   }
   const known = counts.met + counts.unmet;
-  const fitGroup = counts.unmet === 0 ? 'qualify' : counts.unmet === 1 ? 'oneShort' : 'other';
+
+  // fitGroup (strict qualify — a meaningful "you qualify" number):
+  //   qualify    = 0 unmet AND all must-haves KNOWN AND ≤1 other unknown
+  //   incomplete = 0 unmet but too much unknown to be sure ("complete your profile")
+  //   oneShort   = exactly 1 unmet
+  //   other      = ≥2 unmet
+  const mustHaveUnknown = reqs.some((r) => r.mustHave && r.status === 'unknown');
+  const otherUnknown = reqs.filter((r) => !r.mustHave && r.status === 'unknown').length;
+  let fitGroup;
+  if (counts.unmet >= 2) fitGroup = 'other';
+  else if (counts.unmet === 1) fitGroup = 'oneShort';
+  else if (!mustHaveUnknown && otherUnknown <= 1) fitGroup = 'qualify';
+  else fitGroup = 'incomplete';
+
   // A must-have that is unmet is a hard blocker (surfaced red on the detail).
   const blocker = reqs.find((r) => r.mustHave && r.status === 'unmet') || null;
 
-  return { requirements: reqs, counts, known, fitGroup, unmetKeys, blocker: blocker ? blocker.key : null };
+  return { requirements: reqs, counts, known, fitGroup, unmetKeys, unknownKeys, blocker: blocker ? blocker.key : null };
 }
 
 // ── Small label helpers (shared display truths) ──────────────────────────────
@@ -179,5 +205,5 @@ function titleCaseWord(s) {
 
 module.exports = {
   regionForCountry, defaultRegionForPilot, REGIONS,
-  buildMatchContext, matchJob, medicalLabel, workAuthLabel,
+  buildMatchContext, contextFromPilot, matchJob, medicalLabel, workAuthLabel,
 };

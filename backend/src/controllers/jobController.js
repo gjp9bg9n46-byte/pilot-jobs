@@ -334,8 +334,28 @@ exports.getJobs = async (req, res, next) => {
     let view = regionSel ? matched.filter((m) => m.region === regionSel) : matched;
 
     // Fit-group counts over the region-filtered view (drives the header + groups).
-    const fitGroupCounts = { qualify: 0, oneShort: 0, other: 0 };
+    const fitGroupCounts = { qualify: 0, incomplete: 0, oneShort: 0, other: 0 };
     if (ctx) for (const m of view) fitGroupCounts[m.match.fitGroup] += 1;
+
+    // Profile nudge for the "Complete your profile to check" (incomplete) group:
+    // the profile fields whose absence blocks the MOST incomplete jobs, top 3.
+    let profileNudge = null;
+    if (ctx && fitGroupCounts.incomplete > 0) {
+      const NUDGE_LABEL = {
+        authority: 'licence authority', licence: 'licence', medical: 'medical certificate',
+        typeRating: 'type ratings', english: 'English level (ICAO)', workAuth: 'work authorisation',
+        education: 'education', totalHours: 'logbook hours', picHours: 'PIC hours',
+        instrumentHours: 'instrument hours', multiHours: 'multi-engine hours', turbineHours: 'turbine hours', ccHours: 'cross-country hours',
+      };
+      const tally = {};
+      for (const m of view) {
+        if (m.match.fitGroup !== 'incomplete') continue;
+        for (const k of (m.match.unknownKeys || [])) tally[k] = (tally[k] || 0) + 1;
+      }
+      const top = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 3)
+        .map(([k, n]) => ({ field: NUDGE_LABEL[k] || k, jobs: n }));
+      if (top.length) profileNudge = { fields: top, incompleteJobs: fitGroupCounts.incomplete };
+    }
 
     // Facet counts for the filter dropdowns, over the region-filtered view.
     const facetCounts = { aircraft: {}, role: {}, authority: {} };
@@ -352,7 +372,8 @@ exports.getJobs = async (req, res, next) => {
     // base orderBy (direct-first, newest) within each group via a STABLE sort.
     const effectiveSort = req.query.sort || (ctx ? 'best' : 'newest');
     if (effectiveSort === 'best' && ctx) {
-      const rank = { qualify: 0, oneShort: 1, other: 2 };
+      // qualify → incomplete → oneShort → other, base order preserved (stable).
+      const rank = { qualify: 0, incomplete: 1, oneShort: 2, other: 3 };
       view = view.map((m, i) => ({ m, i })).sort((a, b) => (rank[a.m.match.fitGroup] - rank[b.m.match.fitGroup]) || (a.i - b.i)).map((x) => x.m);
     }
 
@@ -388,6 +409,7 @@ exports.getJobs = async (req, res, next) => {
       // New (additive) — ignored by the current mobile client:
       regionCounts,
       fitGroupCounts: ctx ? fitGroupCounts : null,
+      profileNudge,
       facetCounts,
       defaultRegion: ctx ? defaultRegionForPilot(ctx.country) : null,
       qualifyCount: ctx ? fitGroupCounts.qualify : null,
