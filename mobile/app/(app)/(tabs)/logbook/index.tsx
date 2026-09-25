@@ -5,9 +5,9 @@
 //   duration over a dashed navy track, and a foot row of pills (flight no,
 //   type, registration) + actions (edit / clone / delete).
 // - 20 cards per page with ellipsis pagination, ?page= URL state.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
+  Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -36,6 +36,8 @@ const makeCard = (pilot: ThemePalette) => ({
 });
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const monthLabel = (ym: string) => { const [y, m] = ym.split('-'); return `${MONTHS_FULL[+m - 1]} ${y}`; };
 
 // Block duration as "HH:MMh" from off/on-blocks (midnight-wrap safe), falling
 // back to totalTime hours.
@@ -188,67 +190,100 @@ export default function LogbookList() {
     ],
   );
 
+  // Group the current page's flights into month sections. Subtotals come from
+  // summary.months (server truth), never from summing the loaded rows — the list
+  // is paginated, so a month can be split across pages.
+  const sections = useMemo(() => {
+    const idx: Record<string, Log> = {};
+    (summary?.months || []).forEach((m: Log) => { idx[m.month] = m; });
+    const out: { ym: string; title: string; hours: number | null; flights: number | null; data: Log[] }[] = [];
+    let cur: (typeof out)[number] | null = null;
+    for (const log of logs) {
+      const d = new Date(log.date);
+      const ym = Number.isNaN(d.getTime()) ? '—' : d.toISOString().slice(0, 7);
+      if (!cur || cur.ym !== ym) {
+        const m: Log | undefined = idx[ym];
+        cur = { ym, title: monthLabel(ym), hours: m ? m.hours : null, flights: m ? m.flights : null, data: [] };
+        out.push(cur);
+      }
+      cur.data.push(log);
+    }
+    return out;
+  }, [logs, summary]);
+
+  const ListHeader = (
+    <View>
+      <Text style={styles.h1}>Logbook</Text>
+      <Text style={styles.subtitle}>
+        {(summary?.totals?.flightCount ?? total)} flights logged{lastFlightStr ? ` · last flight ${lastFlightStr}` : ''}
+      </Text>
+
+      {/* Hours dashboard (real data from /logbook/summary) */}
+      <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} />
+
+      {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
+      <CarryForwardPanel openSignal={cfOpenSignal} onSaved={loadSummary} />
+
+      {/* Toolbar (existing add-flight entry point, kept in place) */}
+      <View style={styles.toolbar}>
+        <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 }]} onPress={() => router.push('/logbook/add')}>
+          <Text style={styles.primaryBtnText}>+ Log a Flight</Text>
+        </Pressable>
+        <Pressable style={styles.secondaryBtn} onPress={() => router.push('/logbook/import')}>
+          <Ionicons name="cloud-upload-outline" size={15} color={pilot.navy} />
+          <Text style={styles.secondaryBtnText}> Import</Text>
+        </Pressable>
+        <Text style={styles.count}>{total} {total === 1 ? 'flight' : 'flights'}</Text>
+      </View>
+    </View>
+  );
+
+  const ListFooter = totalPages > 1 ? (
+    <View style={styles.pagination}>
+      <Text style={styles.pageCounter}>Showing {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + logs.length} of {total} flights</Text>
+      <View style={styles.pageBtns}>
+        <PageBtn label="‹" disabled={page <= 1} onPress={() => goToPage(page - 1)} />
+        {pageWindow(page, totalPages).map((p, i) => p === '…'
+          ? <Text key={`e${i}`} style={styles.ellipsis}>…</Text>
+          : <PageBtn key={p} label={String(p)} active={p === page} onPress={() => goToPage(p)} />)}
+        <PageBtn label="›" disabled={page >= totalPages} onPress={() => goToPage(page + 1)} />
+      </View>
+    </View>
+  ) : null;
+
+  const ListEmpty = (error && !loading)
+    ? <Text style={styles.empty}>Could not load your logbook.{'\n'}{error}{'\n'}Pull to refresh to try again.</Text>
+    : (!loading ? <Text style={styles.empty}>No flights logged yet. Tap "Log a Flight" to get started.</Text> : null);
+
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
-      >
-        <Text style={styles.h1}>Logbook</Text>
-        <Text style={styles.subtitle}>
-          {(summary?.totals?.flightCount ?? total)} flights logged{lastFlightStr ? ` · last flight ${lastFlightStr}` : ''}
-        </Text>
-
-        {/* Hours dashboard (real data from /logbook/summary) */}
-        <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} />
-
-        {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
-        <CarryForwardPanel openSignal={cfOpenSignal} onSaved={loadSummary} />
-
-        {/* Toolbar */}
-        <View style={styles.toolbar}>
-          <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 }]} onPress={() => router.push('/logbook/add')}>
-            <Text style={styles.primaryBtnText}>+ Log a Flight</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryBtn} onPress={() => router.push('/logbook/import')}>
-            <Ionicons name="cloud-upload-outline" size={15} color={pilot.navy} />
-            <Text style={styles.secondaryBtnText}> Import</Text>
-          </Pressable>
-          <Text style={styles.count}>{total} {total === 1 ? 'flight' : 'flights'}</Text>
-        </View>
-
-        {/* Flight cards */}
-        {error && !loading ? (
-          <Text style={styles.empty}>Could not load your logbook.{'\n'}{error}{'\n'}Pull to refresh to try again.</Text>
-        ) : logs.length === 0 && !loading ? (
-          <Text style={styles.empty}>No flights logged yet. Tap "Log a Flight" to get started.</Text>
-        ) : (
-          logs.map((log) => (
-            <FlightCard
-              key={log.id}
-              log={log}
-              onEdit={() => editFlight(log)}
-              onClone={() => cloneFlight(log)}
-              onDelete={() => deleteFlight(log.id)}
-            />
-          ))
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 ? (
-          <View style={styles.pagination}>
-            <Text style={styles.pageCounter}>Showing {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + logs.length} of {total} flights</Text>
-            <View style={styles.pageBtns}>
-              <PageBtn label="‹" disabled={page <= 1} onPress={() => goToPage(page - 1)} />
-              {pageWindow(page, totalPages).map((p, i) => p === '…'
-                ? <Text key={`e${i}`} style={styles.ellipsis}>…</Text>
-                : <PageBtn key={p} label={String(p)} active={p === page} onPress={() => goToPage(p)} />)}
-              <PageBtn label="›" disabled={page >= totalPages} onPress={() => goToPage(page + 1)} />
-            </View>
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={ListFooter}
+        ListEmptyComponent={ListEmpty}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionMonth}>{section.title}</Text>
+            {section.hours != null ? (
+              <Text style={styles.sectionMeta}>{section.hours.toFixed(1)} h · {section.flights} {section.flights === 1 ? 'flight' : 'flights'}</Text>
+            ) : null}
           </View>
-        ) : null}
-      </ScrollView>
+        )}
+        renderItem={({ item }) => (
+          <FlightCard
+            log={item}
+            onEdit={() => editFlight(item)}
+            onClone={() => cloneFlight(item)}
+            onDelete={() => deleteFlight(item.id)}
+          />
+        )}
+      />
     </SafeAreaView>
   );
 }
@@ -281,6 +316,12 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   count: { marginLeft: 'auto', color: pilot.muted, fontSize: fontSizes.sm, fontFamily: fontFamilies.body },
 
   empty: { color: pilot.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.base, textAlign: 'center', paddingVertical: 48, lineHeight: 22 },
+
+  // Month section header — name left, "{hours} h · {n} flights" right, small
+  // uppercase muted (scrolls with the list; stickySectionHeadersEnabled=false).
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 8, paddingBottom: 8, paddingHorizontal: 4 },
+  sectionMonth: { fontFamily: fontFamilies.bodyBold, fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase', color: pilot.muted },
+  sectionMeta: { fontFamily: fontFamilies.body, fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase', color: pilot.muted },
 
   // ── Flight card (same info as the reference, styled to the app's editorial
   //    language: calendar tile, display-font codes, dashed navy track, pills) ──
