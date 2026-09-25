@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
@@ -17,6 +17,20 @@ import {
   computeMatchCount, matchLabel, postedAgo, formatSalary,
 } from '../lib/jobMatch';
 import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
+import JobCard from '../components/jobs/JobCard';
+import { roleLabel } from '../lib/jobDisplay';
+import '../components/jobs/jobsRedesign.css';
+
+// Region tabs (redesign) — All last. No "Other" tab; untabbed countries show under All.
+const REGION_TABS = ['Middle East', 'Europe', 'North America', 'Asia-Pacific', 'All'];
+// Group order + labels for the redesigned list.
+const FIT_GROUPS = [
+  { key: 'qualify', label: '✓ You qualify', cls: 'q', hint: 'best match first' },
+  { key: 'incomplete', label: 'Complete your profile to check', cls: '', hint: '' },
+  { key: 'oneShort', label: 'One requirement short', cls: '', hint: "shows what's missing" },
+  { key: 'few', label: 'Few requirements stated', cls: '', hint: '' },
+  { key: 'other', label: 'Other roles', cls: '', hint: '' },
+];
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
 //   dark #2ECC71 → #166534 (match/ok), #F39C12 → #92400E (partial/warn),
@@ -356,6 +370,9 @@ export default function Jobs() {
   // counted (same ACTIVE + reqMinTotalHours in (hoursMin, hoursMax]).
   const [hoursMin] = useState(() => searchParams.get('hoursMin') || '');
   const [hoursMax] = useState(() => searchParams.get('hoursMax') || '');
+  // Region tab (redesign) + the aggregate response fields (counts, groups, banner).
+  const [region, setRegion] = useState(() => searchParams.get('region') || '');
+  const [meta, setMeta] = useState(null); // { regionCounts, fitGroupCounts, profileNudge, emptyProfile, qualifyCount, facetCounts, defaultRegion }
 
   // Pending (unapplied) filter state
   const [pendingAuthority, setPendingAuthority] = useState('');
@@ -458,9 +475,20 @@ export default function Jobs() {
       if (qualifiedOnly) params.qualifiedOnly = true;
       if (hoursMin) params.hoursMin = hoursMin;
       if (hoursMax) params.hoursMax = hoursMax;
+      if (region) params.region = region;
       if (sort) params.sort = sort;
       const { data } = await jobApi.list(params);
       dispatch(setJobs({ jobs: data.jobs, total: data.total }));
+      setMeta({
+        regionCounts: data.regionCounts || null,
+        fitGroupCounts: data.fitGroupCounts || null,
+        profileNudge: data.profileNudge || null,
+        emptyProfile: !!data.emptyProfile,
+        qualifyCount: data.qualifyCount ?? null,
+        facetCounts: data.facetCounts || null,
+        defaultRegion: data.defaultRegion || null,
+        total: data.total,
+      });
       const initSaved = {};
       (data.jobs || []).forEach((j) => {
         if (j.isSaved !== undefined) initSaved[j.id] = j.isSaved;
@@ -471,7 +499,7 @@ export default function Jobs() {
     } finally {
       setLoading(false);
     }
-  }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort, hoursMin, hoursMax]);
+  }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort, hoursMin, hoursMax, region]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -534,430 +562,106 @@ export default function Jobs() {
   const evergreenJobs = filtered.filter((j) => j.evergreen);
   const orderedJobs = [...freshJobs, ...evergreenJobs];
 
+  // Group the filtered jobs by fit group (server already ordered them best-first).
+  const grouped = FIT_GROUPS
+    .map((g) => ({ ...g, jobs: orderedJobs.filter((j) => j.match && j.match.fitGroup === g.key) }))
+    .filter((g) => g.jobs.length > 0);
+  const showGroups = !!token && !meta?.emptyProfile && orderedJobs.some((j) => j.match);
+  const nudge = meta?.profileNudge;
+  const rc = meta?.regionCounts;
+  const facet = meta?.facetCounts || {};
+  const openJob = (job) => navigate(`/jobs/${slugFor(job)}`);
+  const facetOpts = (obj) => Object.entries(obj || {}).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k]) => k);
+
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Jobs</h1>
-      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>
-        {token ? 'Cockpit roles, filtered to your profile.' : 'Cockpit roles from airlines worldwide.'}
-      </p>
-
-      {/* Desktop: sidebar + main column. Mobile: wrapper divs are style-less
-          no-ops, so the mobile flow below renders exactly as before. */}
-      <div style={!isMobile ? css.listWrap : undefined}>
-        {!isMobile && (
-          <aside style={css.sidebar} aria-label="Job filters">
-            <div style={css.sidebarHead}>
-              <span style={css.sidebarTitle}>Filters</span>
-              {activeFilterCount > 0 && (
-                <button style={css.sidebarClear} onClick={clearAllApplied}>Clear all</button>
-              )}
-            </div>
-            <Input as="select" label="Sort by" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
-              {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </Input>
-            {token && (
-              <label style={css.sidebarCheck}>
-                <input type="checkbox" checked={qualifiedOnly} onChange={(e) => setQualifiedOnly(e.target.checked)} />
-                Qualified only
-              </label>
-            )}
-            <Input as="select" label="Authority" value={authority} onChange={(e) => setAuthority(e.target.value)} style={{ fontSize: 14 }}>
-              {AUTHORITIES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
-            </Input>
-            <Input label="Aircraft Type" placeholder="e.g. Boeing 737" value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} style={{ fontSize: 14 }} />
-            <Input as="select" label="Role" value={role} onChange={(e) => setRole(e.target.value)} style={{ fontSize: 14 }}>
-              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </Input>
-            <Input as="select" label="Contract Type" value={contractType} onChange={(e) => setContractType(e.target.value)} style={{ fontSize: 14 }}>
-              {CONTRACT_TYPES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </Input>
-            <Input as="select" label="Posted Within" value={postedWithin} onChange={(e) => setPostedWithin(e.target.value)} style={{ fontSize: 14 }}>
-              {POSTED_WITHIN.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </Input>
-            <Input type="number" label="Min Salary" placeholder="e.g. 80000" value={minSalary} onChange={(e) => setMinSalary(e.target.value)} style={{ fontSize: 14 }} />
-            <label style={css.sidebarCheck}>
-              <input type="checkbox" checked={visaOnly} onChange={(e) => setVisaOnly(e.target.checked)} />
-              Visa sponsorship offered
-            </label>
-            <label style={css.sidebarCheck}>
-              <input type="checkbox" checked={ntrOnly} onChange={(e) => setNtrOnly(e.target.checked)} />
-              No type rating required
-            </label>
-          </aside>
-        )}
-        <div style={!isMobile ? css.main : undefined}>
-
-      {/* Top bar */}
-      {isMobile ? (
-        /* ─── Mobile (top-down): Row 1 status (counter + compact refresh) ·
-               Row 2 search + filters · Row 3 qualified chip + sort dropdown. ─── */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-          {/* Row 1: secondary status — counter (left) + compact refresh (right) */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 0' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{filtered.length} of {total} jobs</span>
-            <button
-              onClick={fetchJobs}
-              aria-label="Refresh jobs"
-              title="Refresh jobs"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)', padding: 4 }}
-            >
-              ↻ Refresh
-            </button>
-          </div>
-          {/* Row 2: search + filters */}
-          <Input
-            placeholder="Search by title, airline, or location..."
-            aria-label="Search jobs"
-            value={search} onChange={(e) => setSearch(e.target.value)}
-          />
-          <button
-            style={{ ...css.toggleBtn(filtersOpen || activeFilterCount > 0), justifyContent: 'center' }}
-            onClick={filtersOpen ? closeFilters : openFilters}
-          >
-            <SlidersHorizontal size={15} /> Filters
-            {activeFilterCount > 0 && (
-              <span style={css.filtersBadge}>{activeFilterCount}</span>
-            )}
-          </button>
-          {/* Row 3: qualified-only chip + sort */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-            {token && (
-              <button
-                style={{ ...css.toggleBtn(qualifiedOnly), flex: 1, justifyContent: 'center' }}
-                onClick={() => setQualifiedOnly((v) => !v)}
-              >
-                {qualifiedOnly ? '✓ ' : ''}Qualified only
-              </button>
-            )}
-            <div style={{ flex: 1 }}>
-              <Input as="select" aria-label="Sort jobs" value={sort} onChange={(e) => setSort(e.target.value)} style={{ fontSize: 14 }}>
-                {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </Input>
-            </div>
+      <div className="jobs-rd">
+        <div className="rd-head">
+          <h1>Jobs</h1>
+          <div className="rd-sub">
+            {(meta?.total ?? total ?? 0).toLocaleString()} cockpit jobs worldwide
+            {token && meta?.qualifyCount != null && <> · <b>{meta.qualifyCount} you qualify for</b></>}
           </div>
         </div>
-      ) : (
-        <div style={css.topBar}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <Input
-              placeholder="Search by title, airline, or location..."
-              aria-label="Search jobs"
-              value={search} onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <Button variant="secondary" onClick={fetchJobs}>↻ Refresh</Button>
-          <span style={css.count}>{filtered.length} of {total} jobs</span>
-        </div>
-      )}
 
-      {/* Filter panel — mobile only; desktop filters live in the sidebar */}
-      {isMobile && filtersOpen && (
-        <Card style={{ marginTop: 16, marginBottom: 20 }}>
-          <div style={css.filterGrid}>
-            <Input as="select" label="Authority" value={pendingAuthority} onChange={(e) => setPendingAuthority(e.target.value)}>
-              {AUTHORITIES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
-            </Input>
-            <Input label="Aircraft Type" placeholder="e.g. Boeing 737" value={pendingAircraftType} onChange={(e) => setPendingAircraftType(e.target.value)} />
-            <Input as="select" label="Role" value={pendingRole} onChange={(e) => setPendingRole(e.target.value)}>
-              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </Input>
-            <Input as="select" label="Contract Type" value={pendingContractType} onChange={(e) => setPendingContractType(e.target.value)}>
-              {CONTRACT_TYPES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </Input>
-            <Input as="select" label="Posted Within" value={pendingPostedWithin} onChange={(e) => setPendingPostedWithin(e.target.value)}>
-              {POSTED_WITHIN.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </Input>
-            <Input type="number" label="Min Salary" placeholder="e.g. 80000" value={pendingMinSalary} onChange={(e) => setPendingMinSalary(e.target.value)} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer', paddingTop: 22 }}>
-              <input type="checkbox" checked={pendingVisaOnly} onChange={(e) => setPendingVisaOnly(e.target.checked)} />
-              Visa sponsorship offered
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer', paddingTop: 22 }}>
-              <input type="checkbox" checked={pendingNtrOnly} onChange={(e) => setPendingNtrOnly(e.target.checked)} />
-              No type rating required
-            </label>
-          </div>
-          <div style={css.filterActions}>
-            <Button variant="ghost" onClick={clearAll}>Clear All</Button>
-            <Button onClick={applyFilters}>Apply Filters</Button>
-          </div>
-        </Card>
-      )}
-
-      {loading ? (
-        <div style={css.loading}>Loading jobs from around the world...</div>
-      ) : error ? (
-        <div style={css.empty}>
-          <div style={css.emptyIcon}><AlertTriangle size={48} color={SEM.amber} /></div>
-          <div style={css.emptyTitle}>Could not load jobs</div>
-          <div style={css.emptyText}>{error}</div>
-          <div style={{ marginTop: 20 }}>
-            <Button onClick={fetchJobs}>Retry</Button>
-          </div>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div style={css.empty}>
-          <div style={css.emptyIcon}><Search size={48} color="var(--text-secondary)" /></div>
-          <div style={css.emptyTitle}>No jobs found</div>
-          <div style={css.emptyText}>Try adjusting your search or filters.<br />New jobs added daily.</div>
-        </div>
-      ) : (
-        <>
-          {/* Logged-out: invite sign-in to unlock match scores against each role */}
-          {!token && (
-            <div style={{ marginBottom: 16, padding: '10px 16px', background: '#DBEAFE', border: '1px solid #BFDBFE', borderRadius: 8, fontSize: 13, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Info size={14} color="#1E40AF" />
-              Sign in to see how you match each role →{' '}
-              <a href="/login" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Sign in</a>
-            </div>
-          )}
-
-          {/* Profile-incomplete notice — shown when pilot has no hours, no certs, no ratings */}
-          {pilotProfile && pilotTotals &&
-            (pilotTotals.totalTime ?? 0) === 0 &&
-            (pilotProfile.certificates?.length ?? 0) === 0 &&
-            (pilotProfile.ratings?.length ?? 0) === 0 && (
-            <div style={{ marginBottom: 16, padding: '10px 16px', background: '#DBEAFE', border: '1px solid #BFDBFE', borderRadius: 8, fontSize: 13, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Info size={14} color="#1E40AF" />
-              Complete your profile to improve job matching →{' '}
-              <a href="/profile" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Go to Profile</a>
-            </div>
-          )}
-
-          <div style={isMobile ? css.grid : css.list}>
-            {orderedJobs.map((job, jobIndex) => {
-              const match = matchLabel(job.matchScore);
-              const isHover = hoverId === job.id;
-              const isSaved = savedMap[job.id] !== undefined ? savedMap[job.id] : (job.isSaved || false);
-              const ago = postedAgo(job.postedAt);
-              const matchCount = pilotProfile && pilotTotals
-                ? computeMatchCount(job, pilotProfile, pilotTotals)
-                : null;
-              const airlineMatch = resolveAirline(airlineMap, job.company);
-              // Spec sheet rows — only fields the job actually states; the
-              // block renders only with ≥2 rows so it never looks half-empty.
-              const specRows = [
-                job.reqMinTotalHours ? ['Total time', `${job.reqMinTotalHours.toLocaleString()} hrs`] : null,
-                job.reqMinPicHours ? ['PIC time', `${job.reqMinPicHours.toLocaleString()} hrs`] : null,
-                job.reqCertificates?.length ? ['Licence', job.reqCertificates.slice(0, 2).join(' / ')] : null,
-                job.reqAuthorities?.length ? ['Authority', job.reqAuthorities.slice(0, 2).join(' / ')] : null,
-              ].filter(Boolean);
-              const specSheet = specRows.length >= 2 ? specRows : null;
+        {rc && (
+          <div className="regions" role="tablist" aria-label="Region">
+            {REGION_TABS.map((r) => {
+              const count = r === 'All' ? rc.All : rc[r];
+              const active = r === 'All' ? !region : region === r;
               return (
-                <React.Fragment key={job.id}>
-                {jobIndex === freshJobs.length && evergreenJobs.length > 0 && (
-                  <div style={css.ongoingDivider}>
-                    Ongoing recruitment — open vacancies, not new postings
-                  </div>
-                )}
-                <div
-                  className="ch-card"
-                  style={{ ...css.card, ...(isMobile ? { padding: '14px 96px 14px 14px' } : {}), ...(isHover ? css.cardHover : {}) }}
-                  onMouseEnter={() => setHoverId(job.id)}
-                  onMouseLeave={() => setHoverId(null)}
-                  onClick={() => navigate(`/jobs/${slugFor(job)}`)}
-                >
-                  {/* Heart save button */}
-                  <button
-                    style={{ ...css.heartBtn, ...(isMobile ? { top: 10, transform: 'none' } : {}) }}
-                    onClick={(e) => { e.stopPropagation(); if (!token) { navigate('/login'); return; } handleSaveToggle(e, job.id); }}
-                    title={token ? (isSaved ? 'Unsave job' : 'Save job') : 'Sign in to save'}
-                    aria-label={token ? (isSaved ? 'Unsave job' : 'Save job') : 'Sign in to save'}
-                    aria-pressed={isSaved}
-                  >
-                    <PlaneSave saved={isSaved} size={isMobile ? 24 : 36} />
-                  </button>
-
-                  {isDesktop ? (
-                    /* ── Wide desktop (≥1024): Wuzzuf-style — text left, logo right ── */
-                    <>
-                      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={css.cardTop}>
-                            <div style={css.title}>{job.title}</div>
-                            {job.role && (
-                              <div style={css.rolePill}>
-                                {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
-                              </div>
-                            )}
-                            {job.reqAuthorities?.[0] && (
-                              <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
-                            )}
-                          </div>
-                          {/* company · location */}
-                          <div style={css.airline}>
-                            {job.company}
-                            {job.location && (
-                              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                {'  ·  '}
-                                {countryFlag(job.country) && <span aria-hidden="true">{countryFlag(job.country)} </span>}
-                                {job.location}
-                              </span>
-                            )}
-                          </div>
-                          {job.evergreen
-                            ? <div style={css.ongoingBadge}>↻ Ongoing · {job.lastSeenAt ? `confirmed listed ${postedAgo(job.lastSeenAt)}` : 'still listed'}</div>
-                            : (ago && <div style={css.postedAgo}>{ago}</div>)}
-                          {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
-                            <div style={css.employerBadge}>Posted directly by employer</div>
-                          )}
-                          {/* badge row: direct-apply, via-source, visa/NTR, match info */}
-                          {(job.applyIsDirect || job.applyVia || job.visaSponsorship || job.typeRatingStatus === 'NTR' || matchCount) && (
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
-                              {job.sourcePlatform !== 'EMPLOYER_DIRECT' && job.applyIsDirect && <span style={css.directBadge}>✓ APPLY DIRECT</span>}
-                              {job.applyVia && <span style={css.viaBadge}>via {job.applyVia}</span>}
-                              {job.visaSponsorship && <span style={css.visaBadge}>VISA SPONSORSHIP</span>}
-                              {job.typeRatingStatus === 'NTR' && <span style={css.ntrBadge}>NO TYPE RATING REQUIRED</span>}
-                              {matchCount && <MatchCountBadge matched={matchCount.matched} total={matchCount.total} />}
-                            </div>
-                          )}
-                        </div>
-                        {/* Brand mark — right edge; renders nothing (no gap) when no logo */}
-                        <AirlineLogo
-                          hideIfMissing
-                          logoUrl={airlineMatch?.logoUrl}
-                          iataCode={airlineMatch?.iataCode}
-                          name={job.company}
-                          box={44}
-                          maxW={64}
-                          font={12}
-                        />
-                      </div>
-                      {/* remaining chips when no spec sheet (location now lives on the company line) */}
-                      {!specSheet && (job.reqMinTotalHours || job.reqCertificates?.[0]) && (
-                        <div style={css.metaRow}>
-                          {job.reqMinTotalHours && (
-                            <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
-                          )}
-                          {job.reqCertificates?.[0] && (
-                            <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    /* ── Mobile + tablet (<1024): unchanged — logo left ── */
-                    <>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        {/* Brand mark — logo (or initials fallback) at the left of the title area */}
-                        <AirlineLogo
-                          hideIfMissing
-                          logoUrl={airlineMatch?.logoUrl}
-                          iataCode={airlineMatch?.iataCode}
-                          name={job.company}
-                          box={isMobile ? 36 : 44}
-                          maxW={isMobile ? 52 : 64}
-                          font={12}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={css.cardTop}>
-                            <div style={css.title}>{job.title}</div>
-                            {job.role && (
-                              <div style={css.rolePill}>
-                                {{ CAPTAIN: 'CAPTAIN', FIRST_OFFICER: 'FIRST OFFICER', INSTRUCTOR: 'INSTRUCTOR', FLIGHT_ENGINEER: 'FLIGHT ENG' }[job.role] || job.role}
-                              </div>
-                            )}
-                            {job.reqAuthorities?.[0] && (
-                              <div style={css.authorityBadge}>{job.reqAuthorities[0]}</div>
-                            )}
-                          </div>
-                          <div>
-                            <div style={css.airline}>{job.company}</div>
-                            {job.evergreen
-                              ? <div style={css.ongoingBadge}>↻ Ongoing · {job.lastSeenAt ? `confirmed listed ${postedAgo(job.lastSeenAt)}` : 'still listed'}</div>
-                              : (ago && <div style={css.postedAgo}>{ago}</div>)}
-                            {job.sourcePlatform === 'EMPLOYER_DIRECT' && (
-                              <div style={css.employerBadge}>Posted directly by employer</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {(job.applyIsDirect || job.applyVia || job.visaSponsorship || job.typeRatingStatus === 'NTR') && (
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {job.sourcePlatform !== 'EMPLOYER_DIRECT' && job.applyIsDirect && <span style={css.directBadge}>✓ APPLY DIRECT</span>}
-                          {job.applyVia && <span style={css.viaBadge}>via {job.applyVia}</span>}
-                          {job.visaSponsorship && <span style={css.visaBadge}>VISA SPONSORSHIP</span>}
-                          {job.typeRatingStatus === 'NTR' && <span style={css.ntrBadge}>NO TYPE RATING REQUIRED</span>}
-                        </div>
-                      )}
-
-                      <div style={css.metaRow}>
-                        <span style={css.meta}>
-                          <MapPin size={11} />
-                          {countryFlag(job.country) && <span aria-hidden="true">{countryFlag(job.country)}</span>}
-                          {job.location}
-                        </span>
-                        {(isMobile || !specSheet) && job.reqMinTotalHours && (
-                          <span style={css.meta}><Clock size={11} /> {job.reqMinTotalHours.toLocaleString()} hrs min</span>
-                        )}
-                        {(isMobile || !specSheet) && job.reqCertificates?.[0] && (
-                          <span style={css.meta}><FileText size={11} /> {job.reqCertificates[0]}</span>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {!isMobile && specSheet && (
-                    <div style={css.specSheet}>
-                      {specSheet.map(([label, value]) => (
-                        <div key={label} style={css.specItem}>
-                          <span style={css.specLabel}>{label}</span>
-                          <span style={css.specVal} title={value}>{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {job.reqAircraftTypes?.length > 0 && (
-                    <div style={css.reqs}>
-                      {job.reqAircraftTypes.slice(0, 3).map((a) => (
-                        <span key={a} style={css.req}>{a}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {formatSalary(job, true) && (
-                    <div>
-                      <span style={css.salary}>$ {formatSalary(job, true)}</span>
-                    </div>
-                  )}
-
-                  {match && <span style={{ alignSelf: 'flex-start' }}><Badge variant={match.variant} style={{ fontWeight: 700 }}>✓ {match.text}</Badge></span>}
-                  {matchCount && !isMobile && !isDesktop && <span style={{ alignSelf: 'flex-start' }}><MatchCountBadge matched={matchCount.matched} total={matchCount.total} /></span>}
-                  {isMobile && matchCount && matchCount.total > 0 && (() => {
-                    const pct = Math.round((matchCount.matched / matchCount.total) * 100);
-                    const ms = matchStyle(pct);
-                    return (
-                      <div style={{ position: 'absolute', right: 12, top: 44, textAlign: 'right', minWidth: 64 }}>
-                        <MatchScore score={pct} label={ms.label} size="sm" />
-                      </div>
-                    );
-                  })()}
-
-                  {airlineMatch && (
-                    <div
-                      onClick={(e) => { e.stopPropagation(); navigate(`/airlines/${airlineMatch.id}`); }}
-                      style={{ fontSize: 12, color: 'var(--accent)', cursor: 'pointer', fontWeight: 600, opacity: 0.85, marginTop: 2 }}
-                    >
-                      View {airlineMatch.name} factfile →
-                    </div>
-                  )}
-
-                  {/* Desktop: whole card is clickable — button removed */}
-                  {isMobile && (
-                    <div style={{ marginTop: 'auto' }}>
-                      <Button variant="secondary" style={{ width: '100%' }}>View Details →</Button>
-                    </div>
-                  )}
-                </div>
-                </React.Fragment>
+                <button key={r} className={active ? 'on' : ''} role="tab" aria-selected={active}
+                  onClick={() => setRegion(r === 'All' ? '' : r)}>
+                  {r === 'All' ? 'All regions' : r}<small>{count ?? 0}</small>
+                </button>
               );
             })}
           </div>
-        </>
-      )}
+        )}
+
+        <div className="fbar">
+          <div className="fsearch"><Search size={14} color="var(--text-secondary)" />
+            <input placeholder="Search jobs…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search jobs" />
+          </div>
+          <select className="fbtn" value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} aria-label="Aircraft">
+            <option value="">Aircraft</option>
+            {facetOpts(facet.aircraft).map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select className="fbtn" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Role">
+            <option value="">Role</option>
+            {facetOpts(facet.role).map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
+          </select>
+          <select className="fbtn" value={authority} onChange={(e) => setAuthority(e.target.value)} aria-label="Licence authority">
+            <option value="">Licence</option>
+            {facetOpts(facet.authority).map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <button type="button" className={`fbtn tog${visaOnly ? ' on act' : ''}`} onClick={() => setVisaOnly((v) => !v)} aria-pressed={visaOnly}>
+            <span className="sw" />Visa sponsored
+          </button>
+          <div className="fsort">Sort:
+            <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
+              {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
         </div>
+
+        {(region || aircraftType || role || authority || visaOnly || search) && (
+          <div className="applied">
+            {region && <button className="ach" onClick={() => setRegion('')}>{region} ×</button>}
+            {aircraftType && <button className="ach" onClick={() => setAircraftType('')}>{aircraftType} ×</button>}
+            {role && <button className="ach" onClick={() => setRole('')}>{roleLabel(role)} ×</button>}
+            {authority && <button className="ach" onClick={() => setAuthority('')}>{authority} ×</button>}
+            {visaOnly && <button className="ach" onClick={() => setVisaOnly(false)}>Visa sponsored ×</button>}
+            <a href="#" onClick={(e) => { e.preventDefault(); clearAllApplied(); setRegion(''); }}>Clear all</a>
+            <button className="alert-btn" type="button" title="Save this search as an alert (next slice)">🔔 Create alert from this search</button>
+          </div>
+        )}
+
+        {meta?.emptyProfile && (
+          <div className="eprof">
+            <div><b>Complete your profile to see which jobs you qualify for.</b> Add your <Link to="/profile">licence</Link> and your <Link to="/logbook">hours</Link> and we'll check every job against them.</div>
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--accent)' }}>Loading jobs…</div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>{error}</div>
+        ) : orderedJobs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>No jobs match these filters.</div>
+        ) : showGroups ? (
+          grouped.map((g) => (
+            <React.Fragment key={g.key}>
+              <div className={`group ${g.cls}`}>
+                <span>{g.label} · {g.jobs.length}</span>
+                <small>{g.key === 'incomplete' && nudge ? `add ${nudge.fields.map((f) => f.field).slice(0, 2).join(', ')}` : g.hint}</small>
+              </div>
+              {g.jobs.map((job) => <JobCard key={job.id} job={job} onClick={() => openJob(job)} />)}
+            </React.Fragment>
+          ))
+        ) : (
+          <div>{orderedJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => openJob(job)} />)}</div>
+        )}
       </div>
     </LightPage>
   );
