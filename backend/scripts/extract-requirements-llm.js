@@ -32,7 +32,16 @@ Rules: use null / [] when a requirement is NOT stated. Do NOT infer or guess bey
 certificates: licence codes only, e.g. ["ATPL","CPL","MPL","PPL"]. authorities: e.g. ["EASA","FAA","CAA","GCAA"].
 aircraftTypes: ICAO-ish type codes the candidate must be rated on, e.g. ["A320","B737"] — NOT the role.
 medicalClass: "1" or "2" (the number only). englishLevel: ICAO 1-6 integer. workAuthorization: "EU"|"US"|"UK"|null.
-Never put a job title/role (e.g. "First Officer") in any array.`;
+Never put a job title/role (e.g. "First Officer") in any array.
+
+CRITICAL — hours fields are CAREER TOTALS ONLY, never recency or currency.
+IGNORE (return null for the hours field) any number expressed as recency/currency, e.g.:
+"X hours in the last 6/12 months", "within the preceding N days", "recent experience of",
+"currency: N hours", "N takeoffs and landings in the last 90 days", "current on type".
+Only store a number that is stated as a minimum CAREER total (total time, PIC, multi-engine,
+turbine, instrument, cross-country). If unsure whether a number is a career minimum or a
+recency requirement, return null. A job requiring a full ATP/ATPL will not have a career
+total-time minimum of only a few dozen hours — do not output such a value.`;
 
 async function callAnthropic(apiKey, description) {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -57,6 +66,27 @@ const ROLE_RE = /first officer|captain|second officer|\bpilot\b|cadet|instructor
 const posNum = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.round(v) : null);
 const cleanArr = (v) => (Array.isArray(v) ? [...new Set(v.map((x) => String(x).trim().toUpperCase()).filter((x) => x && x.length <= 12 && !ROLE_RE.test(x)))] : []);
 
+// Plausibility guard: a FULL ATP (FAA ATP always implies ≥1500 h; or a Captain role
+// requiring full ATPL) can never have a career total-time minimum below 250 h — such a
+// value is a recency/currency line misread as a minimum. Store null instead. EXCLUDES
+// low-hour tracks that legitimately ask 200–500 h: a frozen ATPL, ATPL theory, cadet/MPL.
+// Every nulled value is logged for review. `role` is optional (unknown at extraction time).
+const GUARD_MIN = 250;
+function isLowHourTrack(certs, description) {
+  if ((certs || []).includes('MPL')) return true;
+  return /frozen|theoretical|atpl theory|\btheory\b|cadet|unfrozen/i.test(String(description || ''));
+}
+function applyPlausibilityGuard(fields, description, role, onNull) {
+  const certs = fields.reqCertificates || [];
+  const fullAtp = certs.includes('ATP') || role === 'CAPTAIN';
+  if (fullAtp && !isLowHourTrack(certs, description)
+      && fields.reqMinTotalHours != null && fields.reqMinTotalHours < GUARD_MIN) {
+    if (onNull) onNull('reqMinTotalHours', fields.reqMinTotalHours);
+    fields.reqMinTotalHours = null;
+  }
+  return fields;
+}
+
 function toReqFields(o) {
   const eng = Number(o.englishLevel);
   return {
@@ -80,7 +110,7 @@ async function extractRequirementsLLM({ limit = 25, dryRun = false } = {}) {
   if (!apiKey) { logger.warn({ source: 'REQ-LLM', msg: 'ANTHROPIC_API_KEY not set — skipping' }); return { considered: 0, extracted: 0 }; }
 
   const jobs = await prisma.$queryRaw`
-    SELECT id, description FROM "Job"
+    SELECT id, description, role FROM "Job"
     WHERE status = 'ACTIVE' AND "requirementsExtractedAt" IS NULL
       AND char_length(description) >= ${MIN_DESC}
     ORDER BY "createdAt" DESC LIMIT ${limit}`;
@@ -91,6 +121,9 @@ async function extractRequirementsLLM({ limit = 25, dryRun = false } = {}) {
     try {
       const raw = await callAnthropic(apiKey, j.description);
       const fields = toReqFields(raw);
+      applyPlausibilityGuard(fields, j.description, j.role, (field, value) => {
+        logger.warn({ source: 'REQ-LLM-GUARD', id: j.id, field, value, msg: 'nulled implausible full-ATP hours minimum' });
+      });
       if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { ...fields, requirementsExtractedAt: now } });
       extracted++;
       logger.info({ source: 'REQ-LLM', id: j.id, msg: 'requirements extracted', certs: fields.reqCertificates.length, hours: fields.reqMinTotalHours });
@@ -104,7 +137,7 @@ async function extractRequirementsLLM({ limit = 25, dryRun = false } = {}) {
   return { considered: jobs.length, extracted, failed };
 }
 
-module.exports = { extractRequirementsLLM, toReqFields };
+module.exports = { extractRequirementsLLM, toReqFields, applyPlausibilityGuard, isLowHourTrack };
 
 if (require.main === module) {
   const li = process.argv.indexOf('--limit');
