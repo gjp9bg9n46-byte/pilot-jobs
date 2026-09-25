@@ -333,14 +333,20 @@ exports.getJobs = async (req, res, next) => {
     const regionSel = region && region !== 'All' ? region : null;
     let view = regionSel ? matched.filter((m) => m.region === regionSel) : matched;
 
+    // Empty-profile rule: no licence AND no hours → nothing to match on, so we
+    // return NO fit groups / no qualify count and the client shows one banner
+    // linking to Profile/Logbook. `matchable` gates every fit computation below.
+    const matchable = !!ctx && ctx.matchable;
+    const emptyProfile = !!ctx && !ctx.matchable;
+
     // Fit-group counts over the region-filtered view (drives the header + groups).
-    const fitGroupCounts = { qualify: 0, incomplete: 0, oneShort: 0, other: 0 };
-    if (ctx) for (const m of view) fitGroupCounts[m.match.fitGroup] += 1;
+    const fitGroupCounts = { qualify: 0, incomplete: 0, oneShort: 0, few: 0, other: 0 };
+    if (matchable) for (const m of view) fitGroupCounts[m.match.fitGroup] += 1;
 
     // Profile nudge for the "Complete your profile to check" (incomplete) group:
     // the profile fields whose absence blocks the MOST incomplete jobs, top 3.
     let profileNudge = null;
-    if (ctx && fitGroupCounts.incomplete > 0) {
+    if (matchable && fitGroupCounts.incomplete > 0) {
       const NUDGE_LABEL = {
         authority: 'licence authority', licence: 'licence', medical: 'medical certificate',
         typeRating: 'type ratings', english: 'English level (ICAO)', workAuth: 'work authorisation',
@@ -365,15 +371,14 @@ exports.getJobs = async (req, res, next) => {
       for (const a of (m.job.reqAuthorities || [])) facetCounts.authority[a] = (facetCounts.authority[a] || 0) + 1;
     }
 
-    // qualifiedOnly === "true" now means fitGroup "qualify" (unknowns allowed).
-    if (qualifiedOnly === 'true' && ctx) view = view.filter((m) => m.match.fitGroup === 'qualify');
+    // qualifiedOnly === "true" means strict fitGroup "qualify".
+    if (qualifiedOnly === 'true' && matchable) view = view.filter((m) => m.match.fitGroup === 'qualify');
 
-    // "best" (new default when logged in): qualify → oneShort → other, then keep the
-    // base orderBy (direct-first, newest) within each group via a STABLE sort.
-    const effectiveSort = req.query.sort || (ctx ? 'best' : 'newest');
-    if (effectiveSort === 'best' && ctx) {
-      // qualify → incomplete → oneShort → other, base order preserved (stable).
-      const rank = { qualify: 0, incomplete: 1, oneShort: 2, other: 3 };
+    // "best" (default when matchable): qualify → incomplete → oneShort → few → other,
+    // base orderBy (direct-first, newest) preserved within each group via stable sort.
+    const effectiveSort = req.query.sort || (matchable ? 'best' : 'newest');
+    if (effectiveSort === 'best' && matchable) {
+      const rank = { qualify: 0, incomplete: 1, oneShort: 2, few: 3, other: 4 };
       view = view.map((m, i) => ({ m, i })).sort((a, b) => (rank[a.m.match.fitGroup] - rank[b.m.match.fitGroup]) || (a.i - b.i)).map((x) => x.m);
     }
 
@@ -408,11 +413,12 @@ exports.getJobs = async (req, res, next) => {
       pages: Math.ceil(total / Number(limit)),
       // New (additive) — ignored by the current mobile client:
       regionCounts,
-      fitGroupCounts: ctx ? fitGroupCounts : null,
+      fitGroupCounts: matchable ? fitGroupCounts : null,
       profileNudge,
+      emptyProfile,
       facetCounts,
       defaultRegion: ctx ? defaultRegionForPilot(ctx.country) : null,
-      qualifyCount: ctx ? fitGroupCounts.qualify : null,
+      qualifyCount: matchable ? fitGroupCounts.qualify : null,
     });
   } catch (err) {
     next(err);

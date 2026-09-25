@@ -17,26 +17,30 @@ const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
 
 // ── Region (derived from the job's country) ──────────────────────────────────
 const MIDDLE_EAST = new Set(['united arab emirates', 'uae', 'ae', 'qatar', 'qa', 'saudi arabia', 'ksa', 'sa', 'bahrain', 'bh', 'kuwait', 'kw', 'oman', 'om', 'jordan', 'jo', 'lebanon', 'lb', 'israel', 'il', 'iraq', 'iq', 'egypt', 'egitto', 'egypte', 'eg', 'turkey', 'türkiye', 'tr', 'syria', 'sy', 'yemen', 'ye', 'iran', 'ir']);
-const US = new Set(['united states', 'usa', 'us', 'u.s.', 'united states of america', 'america']);
+// North America = US + Canada (merged tab; no separate "United States").
+const NORTH_AMERICA = new Set(['united states', 'usa', 'us', 'u.s.', 'united states of america', 'america', 'canada', 'ca']);
 const ASIA_PACIFIC = new Set(['china', 'cn', 'hong kong', 'hk', 'japan', 'jp', 'south korea', 'korea', 'kr', 'singapore', 'sg', 'malaysia', 'my', 'thailand', 'th', 'vietnam', 'vn', 'indonesia', 'id', 'philippines', 'ph', 'india', 'in', 'pakistan', 'pk', 'australia', 'au', 'new zealand', 'nz', 'taiwan', 'tw', 'cambodia', 'kh', 'macau', 'mo', 'brunei', 'bn', 'sri lanka', 'lk', 'bangladesh', 'bd', 'nepal', 'np', 'maldives', 'mv']);
 const EUROPE = new Set(['united kingdom', 'uk', 'gb', 'great britain', 'england', 'scotland', 'wales', 'ireland', 'ie', 'france', 'fr', 'germany', 'de', 'spain', 'es', 'portugal', 'pt', 'italy', 'it', 'netherlands', 'nl', 'belgium', 'be', 'luxembourg', 'lu', 'switzerland', 'ch', 'austria', 'at', 'poland', 'pl', 'czech republic', 'czechia', 'cz', 'slovakia', 'sk', 'hungary', 'hu', 'romania', 'ro', 'bulgaria', 'bg', 'greece', 'gr', 'croatia', 'hr', 'slovenia', 'si', 'denmark', 'dk', 'sweden', 'se', 'norway', 'no', 'finland', 'fi', 'iceland', 'is', 'estonia', 'ee', 'latvia', 'lv', 'lithuania', 'lt', 'malta', 'mt', 'cyprus', 'cy', 'serbia', 'rs', 'ukraine', 'ua', 'albania', 'al', 'north macedonia', 'mk', 'montenegro', 'me', 'bosnia and herzegovina', 'ba', 'moldova', 'md']);
 
-const REGIONS = ['Middle East', 'Europe', 'United States', 'Asia-Pacific', 'Other'];
+// Tabbed regions only — there is NO "Other" tab. Countries outside these four
+// (South Africa, etc.) still classify as 'Other' for counting but appear only under
+// the "All regions" tab.
+const REGIONS = ['Middle East', 'Europe', 'North America', 'Asia-Pacific'];
 
 function regionForCountry(country) {
   const c = String(country || '').trim().toLowerCase();
   if (!c) return 'Other';
-  if (US.has(c)) return 'United States';
+  if (NORTH_AMERICA.has(c)) return 'North America';
   if (MIDDLE_EAST.has(c)) return 'Middle East';
   if (EUROPE.has(c)) return 'Europe';
   if (ASIA_PACIFIC.has(c)) return 'Asia-Pacific';
-  return 'Other'; // genuine Other today: Canada, South Africa, other Africa/LatAm
+  return 'Other'; // untabbed (e.g. South Africa) — reachable only via "All regions"
 }
 
 // Map a pilot's country/base to a default region (else null → "All regions").
 function defaultRegionForPilot(country) {
   const r = country ? regionForCountry(country) : 'Other';
-  return r === 'Other' ? null : r;
+  return REGIONS.includes(r) ? r : null;
 }
 
 // ── Normalisation (mirrors the strict qualifiedOnly logic) ───────────────────
@@ -87,6 +91,9 @@ function buildContextInner(pilot, flightCerts, totals) {
     willingToRelocate: !!pilot.willingToRelocate,
     totals: totals || {},
     country: pilot.country ?? null,
+    // Empty-profile rule: with no licence AND no hours there is nothing to match on,
+    // so the caller shows a "complete your profile" banner instead of fit groups.
+    matchable: certTypes.size > 0 || ((totals && totals.totalTime) > 0),
   };
 }
 
@@ -176,11 +183,15 @@ function matchJob(job, ctx) {
   //   incomplete = 0 unmet but too much unknown to be sure ("complete your profile")
   //   oneShort   = exactly 1 unmet
   //   other      = ≥2 unmet
+  //   few  = job states <2 requirements → too little to be a real "qualify"
+  //          (neutral group after oneShort). Applies only to the 0-unmet side;
+  //          a 1-requirement job you FAIL is still oneShort.
   const mustHaveUnknown = reqs.some((r) => r.mustHave && r.status === 'unknown');
   const otherUnknown = reqs.filter((r) => !r.mustHave && r.status === 'unknown').length;
   let fitGroup;
   if (counts.unmet >= 2) fitGroup = 'other';
   else if (counts.unmet === 1) fitGroup = 'oneShort';
+  else if (reqs.length < 2) fitGroup = 'few';
   else if (!mustHaveUnknown && otherUnknown <= 1) fitGroup = 'qualify';
   else fitGroup = 'incomplete';
 
