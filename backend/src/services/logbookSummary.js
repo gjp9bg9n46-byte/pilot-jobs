@@ -256,8 +256,16 @@ async function buildLogbookSummary(pilotId) {
   return { totals, byType, milestone, limits, currency, months };
 }
 
+// Display type for a flight-log row: stored aircraftType, else inferred from
+// registration (read-time; nothing stored). Shared by the list endpoint so the
+// Aircraft column can show a type even when the import left aircraftType blank.
+function displayTypeFor(log) {
+  return resolveType(log).type || '';
+}
+
 module.exports = {
   buildLogbookSummary,
+  displayTypeFor,
   // exported for unit tests
   _internals: { blockFromTimes, normaliseType, classForType, typeFromRegistration, resolveType, buildLadder },
 };

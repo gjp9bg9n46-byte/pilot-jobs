@@ -148,6 +148,8 @@ exports.getJobs = async (req, res, next) => {
       contractType,
       region,
       maxReqHours,
+      hoursMin,
+      hoursMax,
       salaryMin,
       postedWithin,
       sort = 'newest',
@@ -226,6 +228,17 @@ exports.getJobs = async (req, res, next) => {
           { reqMinTotalHours: { lte: Number(maxReqHours) } },
         ],
       });
+    }
+
+    // Milestone hours window (from the Logbook "next milestone" jobs hook): jobs
+    // whose reqMinTotalHours is in (hoursMin, hoursMax]. Mirrors the summary's
+    // jobsUnlocked query EXACTLY — gt excludes null-requirement jobs — so the
+    // "+N jobs → See them" link returns the same N the dashboard counted.
+    if (hoursMin != null && hoursMin !== '') {
+      andConditions.push({ reqMinTotalHours: { gt: Number(hoursMin) } });
+    }
+    if (hoursMax != null && hoursMax !== '') {
+      andConditions.push({ reqMinTotalHours: { lte: Number(hoursMax) } });
     }
 
     // Min salary expected: job's salaryMax must be >= requested salaryMin

@@ -2,7 +2,7 @@ const { randomUUID } = require('crypto');
 const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
 const { parseCSV, detectMapping, coerceRow, extractKeyFields, enrichColumns } = require('../services/importService');
-const { buildLogbookSummary } = require('../services/logbookSummary');
+const { buildLogbookSummary, displayTypeFor } = require('../services/logbookSummary');
 
 const IMPORT_ROW_LIMIT = 5000;
 
@@ -23,15 +23,27 @@ exports.getLogs = async (req, res, next) => {
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 2000);
     const skip = (page - 1) * limit;
-    const [logs, total] = await Promise.all([
-      prisma.flightLog.findMany({
-        where: { pilotId: req.pilot.id },
-        orderBy: { date: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.flightLog.count({ where: { pilotId: req.pilot.id } }),
+
+    // Server-side search across ALL flights (not just the current page): matches
+    // aircraft type, registration, departure or arrival, case-insensitive.
+    const search = String(req.query.search || '').trim();
+    const where = { pilotId: req.pilot.id };
+    if (search) {
+      where.OR = [
+        { aircraftType: { contains: search, mode: 'insensitive' } },
+        { registration: { contains: search, mode: 'insensitive' } },
+        { departure: { contains: search, mode: 'insensitive' } },
+        { arrival: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [rows, total] = await Promise.all([
+      prisma.flightLog.findMany({ where, orderBy: { date: 'desc' }, skip, take: limit }),
+      prisma.flightLog.count({ where }),
     ]);
+    // Attach the read-time display type (import left aircraftType blank for some
+    // pilots; the Aircraft column infers it from the registration).
+    const logs = rows.map((l) => ({ ...l, displayType: displayTypeFor(l) }));
     res.json({ logs, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     next(err);

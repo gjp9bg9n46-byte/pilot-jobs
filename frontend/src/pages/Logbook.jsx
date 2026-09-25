@@ -12,6 +12,7 @@ import AIRPORTS from '../data/airports.json';
 import ImportModal from '../components/ImportModal';
 import AircraftCombobox from '../components/AircraftCombobox';
 import LogbookDashboard from '../components/logbook/LogbookDashboard';
+import FlightList from '../components/logbook/FlightList';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -85,13 +86,6 @@ const css = {
   mCardActions: { display: 'flex', gap: 2, justifyContent: 'flex-end', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 4 },
   mEmpty: { textAlign: 'center', padding: '48px 16px', color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6 },
 };
-
-// Compact label-value stat line shared by every mobile card.
-function statLine(block, pic, ldg, night) {
-  return (
-    <>Block <strong style={{ color: 'var(--accent)' }}>{block}</strong> · PIC {pic > 0 ? `${pic.toFixed(1)}h` : '—'} · {ldg} LDG · {night > 0 ? `${night.toFixed(1)}h` : '0h'} NT</>
-  );
-}
 
 const TAIL_PREFIXES = ['', 'A6-', 'N', 'G-', 'OE-', 'D-', 'F-', 'HB-', 'TC-', 'SU-', 'AP-', 'VT-', '7T-', 'HL', 'B-', 'JA', 'VH-', 'ZS-', 'C-', 'OY-', 'SE-', 'LN-', 'OH-', 'PH-', 'CS-', 'EC-', 'EI-', 'TS-', 'CN-', 'EP-'];
 
@@ -566,8 +560,11 @@ function Pagination({ page, totalPages, total, pageSize, count, onChange, isMobi
 export default function Logbook() {
   const dispatch = useDispatch();
   const isMobile = useIsMobile(768);
+  const dropNight = useIsMobile(1024); // iPad (768–1023) always drops the Night column
   const { logs, totals, total } = useSelector((s) => s.logbook);
   const [summary, setSummary] = useState(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchResults, setSearchResults] = useState(null); // { logs } across ALL flights when searching
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
@@ -577,16 +574,9 @@ export default function Logbook() {
   const [editFlight, setEditFlight] = useState(null);
   const [cloneFlight, setCloneFlight] = useState(null);
   const [search, setSearch] = useState('');
-  const [expandedDuties, setExpandedDuties] = useState(new Set());
   const [showImport, setShowImport] = useState(false);
-  const [hoverRow, setHoverRow] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null); // { label, fn }
 
-  const toggleDuty = (id) => setExpandedDuties((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
   const [showCarryForward, setShowCarryForward] = useState(false); // CF editor modal
   const [carryForward, setCarryForward] = useState({});
   const [carryForwardForm, setCarryForwardForm] = useState({});
@@ -602,6 +592,25 @@ export default function Logbook() {
     setCarryForwardForm(Object.fromEntries(Object.entries(carryForward).map(([k, v]) => [k, v || ''])));
     setShowCarryForward(true);
   };
+
+  // Debounce the search box (~300ms) before hitting the server.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Server-side search across ALL flights (not just the current page).
+  useEffect(() => {
+    if (!debouncedSearch) { setSearchResults(null); return undefined; }
+    let active = true;
+    flightLogApi.list(1, 1000, debouncedSearch)
+      .then(({ data }) => { if (active) setSearchResults(data); })
+      .catch(() => { if (active) setSearchResults({ logs: [] }); });
+    return () => { active = false; };
+  }, [debouncedSearch]);
+
+  const searching = debouncedSearch.length > 0;
+  const dataset = searching ? (searchResults?.logs || []) : logs;
 
   // Load one page of flights into the table.
   const loadPage = useCallback(async (p) => {
@@ -683,36 +692,6 @@ export default function Logbook() {
   // Currency is now computed server-side and delivered in /logbook/summary
   // (see LogbookDashboard). recentLogs is still fetched for potential reuse.
 
-  const filteredLogs = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return logs;
-    return logs.filter((log) =>
-      (log.aircraftType || '').toLowerCase().includes(q) ||
-      (log.registration || '').toLowerCase().includes(q) ||
-      (log.departure || '').toLowerCase().includes(q) ||
-      (log.arrival || '').toLowerCase().includes(q)
-    );
-  }, [logs, search]);
-
-  const groupedRows = useMemo(() => {
-    const groups = [];
-    const seenDuty = new Set();
-    for (const log of filteredLogs) {
-      if (!log.dutyId) {
-        groups.push({ type: 'single', id: log.id, log });
-      } else if (!seenDuty.has(log.dutyId)) {
-        seenDuty.add(log.dutyId);
-        const legs = filteredLogs.filter((l) => l.dutyId === log.dutyId);
-        if (legs.length === 1) {
-          groups.push({ type: 'single', id: log.id, log });
-        } else {
-          groups.push({ type: 'duty', id: log.dutyId, legs });
-        }
-      }
-    }
-    return groups;
-  }, [filteredLogs]);
-
   const handleDelete = (id) => setPendingDelete({
     label: 'flight',
     fn: async () => { await flightLogApi.delete(id); dispatch(removeLog(id)); },
@@ -771,7 +750,6 @@ export default function Logbook() {
   };
 
   const cloneInitial = cloneFlight ? { ...cloneFlight, date: '' } : null;
-  const rowBg = (id) => (hoverRow === id ? 'rgba(0,63,136,0.04)' : 'var(--surface)');
   const lastFlightStr = summary?.totals?.lastFlightDate
     ? new Date(summary.totals.lastFlightDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
@@ -816,266 +794,39 @@ export default function Logbook() {
       <Input
         type="text"
         value={search}
-        onChange={(e) => { setSearch(e.target.value); if (page !== 1) goToPage(1); }}
-        placeholder="Search by aircraft, registration, or airport… (current page)"
-        style={{ marginBottom: 20 }}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search all flights by aircraft, registration or airport…"
+        style={{ marginBottom: 16 }}
       />
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>Loading your logbook...</div>
-      ) : isMobile ? (
-        /* ─── Mobile (≤640px): stacked flight cards, no table / no h-scroll ─── */
-        <div>
-          {groupedRows.length === 0 ? (
-            <div style={css.mEmpty}>
-              {search ? 'No flights match your search.' : 'No flights logged yet. Click "Log a Flight" to get started.'}
-            </div>
-          ) : groupedRows.map((row) => {
-            if (row.type === 'single') {
-              const log = row.log;
-              const blockHrs = blockTimeFromTimes(log.offBlocksTime, log.onBlocksTime);
-              const displayBlock = blockHrs !== null ? `${blockHrs.toFixed(1)}h` : (log.totalTime > 0 ? `${log.totalTime.toFixed(1)}h` : '—');
-              const ldg = (log.landingsDay || 0) + (log.landingsNight || 0);
-              return (
-                <div key={log.id} style={css.mCard}>
-                  <div style={css.mCardHead}>
-                    <div>
-                      <div style={css.mCardDate}>{new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                      <div style={css.mCardAircraft}>{log.aircraftType}{log.registration && <span style={css.mCardReg}> · {log.registration}</span>}</div>
-                    </div>
-                  </div>
-                  <div style={css.mCardRoute}>
-                    {log.departure || log.arrival
-                      ? <>{log.departure || '—'}<span style={css.routeArrow}>&#x2192;</span>{log.arrival || '—'}</>
-                      : <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: 14 }}>No route</span>}
-                  </div>
-                  <div style={css.mCardStats}>{statLine(displayBlock, log.picTime || 0, ldg, log.nightTime || 0)}</div>
-                  <div style={css.mCardActions}>
-                    <Button variant="ghost" style={{ padding: '6px', color: 'var(--accent)' }} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={16} /></Button>
-                    <Button variant="ghost" style={{ padding: '6px', color: 'var(--text-secondary)' }} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={16} /></Button>
-                    <Button variant="ghost" style={{ padding: '6px', color: SEM.red }} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={16} /></Button>
-                  </div>
-                </div>
-              );
-            }
-
-            const { id: dutyId, legs } = row;
-            const first = legs[0];
-            const last = legs[legs.length - 1];
-            const dutyBlock = (() => {
-              // Aggregate Block = sum of each leg's own block time (actual flight
-              // time). NOT first.off→last.on span — that includes ground/turnaround
-              // and misreads midnight wraps when legs arrive out of order.
-              const sum = legs.reduce((s, l) => {
-                const b = blockTimeFromTimes(l.offBlocksTime, l.onBlocksTime);
-                return s + (b !== null ? b : (l.totalTime || 0));
-              }, 0);
-              return sum > 0 ? `${sum.toFixed(1)}h` : '—';
-            })();
-            const totalPic = legs.reduce((s, l) => s + (l.picTime || 0), 0);
-            const totalNight = legs.reduce((s, l) => s + (l.nightTime || 0), 0);
-            const totalLdg = legs.reduce((s, l) => s + (l.landingsDay || 0) + (l.landingsNight || 0), 0);
-            const isExpanded = expandedDuties.has(dutyId);
-            return (
-              <div key={dutyId} style={css.mCard}>
-                <div onClick={() => toggleDuty(dutyId)} style={{ cursor: 'pointer' }}>
-                  <div style={css.mCardHead}>
-                    <div>
-                      <div style={css.mCardDate}>{new Date(first.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                      <div style={css.mCardAircraft}>{first.aircraftType}{first.registration && <span style={css.mCardReg}> · {first.registration}</span>}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <Badge variant="info">{legs.length} sectors</Badge>
-                      {isExpanded ? <ChevronUp size={16} color="var(--text-secondary)" /> : <ChevronDown size={16} color="var(--text-secondary)" />}
-                    </div>
-                  </div>
-                  <div style={css.mCardRoute}>{first.departure || '?'}<span style={css.routeArrow}>&#x2192;</span>{last.arrival || '?'}</div>
-                  <div style={css.mCardStats}>{statLine(dutyBlock, totalPic, totalLdg, totalNight)}</div>
-                </div>
-                {isExpanded && (
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {legs.map((log, idx) => {
-                      const legBlock = blockTimeFromTimes(log.offBlocksTime, log.onBlocksTime);
-                      const legBlockDisplay = legBlock !== null ? `${legBlock.toFixed(1)}h` : (log.totalTime > 0 ? `${log.totalTime.toFixed(1)}h` : '—');
-                      const ldg = (log.landingsDay || 0) + (log.landingsNight || 0);
-                      return (
-                        <div key={log.id} style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 12px' }}>
-                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, marginBottom: 2 }}>Leg {idx + 1}</div>
-                          <div style={{ ...css.mCardRoute, fontSize: 15, margin: '2px 0 6px' }}>{log.departure}<span style={css.routeArrow}>&#x2192;</span>{log.arrival}</div>
-                          <div style={css.mCardStats}>{statLine(legBlockDisplay, log.picTime || 0, ldg, log.nightTime || 0)}</div>
-                          <div style={css.mCardActions}>
-                            <Button variant="ghost" style={{ padding: '6px', color: 'var(--accent)' }} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></Button>
-                            <Button variant="ghost" style={{ padding: '6px', color: 'var(--text-secondary)' }} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={14} /></Button>
-                            <Button variant="ghost" style={{ padding: '6px', color: SEM.red }} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={14} /></Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      {(!searching && loading) ? (
+        <div style={{ textAlign: "center", padding: 60, color: "var(--text-secondary)" }}>Loading your logbook...</div>
       ) : (
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%' }}>
-          <table style={{ ...css.table, minWidth: 700 }}>
-            <thead>
-              <tr>
-                {['Date', 'Aircraft', 'Route', 'Block', 'PIC', 'Multi', 'Turbine', 'Night', 'Ldg', ''].map((h) => (
-                  <th key={h} style={css.th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {groupedRows.length === 0 && (
-                <tr><td colSpan={10} style={css.emptyRow}>
-                  {search ? 'No flights match your search.' : 'No flights logged yet. Click "Log a Flight" to get started.'}
-                </td></tr>
-              )}
-              {groupedRows.map((row) => {
-                if (row.type === 'single') {
-                  const log = row.log;
-                  const blockHrs = blockTimeFromTimes(log.offBlocksTime, log.onBlocksTime);
-                  const displayBlock = blockHrs !== null
-                    ? `${blockHrs.toFixed(1)}h`
-                    : (log.totalTime > 0 ? `${log.totalTime.toFixed(1)}h` : '—');
-                  const bg = rowBg(log.id);
-                  return (
-                    <tr key={log.id} onMouseEnter={() => setHoverRow(log.id)} onMouseLeave={() => setHoverRow(null)}>
-                      <td style={{ ...css.td, background: bg, ...css.tdFirst, color: 'var(--text-secondary)', fontSize: 12 }}>
-                        {new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td style={{ ...css.td, background: bg }}>
-                        <div style={{ fontWeight: 600 }}>{log.aircraftType}</div>
-                        {log.registration && <div style={css.route}>{log.registration}</div>}
-                      </td>
-                      <td style={{ ...css.td, background: bg }}>
-                        {log.departure || log.arrival ? (
-                          <div style={css.routeMain}>
-                            {log.departure}
-                            <span style={css.routeArrow}>&#x2192;</span>
-                            {log.arrival}
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--text-secondary)' }}>&#x2014;</span>
-                        )}
-                      </td>
-                      <td style={{ ...css.td, background: bg, ...css.hours }}>{displayBlock}</td>
-                      <td style={{ ...css.td, background: bg }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
-                      <td style={{ ...css.td, background: bg }}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
-                      <td style={{ ...css.td, background: bg }}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
-                      <td style={{ ...css.td, background: bg }}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
-                      <td style={{ ...css.td, background: bg }}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
-                      <td style={{ ...css.td, background: bg, ...css.tdLast, whiteSpace: 'nowrap' }}>
-                        <Button variant="ghost" style={{ padding: '6px', color: 'var(--accent)' }} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></Button>
-                        <Button variant="ghost" style={{ padding: '6px', color: 'var(--text-secondary)' }} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={14} /></Button>
-                        <Button variant="ghost" style={{ padding: '6px', color: SEM.red }} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={14} /></Button>
-                      </td>
-                    </tr>
-                  );
-                }
-
-                const { id: dutyId, legs } = row;
-                const first = legs[0];
-                const last  = legs[legs.length - 1];
-                const dutyBlock = (() => {
-                  // Aggregate Block = sum of each leg's own block time (actual flight
-                  // time). NOT first.off→last.on span — that includes ground/turnaround
-                  // and misreads midnight wraps when legs arrive out of order.
-                  const sum = legs.reduce((s, l) => {
-                    const b = blockTimeFromTimes(l.offBlocksTime, l.onBlocksTime);
-                    return s + (b !== null ? b : (l.totalTime || 0));
-                  }, 0);
-                  return sum > 0 ? `${sum.toFixed(1)}h` : '—';
-                })();
-                const totalPic     = legs.reduce((s, l) => s + (l.picTime || 0), 0);
-                const totalMulti   = legs.reduce((s, l) => s + (l.multiEngineTime || 0), 0);
-                const totalTurbine = legs.reduce((s, l) => s + (l.turbineTime || 0), 0);
-                const totalNight   = legs.reduce((s, l) => s + (l.nightTime || 0), 0);
-                const totalLdg     = legs.reduce((s, l) => s + (l.landingsDay || 0) + (l.landingsNight || 0), 0);
-                const isExpanded   = expandedDuties.has(dutyId);
-                const bg = rowBg(dutyId);
-
-                return (
-                  <React.Fragment key={dutyId}>
-                    <tr onClick={() => toggleDuty(dutyId)} onMouseEnter={() => setHoverRow(dutyId)} onMouseLeave={() => setHoverRow(null)} style={{ cursor: 'pointer' }}>
-                      <td style={{ ...css.td, background: bg, ...css.tdFirst, color: 'var(--text-secondary)', fontSize: 12 }}>
-                        {new Date(first.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td style={{ ...css.td, background: bg }}>
-                        <div style={{ fontWeight: 600 }}>{first.aircraftType}</div>
-                        {first.registration && <div style={css.route}>{first.registration}</div>}
-                        <span style={{ display: 'inline-block', marginTop: 4 }}><Badge variant="info">{legs.length} sectors</Badge></span>
-                      </td>
-                      <td style={{ ...css.td, background: bg }}>
-                        <div style={css.routeMain}>
-                          {first.departure || '?'}
-                          <span style={css.routeArrow}>&#x2192;</span>
-                          {last.arrival || '?'}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 3 }}>
-                          {legs.map((l) => `${l.departure || '?'}→${l.arrival || '?'}`).join(' · ')}
-                        </div>
-                      </td>
-                      <td style={{ ...css.td, background: bg, ...css.hours }}>{dutyBlock}</td>
-                      <td style={{ ...css.td, background: bg }}>{totalPic > 0 ? totalPic.toFixed(1) : '—'}</td>
-                      <td style={{ ...css.td, background: bg }}>{totalMulti > 0 ? totalMulti.toFixed(1) : '—'}</td>
-                      <td style={{ ...css.td, background: bg }}>{totalTurbine > 0 ? totalTurbine.toFixed(1) : '—'}</td>
-                      <td style={{ ...css.td, background: bg }}>{totalNight > 0 ? totalNight.toFixed(1) : '—'}</td>
-                      <td style={{ ...css.td, background: bg }}>{totalLdg}</td>
-                      <td style={{ ...css.td, background: bg, ...css.tdLast, color: 'var(--text-secondary)' }}>
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </td>
-                    </tr>
-                    {isExpanded && legs.map((log, idx) => {
-                      const legBlock = blockTimeFromTimes(log.offBlocksTime, log.onBlocksTime);
-                      const legBlockDisplay = legBlock !== null ? `${legBlock.toFixed(1)}h` : (log.totalTime > 0 ? `${log.totalTime.toFixed(1)}h` : '—');
-                      return (
-                        <tr key={log.id}>
-                          <td style={{ ...css.td, background: 'var(--bg)', ...css.tdFirst, color: 'var(--text-secondary)', fontSize: 11, paddingLeft: 28 }}>
-                            Leg {idx + 1}
-                          </td>
-                          <td style={{ ...css.td, background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 12 }}>—</td>
-                          <td style={{ ...css.td, background: 'var(--bg)' }}>
-                            <div style={css.routeMain}>
-                              {log.departure}
-                              <span style={css.routeArrow}>&#x2192;</span>
-                              {log.arrival}
-                            </div>
-                          </td>
-                          <td style={{ ...css.td, background: 'var(--bg)', ...css.hours, fontSize: 13 }}>{legBlockDisplay}</td>
-                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{log.picTime > 0 ? log.picTime.toFixed(1) : '—'}</td>
-                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{log.multiEngineTime > 0 ? log.multiEngineTime.toFixed(1) : '—'}</td>
-                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{log.turbineTime > 0 ? log.turbineTime.toFixed(1) : '—'}</td>
-                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{log.nightTime > 0 ? log.nightTime.toFixed(1) : '—'}</td>
-                          <td style={{ ...css.td, background: 'var(--bg)', fontSize: 13 }}>{(log.landingsDay || 0) + (log.landingsNight || 0)}</td>
-                          <td style={{ ...css.td, background: 'var(--bg)', ...css.tdLast, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" style={{ padding: '6px', color: 'var(--accent)' }} onClick={() => setEditFlight(log)} title="Edit"><Pencil size={14} /></Button>
-                            <Button variant="ghost" style={{ padding: '6px', color: 'var(--text-secondary)' }} onClick={() => setCloneFlight(log)} title="Clone"><Copy size={14} /></Button>
-                            <Button variant="ghost" style={{ padding: '6px', color: SEM.red }} onClick={() => handleDelete(log.id)} title="Delete"><Trash2 size={14} /></Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <FlightList
+          dataset={dataset}
+          summary={summary}
+          isMobile={isMobile}
+          dropNight={dropNight}
+          searching={searching}
+          searchQuery={debouncedSearch}
+          onEdit={setEditFlight}
+          onClone={setCloneFlight}
+          onDelete={handleDelete}
+        />
       )}
 
-      {/* Pagination — 50 per page, numbered (desktop) / compact (mobile) */}
-      <Pagination
-        page={page}
-        totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
-        total={total}
-        pageSize={PAGE_SIZE}
-        count={logs.length}
-        onChange={goToPage}
-        isMobile={isMobile}
-      />
+      {/* Pagination — only when not searching (search fetches all matches) */}
+      {!searching && (
+        <Pagination
+          page={page}
+          totalPages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+          total={total}
+          pageSize={PAGE_SIZE}
+          count={logs.length}
+          onChange={goToPage}
+          isMobile={isMobile}
+        />
+      )}
 
       {showModal && (
         <AddFlightModal onClose={() => setShowModal(false)} onSave={handleSaveNew} onSaveBulk={handleSaveBulk} title="Log a Flight" />

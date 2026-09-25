@@ -350,6 +350,12 @@ export default function Jobs() {
   const [minSalary, setMinSalary] = useState(() => searchParams.get('salaryMin') || '');
   const [visaOnly, setVisaOnly] = useState(() => searchParams.get('visa') === '1');
   const [ntrOnly, setNtrOnly] = useState(() => searchParams.get('ntr') === '1');
+  // Milestone hours window — deep-link only (from the Logbook "next milestone"
+  // jobs hook: /jobs?hoursMin=&hoursMax=). No visible control; seeded from the URL
+  // and passed through so "+N jobs → See them" returns exactly the N the dashboard
+  // counted (same ACTIVE + reqMinTotalHours in (hoursMin, hoursMax]).
+  const [hoursMin] = useState(() => searchParams.get('hoursMin') || '');
+  const [hoursMax] = useState(() => searchParams.get('hoursMax') || '');
 
   // Pending (unapplied) filter state
   const [pendingAuthority, setPendingAuthority] = useState('');
@@ -450,6 +456,8 @@ export default function Jobs() {
       if (visaOnly) params.visa = 'true';
       if (ntrOnly) params.typeRating = 'ntr';
       if (qualifiedOnly) params.qualifiedOnly = true;
+      if (hoursMin) params.hoursMin = hoursMin;
+      if (hoursMax) params.hoursMax = hoursMax;
       if (sort) params.sort = sort;
       const { data } = await jobApi.list(params);
       dispatch(setJobs({ jobs: data.jobs, total: data.total }));
@@ -463,7 +471,7 @@ export default function Jobs() {
     } finally {
       setLoading(false);
     }
-  }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort]);
+  }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort, hoursMin, hoursMax]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -484,8 +492,10 @@ export default function Jobs() {
     if (ntrOnly) next.ntr = '1';
     if (sort !== 'newest') next.sort = sort;
     if (qualifiedOnly) next.qualified = '1';
+    if (hoursMin) next.hoursMin = hoursMin;
+    if (hoursMax) next.hoursMax = hoursMax;
     setSearchParams(next, { replace: true });
-  }, [search, authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly, sort, qualifiedOnly, setSearchParams]);
+  }, [search, authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly, sort, qualifiedOnly, hoursMin, hoursMax, setSearchParams]);
 
   const handleSaveToggle = async (e, jobId) => {
     e.stopPropagation();

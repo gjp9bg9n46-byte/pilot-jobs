@@ -58,7 +58,7 @@ export const profileApi = {
 };
 
 export const flightLogApi = {
-  list: (page = 1, limit = 50) => api.get('/flight-logs', { params: { page, limit } }),
+  list: (page = 1, limit = 50, search = '') => api.get('/flight-logs', { params: { page, limit, ...(search ? { search } : {}) } }),
   create: (data) => api.post('/flight-logs', data),
   bulkCreate: (data) => api.post('/flight-logs/bulk', data),
   update: (id, data) => api.patch(`/flight-logs/${id}`, data),

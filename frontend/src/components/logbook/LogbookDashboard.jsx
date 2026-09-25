@@ -104,7 +104,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward }) {
             <div className="lb-jobs">
               <b>+{milestone.jobsUnlocked}</b>
               <span>more jobs on CockpitHire ask for {next.toLocaleString()} h</span>
-              <Link to={`/jobs?hoursMin=${Math.floor(milestone.current)}&hoursMax=${next}`}>See them →</Link>
+              <Link to={`/jobs?hoursMin=${milestone.current}&hoursMax=${next}`}>See them →</Link>
             </div>
           )}
         </section>
