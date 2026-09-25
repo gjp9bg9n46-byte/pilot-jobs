@@ -479,6 +479,7 @@ model JobReport {
   pilotId   String
   jobId     String
   reason    String
+  field     String?  // optional: which requirement/field the report is about
   createdAt DateTime @default(now())
 
   pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)

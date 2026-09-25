@@ -20,6 +20,7 @@ router.post('/airlines/:id/reaffirm',     c.reaffirmField);
 
 // Remove any job listing from the board (soft-remove; survives re-scrape).
 router.delete('/jobs/:id',                c.removeJob);
+router.get('/job-reports',                c.getJobReports);
 
 // Employer portal moderation
 router.get('/employers',                ec.listEmployers);

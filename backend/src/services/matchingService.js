@@ -5,6 +5,16 @@ const notificationService = require('./notificationService');
 const logger = require('../config/logger');
 const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
 
+// Match-logic cutover (guardrail 2): the moment the met/unmet/unknown matching went
+// live. Push notifications only fire for jobs first created AT OR AFTER this instant,
+// so changing the match logic can never retro-notify pilots about pre-existing jobs.
+// Override with MATCH_LOGIC_CUTOVER (ISO) if the deploy slips.
+const MATCH_LOGIC_CUTOVER = new Date(process.env.MATCH_LOGIC_CUTOVER || '2026-09-26T00:00:00Z');
+function shouldPushForJob(job) {
+  const created = job.createdAt ? new Date(job.createdAt) : null;
+  return !!created && created >= MATCH_LOGIC_CUTOVER;
+}
+
 // ─── Medical hierarchy ────────────────────────────────────────────────────────
 
 const MEDICAL_RANK = { CLASS_1: 3, CLASS_2: 2, CLASS_3: 1 };
@@ -568,7 +578,12 @@ async function matchJobToAllPilots(job) {
         include: { job: true },
       });
 
-      if (pilot.fcmToken) {
+      // Cutover (guardrail 2): only PUSH for jobs first seen AFTER the match-logic
+      // cutover. This guarantees the switch to met/unmet/unknown matching can never
+      // fire a burst of push notifications for pre-existing jobs that merely changed
+      // fit group — only genuinely new postings notify. In-app alert rows are still
+      // created (so the pilot can find them), just not pushed.
+      if (pilot.fcmToken && shouldPushForJob(job)) {
         await notificationService.sendJobAlert(pilot.fcmToken, job, score, alert);
         await prisma.jobAlert.update({
           where: { id: alert.id },

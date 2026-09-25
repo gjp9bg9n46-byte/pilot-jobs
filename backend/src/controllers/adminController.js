@@ -250,3 +250,22 @@ exports.removeJob = async (req, res, next) => {
     next(err);
   }
 };
+
+// Pilot-submitted "report incorrect info" reports (Jobs Part 1 item 9). Newest
+// first, with the reported field, message, job title and reporter email.
+exports.getJobReports = async (req, res, next) => {
+  try {
+    const prisma = require('../config/database');
+    const reports = await prisma.jobReport.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        job: { select: { id: true, title: true, company: true, status: true } },
+        pilot: { select: { id: true, email: true } },
+      },
+    });
+    res.json({ reports });
+  } catch (err) {
+    next(err);
+  }
+};

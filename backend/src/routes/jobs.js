@@ -11,6 +11,8 @@ const c = require('../controllers/jobController');
 // Jobs list — PUBLIC (optional auth): logged-out gets all active jobs without
 // qualifiedOnly filtering or isSaved/isApplied enrichment (no pilot profile).
 router.get('/', optionalAuth, c.getJobs);
+// Hours histogram for the Hours filter (public; optional auth for qualifiedOnly).
+router.get('/hours-histogram', optionalAuth, c.getHoursHistogram);
 router.get('/saved', authMiddleware, c.getSavedJobs);
 // Pilot's own applications (declared before /:id so it isn't captured by it).
 router.get('/applications', authMiddleware, c.getMyApplications);

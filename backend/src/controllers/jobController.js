@@ -4,6 +4,9 @@ const {
   getQualifiedMedicalClasses,
 } = require('../services/matchingService');
 const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
+const {
+  buildMatchContext, matchJob, regionForCountry, defaultRegionForPilot, REGIONS,
+} = require('../services/jobMatch');
 
 const EU_COUNTRIES_RTW = new Set([
   'austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic',
@@ -76,6 +79,17 @@ function deriveApplyTrust(j) {
     : null;
   return { applyIsDirect, applyVia };
 }
+
+// Light projection for the candidate fetch — every field matching/region/sort/facets
+// need, and nothing heavy (no description/descriptionEn). Keep in sync with matchJob.
+const CANDIDATE_SELECT = {
+  id: true, company: true, country: true, sourceType: true, postedAt: true, role: true,
+  salaryMax: true, salaryMin: true, expiresAt: true,
+  reqCertificates: true, reqAuthorities: true, reqAircraftTypes: true, reqMedicalClass: true,
+  reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true, reqMinTurbineHours: true,
+  reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
+  reqEducation: true, reqWorkAuthorization: true, reqEnglishLevel: true,
+};
 
 function presentJob(j) {
   if (!j) return j;
@@ -179,7 +193,8 @@ exports.getJobs = async (req, res, next) => {
     if (country) where.country = { contains: country, mode: 'insensitive' };
     if (role) where.role = role;
     if (contractType) where.contractType = contractType;
-    if (region) where.region = region;
+    // Region is derived from the job's country in JS (jobMatch.regionForCountry) and
+    // applied after fetch, so the tab counts and the filter share one taxonomy.
 
     // Authority: comma-separated list → hasSome
     if (authority) {
@@ -258,149 +273,8 @@ exports.getJobs = async (req, res, next) => {
       where.postedAt = { gte: since };
     }
 
-    // Qualified-only: filter by pilot's profile against job requirements.
-    // Requires a logged-in pilot; ignored for public (logged-out) requests.
-    if (qualifiedOnly === 'true' && req.pilot) {
-      // A job with NO stated requirements would pass every per-field check
-      // below by default — but "qualified" means the job states requirements
-      // AND the pilot meets them (same strict definition the Alerts page
-      // uses). No-requirement jobs live behind their own filter instead.
-      andConditions.push({
-        OR: [
-          { reqCertificates: { isEmpty: false } },
-          { reqAuthorities: { isEmpty: false } },
-          { reqAircraftTypes: { isEmpty: false } },
-          { reqMinTotalHours: { not: null } },
-          { reqMinPicHours: { not: null } },
-          { reqMinMultiEngineHours: { not: null } },
-          { reqMinTurbineHours: { not: null } },
-          { reqMinInstrumentHours: { not: null } },
-          { reqMinCrossCountryHours: { not: null } },
-          { reqMedicalClass: { not: null } },
-          { reqEducation: { not: null } },
-          { reqWorkAuthorization: { not: null } },
-          { reqEnglishLevel: { not: null } },
-        ],
-      });
-      // NOTE: matching logic is duplicated in client-side computeMatchCount (Jobs.jsx).
-      // Both must stay in sync. Long-term: compute server-side and return in API response.
-      const pilot = await prisma.pilot.findUnique({
-        where: { id: req.pilot.id },
-        include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
-      });
-      const totals = await getPilotFlightTotals(req.pilot.id);
-
-      // Normalize cert types: treat ATP/ATPL and CAA variants as equivalent
-      const normalise = (t) => (t === 'ATP' ? ['ATP', 'ATPL'] : t === 'ATPL' ? ['ATPL', 'ATP'] : [t]);
-      const normaliseAuth = (a) => (a === 'CAA_UK' || a === 'CAA-UK') ? ['CAA', 'CAA_UK', 'CAA-UK'] : a === 'CAA' ? ['CAA', 'CAA_UK', 'CAA-UK'] : [a];
-      const flightCerts = pilot.certificates.filter((c) => c.type !== 'ELP');
-      const certTypes = [...new Set(flightCerts.flatMap((c) => normalise(c.type)))];
-      const certAuthorities = [...new Set(flightCerts.flatMap((c) => normaliseAuth(c.issuingAuthority)))];
-      const ratingTypes = pilot.ratings.map((r) => r.aircraftType.toUpperCase());
-
-      // Certs — strict: pilot must have a matching cert, or job has no cert requirement.
-      // Principle: charitable null on the JOB side only; missing pilot data = fail.
-      andConditions.push(certTypes.length > 0
-        ? { OR: [{ reqCertificates: { isEmpty: true } }, { reqCertificates: { hasSome: certTypes } }] }
-        : { reqCertificates: { isEmpty: true } }
-      );
-
-      // Authority — strict
-      andConditions.push(certAuthorities.length > 0
-        ? { OR: [{ reqAuthorities: { isEmpty: true } }, { reqAuthorities: { hasSome: certAuthorities } }] }
-        : { reqAuthorities: { isEmpty: true } }
-      );
-
-      // Total hours — strict: always compare; 0 pilot hours fails any positive job requirement
-      andConditions.push({
-        OR: [{ reqMinTotalHours: null }, { reqMinTotalHours: { lte: totals.totalTime ?? 0 } }],
-      });
-
-      // PIC hours — strict
-      andConditions.push({
-        OR: [{ reqMinPicHours: null }, { reqMinPicHours: { lte: totals.picTime ?? 0 } }],
-      });
-
-      // Aircraft type ratings — strict
-      andConditions.push(ratingTypes.length > 0
-        ? { OR: [{ reqAircraftTypes: { isEmpty: true } }, { reqAircraftTypes: { hasSome: ratingTypes } }] }
-        : { reqAircraftTypes: { isEmpty: true } }
-      );
-
-      // Medical class — strict: no medical on file → only jobs with no medical requirement
-      const qualifiedMedicals = getQualifiedMedicalClasses(pilot.medicals);
-      andConditions.push(qualifiedMedicals
-        ? { OR: [{ reqMedicalClass: null }, { reqMedicalClass: { in: qualifiedMedicals } }] }
-        : { reqMedicalClass: null }
-      );
-
-      // Multi-engine hours — strict
-      andConditions.push({
-        OR: [{ reqMinMultiEngineHours: null }, { reqMinMultiEngineHours: { lte: totals.multiEngineTime ?? 0 } }],
-      });
-
-      // Turbine hours — strict
-      andConditions.push({
-        OR: [{ reqMinTurbineHours: null }, { reqMinTurbineHours: { lte: totals.turbineTime ?? 0 } }],
-      });
-
-      // Instrument hours — strict
-      andConditions.push({
-        OR: [{ reqMinInstrumentHours: null }, { reqMinInstrumentHours: { lte: totals.instrumentTime ?? 0 } }],
-      });
-
-      // Cross-country hours — strict
-      andConditions.push({
-        OR: [{ reqMinCrossCountryHours: null }, { reqMinCrossCountryHours: { lte: totals.crossCountryTime ?? 0 } }],
-      });
-
-      // Education — strict: no education on file → only jobs with no education requirement
-      if (pilot.education != null) {
-        const pilotEduRank = EDU_RANK[pilot.education] ?? 0;
-        const validEdus = Object.entries(EDU_RANK)
-          .filter(([, rank]) => rank <= pilotEduRank)
-          .map(([edu]) => edu);
-        andConditions.push({
-          OR: [{ reqEducation: null }, { reqEducation: { in: validEdus } }],
-        });
-      } else {
-        andConditions.push({ reqEducation: null });
-      }
-
-      // English level (ELP) — strict: no parseable ELP cert → only jobs with no ELP requirement
-      const elpCert = pilot.certificates.find((c) => c.type === 'ELP');
-      const pilotElpLevel = parseElpLevel(elpCert?.englishLevel);
-      andConditions.push(pilotElpLevel != null
-        ? { OR: [{ reqEnglishLevel: null }, { reqEnglishLevel: { lte: pilotElpLevel } }] }
-        : { reqEnglishLevel: null }
-      );
-
-      // Willing to relocate — if pilot is NOT willing, exclude jobs that require it
-      if (!pilot.willingToRelocate) {
-        andConditions.push({ reqWillingToRelocate: { not: true } });
-      }
-
-      // Role — if pilot has declared a role, restrict to matching or unspecified job roles
-      if (pilot.role) {
-        andConditions.push({ OR: [{ role: null }, { role: pilot.role }] });
-      }
-
-      // Work authorisation
-      if (pilot.rightToWork.length === 0) {
-        // No RTW on file: only show jobs with no requirement
-        andConditions.push({ reqWorkAuthorization: null });
-      } else {
-        const rtwCountries = pilot.rightToWork.map((r) => r.country.toLowerCase().trim());
-        const rtwOptions = [
-          { reqWorkAuthorization: null },
-          { reqWorkAuthorization: 'required' },
-        ];
-        if (rtwCountries.some((c) => EU_COUNTRIES_RTW.has(c)))                          rtwOptions.push({ reqWorkAuthorization: 'EU' });
-        if (rtwCountries.some((c) => ['united states', 'usa', 'us'].includes(c)))       rtwOptions.push({ reqWorkAuthorization: 'US' });
-        if (rtwCountries.some((c) => ['united kingdom', 'uk', 'great britain'].includes(c))) rtwOptions.push({ reqWorkAuthorization: 'UK' });
-        andConditions.push({ OR: rtwOptions });
-      }
-    }
+    // Qualified-only + fitGroup filtering now happens in JS after fetch (see the
+    // shared jobMatch service). qualifiedOnly === "true" keeps only fitGroup "qualify".
 
     if (andConditions.length > 0) where.AND = andConditions;
 
@@ -433,24 +307,132 @@ exports.getJobs = async (req, res, next) => {
         orderBy = [{ sourceType: { sort: 'desc', nulls: 'last' } }, { postedAt: 'desc' }];
     }
 
-    const [jobs, total] = await Promise.all([
-      prisma.job.findMany({ where, orderBy, skip, take: Number(limit) }),
-      prisma.job.count({ where }),
-    ]);
+    // Fetch the full candidate set (all non-region, non-fit filters applied at the
+    // DB) — match, region grouping, fit-group filtering and "best" sort all run in
+    // JS so every surface shares one match definition. Capped at 2000 as a backstop.
+    // Perf (guardrail 4): the candidate fetch OMITS the heavy description fields —
+    // matching/counting/sorting never read them; only the paged rows are re-fetched
+    // in full for the presentation layer.
+    const candidates = await prisma.job.findMany({ where, orderBy, take: 2000, select: CANDIDATE_SELECT });
+
+    const ctx = req.pilot ? await buildMatchContext(req.pilot.id, prisma) : null;
+
+    // Attach region + (when logged in) match to every candidate.
+    const matched = candidates.map((j) => ({
+      job: j,
+      region: regionForCountry(j.country),
+      match: ctx ? matchJob(j, ctx) : null,
+    }));
+
+    // Region tab counts — over the current filters EXCLUDING the region tab itself.
+    const regionCounts = { All: matched.length };
+    for (const r of REGIONS) regionCounts[r] = 0;
+    for (const m of matched) regionCounts[m.region] += 1;
+
+    // Apply the selected region tab (JS). Absent / "All" → no region filter.
+    const regionSel = region && region !== 'All' ? region : null;
+    let view = regionSel ? matched.filter((m) => m.region === regionSel) : matched;
+
+    // Fit-group counts over the region-filtered view (drives the header + groups).
+    const fitGroupCounts = { qualify: 0, oneShort: 0, other: 0 };
+    if (ctx) for (const m of view) fitGroupCounts[m.match.fitGroup] += 1;
+
+    // Facet counts for the filter dropdowns, over the region-filtered view.
+    const facetCounts = { aircraft: {}, role: {}, authority: {} };
+    for (const m of view) {
+      for (const t of (m.job.reqAircraftTypes || [])) facetCounts.aircraft[t] = (facetCounts.aircraft[t] || 0) + 1;
+      if (m.job.role) facetCounts.role[m.job.role] = (facetCounts.role[m.job.role] || 0) + 1;
+      for (const a of (m.job.reqAuthorities || [])) facetCounts.authority[a] = (facetCounts.authority[a] || 0) + 1;
+    }
+
+    // qualifiedOnly === "true" now means fitGroup "qualify" (unknowns allowed).
+    if (qualifiedOnly === 'true' && ctx) view = view.filter((m) => m.match.fitGroup === 'qualify');
+
+    // "best" (new default when logged in): qualify → oneShort → other, then keep the
+    // base orderBy (direct-first, newest) within each group via a STABLE sort.
+    const effectiveSort = req.query.sort || (ctx ? 'best' : 'newest');
+    if (effectiveSort === 'best' && ctx) {
+      const rank = { qualify: 0, oneShort: 1, other: 2 };
+      view = view.map((m, i) => ({ m, i })).sort((a, b) => (rank[a.m.match.fitGroup] - rank[b.m.match.fitGroup]) || (a.i - b.i)).map((x) => x.m);
+    }
+
+    const total = view.length;
+    const start = (Number(page) - 1) * Number(limit);
+    const pageItems = view.slice(start, start + Number(limit));
+
+    // Re-fetch the paged rows in FULL (descriptions/titles) for presentation, then
+    // restore the computed order.
+    const pageIds = pageItems.map((m) => m.job.id);
+    const fullRows = pageIds.length
+      ? await prisma.job.findMany({ where: { id: { in: pageIds } } })
+      : [];
+    const fullById = new Map(fullRows.map((r) => [r.id, r]));
+    const pageJobs = pageIds.map((id) => fullById.get(id)).filter(Boolean);
 
     // Public (logged-out) requests have no pilot → no isSaved/isApplied state,
     // but they still get the full presentation layer (English-first titles,
     // visa/NTR badges) — logged-out browsing is a pilot's first impression.
-    const enriched = req.pilot
-      ? await enrichJobs(jobs, req.pilot.id)
-      : jobs.map((j) => ({ ...presentJob(j), isSaved: false, isApplied: false }));
+    const enrichedArr = req.pilot
+      ? await enrichJobs(pageJobs, req.pilot.id)
+      : pageJobs.map((j) => ({ ...presentJob(j), isSaved: false, isApplied: false }));
+
+    // Attach each job's match (new field; existing fields unchanged for back-compat).
+    const matchById = new Map(pageItems.map((m) => [m.job.id, m.match]));
+    const enriched = enrichedArr.map((j) => ({ ...j, match: matchById.get(j.id) || null }));
 
     res.json({
       jobs: enriched,
       total,
       page: Number(page),
       pages: Math.ceil(total / Number(limit)),
+      // New (additive) — ignored by the current mobile client:
+      regionCounts,
+      fitGroupCounts: ctx ? fitGroupCounts : null,
+      facetCounts,
+      defaultRegion: ctx ? defaultRegionForPilot(ctx.country) : null,
+      qualifyCount: ctx ? fitGroupCounts.qualify : null,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /jobs/hours-histogram — counts of jobs per reqMinTotalHours bucket for the
+// CURRENT filters, EXCLUDING the hours filter itself (so the Hours dropdown shows
+// the full distribution). Jobs with no hours requirement are counted separately
+// ("noRequirement") and always included in results — never bucketed.
+const HISTO_EDGES = [0, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000];
+exports.getHoursHistogram = async (req, res, next) => {
+  try {
+    const { q, country, role, contractType, region, authority, aircraft, visa, typeRating, salaryMin, postedWithin, qualifiedOnly } = req.query;
+    const where = { status: 'ACTIVE' };
+    const AND = [];
+    if (q) AND.push({ OR: ['title', 'company', 'location', 'country', 'description'].map((f) => ({ [f]: { contains: q, mode: 'insensitive' } })) });
+    if (country) where.country = { contains: country, mode: 'insensitive' };
+    if (role) where.role = role;
+    if (contractType) where.contractType = contractType;
+    if (authority) { const a = authority.split(',').map((x) => x.trim()).filter(Boolean); if (a.length) where.reqAuthorities = { hasSome: a }; }
+    if (aircraft) { const a = aircraft.split(',').map((x) => x.trim()).filter(Boolean); if (a.length) where.reqAircraftTypes = { hasSome: a }; }
+    if (salaryMin) AND.push({ OR: [{ salaryMax: null }, { salaryMax: { gte: Number(salaryMin) } }] });
+    if (postedWithin) { const since = new Date(); since.setDate(since.getDate() - Number(postedWithin)); where.postedAt = { gte: since }; }
+    if (AND.length) where.AND = AND;
+
+    const rows = await prisma.job.findMany({ where, take: 2000, select: CANDIDATE_SELECT });
+    const ctx = (qualifiedOnly === 'true' && req.pilot) ? await buildMatchContext(req.pilot.id, prisma) : null;
+    const regionSel = region && region !== 'All' ? region : null;
+
+    const buckets = HISTO_EDGES.map((lo, i) => ({ min: lo, max: HISTO_EDGES[i + 1] ?? null, count: 0 }));
+    let noRequirement = 0;
+    for (const j of rows) {
+      if (regionSel && regionForCountry(j.country) !== regionSel) continue;
+      if (ctx && matchJob(j, ctx).fitGroup !== 'qualify') continue;
+      const h = j.reqMinTotalHours;
+      if (h == null) { noRequirement += 1; continue; }
+      let bi = buckets.length - 1;
+      for (let i = 0; i < buckets.length; i++) { if (buckets[i].max == null || h < buckets[i].max) { bi = i; break; } }
+      buckets[bi].count += 1;
+    }
+    res.json({ buckets, noRequirement });
   } catch (err) {
     next(err);
   }
@@ -463,13 +445,16 @@ exports.getJob = async (req, res, next) => {
 
     // Resolve the airline factfile id from the company name (case-insensitive),
     // so the JobDetail "View factfile" link doesn't need the client airline map.
+    // Also pull the airline's fleet for the "About the airline" detail row.
     let airlineId = null;
+    let airlineFleet = null;
     if (job.company) {
       const airline = await prisma.airline.findFirst({
         where: { name: { equals: job.company, mode: 'insensitive' } },
-        select: { id: true },
+        select: { id: true, fleet: true },
       });
       airlineId = airline?.id ?? null;
+      airlineFleet = airline?.fleet?.length ? airline.fleet : null;
     }
 
     // Public-readable (optionalAuth): enrich isSaved/isApplied only when a pilot
@@ -478,7 +463,35 @@ exports.getJob = async (req, res, next) => {
       ? (await enrichJobs([job], req.pilot.id))[0]
       : { ...presentJob(job), isSaved: false, isApplied: false };
 
-    res.json({ ...enriched, airlineId });
+    // Per-requirement match (shared function) + "similar jobs you qualify for".
+    let match = null;
+    let similarJobs = [];
+    if (req.pilot) {
+      const ctx = await buildMatchContext(req.pilot.id, prisma);
+      if (ctx) {
+        match = matchJob(job, ctx);
+        const family = new Set((job.reqAircraftTypes || []).map((t) => String(t).toUpperCase()));
+        const cands = await prisma.job.findMany({
+          where: { status: 'ACTIVE', id: { not: job.id } },
+          orderBy: [{ sourceType: { sort: 'desc', nulls: 'last' } }, { postedAt: 'desc' }],
+          take: 400, select: CANDIDATE_SELECT,
+        });
+        const picks = [];
+        for (const c of cands) {
+          if (matchJob(c, ctx).fitGroup !== 'qualify') continue;
+          const sameAirline = job.company && c.company && String(c.company).toLowerCase() === String(job.company).toLowerCase();
+          const sameFamily = family.size && (c.reqAircraftTypes || []).some((t) => family.has(String(t).toUpperCase()));
+          if (sameAirline || sameFamily) { picks.push(c.id); if (picks.length >= 4) break; }
+        }
+        if (picks.length) {
+          const rows = await prisma.job.findMany({ where: { id: { in: picks } } });
+          const byId = new Map(rows.map((r) => [r.id, r]));
+          similarJobs = picks.map((id) => byId.get(id)).filter(Boolean).map((j) => presentJob(j));
+        }
+      }
+    }
+
+    res.json({ ...enriched, airlineId, airlineFleet, match, similarJobs });
   } catch (err) {
     next(err);
   }
@@ -689,10 +702,12 @@ exports.getMyApplications = async (req, res, next) => {
 
 exports.reportJob = async (req, res, next) => {
   try {
-    const { reason } = req.body;
-    if (!reason) return res.status(400).json({ error: 'Reason is required' });
+    // Accept { field?, message } (new) and { reason } (legacy) for back-compat.
+    const message = req.body.message ?? req.body.reason;
+    const field = req.body.field ?? null;
+    if (!message || !String(message).trim()) return res.status(400).json({ error: 'A message is required' });
     await prisma.jobReport.create({
-      data: { pilotId: req.pilot.id, jobId: req.params.id, reason },
+      data: { pilotId: req.pilot.id, jobId: req.params.id, reason: String(message).trim(), field: field ? String(field).slice(0, 60) : null },
     });
     res.json({ reported: true });
   } catch (err) {
