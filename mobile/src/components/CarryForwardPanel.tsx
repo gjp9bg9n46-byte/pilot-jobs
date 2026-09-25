@@ -16,7 +16,7 @@ const KEYS: [string, string][] = [
   ['multiEngineTime', 'Multi-Engine'], ['turbineTime', 'Turbine'], ['instrumentTime', 'Instrument'], ['nightTime', 'Night'],
 ];
 
-export default function CarryForwardPanel({ onSaved }: { onSaved?: () => void }) {
+export default function CarryForwardPanel({ onSaved, openSignal }: { onSaved?: () => void; openSignal?: number }) {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const [open, setOpen] = useState(false);
@@ -26,6 +26,15 @@ export default function CarryForwardPanel({ onSaved }: { onSaved?: () => void })
   const [saved, setSaved] = useState(false);
 
   useEffect(() => { api.get('/profile/carry-forward').then(({ data }) => setCf(data ?? {})).catch(() => {}); }, []);
+
+  // The dashboard's "Edit" link bumps openSignal to expand this editor.
+  useEffect(() => {
+    if (openSignal) {
+      setForm(Object.fromEntries(KEYS.map(([k]) => [k, cf[k] ? String(cf[k]) : ''])));
+      setOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSignal]);
 
   const hasData = KEYS.some(([k]) => (cf[k] || 0) > 0);
 

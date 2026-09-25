@@ -13,8 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
-import CurrencyBadge from '../../../../src/components/CurrencyBadge';
 import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
+import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
@@ -36,11 +36,6 @@ const makeCard = (pilot: ThemePalette) => ({
 });
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-const TOTALS_DISPLAY: [string, string][] = [
-  ['totalTime', 'Block Hours'], ['picTime', 'PIC Hours'], ['sicTime', 'SIC Hours'],
-  ['multiEngineTime', 'Multi-Engine'], ['turbineTime', 'Turbine'], ['instrumentTime', 'Instrument'], ['nightTime', 'Night'],
-];
 
 // Block duration as "HH:MMh" from off/on-blocks (midnight-wrap safe), falling
 // back to totalTime hours.
@@ -116,11 +111,15 @@ export default function LogbookList() {
   const [page, setPage] = useState(Math.max(1, Number(params.page) || 1));
   const [logs, setLogs] = useState<Log[]>([]);
   const [total, setTotal] = useState(0);
-  const [totals, setTotals] = useState<Log | null>(null);
+  const [summary, setSummary] = useState<Log | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currencySignal, setCurrencySignal] = useState(0);
+  const [cfOpenSignal, setCfOpenSignal] = useState(0);
+
+  const loadSummary = useCallback(() => {
+    api.get('/logbook/summary').then(({ data }) => setSummary(data)).catch(() => {});
+  }, []);
 
   const loadPage = useCallback(async (p: number) => {
     setLoading(true);
@@ -140,16 +139,18 @@ export default function LogbookList() {
   }, []);
 
   useEffect(() => { loadPage(page); }, [page, loadPage]);
-  useEffect(() => { api.get('/profile/totals').then(({ data }) => setTotals(data)).catch(() => {}); }, []);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
   // Refetch when returning from add/import.
   useFocusEffect(useCallback(() => {
     loadPage(page);
-    api.get('/profile/totals').then(({ data }) => setTotals(data)).catch(() => {});
-    setCurrencySignal((s) => s + 1);
+    loadSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]));
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const lastFlightStr = summary?.totals?.lastFlightDate
+    ? new Date(summary.totals.lastFlightDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
 
   const goToPage = (p: number) => {
     const clamped = Math.min(Math.max(1, p), totalPages);
@@ -160,10 +161,9 @@ export default function LogbookList() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadPage(page);
-    api.get('/profile/totals').then(({ data }) => setTotals(data)).catch(() => {});
-    setCurrencySignal((s) => s + 1);
+    loadSummary();
     setRefreshing(false);
-  }, [page, loadPage]);
+  }, [page, loadPage, loadSummary]);
 
   // Edit / Clone → stash the log in the module holder (no GET /flight-logs/:id),
   // then navigate. Edit prefills as-is (→ PATCH); clone clears the date (→ POST).
@@ -181,8 +181,7 @@ export default function LogbookList() {
           try {
             await api.delete(`/flight-logs/${id}`);
             await loadPage(page);
-            api.get('/profile/totals').then(({ data }) => setTotals(data)).catch(() => {});
-            setCurrencySignal((s) => s + 1);
+            loadSummary();
           } catch { /* ignore */ }
         },
       },
@@ -197,26 +196,15 @@ export default function LogbookList() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
       >
         <Text style={styles.h1}>Logbook</Text>
-        <Text style={styles.subtitle}>Hours flown, sectors logged, currency tracked.</Text>
+        <Text style={styles.subtitle}>
+          {(summary?.totals?.flightCount ?? total)} flights logged{lastFlightStr ? ` · last flight ${lastFlightStr}` : ''}
+        </Text>
 
-        {/* Totals */}
-        <View style={styles.totalsGrid}>
-          {TOTALS_DISPLAY.map(([key, label]) => (
-            <View key={key} style={styles.totalCard}>
-              <Text style={styles.totalValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{(Number(totals?.[key]) || 0).toFixed(1)}</Text>
-              <Text style={styles.totalLabel}>{label}</Text>
-            </View>
-          ))}
-        </View>
+        {/* Hours dashboard (real data from /logbook/summary) */}
+        <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} />
 
-        {/* Carry-forward hours (starting balances; folded into /profile/totals) */}
-        <CarryForwardPanel onSaved={() => {
-          api.get('/profile/totals').then(({ data }) => setTotals(data)).catch(() => {});
-          setCurrencySignal((s) => s + 1);
-        }} />
-
-        {/* Currency */}
-        <CurrencyBadge refreshSignal={currencySignal} />
+        {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
+        <CarryForwardPanel openSignal={cfOpenSignal} onSaved={loadSummary} />
 
         {/* Toolbar */}
         <View style={styles.toolbar}>
