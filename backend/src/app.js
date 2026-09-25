@@ -327,6 +327,30 @@ cron.schedule('0 3 * * *', async () => {
   }
 });
 
+// Nightly (03:40 UTC): prune JobAlert rows whose job has EXPIRED. Jobs expire by
+// status change (not deletion), so their alerts would accumulate forever — this is
+// what filled the disk on 2026-09-25. Batched so no single statement bloats WAL.
+cron.schedule('40 3 * * *', async () => {
+  try {
+    const { pruneExpiredJobAlerts } = require('./services/dbMaintenance');
+    const r = await pruneExpiredJobAlerts();
+    if (r.removed) logger.info(`Expired-alert prune: removed ${r.removed} rows in ${r.batches} batches`);
+  } catch (err) {
+    logger.error(`Expired-alert prune failed: ${err.message}`);
+  }
+});
+
+// Every 6h: DB volume-usage check; emails ops (SCRAPER_ALERT_EMAIL / DISK_ALERT_EMAIL)
+// once usage crosses 75%, so we resize before Postgres ever hits "no space left".
+cron.schedule('15 */6 * * *', async () => {
+  try {
+    const { checkDiskAndAlert } = require('./services/dbMaintenance');
+    await checkDiskAndAlert();
+  } catch (err) {
+    logger.error(`DB disk check failed: ${err.message}`);
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
 

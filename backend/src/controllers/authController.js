@@ -114,6 +114,12 @@ exports.googleAuth = async (req, res, next) => {
       });
       created = true;
       logger.info({ pilotId: pilot.id, msg: 'pilot created via Google sign-in' });
+    } else if (!pilot.emailVerified) {
+      // Existing account (e.g. created via email/password): Google has proven the
+      // address (email_verified checked above), so mark it verified. Previously this
+      // only happened on the create path, so Google users kept emailVerified=false.
+      pilot = await prisma.pilot.update({ where: { id: pilot.id }, data: { emailVerified: true } });
+      logger.info({ pilotId: pilot.id, msg: 'emailVerified set true via Google sign-in' });
     }
 
     const token = signToken(pilot.id);
