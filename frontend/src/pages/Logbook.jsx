@@ -3,14 +3,15 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import {
   ChevronDown, ChevronRight, ChevronUp,
-  Pencil, Copy, Trash2, Clock, Upload, CheckCircle2,
+  Pencil, Copy, Trash2, Upload, CheckCircle2,
 } from 'lucide-react';
 import SunCalc from 'suncalc';
-import { flightLogApi, profileApi } from '../services/api';
+import { flightLogApi, profileApi, logbookApi } from '../services/api';
 import { setLogs, setTotals, addLog, removeLog } from '../store';
 import AIRPORTS from '../data/airports.json';
 import ImportModal from '../components/ImportModal';
 import AircraftCombobox from '../components/AircraftCombobox';
+import LogbookDashboard from '../components/logbook/LogbookDashboard';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -564,8 +565,9 @@ function Pagination({ page, totalPages, total, pageSize, count, onChange, isMobi
 
 export default function Logbook() {
   const dispatch = useDispatch();
-  const isMobile = useIsMobile(640);
+  const isMobile = useIsMobile(768);
   const { logs, totals, total } = useSelector((s) => s.logbook);
+  const [summary, setSummary] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
@@ -576,7 +578,6 @@ export default function Logbook() {
   const [cloneFlight, setCloneFlight] = useState(null);
   const [search, setSearch] = useState('');
   const [expandedDuties, setExpandedDuties] = useState(new Set());
-  const [cfHover, setCfHover] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [hoverRow, setHoverRow] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null); // { label, fn }
@@ -586,11 +587,21 @@ export default function Logbook() {
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
-  const [showCarryForward, setShowCarryForward] = useState(false);
+  const [showCarryForward, setShowCarryForward] = useState(false); // CF editor modal
   const [carryForward, setCarryForward] = useState({});
   const [carryForwardForm, setCarryForwardForm] = useState({});
   const [carryForwardSaved, setCarryForwardSaved] = useState(false);
   const [migrationToast, setMigrationToast] = useState(false);
+
+  // The hours dashboard reads exclusively from /logbook/summary (real data).
+  const loadSummary = useCallback(async () => {
+    try { const { data } = await logbookApi.summary(); setSummary(data); }
+    catch (err) { console.warn('logbook summary load failed:', err); }
+  }, []);
+  const openCarryForwardEditor = () => {
+    setCarryForwardForm(Object.fromEntries(Object.entries(carryForward).map(([k, v]) => [k, v || ''])));
+    setShowCarryForward(true);
+  };
 
   // Load one page of flights into the table.
   const loadPage = useCallback(async (p) => {
@@ -618,12 +629,13 @@ export default function Logbook() {
     setSearchParams(clamped === 1 ? {} : { page: String(clamped) }, { replace: true });
   };
 
-  // Full refresh after add / edit / clone / import: current page + recent + totals.
+  // Full refresh after add / edit / clone / import: current page + recent + totals + summary.
   const fetchData = async () => {
     await Promise.all([
       loadPage(page),
       page !== 1 ? loadRecent() : Promise.resolve(),
       profileApi.getTotals().then((r) => dispatch(setTotals(r.data))),
+      loadSummary(),
     ]);
   };
 
@@ -657,7 +669,7 @@ export default function Logbook() {
   useEffect(() => {
     const init = async () => {
       await migrateCarryForward().catch((err) => console.warn('CF migration failed, will retry on next mount:', err));
-      const [totalsRes, cfRes] = await Promise.all([profileApi.getTotals(), profileApi.getCarryForward()]);
+      const [totalsRes, cfRes] = await Promise.all([profileApi.getTotals(), profileApi.getCarryForward(), loadSummary()]);
       dispatch(setTotals(totalsRes.data));
       setCarryForward(cfRes.data ?? {});
       if (page !== 1) loadRecent(); // deep-linked to a later page → fetch recent separately
@@ -668,24 +680,8 @@ export default function Logbook() {
   // Load the current page on mount and whenever it changes.
   useEffect(() => { loadPage(page); }, [page, loadPage]);
 
-  const currency = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 90);
-    let dayLandings = 0;
-    let nightLandings = 0;
-    // Computed from recentLogs (most-recent 50), not the displayed page — keeps the
-    // 90-day window correct regardless of pagination.
-    for (const log of recentLogs) {
-      if (log.date && new Date(log.date) >= cutoff) {
-        dayLandings += parseInt(log.landingsDay) || 0;
-        nightLandings += parseInt(log.landingsNight) || 0;
-      }
-    }
-    // Simplified universal floor: 3 landings in 90 days, matching the day
-    // threshold. NOT full FAA/EASA recency — real currency is authority-specific
-    // and time-windowed (night = full-stop landings in the night period, etc.).
-    return { dayCurrent: dayLandings >= 3, nightCurrent: nightLandings >= 3 };
-  }, [recentLogs]);
+  // Currency is now computed server-side and delivered in /logbook/summary
+  // (see LogbookDashboard). recentLogs is still fetched for potential reuse.
 
   const filteredLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -766,105 +762,56 @@ export default function Logbook() {
       setCarryForward(data ?? {});
       const totalsRes = await profileApi.getTotals();
       dispatch(setTotals(totalsRes.data));
+      await loadSummary();
       setCarryForwardSaved(true);
-      setTimeout(() => setCarryForwardSaved(false), 2000);
+      setTimeout(() => { setCarryForwardSaved(false); setShowCarryForward(false); }, 1200);
     } catch (err) {
       console.error('Failed to save carry-forward:', err);
     }
   };
 
-  const totalWithCarry = (key) => (totals?.[key] || 0).toFixed(1);
   const cloneInitial = cloneFlight ? { ...cloneFlight, date: '' } : null;
-  const cfHasSavedData = CF_NUMERIC_KEYS.some((k) => (carryForward[k] || 0) > 0);
   const rowBg = (id) => (hoverRow === id ? 'rgba(0,63,136,0.04)' : 'var(--surface)');
+  const lastFlightStr = summary?.totals?.lastFlightDate
+    ? new Date(summary.totals.lastFlightDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
 
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', marginBottom: 8 }}>Logbook</h1>
-      <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28 }}>Hours flown, sectors logged, currency tracked.</p>
-
-      <div style={css.totalsGrid}>
-        {TOTALS_DISPLAY.map(({ key, label }) => (
-          <div key={key} style={css.totalCard}>
-            <div style={css.totalValue}>{totalWithCarry(key)}</div>
-            <div style={css.totalLabel}>{label}</div>
-            {carryForward[key] > 0 && (
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>
-                +{carryForward[key].toFixed(1)} carry-fwd
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Previous / Carry-Forward Hours */}
-      <div style={{ marginBottom: 24 }}>
-        <button
-          onClick={() => {
-            setShowCarryForward((v) => !v);
-            setCarryForwardForm(Object.fromEntries(Object.entries(carryForward).map(([k, v]) => [k, v || ''])));
-          }}
-          onMouseEnter={() => setCfHover(true)}
-          onMouseLeave={() => setCfHover(false)}
-          style={{
-            background: 'var(--surface)',
-            border: `1px solid ${cfHover ? 'var(--accent)' : 'var(--border)'}`,
-            borderRadius: 10, padding: '12px 18px', color: 'var(--text-primary)',
-            fontWeight: 600, fontSize: 14, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
-            transition: 'border-color 0.15s',
-          }}
-        >
-          <Clock size={15} style={{ color: 'var(--accent)' }} />
-          Previous / carry-forward hours
-          {cfHasSavedData && <Badge variant="info">active</Badge>}
-          <ChevronDown
-            size={14}
-            style={{ marginLeft: 'auto', color: 'var(--text-secondary)', transform: showCarryForward ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
-          />
-        </button>
-
-        {showCarryForward && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0 0 10px 10px', borderTop: 'none', padding: 20 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
-              Enter hours from your previous logbooks. These are added to the totals above.
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-              {TOTALS_DISPLAY.map(({ key, label }) => (
-                <Input
-                  key={key}
-                  type="number" min="0" step="0.1"
-                  label={label}
-                  value={carryForwardForm[key] ?? ''}
-                  onChange={(e) => setCarryForwardForm((f) => ({ ...f, [key]: e.target.value }))}
-                  placeholder="0.0"
-                />
-              ))}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16 }}>
-              <Button onClick={saveCarryForward}>Save</Button>
-              {carryForwardSaved && <span style={{ color: SEM.green, fontSize: 13, fontWeight: 600 }}>&#x2713; Saved</span>}
-            </div>
+      {/* Header: title + subtitle + actions (buttons ≥768; Import link on phone) */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 30 : 38, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>Logbook</h1>
+          {!isMobile && (
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', margin: '8px 0 0' }}>
+              {(summary?.totals?.flightCount ?? total)} flights logged{lastFlightStr ? ` · last flight ${lastFlightStr}` : ''}
+            </p>
+          )}
+        </div>
+        {isMobile ? (
+          <button onClick={() => setShowImport(true)} style={{ background: 'none', border: 0, color: 'var(--accent)', fontWeight: 600, fontSize: 14, cursor: 'pointer', padding: 4 }}>Import</button>
+        ) : (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import</Button>
+            <Button onClick={() => setShowModal(true)}>+ Log a flight</Button>
           </div>
         )}
       </div>
 
-      {/* Currency card */}
-      <div style={css.currencyCard}>
-        <span style={css.currencyTitle}>Currency (90 days)</span>
-        <Badge variant={currency.dayCurrent ? 'success' : 'error'}>{currency.dayCurrent ? '✓ Day Current' : '✕ Day Not Current'}</Badge>
-        <Badge variant={currency.nightCurrent ? 'success' : 'error'}>{currency.nightCurrent ? '✓ Night Current' : '✕ Night Not Current'}</Badge>
-      </div>
-
-      <div style={css.toolbar}>
-        <Button onClick={() => setShowModal(true)}>+ Log a Flight</Button>
-        <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}>
-          <Upload size={14} /> Import
-        </Button>
-        <span style={{ color: 'var(--text-secondary)', fontSize: 13, marginLeft: 'auto' }}>
-          {total} {total === 1 ? 'flight' : 'flights'}
-        </span>
-      </div>
+      {summary && summary.totals.flightCount === 0 ? (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '48px 24px', textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Log your first flight</div>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 20px' }}>Your hours, milestones and currency will appear here.</p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            <Button onClick={() => setShowModal(true)}>+ Log a flight</Button>
+            <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import</Button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 22 }}>
+          <LogbookDashboard summary={summary} onEditCarryForward={openCarryForwardEditor} />
+        </div>
+      )}
 
       <Input
         type="text"
@@ -1141,6 +1088,45 @@ export default function Logbook() {
       )}
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onImportDone={fetchData} />
+      )}
+
+      {/* Carry-forward editor (opened from the Total-time "Edit" link) */}
+      <Modal isOpen={showCarryForward} onClose={() => setShowCarryForward(false)} title="Previous / carry-forward hours" size="md">
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 16px', lineHeight: 1.5 }}>
+          Enter hours from your previous logbooks. These are added to your all-time totals.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+          {TOTALS_DISPLAY.map(({ key, label }) => (
+            <Input
+              key={key}
+              type="number" min="0" step="0.1"
+              label={label}
+              value={carryForwardForm[key] ?? ''}
+              onChange={(e) => setCarryForwardForm((f) => ({ ...f, [key]: e.target.value }))}
+              placeholder="0.0"
+            />
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 20 }}>
+          <Button onClick={saveCarryForward}>Save</Button>
+          <Button variant="ghost" onClick={() => setShowCarryForward(false)}>Cancel</Button>
+          {carryForwardSaved && <span style={{ color: SEM.green, fontSize: 13, fontWeight: 600 }}>&#x2713; Saved</span>}
+        </div>
+      </Modal>
+
+      {/* Mobile floating "+ Log flight" button (<768) */}
+      {isMobile && (
+        <button
+          onClick={() => setShowModal(true)}
+          style={{
+            position: 'fixed', right: 16, bottom: 20, zIndex: 6,
+            background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 15,
+            border: 0, borderRadius: 28, padding: '15px 22px',
+            boxShadow: '0 6px 18px rgba(0,63,136,0.35)', cursor: 'pointer',
+          }}
+        >
+          + Log flight
+        </button>
       )}
 
       {/* Delete confirmation (replaces window.confirm) */}

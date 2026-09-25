@@ -75,6 +75,11 @@ export const flightLogApi = {
   importConfirm: (rows) => api.post('/flight-logs/import/confirm', { rows }, { timeout: 60000 }),
 };
 
+export const logbookApi = {
+  // Single hours-dashboard payload shared by web + app (see backend services/logbookSummary).
+  summary: () => api.get('/logbook/summary'),
+};
+
 
 
 export const jobApi = {

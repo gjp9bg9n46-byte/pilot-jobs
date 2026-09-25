@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logbook Totals Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#E9E6DF;font-family:'Inter',system-ui,sans-serif;color:#0F1419;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1420px;margin:0 auto;padding:22px 16px 60px}
+  .intro{font-size:13.5px;color:#5A5F66;max-width:900px;line-height:1.5;margin:0 0 20px}
+  .intro b{color:#0F1419}
+  h3{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#5A5F66;margin:0 0 10px;font-weight:700}
+  h3 span{text-transform:none;letter-spacing:0;font-weight:500;color:#8A8F96;margin-left:6px}
+  .desk-shell{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.08);margin-bottom:36px}
+  .browser{height:34px;background:#2B2D31;display:flex;align-items:center;gap:6px;padding:0 12px}
+  .browser i{width:10px;height:10px;border-radius:50%;background:#5C5F66}
+  .browser .url{margin:0 auto;background:#3A3D42;color:#C9CCD1;font-size:12px;border-radius:6px;padding:4px 60px}
+  .scaler{overflow:hidden;position:relative}
+  .scaler iframe{border:0;display:block;transform-origin:0 0;position:absolute;left:0;top:0;background:#F8F6F1}
+  .devices{display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start}
+  .ipad{background:#1A1A1A;border-radius:30px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+  .ipad .scaler{border-radius:12px}
+  .phone{width:390px;background:#111;border-radius:52px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+  .phone .screen{border-radius:42px;overflow:hidden;background:#F8F6F1;position:relative}
+  .sb{height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 32px 8px;font-size:14px;font-weight:600;background:#fff}
+  .phone.app .sb{background:#F8F6F1}
+  .safari{height:56px;background:#F2F2F2;border-top:1px solid #DDD;display:flex;align-items:center;justify-content:center}
+  .safari span{background:#fff;border-radius:12px;padding:8px 70px;font-size:13px;color:#333;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .phone iframe{border:0;display:block;width:100%}
+  .notes{margin-top:34px;background:#fff;border-radius:12px;padding:18px 22px;font-size:13.5px;line-height:1.55;color:#33373D}
+  .notes b{color:#0F1419}
+  .notes table{border-collapse:collapse;width:100%;margin-top:8px}
+  .notes td,.notes th{text-align:left;padding:8px 10px;border-top:1px solid #EEE;vertical-align:top}
+  .notes th{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#5A5F66;border-top:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="intro"><b>Logbook totals: responsive mockup.</b> Sample data only; not connected to the project. All four views below are <b>the same page</b> loaded at real device widths, so each layout comes from the page's own breakpoints, not from separate drawings. On the phones, tap <b>“Types, limits &amp; night/IFR”</b> to expand. The phone screens scroll.</p>
+
+  <h3>Desktop web <span>1280px · ≥1024 layout</span></h3>
+  <div class="desk-shell">
+    <div class="browser"><i></i><i></i><i></i><span class="url">cockpithire.com/logbook</span></div>
+    <div class="scaler" id="desk"></div>
+  </div>
+
+  <div class="devices">
+    <div>
+      <h3>iPad web <span>820px portrait · 768–1023 layout</span></h3>
+      <div class="ipad"><div class="scaler" id="ipad"></div></div>
+    </div>
+    <div>
+      <h3>Mobile web <span>390px · Safari</span></h3>
+      <div class="phone"><div class="screen">
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <iframe id="mweb" style="height:700px"></iframe>
+        <div class="safari"><span>cockpithire.com</span></div>
+      </div></div>
+    </div>
+    <div>
+      <h3>Mobile app <span>390px · iOS / Android</span></h3>
+      <div class="phone app"><div class="screen">
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <iframe id="mapp" style="height:756px"></iframe>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <b>How the layout changes by screen size</b>
+    <table>
+      <tr><th>Section</th><th>Desktop ≥1024</th><th>iPad 768–1023</th><th>Phone &lt;768 (web + app)</th></tr>
+      <tr><td>Total time</td><td>Column 1 of 3</td><td>Left half</td><td>Always shown: number, PIC/SIC bar</td></tr>
+      <tr><td>Next milestone + jobs link</td><td>Column 2 of 3</td><td>Right half</td><td>Always shown, compact</td></tr>
+      <tr><td>Hours by type</td><td>Column 3 of 3</td><td>Full width, 2 columns</td><td>Behind “expand”</td></tr>
+      <tr><td>Night / IFR / multi / turbine / landings</td><td>Under the total</td><td>Under the total</td><td>Behind “expand”</td></tr>
+      <tr><td>Flight time limits</td><td>Beside currency</td><td>Full width, above currency</td><td>Behind “expand”</td></tr>
+      <tr><td>Currency</td><td>Card, sentences</td><td>Card, sentences</td><td>Always shown, sentences</td></tr>
+      <tr><td>Flight list</td><td>Table, all columns</td><td>Table, Night column dropped</td><td>Two-line rows grouped by month</td></tr>
+      <tr><td>Log a flight</td><td>Button in header</td><td>Button in header</td><td>Floating button, bottom right</td></tr>
+      <tr><td>Navigation</td><td>Top bar</td><td>Top bar (replaces the old sidebar on iPad)</td><td>Web: logo + menu · App: bottom tabs</td></tr>
+    </table>
+  </div>
+</div>
+
+<script type="text/plain" id="page-css">
+  :root{
+    --bg:#F8F6F1; --surface:#FFFFFF; --text:#0F1419; --muted:#5A5F66; --faint:#8A8F96;
+    --border:#E5E1D8; --accent:#003F88; --sic:#7FA3CF;
+    --green:#166534; --green-bg:#DCFCE7; --amber:#92400E; --amber-bg:#FEF3C7;
+    --display:'Fraunces',Georgia,serif; --body:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);font-family:var(--body);color:var(--text);-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none;font-weight:600}
+  .label{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+  .num{font-family:var(--mono);font-weight:700}
+  .fine{font-size:12.5px;color:var(--muted);line-height:1.45}
+
+  .topbar{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:34px;position:sticky;top:0;z-index:5}
+  .logo{font-family:var(--display);font-weight:600;font-size:22px;white-space:nowrap}
+  .logo span{color:var(--accent);font-family:var(--body);margin-right:6px}
+  .nav{display:flex;gap:26px;font-size:15px;font-weight:500}
+  .pill{background:var(--accent);color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 7px;margin-left:6px}
+  .me{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+  .av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .burger{width:40px;height:40px;border-radius:8px;background:#EEF0F3;display:grid;place-items:center;font-size:18px}
+  .tabs{display:none}
+
+  .page{max-width:1240px;margin:0 auto;padding:32px 28px 40px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px}
+  h1{font-family:var(--display);font-weight:600;font-size:38px;margin:0;line-height:1}
+  .sub{color:var(--muted);font-size:15px;margin-top:8px}
+  .btns{display:flex;gap:10px}
+  .btn{font-family:var(--body);font-size:14px;font-weight:600;border-radius:8px;padding:10px 16px;border:1px solid var(--border);background:#fff;color:var(--text);min-height:42px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .imp-link{display:none}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px}
+  .hero{display:grid;grid-template-columns:1.25fr 1fr 1fr}
+  .hero > section{padding:24px 26px;min-width:0}
+  .hero > section + section{border-left:1px solid var(--border)}
+
+  .big{display:flex;align-items:baseline;gap:8px;margin:10px 0 4px}
+  .big .n{font-family:var(--display);font-weight:600;font-size:58px;line-height:1;letter-spacing:-1px}
+  .big .u{font-size:16px;color:var(--muted);font-weight:500}
+  .split{height:10px;border-radius:6px;overflow:hidden;display:flex;margin:18px 0 8px;background:#EEE}
+  .split i{display:block;height:100%}
+  .legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted)}
+  .legend b{color:var(--text);font-family:var(--mono);font-weight:700;margin-left:4px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+  .conds{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted)}
+  .conds b{font-family:var(--mono);color:var(--text);margin-left:4px}
+
+  .ms-title{font-size:15px;font-weight:600;margin:10px 0 2px}
+  .ms-title .num{color:var(--accent)}
+  .track{position:relative;height:8px;border-radius:5px;background:#ECE9E2;margin:38px 8px 48px 0}
+  .track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--accent)}
+  .tick{position:absolute;top:-4px;width:2px;height:16px;background:#CFCAC0}
+  .tick.done{background:var(--accent)}
+  .tick span{position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:10.5px;color:var(--faint);white-space:nowrap;text-align:center;line-height:1.25}
+  .tick span.r{left:auto;right:4px;transform:none;text-align:right}
+  .tick span.end{left:auto;right:0;transform:none;text-align:right}
+  .tick.done span{color:var(--accent);font-weight:600}
+  .you{position:absolute;top:-30px;transform:translateX(-50%);font-size:10.5px;font-weight:700;color:#fff;background:var(--text);padding:2px 7px;border-radius:5px;white-space:nowrap}
+  .you:after{content:"";position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);border:4px solid transparent;border-top-color:var(--text);border-bottom:0}
+  .jobs-hook{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;background:var(--green-bg);border:1px solid #BBF7D0;border-radius:10px;padding:11px 13px;font-size:13px;color:var(--green)}
+  .jobs-hook b{font-size:18px;font-family:var(--mono)}
+  .jobs-hook a{flex-basis:100%;color:var(--green);font-weight:700}
+
+  .types{list-style:none;padding:0;margin:14px 0 0}
+  .types li{display:grid;grid-template-columns:78px 1fr 70px;align-items:center;gap:10px;padding:7px 0;font-size:13.5px}
+  .types .t{font-weight:600}
+  .types .t small{display:block;font-weight:400;color:var(--faint);font-size:11px}
+  .types .bar{height:6px;background:#ECE9E2;border-radius:4px;overflow:hidden}
+  .types .bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+  .types .h{text-align:right;font-family:var(--mono);font-weight:700;font-size:13px}
+
+  .expand{display:none}
+
+  .row2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-top:16px}
+  .row2 .card{padding:20px 24px}
+  .gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:14px}
+  .g .v{font-size:13px;color:var(--muted);margin-bottom:8px}
+  .g .v .num{font-size:20px;color:var(--text)}
+  .g .gbar{height:6px;border-radius:4px;background:#ECE9E2;overflow:hidden}
+  .g .gbar i{display:block;height:100%;border-radius:4px;background:var(--green)}
+  .g .gbar i.warn{background:#D97706}
+  .g .cap{font-size:11.5px;color:var(--faint);margin-top:6px}
+  .cur{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:10px}
+  .cur li{display:flex;gap:10px;font-size:13.5px;line-height:1.4}
+  .ic{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700}
+  .ok{background:var(--green-bg);color:var(--green)} .warnc{background:var(--amber-bg);color:var(--amber)}
+  .m{color:var(--muted)}
+
+  .search{margin:26px 0 12px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-size:14px;color:var(--faint)}
+
+  .cols,.fl{display:grid;grid-template-columns:.9fr 1.3fr 1.2fr .7fr .6fr .6fr .5fr 40px;grid-template-areas:"date ac route blk role night ldg more";align-items:center;gap:0 12px;padding:0 16px}
+  .cols{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:700;padding-bottom:8px}
+  .month{display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:14px 4px 8px}
+  .month .num{color:var(--accent)}
+  .fl{background:#fff;border:1px solid var(--border);border-radius:10px;min-height:50px;margin-bottom:6px;font-size:14px}
+  .fl .meta{display:contents}
+  .fl .route{grid-area:route;font-weight:700}
+  .fl .blk{grid-area:blk;color:var(--accent);font-weight:700;font-family:var(--mono)}
+  .fl .c-date{grid-area:date}.fl .c-ac{grid-area:ac}.fl .c-role{grid-area:role}.fl .c-night{grid-area:night}.fl .c-ldg{grid-area:ldg}
+  .fl .reg{color:var(--faint)}
+  .fl .more{grid-area:more;color:var(--faint);text-align:center;font-size:18px}
+  .dim{color:var(--faint)}
+  .fab{display:none}
+
+  @media (max-width:1023px){
+    .topbar{padding:0 22px;gap:24px}
+    .me .name{display:none}
+    .page{padding:26px 22px 36px}
+    .hero{grid-template-columns:1fr 1fr}
+    .hero > .s-types{grid-column:1/-1;border-left:0;border-top:1px solid var(--border)}
+    .s-types .types{display:grid;grid-template-columns:1fr 1fr;column-gap:36px}
+    .row2{grid-template-columns:1fr}
+    .cols,.fl{grid-template-columns:.9fr 1.3fr 1.2fr .7fr .6fr .5fr 44px;grid-template-areas:"date ac route blk role ldg more"}
+    .c-night,.cols .c-night{display:none}
+    .fl{min-height:52px}
+  }
+
+  @media (max-width:767px){
+    .topbar{height:56px;padding:0 16px}
+    .topbar .nav,.topbar .me{display:none}
+    .topbar .burger{margin-left:auto}
+    .page{padding:14px 14px 110px}
+    .head{align-items:center;margin-bottom:12px}
+    h1{font-size:30px}
+    .sub{display:none}
+    .btns{display:none}
+    .imp-link{display:inline;font-size:14px}
+
+    .hero{display:block;border-radius:16px}
+    .hero > section{padding:16px}
+    .hero > section + section{border-left:0;border-top:1px dashed var(--border)}
+    .big .n{font-size:44px}
+    .big .u{font-size:14px}
+    .split{margin:12px 0 8px}
+    .s-total .fine{font-size:12px}
+    .s-ms .fine{display:none}
+    .ms-title{margin-top:6px;font-size:14px}
+    .track{margin:34px 6px 42px 0}
+    .jobs-hook{padding:10px 12px;font-size:12.5px}
+
+    .conds,.s-types,.limits{display:none}
+    body.open .conds{display:flex}
+    body.open .s-types{display:block}
+    body.open .limits{display:block}
+    .s-types .types{display:block}
+    .expand{display:flex;justify-content:center;align-items:center;gap:6px;width:100%;min-height:46px;border:0;border-top:1px solid var(--border);background:none;font:600 13px var(--body);color:var(--accent);border-radius:0 0 16px 16px;cursor:pointer}
+    .expand .chev{transition:transform .2s}
+    body.open .expand .chev{transform:rotate(180deg)}
+
+    .row2{gap:10px;margin-top:10px}
+    .row2 .card{padding:14px 16px;border-radius:16px}
+    .gauges{grid-template-columns:1fr;gap:14px}
+    .cur li{font-size:13px}
+
+    .search{margin:16px 0 4px;font-size:13.5px}
+    .cols{display:none}
+    .fl{grid-template-columns:1fr auto;grid-template-areas:"route blk" "meta meta";padding:11px 14px;min-height:62px;border-radius:12px;row-gap:3px}
+    .fl .route{font-size:15px}
+    .fl .blk{font-size:14px}
+    .fl .meta{grid-area:meta;display:flex;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+    .fl .meta > span{grid-area:auto}
+    .fl .meta > span + span:before{content:" · ";white-space:pre}
+    .fl .c-night,.fl .c-ldg,.fl .more{display:none}
+
+    .fab{display:block;position:fixed;right:16px;bottom:20px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;border-radius:28px;padding:15px 22px;box-shadow:0 6px 18px rgba(0,63,136,.35);z-index:6}
+
+    body.app .topbar{display:none}
+    body.app .page{padding-top:6px;padding-bottom:170px}
+    body.app .tabs{display:flex;position:fixed;left:0;right:0;bottom:0;height:78px;background:#fff;border-top:1px solid var(--border);justify-content:space-around;align-items:flex-start;padding-top:10px;font-size:10.5px;color:var(--faint);z-index:6}
+    body.app .tabs div{text-align:center;min-width:60px}
+    body.app .tabs i{display:block;width:24px;height:24px;border-radius:7px;background:currentColor;opacity:.25;margin:0 auto 4px}
+    body.app .tabs .on{color:var(--accent);font-weight:700}
+    body.app .tabs .on i{opacity:1}
+    body.app .fab{bottom:94px}
+  }
+</script>
+
+<template id="page-html">
+  <header class="topbar">
+    <div class="logo"><span>⇢</span>CockpitHire</div>
+    <nav class="nav"><span>Jobs</span><span>Airlines</span><span>Alerts<span class="pill">69</span></span></nav>
+    <div class="me"><div class="av">MA</div><span class="name">mohamed alaaeldin</span></div>
+    <div class="burger">☰</div>
+  </header>
+
+  <main class="page">
+    <div class="head">
+      <div>
+        <h1>Logbook</h1>
+        <div class="sub">501 flights logged · last flight 22 May 2026</div>
+      </div>
+      <div class="btns">
+        <button class="btn">⤒ Import</button>
+        <button class="btn primary">+ Log a flight</button>
+      </div>
+      <a class="imp-link" href="#">Import</a>
+    </div>
+
+    <div class="card hero">
+      <section class="s-total">
+        <div class="label">Total time</div>
+        <div class="big"><span class="n">1,514.6</span><span class="u">hours</span></div>
+        <div class="fine">Includes 1,120.0 h carried forward · <a href="#">Edit</a></div>
+        <div class="split"><i style="width:14%;background:var(--accent)"></i><i style="width:86%;background:var(--sic)"></i></div>
+        <div class="legend">
+          <span><span class="dot" style="background:var(--accent)"></span>PIC<b>214.6</b></span>
+          <span><span class="dot" style="background:var(--sic)"></span>SIC<b>1,300.0</b></span>
+        </div>
+        <div class="conds">
+          <span>Multi-engine<b>1,358.4</b></span>
+          <span>Turbine<b>1,214.0</b></span>
+          <span>Night<b>286.2</b></span>
+          <span>IFR<b>412.0</b></span>
+          <span>Landings<b>612</b></span>
+        </div>
+      </section>
+
+      <section class="s-ms">
+        <div class="label">Next milestone</div>
+        <div class="ms-title"><span class="num">485.4 h</span> to 2,000 hours</div>
+        <div class="fine">You passed the 1,500 h ATPL mark in March.</div>
+        <div class="track">
+          <div class="fill" style="width:75.7%"></div>
+          <div class="tick done" style="left:12.5%"><span>250<br>CPL</span></div>
+          <div class="tick done" style="left:75%"><span class="r">1,500<br>ATPL</span></div>
+          <div class="tick" style="left:99.5%"><span class="end">2,000<br>Next</span></div>
+          <div class="you" style="left:75.7%">You · 1,514.6</div>
+        </div>
+        <div class="jobs-hook"><b>+34</b><span>more jobs on CockpitHire ask for 2,000 h</span><a href="#">See them →</a></div>
+      </section>
+
+      <section class="s-types">
+        <div class="label">Hours by aircraft type</div>
+        <ul class="types">
+          <li><span class="t">A320<small>SU-BWC, BUL +6</small></span><span class="bar"><i style="width:100%"></i></span><span class="h">1,214.0</span></li>
+          <li><span class="t">C172<small>Training</small></span><span class="bar"><i style="width:18%"></i></span><span class="h">214.6</span></li>
+          <li><span class="t">DA42<small>Multi-engine training</small></span><span class="bar"><i style="width:6%"></i></span><span class="h">72.0</span></li>
+          <li><span class="t">SIM<small>A320 FFS</small></span><span class="bar"><i style="width:1.2%"></i></span><span class="h">14.0</span></li>
+        </ul>
+      </section>
+
+      <button class="expand" onclick="document.body.classList.toggle('open')"><span>Types, limits &amp; night/IFR</span><span class="chev">⌄</span></button>
+    </div>
+
+    <div class="row2">
+      <div class="card limits">
+        <div class="label">Flight time limits (EASA ORO.FTL)</div>
+        <div class="gauges">
+          <div class="g"><div class="v"><span class="num">62.4</span> / 100 h</div><div class="gbar"><i style="width:62%"></i></div><div class="cap">Last 28 days</div></div>
+          <div class="g"><div class="v"><span class="num">612.0</span> / 900 h</div><div class="gbar"><i style="width:68%"></i></div><div class="cap">Calendar year 2026</div></div>
+          <div class="g"><div class="v"><span class="num">874.5</span> / 1,000 h</div><div class="gbar"><i class="warn" style="width:87%"></i></div><div class="cap">Last 12 months · 125.5 h left</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="label">Currency · last 90 days</div>
+        <ul class="cur">
+          <li><span class="ic ok">✓</span><div>Day: current until <b>19 Aug</b> <span class="m">· 14 landings</span></div></li>
+          <li><span class="ic warnc">!</span><div>Night: <b>1 more landing</b> needed <span class="m">· 2 of 3 logged</span></div></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="search">Search all flights by aircraft, registration or airport…</div>
+
+    <div class="cols"><span>Date</span><span>Aircraft</span><span>Route</span><span>Block</span><span>Role</span><span class="c-night">Night</span><span>Ldg</span><span></span></div>
+
+    <div class="month"><span>May 2026</span><span><span class="num">42.6 h</span> · 14 flights</span></div>
+    <div class="fl"><span class="route">CAI → ASW</span><span class="blk">1.5h</span><span class="meta"><span class="c-date">22 May</span><span class="c-ac">A320 <span class="reg">SU-BWC</span></span><span class="c-role">SIC</span></span><span class="c-night dim">—</span><span class="c-ldg">1</span><span class="more">⋯</span></div>
+    <div class="fl"><span class="route">ASW → CAI</span><span class="blk">1.6h</span><span class="meta"><span class="c-date">22 May</span><span class="c-ac">A320 <span class="reg">SU-BWC</span></span><span class="c-role">SIC</span></span><span class="c-night">0.6h</span><span class="c-ldg">0</span><span class="more">⋯</span></div>
+    <div class="fl"><span class="route">CAI → CGN</span><span class="blk">4.7h</span><span class="meta"><span class="c-date">21 May</span><span class="c-ac">A320 <span class="reg">SU-BUL</span></span><span class="c-role">SIC</span></span><span class="c-night dim">—</span><span class="c-ldg">1</span><span class="more">⋯</span></div>
+    <div class="fl"><span class="route">CGN → CAI</span><span class="blk">4.9h</span><span class="meta"><span class="c-date">21 May</span><span class="c-ac">A320 <span class="reg">SU-BUL</span></span><span class="c-role">SIC</span></span><span class="c-night">2.1h</span><span class="c-ldg">1</span><span class="more">⋯</span></div>
+
+    <div class="month"><span>April 2026</span><span><span class="num">71.3 h</span> · 26 flights</span></div>
+    <div class="fl"><span class="route">CAI → HRG</span><span class="blk">1.1h</span><span class="meta"><span class="c-date">30 Apr</span><span class="c-ac">A320 <span class="reg">SU-BWC</span></span><span class="c-role">SIC</span></span><span class="c-night dim">—</span><span class="c-ldg">1</span><span class="more">⋯</span></div>
+    <div class="fl"><span class="route">HRG → CAI</span><span class="blk">1.2h</span><span class="meta"><span class="c-date">30 Apr</span><span class="c-ac">A320 <span class="reg">SU-BWC</span></span><span class="c-role">SIC</span></span><span class="c-night dim">—</span><span class="c-ldg">0</span><span class="more">⋯</span></div>
+  </main>
+
+  <div class="fab">+ Log flight</div>
+  <nav class="tabs"><div><i></i>Jobs</div><div><i></i>Alerts</div><div class="on"><i></i>Logbook</div><div><i></i>Profile</div></nav>
+</template>
+
+<script>
+  const FONTS = '<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">';
+  const css = document.getElementById('page-css').textContent;
+  const html = document.getElementById('page-html').innerHTML;
+  const doc = (mode) => '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">' + FONTS + '<style>' + css + '</style></head><body class="' + mode + '">' + html + '</body></html>';
+
+  function scaled(hostId, width, fixedHeight, maxDisplayWidth) {
+    const host = document.getElementById(hostId);
+    const f = document.createElement('iframe');
+    f.style.width = width + 'px';
+    f.srcdoc = doc('web');
+    host.appendChild(f);
+    const fit = () => {
+      const container = hostId === 'ipad' ? host.parentElement.parentElement.parentElement : host.parentElement;
+      const avail = Math.min(maxDisplayWidth || Infinity, container.clientWidth - (hostId === 'ipad' ? 36 : 0));
+      const s = Math.min(1, avail / width);
+      let h = fixedHeight;
+      if (!h) { try { h = f.contentDocument.documentElement.scrollHeight; } catch (e) { h = 1400; } }
+      f.style.height = h + 'px';
+      f.style.transform = 'scale(' + s + ')';
+      host.style.width = (width * s) + 'px';
+      host.style.height = (h * s) + 'px';
+      if (hostId === 'desk') host.parentElement.style.width = (width * s) + 'px';
+    };
+    f.addEventListener('load', () => { fit(); setTimeout(fit, 500); });
+    window.addEventListener('resize', fit);
+  }
+  scaled('desk', 1280, null, null);
+  scaled('ipad', 820, 1180, 480);
+  document.getElementById('mweb').srcdoc = doc('web');
+  document.getElementById('mapp').srcdoc = doc('app');
+</script>
+</body>
+</html>

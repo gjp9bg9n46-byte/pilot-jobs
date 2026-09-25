@@ -1,0 +1,122 @@
+/* Logbook hours dashboard — responsive card layout from
+   docs/design/logbook-totals-mockup.html, rebuilt as a real component.
+   Uses the global design tokens (--bg/--surface/--accent/--border/fonts) and
+   adds a few logbook-local semantic tokens. Scoped under .lb-dash so nothing
+   leaks into the rest of the app. Three layouts: >=1024, 768-1023, <768. */
+.lb-dash {
+  --sic: #7FA3CF;
+  --faint: #8A8F96;
+  --green: #166534; --green-bg: #DCFCE7; --green-br: #BBF7D0;
+  --amber: #92400E; --amber-bg: #FEF3C7; --amber-bar: #D97706;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+}
+.lb-dash .num { font-family: var(--font-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+.lb-dash .label { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-secondary); }
+.lb-dash .fine { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+.lb-dash a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.lb-dash a:hover { text-decoration: underline; }
+
+.lb-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+
+/* ── Hero: Total | Milestone | By type ─────────────────────────────────────── */
+.lb-hero { display: grid; grid-template-columns: 1.25fr 1fr 1fr; margin-bottom: 16px; }
+.lb-hero > section { padding: 24px 26px; min-width: 0; }
+.lb-hero > section + section { border-left: 1px solid var(--border); }
+
+.lb-big { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; }
+.lb-big .n { font-family: var(--font-display); font-weight: 600; font-size: 58px; line-height: 1; letter-spacing: -1px; }
+.lb-big .u { font-size: 16px; color: var(--text-secondary); font-weight: 500; }
+.lb-split { height: 10px; border-radius: 6px; overflow: hidden; display: flex; margin: 18px 0 8px; background: #EEE; }
+.lb-split i { display: block; height: 100%; }
+.lb-legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--text-secondary); }
+.lb-legend b { color: var(--text-primary); font-family: var(--font-mono); font-weight: 700; margin-left: 4px; }
+.lb-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.lb-conds { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--text-secondary); }
+.lb-conds b { font-family: var(--font-mono); color: var(--text-primary); margin-left: 4px; }
+
+/* ── Milestone ─────────────────────────────────────────────────────────────── */
+.lb-ms-title { font-size: 15px; font-weight: 600; margin: 10px 0 2px; }
+.lb-ms-title .num { color: var(--accent); }
+.lb-track { position: relative; height: 8px; border-radius: 5px; background: #ECE9E2; margin: 38px 8px 48px 0; }
+.lb-track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); }
+.lb-tick { position: absolute; top: -4px; width: 2px; height: 16px; background: #CFCAC0; }
+.lb-tick.done { background: var(--accent); }
+.lb-tick span { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 10.5px; color: var(--faint); white-space: nowrap; text-align: center; line-height: 1.25; }
+.lb-tick span.r { left: auto; right: 4px; transform: none; text-align: right; }
+.lb-tick span.end { left: auto; right: 0; transform: none; text-align: right; }
+.lb-tick.done span { color: var(--accent); font-weight: 600; }
+.lb-you { position: absolute; top: -30px; transform: translateX(-50%); font-size: 10.5px; font-weight: 700; color: #fff; background: var(--text-primary); padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
+.lb-you:after { content: ""; position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); border: 4px solid transparent; border-top-color: var(--text-primary); border-bottom: 0; }
+.lb-jobs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; background: var(--green-bg); border: 1px solid var(--green-br); border-radius: 10px; padding: 11px 13px; font-size: 13px; color: var(--green); }
+.lb-jobs b { font-size: 18px; font-family: var(--font-mono); }
+.lb-jobs a { flex-basis: 100%; color: var(--green); font-weight: 700; }
+
+/* ── Hours by type ─────────────────────────────────────────────────────────── */
+.lb-types { list-style: none; padding: 0; margin: 14px 0 0; }
+.lb-types li { display: grid; grid-template-columns: 78px 1fr 70px; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
+.lb-types .t { font-weight: 600; }
+.lb-types .t small { display: block; font-weight: 400; color: var(--faint); font-size: 11px; }
+.lb-types .bar { height: 6px; background: #ECE9E2; border-radius: 4px; overflow: hidden; }
+.lb-types .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.lb-types .h { text-align: right; font-family: var(--font-mono); font-weight: 700; font-size: 13px; }
+
+/* ── Limits + Currency row ─────────────────────────────────────────────────── */
+.lb-row2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+.lb-row2 .lb-card { padding: 20px 24px; }
+.lb-gauges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 14px; }
+.lb-g .v { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.lb-g .v .num { font-size: 20px; color: var(--text-primary); }
+.lb-g .gbar { height: 6px; border-radius: 4px; background: #ECE9E2; overflow: hidden; }
+.lb-g .gbar i { display: block; height: 100%; border-radius: 4px; background: var(--green); }
+.lb-g .gbar i.warn { background: var(--amber-bar); }
+.lb-g .cap { font-size: 11.5px; color: var(--faint); margin-top: 6px; }
+.lb-cur { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 10px; }
+.lb-cur li { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.4; }
+.lb-ic { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+.lb-ic.ok { background: var(--green-bg); color: var(--green); }
+.lb-ic.warnc { background: var(--amber-bg); color: var(--amber); }
+.lb-ic.neutral { background: #ECE9E2; color: var(--faint); }
+.lb-cur .m { color: var(--text-secondary); }
+
+/* The mobile expand toggle is hidden on wide layouts. */
+.lb-expand { display: none; }
+
+/* ── iPad 768-1023 ─────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .lb-hero { grid-template-columns: 1fr 1fr; }
+  .lb-hero > .s-types { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--border); }
+  .s-types .lb-types { display: grid; grid-template-columns: 1fr 1fr; column-gap: 36px; }
+  .lb-row2 { grid-template-columns: 1fr; }
+}
+
+/* ── Phone <768 (mobile web + mobile app) ──────────────────────────────────── */
+@media (max-width: 767px) {
+  .lb-hero { display: block; border-radius: 16px; }
+  .lb-hero > section { padding: 16px; }
+  .lb-hero > section + section { border-left: 0; border-top: 1px dashed var(--border); }
+  .lb-big .n { font-size: 44px; }
+  .lb-big .u { font-size: 14px; }
+  .lb-split { margin: 12px 0 8px; }
+  .lb-ms-title { margin-top: 6px; font-size: 14px; }
+  .lb-track { margin: 34px 6px 42px 0; }
+  .lb-jobs { padding: 10px 12px; font-size: 12.5px; }
+
+  /* Behind the expand toggle. */
+  .lb-conds, .s-types, .lb-row2 .lb-card.limits { display: none; }
+  .lb-dash.open .lb-conds { display: flex; }
+  .lb-dash.open .s-types { display: block; }
+  .lb-dash.open .lb-row2 .lb-card.limits { display: block; }
+  .s-types .lb-types { display: block; }
+  .lb-expand { display: flex; justify-content: center; align-items: center; gap: 6px; width: 100%; min-height: 46px; border: 0; border-top: 1px solid var(--border); background: none; font: 600 13px var(--font-body); color: var(--accent); border-radius: 0 0 16px 16px; cursor: pointer; }
+  .lb-expand .chev { transition: transform .2s; }
+  .lb-dash.open .lb-expand .chev { transform: rotate(180deg); }
+
+  .lb-row2 { gap: 10px; }
+  .lb-row2 .lb-card { padding: 14px 16px; border-radius: 16px; }
+  .lb-gauges { grid-template-columns: 1fr; gap: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-expand .chev { transition: none; }
+}
