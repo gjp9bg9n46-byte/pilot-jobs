@@ -590,7 +590,12 @@ export default function Jobs() {
   // Split view (≥1024): the URL /jobs/:slug selects a job in the right pane; the
   // first job is selected by default. <1024 opens the job as a full page.
   const urlJobId = extractUuid(slugId);
-  const selectedId = urlJobId || (isDesktop ? (orderedJobs[0]?.id ?? null) : null);
+  // Default selection = the FIRST card actually shown (top of the first group —
+  // "You qualify" when present), NOT orderedJobs[0]. The fresh/evergreen reordering
+  // can make orderedJobs[0] a lower-group job (e.g. a fresh oneShort with a blocker),
+  // which must never be the default in the detail pane.
+  const firstShownId = showGroups ? (grouped[0]?.jobs?.[0]?.id ?? null) : (orderedJobs[0]?.id ?? null);
+  const selectedId = urlJobId || (isDesktop ? firstShownId : null);
 
   // Phone / iPad-portrait: a slug in the URL means "show this job's page".
   if (!isDesktop && urlJobId) {
