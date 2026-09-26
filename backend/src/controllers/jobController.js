@@ -91,6 +91,46 @@ const CANDIDATE_SELECT = {
   reqEducation: true, reqWorkAuthorization: true, reqEnglishLevel: true,
 };
 
+// ─── Job-data cache (perf guardrail 4) ─────────────────────────────────────────
+// Prod timing showed the two heavy reads — the ~440-row candidate scan and the
+// 50-row full-description page fetch — dominate /jobs and swing widely under DB
+// connection-pool contention. Job listings are PILOT-INDEPENDENT and only change
+// when the scraper/liveness job writes, so we cache them process-wide for a short
+// window. The per-pilot MATCH is never cached: buildMatchContext and the pilot's
+// saved/applied sets are fetched live every request, so a pilot always sees their
+// current profile matched against listings that may be at most JOBS_CACHE_TTL_MS
+// stale. Call clearJobsCache() after a scrape to drop staleness to zero.
+const JOBS_CACHE_TTL_MS = Number(process.env.JOBS_CACHE_TTL_MS || 45000);
+const _candCache = new Map(); // key(where+orderBy) -> { rows, exp }
+const _rowCache = new Map();  // jobId -> { row, exp }
+
+async function getCandidates(where, orderBy) {
+  const key = JSON.stringify({ where, orderBy });
+  const hit = _candCache.get(key);
+  if (hit && hit.exp > Date.now()) return hit.rows;
+  const rows = await prisma.job.findMany({ where, orderBy, take: 2000, select: CANDIDATE_SELECT });
+  _candCache.set(key, { rows, exp: Date.now() + JOBS_CACHE_TTL_MS });
+  return rows;
+}
+
+// Full presentation rows (with descriptions) for the paged ids, cached per id.
+async function getFullRows(ids) {
+  const now = Date.now();
+  const out = [];
+  const miss = [];
+  for (const id of ids) {
+    const e = _rowCache.get(id);
+    if (e && e.exp > now) out.push(e.row); else miss.push(id);
+  }
+  if (miss.length) {
+    const rows = await prisma.job.findMany({ where: { id: { in: miss } } });
+    for (const r of rows) { _rowCache.set(r.id, { row: r, exp: now + JOBS_CACHE_TTL_MS }); out.push(r); }
+  }
+  return out;
+}
+
+function clearJobsCache() { _candCache.clear(); _rowCache.clear(); }
+
 function presentJob(j) {
   if (!j) return j;
   const badges = deriveJobBadges(j);
@@ -327,7 +367,7 @@ exports.getJobs = async (req, res, next) => {
     // sorting then run in JS (≈2 ms) over `candidates`; only the paged rows are
     // re-fetched in full afterwards.
     const [candidates, ctx, pilotSets] = await Promise.all([
-      prisma.job.findMany({ where, orderBy, take: 2000, select: CANDIDATE_SELECT }),
+      getCandidates(where, orderBy),
       req.pilot ? buildMatchContext(req.pilot.id, prisma) : Promise.resolve(null),
       req.pilot ? fetchPilotJobSets(req.pilot.id) : Promise.resolve(null),
     ]);
@@ -406,9 +446,7 @@ exports.getJobs = async (req, res, next) => {
     // restore the computed order.
     _mark('matchJS');
     const pageIds = pageItems.map((m) => m.job.id);
-    const fullRows = pageIds.length
-      ? await prisma.job.findMany({ where: { id: { in: pageIds } } })
-      : [];
+    const fullRows = pageIds.length ? await getFullRows(pageIds) : [];
     _mark('pageFetch');
     const fullById = new Map(fullRows.map((r) => [r.id, r]));
     const pageJobs = pageIds.map((id) => fullById.get(id)).filter(Boolean);
