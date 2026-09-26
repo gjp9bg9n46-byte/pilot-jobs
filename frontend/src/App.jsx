@@ -101,7 +101,9 @@ export default function App() {
           <Route path="airlines" element={<Airlines />} />
           <Route path="airlines/:id" element={<AirlineDetail />} />
           <Route path="jobs" element={<Jobs />} />
-          <Route path="jobs/:slugId" element={<JobDetail />} />
+          {/* Jobs handles /jobs/:slugId too: desktop shows the split view with the job
+              selected; phone/iPad-portrait shows the job as a full page. */}
+          <Route path="jobs/:slugId" element={<Jobs />} />
           <Route path="support" element={<Support />} />
         </Route>
 

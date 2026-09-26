@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
@@ -18,8 +18,11 @@ import {
 } from '../lib/jobMatch';
 import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
 import JobCard from '../components/jobs/JobCard';
+import JobDetailPanel from '../components/jobs/JobDetailPanel';
 import { roleLabel } from '../lib/jobDisplay';
 import '../components/jobs/jobsRedesign.css';
+
+const extractUuid = (slugId) => slugId?.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)?.[0] ?? null;
 
 // Region tabs (redesign) — All last. No "Other" tab; untabbed countries show under All.
 const REGION_TABS = ['Middle East', 'Europe', 'North America', 'Asia-Pacific', 'All'];
@@ -29,7 +32,7 @@ const FIT_GROUPS = [
   { key: 'incomplete', label: 'Complete your profile to check', cls: '', hint: '' },
   { key: 'oneShort', label: 'One requirement short', cls: '', hint: "shows what's missing" },
   { key: 'few', label: 'Few requirements stated', cls: '', hint: '' },
-  { key: 'other', label: 'Other roles', cls: '', hint: '' },
+  { key: 'other', label: 'Everything else', cls: '', hint: '' },
 ];
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):
@@ -321,8 +324,9 @@ export function ReqRow({ req }) {
 export default function Jobs() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { slugId } = useParams(); // set when the route is /jobs/:slugId (split-view selection)
   const isMobile = useIsMobile();
-  const isDesktop = !useIsMobile(1024); // ≥1024px = Wuzzuf-style card (logo right)
+  const isDesktop = !useIsMobile(1024); // ≥1024px = split view (list + detail)
   const [searchParams, setSearchParams] = useSearchParams();
   const { list: jobs, total } = useSelector((s) => s.jobs);
   const token = useSelector((s) => s.auth.token); // logged-out: public list, no match/qualified
@@ -503,6 +507,16 @@ export default function Jobs() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
+  // Default the region tab to the pilot's OWN region (from profile country) once,
+  // when no region is already in the URL. The pilot can still pick "All regions".
+  const defaultRegionApplied = useRef(false);
+  useEffect(() => {
+    if (!defaultRegionApplied.current && meta?.defaultRegion && !searchParams.get('region') && !region) {
+      defaultRegionApplied.current = true;
+      setRegion(meta.defaultRegion);
+    }
+  }, [meta, region, searchParams]);
+
   // URL-state sync — keep the address bar in step with the active filters/search/
   // sort so a /jobs view is shareable and browser-back from a job detail restores
   // it. Params at their default value are OMITTED (clean URLs). replace:true so we
@@ -573,13 +587,27 @@ export default function Jobs() {
   const openJob = (job) => navigate(`/jobs/${slugFor(job)}`);
   const facetOpts = (obj) => Object.entries(obj || {}).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k]) => k);
 
+  // Split view (≥1024): the URL /jobs/:slug selects a job in the right pane; the
+  // first job is selected by default. <1024 opens the job as a full page.
+  const urlJobId = extractUuid(slugId);
+  const selectedId = urlJobId || (isDesktop ? (orderedJobs[0]?.id ?? null) : null);
+
+  // Phone / iPad-portrait: a slug in the URL means "show this job's page".
+  if (!isDesktop && urlJobId) {
+    return (
+      <LightPage style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="jobs-rd"><JobDetailPanel jobId={urlJobId} mobile onBack={() => navigate('/jobs')} /></div>
+      </LightPage>
+    );
+  }
+
   return (
     <LightPage style={{ fontFamily: 'var(--font-body)' }}>
       <div className="jobs-rd">
         <div className="rd-head">
           <h1>Jobs</h1>
           <div className="rd-sub">
-            {(meta?.total ?? total ?? 0).toLocaleString()} cockpit jobs worldwide
+            {(meta?.regionCounts?.All ?? meta?.total ?? total ?? 0).toLocaleString()} cockpit jobs worldwide
             {token && meta?.qualifyCount != null && <> · <b>{meta.qualifyCount} you qualify for</b></>}
           </div>
         </div>
@@ -643,25 +671,32 @@ export default function Jobs() {
           </div>
         )}
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--accent)' }}>Loading jobs…</div>
-        ) : error ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>{error}</div>
-        ) : orderedJobs.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>No jobs match these filters.</div>
-        ) : showGroups ? (
-          grouped.map((g) => (
-            <React.Fragment key={g.key}>
-              <div className={`group ${g.cls}`}>
-                <span>{g.label} · {g.jobs.length}</span>
-                <small>{g.key === 'incomplete' && nudge ? `add ${nudge.fields.map((f) => f.field).slice(0, 2).join(', ')}` : g.hint}</small>
-              </div>
-              {g.jobs.map((job) => <JobCard key={job.id} job={job} onClick={() => openJob(job)} />)}
-            </React.Fragment>
-          ))
-        ) : (
-          <div>{orderedJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => openJob(job)} />)}</div>
-        )}
+        <div className={isDesktop ? 'split' : undefined}>
+          <div>
+            {loading && orderedJobs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--accent)' }}>Loading jobs…</div>
+            ) : error ? (
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>{error}</div>
+            ) : orderedJobs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>No jobs match these filters.</div>
+            ) : showGroups ? (
+              grouped.map((g) => (
+                <React.Fragment key={g.key}>
+                  <div className={`group ${g.cls}`}>
+                    <span>{g.label} · {g.jobs.length}</span>
+                    <small>{g.key === 'incomplete' && nudge ? `add ${nudge.fields.map((f) => f.field).slice(0, 2).join(', ')}` : g.hint}</small>
+                  </div>
+                  {g.jobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} />)}
+                </React.Fragment>
+              ))
+            ) : (
+              <div>{orderedJobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} />)}</div>
+            )}
+          </div>
+          {isDesktop && orderedJobs.length > 0 && (
+            <div className="rd-detail-pane"><JobDetailPanel jobId={selectedId} /></div>
+          )}
+        </div>
       </div>
     </LightPage>
   );
