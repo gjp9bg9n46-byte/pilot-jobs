@@ -79,9 +79,15 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
   const doSave = async () => {
     try { if (saved) { await jobApi.unsaveJob(job.id); setSaved(false); } else { await jobApi.saveJob(job.id); setSaved(true); } } catch { /* ignore */ }
   };
-  const doApply = async () => {
-    try { const { data } = await jobApi.apply(job.id); if (data?.applyUrl) window.open(data.applyUrl, '_blank', 'noopener'); }
-    catch { if (job.applyUrl) window.open(job.applyUrl, '_blank', 'noopener'); }
+  const doApply = () => {
+    // Open the apply link SYNCHRONOUSLY inside the click's user-gesture tick.
+    // Awaiting the tracking POST first (as before) moves window.open into a later
+    // microtask, which Safari — and often Chrome — block as a non-user popup, so
+    // the tab silently never opened. The apply endpoint only records the click and
+    // returns the same job.applyUrl we already hold, so we open it now and fire the
+    // tracking call in the background (best-effort; logged-out 401s are ignored).
+    if (job.applyUrl) window.open(job.applyUrl, '_blank', 'noopener');
+    jobApi.apply(job.id).catch(() => { /* tracking only; ignore */ });
   };
   const doShare = async () => {
     const url = `${window.location.origin}/jobs/${slugFor(job)}`;
