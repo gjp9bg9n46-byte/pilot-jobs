@@ -375,7 +375,9 @@ exports.getJobs = async (req, res, next) => {
     // Perf (guardrail 4): the candidate fetch OMITS the heavy description fields —
     // matching/counting/sorting never read them; only the paged rows are re-fetched
     // in full for the presentation layer.
-    // TEMP perf instrumentation (gated by ?_perf=1) — remove after tuning.
+    // Per-phase server timing, returned only when ?_perf=1 (negligible cost, off by
+    // default). Kept as a standing diagnostic so /jobs latency can be re-checked on
+    // prod without a redeploy.
     const _t = {}; let _mk = Date.now(); const _mark = (k) => { _t[k] = Date.now() - _mk; _mk = Date.now(); };
     // Perf (guardrail 4): the candidate set, the pilot's match context, and the
     // pilot's saved/applied sets are mutually independent — fetch all three
