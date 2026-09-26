@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, X, HelpCircle } from 'lucide-react';
 import AirlineLogo from '../AirlineLogo';
+import AdzunaAttribution from './AdzunaAttribution';
 import { postedAgo, formatSalary } from '../../lib/jobMatch';
 import { displayTitle, countryFlag, jobChips, checklist, sourceInfo } from '../../lib/jobDisplay';
 
@@ -21,8 +22,17 @@ export default function JobCard({ job, selected, onClick }) {
     ? `Ongoing${checked ? ` · link checked ${checked}` : ''}`
     : (job.postedAt ? postedAgo(job.postedAt) : '');
 
+  // Root is a role=button div (not a <button>) so the required Adzuna attribution
+  // link can be nested legally (an <a> inside a <button> is invalid HTML).
   return (
-    <button type="button" className={`jc${selected ? ' sel' : ''}`} onClick={onClick} aria-pressed={selected}>
+    <div
+      role="button"
+      tabIndex={0}
+      className={`jc${selected ? ' sel' : ''}`}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      aria-pressed={selected}
+    >
       <div className="top">
         <div className="tt">
           <div className="title">{displayTitle(job.title)}</div>
@@ -52,9 +62,16 @@ export default function JobCard({ job, selected, onClick }) {
       )}
 
       <div className="src">
-        <span className={src.direct ? 'direct' : 'via'}>{src.direct && <Check size={12} style={{ verticalAlign: -1, marginRight: 2 }} />}{src.label}</span>
+        {/* Direct jobs keep the green direct-apply line. Adzuna shows its required
+            "Jobs by Adzuna" attribution. Other aggregators show no source line —
+            the source now lives only on the Apply button in the detail pane. */}
+        {src.direct
+          ? <span className="direct"><Check size={12} style={{ verticalAlign: -1, marginRight: 2 }} />{src.label}</span>
+          : src.isAdzuna
+            ? <AdzunaAttribution />
+            : <span />}
         <span className="sal">{sal || 'Salary not stated'}</span>
       </div>
-    </button>
+    </div>
   );
 }

@@ -78,6 +78,16 @@
 .jobs-rd .src .via { color: var(--faint); font-weight: 600; }
 .jobs-rd .src .sal { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--text-primary); }
 
+/* Adzuna attribution — required by Adzuna API terms: "Jobs by Adzuna", ≥116×23px,
+   both "Jobs" and the "Adzuna" wordmark linking to Adzuna. min-width/height meet
+   the mandated minimum. Brand green #279b37 works on light and dark grounds. */
+.jobs-rd .adzuna-attr { display: inline-flex; align-items: center; gap: 4px; min-width: 116px; min-height: 23px; font-size: 12px; color: var(--faint); font-weight: 600; }
+.jobs-rd .adzuna-attr a { color: inherit; text-decoration: none; }
+.jobs-rd .adzuna-attr a:hover { text-decoration: underline; }
+.jobs-rd .adzuna-attr .adz-by { color: var(--faint); }
+.jobs-rd .adzuna-attr .adz-logo { color: #279b37; font-weight: 800; font-size: 14px; letter-spacing: -.4px; }
+.jobs-rd .apply .attr-line { margin-top: 6px; }
+
 /* ── Detail panel ─────────────────────────────────────────────────────────── */
 .jobs-rd .rd-detail-pane { position: sticky; top: 12px; }
 .jobs-rd .detail { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }

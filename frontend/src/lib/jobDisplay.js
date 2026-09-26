@@ -105,7 +105,10 @@ export function checklist(match, max = 4) {
 const VIA_NAMES = { WHATJOBS: 'WhatJobs', ADZUNA: 'Adzuna', CAREERJET: 'Careerjet', JOOBLE: 'Jooble', REED: 'Reed', AVIATIONJOBSEARCH: 'AviationJobSearch' };
 export function sourceInfo(job) {
   const direct = job.sourceType && job.sourceType !== 'aggregator';
-  if (direct) return { direct: true, label: `Apply directly with ${job.company}` };
-  const via = VIA_NAMES[job.sourcePlatform] || (job.sourcePlatform ? titleCaseWords(String(job.sourcePlatform).toLowerCase()) : 'aggregator');
-  return { direct: false, label: `via ${via}` };
+  const name = VIA_NAMES[job.sourcePlatform] || (job.sourcePlatform ? titleCaseWords(String(job.sourcePlatform).toLowerCase()) : 'the source');
+  const isAdzuna = job.sourcePlatform === 'ADZUNA';
+  // `name` is the plain source name (e.g. "Adzuna", "WhatJobs") for the Apply
+  // button; `label` kept for back-compat with any older callers.
+  if (direct) return { direct: true, name, isAdzuna: false, label: `Apply directly with ${job.company}` };
+  return { direct: false, name, isAdzuna, label: `via ${name}` };
 }

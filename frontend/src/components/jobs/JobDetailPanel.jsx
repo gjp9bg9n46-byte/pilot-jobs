@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, HelpCircle, AlertTriangle, ExternalLink, Heart, Share2, Flag, ChevronDown, ChevronUp, ArrowLeft, ArrowRight } from 'lucide-react';
 import AirlineLogo from '../AirlineLogo';
+import AdzunaAttribution from './AdzunaAttribution';
 import { jobApi } from '../../services/api';
 import { postedAgo, formatSalary } from '../../lib/jobMatch';
 import { displayTitle, countryFlag, jobChips, sourceInfo, slugFor } from '../../lib/jobDisplay';
@@ -105,8 +106,9 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
     <div className="apply">
       <div className="sal">{sal || 'Salary not stated'}</div>
       <div className="per">{sal ? 'as stated by airline' : ''}</div>
-      <button className="abtn" onClick={doApply}>{src.direct ? `Apply on ${job.company} careers` : `Apply via ${src.label.replace('via ', '')}`} <ExternalLink size={14} style={{ verticalAlign: -2 }} /></button>
-      <div className="how">{src.direct ? <><b><Check size={12} style={{ verticalAlign: -1 }} /> Direct application.</b> You'll go to {job.company}'s own careers site. CockpitHire isn't a middleman.</> : <>You'll continue on {src.label.replace('via ', '')}, which lists this role.</>}</div>
+      <button className="abtn" onClick={doApply}>{src.direct ? `Apply on ${job.company} careers` : `Apply on ${src.name}`} <ExternalLink size={14} style={{ verticalAlign: -2 }} /></button>
+      <div className="how">{src.direct ? <><b><Check size={12} style={{ verticalAlign: -1 }} /> Direct application.</b> You'll go to {job.company}'s own careers site. CockpitHire isn't a middleman.</> : <>You'll continue on {src.name}, which lists this role.</>}</div>
+      {src.isAdzuna && <div className="attr-line"><AdzunaAttribution /></div>}
       <div className="arow"><button onClick={doSave}><Heart size={14} fill={saved ? 'currentColor' : 'none'} style={{ verticalAlign: -2 }} /> {saved ? 'Saved' : 'Save'}</button><button onClick={doShare}><Share2 size={14} style={{ verticalAlign: -2 }} /> Share</button></div>
       <div className="facts2">
         {job.postedAt && <span>Posted <b>{postedAgo(job.postedAt)}</b></span>}
@@ -201,8 +203,8 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
 
       {mobile && (
         <div className="abar">
-          <div className="l"><b>{sal || 'Salary not stated'}</b>{src.direct ? 'Apply directly' : src.label}</div>
-          <button className="abtn" onClick={doApply}>Apply <ExternalLink size={14} style={{ verticalAlign: -2 }} /></button>
+          <div className="l"><b>{sal || 'Salary not stated'}</b>{src.direct ? 'Direct application' : (src.isAdzuna ? <AdzunaAttribution /> : null)}</div>
+          <button className="abtn" onClick={doApply}>{src.direct ? 'Apply' : `Apply on ${src.name}`} <ExternalLink size={14} style={{ verticalAlign: -2 }} /></button>
         </div>
       )}
 
