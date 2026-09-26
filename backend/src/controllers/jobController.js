@@ -131,6 +131,22 @@ async function getFullRows(ids) {
 
 function clearJobsCache() { _candCache.clear(); _rowCache.clear(); }
 
+// Slim a job for the LIST payload. The full description is ~64% of the /jobs
+// response bytes but the redesigned cards never render it (the detail panel
+// fetches its own full row via GET /jobs/:id). We send a bounded snippet so any
+// older client still shows a preview, and drop the redundant raw-language copy.
+// Detail responses (getJob) are untouched and keep the full text.
+const LIST_DESC_MAX = 280;
+function slimListJob(j) {
+  const { originalDescription, ...rest } = j;
+  const d = rest.description;
+  if (typeof d === 'string' && d.length > LIST_DESC_MAX) {
+    rest.description = `${d.slice(0, LIST_DESC_MAX).replace(/\s+\S*$/, '')}…`;
+    rest.descriptionIsExcerpt = true;
+  }
+  return rest;
+}
+
 function presentJob(j) {
   if (!j) return j;
   const badges = deriveJobBadges(j);
@@ -461,7 +477,7 @@ exports.getJobs = async (req, res, next) => {
 
     // Attach each job's match (new field; existing fields unchanged for back-compat).
     const matchById = new Map(pageItems.map((m) => [m.job.id, m.match]));
-    const enriched = enrichedArr.map((j) => ({ ...j, match: matchById.get(j.id) || null }));
+    const enriched = enrichedArr.map((j) => slimListJob({ ...j, match: matchById.get(j.id) || null }));
 
     res.json({
       ...(req.query._perf === '1' ? { _timing: _t, _candidateCount: candidates.length } : {}),
