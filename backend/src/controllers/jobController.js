@@ -313,9 +313,13 @@ exports.getJobs = async (req, res, next) => {
     // Perf (guardrail 4): the candidate fetch OMITS the heavy description fields —
     // matching/counting/sorting never read them; only the paged rows are re-fetched
     // in full for the presentation layer.
+    // TEMP perf instrumentation (gated by ?_perf=1) — remove after tuning.
+    const _t = {}; let _mk = Date.now(); const _mark = (k) => { _t[k] = Date.now() - _mk; _mk = Date.now(); };
     const candidates = await prisma.job.findMany({ where, orderBy, take: 2000, select: CANDIDATE_SELECT });
+    _mark('candidates');
 
     const ctx = req.pilot ? await buildMatchContext(req.pilot.id, prisma) : null;
+    _mark('ctx');
 
     // Attach region + (when logged in) match to every candidate.
     const matched = candidates.map((j) => ({
@@ -388,10 +392,12 @@ exports.getJobs = async (req, res, next) => {
 
     // Re-fetch the paged rows in FULL (descriptions/titles) for presentation, then
     // restore the computed order.
+    _mark('matchJS');
     const pageIds = pageItems.map((m) => m.job.id);
     const fullRows = pageIds.length
       ? await prisma.job.findMany({ where: { id: { in: pageIds } } })
       : [];
+    _mark('pageFetch');
     const fullById = new Map(fullRows.map((r) => [r.id, r]));
     const pageJobs = pageIds.map((id) => fullById.get(id)).filter(Boolean);
 
@@ -401,12 +407,14 @@ exports.getJobs = async (req, res, next) => {
     const enrichedArr = req.pilot
       ? await enrichJobs(pageJobs, req.pilot.id)
       : pageJobs.map((j) => ({ ...presentJob(j), isSaved: false, isApplied: false }));
+    _mark('enrich');
 
     // Attach each job's match (new field; existing fields unchanged for back-compat).
     const matchById = new Map(pageItems.map((m) => [m.job.id, m.match]));
     const enriched = enrichedArr.map((j) => ({ ...j, match: matchById.get(j.id) || null }));
 
     res.json({
+      ...(req.query._perf === '1' ? { _timing: _t, _candidateCount: candidates.length } : {}),
       jobs: enriched,
       total,
       page: Number(page),
