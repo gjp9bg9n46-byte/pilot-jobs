@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Check, X, HelpCircle, AlertTriangle, ExternalLink, Heart, Share2, Flag, ChevronDown, ChevronUp, ArrowLeft, ArrowRight } from 'lucide-react';
 import AirlineLogo from '../AirlineLogo';
 import { jobApi } from '../../services/api';
 import { postedAgo, formatSalary } from '../../lib/jobMatch';
@@ -22,7 +23,7 @@ const ago = (d) => {
 };
 const dateStr = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null);
 
-export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
+export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = false }) {
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,11 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
     return GROUP_ORDER.map((g) => ({ g, label: GROUP_LABEL[g], rows: reqs.filter((r) => r.group === g) })).filter((x) => x.rows.length);
   }, [job]);
 
+  // SEO for the job page (restores the per-job title/description/canonical the old
+  // JobDetail set, and ADDS JobPosting JSON-LD structured data for Google). Only when
+  // `seo` — i.e. this panel is the URL-identified job, not the split's auto-default.
+  useJobSeo(seo ? job : null);
+
   if (!jobId) return <div className="detail" style={{ padding: 40, color: 'var(--text-secondary)' }}>Select a job to see the details.</div>;
   if (loading) return <div className="detail" style={{ padding: 40, color: 'var(--accent)' }}>Loading…</div>;
   if (!job) return <div className="detail" style={{ padding: 40, color: 'var(--text-secondary)' }}>Job not found.</div>;
@@ -61,12 +67,12 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
   if (m) {
     if (m.blocker) {
       const b = m.requirements.find((r) => r.key === m.blocker);
-      verdict = { cls: 'block', ic: '✗', text: <><b>Blocker: {b?.label}.</b> This is a must-have and your profile doesn't meet it.</> };
+      verdict = { cls: 'block', text: <><b>Blocker: {b?.label}.</b> This is a must-have and your profile doesn't meet it.</> };
     } else if (m.counts.unmet > 0) {
-      verdict = { cls: 'warn', ic: '!', text: <><b>{m.counts.met} of {known} known requirements met.</b> {m.counts.unmet} still short{m.counts.unknown ? `, ${m.counts.unknown} not on your profile yet` : ''}.</> };
+      verdict = { cls: 'warn', text: <><b>{m.counts.met} of {known} known requirements met.</b> {m.counts.unmet} still short{m.counts.unknown ? `, ${m.counts.unknown} not on your profile yet` : ''}.</> };
     } else {
       const knownPhrase = known === 1 ? 'the known requirement' : known === 2 ? 'both known requirements' : `all ${known} known requirements`;
-      verdict = { cls: 'ok', ic: '✓', text: <><b>You meet {knownPhrase}.</b>{m.counts.unknown ? ` ${m.counts.unknown} item${m.counts.unknown > 1 ? 's aren\'t' : " isn't"} on your profile yet — add ${m.counts.unknown > 1 ? 'them' : 'it'} to confirm your match.` : ''}</> };
+      verdict = { cls: 'ok', text: <><b>You meet {knownPhrase}.</b>{m.counts.unknown ? ` ${m.counts.unknown} item${m.counts.unknown > 1 ? 's aren\'t' : " isn't"} on your profile yet — add ${m.counts.unknown > 1 ? 'them' : 'it'} to confirm your match.` : ''}</> };
     }
   }
 
@@ -93,21 +99,21 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
     <div className="apply">
       <div className="sal">{sal || 'Salary not stated'}</div>
       <div className="per">{sal ? 'as stated by airline' : ''}</div>
-      <button className="abtn" onClick={doApply}>{src.direct ? `Apply on ${job.company} careers ↗` : `Apply via ${src.label.replace('via ', '')} ↗`}</button>
-      <div className="how">{src.direct ? <><b>✓ Direct application.</b> You'll go to {job.company}'s own careers site. CockpitHire isn't a middleman.</> : <>You'll continue on {src.label.replace('via ', '')}, which lists this role.</>}</div>
-      <div className="arow"><button onClick={doSave}>{saved ? '♥ Saved' : '♡ Save'}</button><button onClick={doShare}>↗ Share</button></div>
+      <button className="abtn" onClick={doApply}>{src.direct ? `Apply on ${job.company} careers` : `Apply via ${src.label.replace('via ', '')}`} <ExternalLink size={14} style={{ verticalAlign: -2 }} /></button>
+      <div className="how">{src.direct ? <><b><Check size={12} style={{ verticalAlign: -1 }} /> Direct application.</b> You'll go to {job.company}'s own careers site. CockpitHire isn't a middleman.</> : <>You'll continue on {src.label.replace('via ', '')}, which lists this role.</>}</div>
+      <div className="arow"><button onClick={doSave}><Heart size={14} fill={saved ? 'currentColor' : 'none'} style={{ verticalAlign: -2 }} /> {saved ? 'Saved' : 'Save'}</button><button onClick={doShare}><Share2 size={14} style={{ verticalAlign: -2 }} /> Share</button></div>
       <div className="facts2">
         {job.postedAt && <span>Posted <b>{postedAgo(job.postedAt)}</b></span>}
         {job.lastSeenAt && <span>Link checked <b>{ago(job.lastSeenAt)}</b></span>}
         {job.expiresAt && <span>Closes <b>{dateStr(job.expiresAt)}</b></span>}
       </div>
-      <button className="report" onClick={() => setReporting(true)}>⚑ Report incorrect info</button>
+      <button className="report" onClick={() => setReporting(true)}><Flag size={12} style={{ verticalAlign: -1 }} /> Report incorrect info</button>
     </div>
   );
 
   return (
     <div className="detail">
-      {mobile && <button className="rd-back" onClick={onBack}>← Back to jobs</button>}
+      {mobile && <button className="rd-back" onClick={onBack}><ArrowLeft size={15} style={{ verticalAlign: -2 }} /> Back to jobs</button>}
       <div className="dtop">
         <div className="jc-logo" style={{ width: 56, height: 56, flexShrink: 0 }}><AirlineLogo name={job.company} size={56} hideIfMissing /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -119,7 +125,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
 
       <div className="dgrid">
         <div>
-          {verdict && <div className={`verdict ${verdict.cls}`}><span className="ic">{verdict.ic}</span><div>{verdict.text}</div></div>}
+          {verdict && <div className={`verdict ${verdict.cls}`}><span className="ic">{verdict.cls === 'ok' ? <Check size={13} /> : verdict.cls === 'warn' ? <AlertTriangle size={13} /> : <X size={13} />}</span><div>{verdict.text}</div></div>}
 
           {grouped.length > 0 && (
             <table className="mt">
@@ -130,7 +136,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
                     <tr className="grp"><td colSpan={4}>{grp.label}</td></tr>
                     {grp.rows.map((r) => (
                       <tr key={r.key}>
-                        <td className={`st ${r.status === 'met' ? 'ok' : r.status === 'unmet' ? 'no' : 'unk'}`}>{r.status === 'met' ? '✓' : r.status === 'unmet' ? '✗' : '?'}</td>
+                        <td className={`st ${r.status === 'met' ? 'ok' : r.status === 'unmet' ? 'no' : 'unk'}`}>{r.status === 'met' ? <Check size={14} /> : r.status === 'unmet' ? <X size={14} /> : <HelpCircle size={14} />}</td>
                         <td>{r.label}</td>
                         <td className="need">{r.reqText}</td>
                         <td className={`you ${r.status === 'met' ? 'ok' : r.status === 'unmet' ? 'no' : 'unk'}`}>
@@ -157,7 +163,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
             <div className="sec">
               <div className="label">About the job</div>
               <div className="desc" style={showDesc ? undefined : { maxHeight: 84, overflow: 'hidden' }}>{job.description}</div>
-              {job.description.length > 240 && <button className="more" onClick={() => setShowDesc((v) => !v)}>{showDesc ? 'Show less ⌃' : 'Show full description ⌄'}</button>}
+              {job.description.length > 240 && <button className="more" onClick={() => setShowDesc((v) => !v)}>{showDesc ? <>Show less <ChevronUp size={13} style={{ verticalAlign: -2 }} /></> : <>Show full description <ChevronDown size={13} style={{ verticalAlign: -2 }} /></>}</button>}
             </div>
           )}
 
@@ -167,7 +173,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
               <div className="airline">
                 <div style={{ width: 38, height: 38 }}><AirlineLogo name={job.company} size={38} hideIfMissing /></div>
                 <div><div className="n">{job.company}</div>{job.airlineFleet && <div className="s">Fleet: {job.airlineFleet.slice(0, 4).join(' · ')}</div>}</div>
-                <a href={`/airlines/${job.airlineId}`} onClick={(e) => { e.preventDefault(); navigate(`/airlines/${job.airlineId}`); }}>Airline profile →</a>
+                <a href={`/airlines/${job.airlineId}`} onClick={(e) => { e.preventDefault(); navigate(`/airlines/${job.airlineId}`); }}>Airline profile <ArrowRight size={12} style={{ verticalAlign: -1 }} /></a>
               </div>
             </div>
           )}
@@ -190,13 +196,61 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
       {mobile && (
         <div className="abar">
           <div className="l"><b>{sal || 'Salary not stated'}</b>{src.direct ? 'Apply directly' : src.label}</div>
-          <button className="abtn" onClick={doApply}>Apply ↗</button>
+          <button className="abtn" onClick={doApply}>Apply <ExternalLink size={14} style={{ verticalAlign: -2 }} /></button>
         </div>
       )}
 
       {reporting && <ReportModal job={job} onClose={() => setReporting(false)} />}
     </div>
   );
+}
+
+// Per-job SEO: document.title + description/OG/canonical meta + JobPosting JSON-LD
+// structured data (for Google Jobs). All injected client-side and cleaned up on
+// change/unmount — react-helmet isn't a dependency.
+const EMPLOYMENT_TYPE = { full_time: 'FULL_TIME', part_time: 'PART_TIME', contract: 'CONTRACTOR', acmi: 'CONTRACTOR', temporary: 'TEMPORARY', internship: 'INTERN' };
+function useJobSeo(job) {
+  useEffect(() => {
+    if (!job) return undefined;
+    const created = [];
+    const prevTitle = document.title;
+    const title = `${displayTitle(job.title)}${job.company ? ` — ${job.company}` : ''} | CockpitHire`;
+    document.title = title;
+    const descText = String(job.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+    const setTag = (sel, attrs) => {
+      let el = document.head.querySelector(sel);
+      if (!el) { el = document.createElement(sel.startsWith('link') ? 'link' : 'meta'); document.head.appendChild(el); created.push(el); }
+      Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    };
+    if (descText) setTag('meta[name="description"]', { name: 'description', content: descText });
+    setTag('meta[property="og:title"]', { property: 'og:title', content: title });
+    if (descText) setTag('meta[property="og:description"]', { property: 'og:description', content: descText });
+    setTag('link[rel="canonical"]', { rel: 'canonical', href: `${window.location.origin}/jobs/${slugFor(job)}` });
+
+    // JobPosting JSON-LD.
+    const ld = {
+      '@context': 'https://schema.org/', '@type': 'JobPosting',
+      title: displayTitle(job.title),
+      description: descText || displayTitle(job.title),
+      ...(job.postedAt ? { datePosted: new Date(job.postedAt).toISOString() } : {}),
+      ...(job.expiresAt ? { validThrough: new Date(job.expiresAt).toISOString() } : {}),
+      ...(EMPLOYMENT_TYPE[job.contractType] ? { employmentType: EMPLOYMENT_TYPE[job.contractType] } : {}),
+      hiringOrganization: { '@type': 'Organization', name: job.company || 'Airline' },
+      jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', ...(job.location ? { addressLocality: job.location } : {}), ...(job.country ? { addressCountry: job.country } : {}) } },
+      directApply: !!(job.sourceType && job.sourceType !== 'aggregator'),
+      ...((job.salaryMin != null || job.salaryMax != null) ? {
+        baseSalary: { '@type': 'MonetaryAmount', currency: job.salaryCurrency || 'USD', value: { '@type': 'QuantitativeValue', ...(job.salaryMin != null ? { minValue: job.salaryMin } : {}), ...(job.salaryMax != null ? { maxValue: job.salaryMax } : {}), unitText: (job.salaryPeriod || 'YEAR').toUpperCase() } },
+      } : {}),
+    };
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.setAttribute('data-jobposting', '1');
+    script.textContent = JSON.stringify(ld);
+    document.head.appendChild(script);
+    created.push(script);
+
+    return () => { document.title = prevTitle; created.forEach((el) => el.remove()); };
+  }, [job]);
 }
 
 function ReportModal({ job, onClose }) {

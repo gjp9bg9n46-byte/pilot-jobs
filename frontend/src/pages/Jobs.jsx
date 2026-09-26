@@ -5,6 +5,7 @@ import {
   MapPin, Building2, FileText, Clock, Target, Plane, Wrench,
   Shield, Search, SlidersHorizontal, AlertTriangle,
   CheckCircle, XCircle, Minus, GraduationCap, Globe, Languages, Info,
+  Bell, ChevronDown, X, Check,
 } from 'lucide-react';
 import { jobApi, profileApi } from '../services/api';
 import { setJobs } from '../store';
@@ -20,7 +21,7 @@ import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
 import JobCard from '../components/jobs/JobCard';
 import JobDetailPanel from '../components/jobs/JobDetailPanel';
 import HoursPopover from '../components/jobs/HoursPopover';
-import { roleLabel } from '../lib/jobDisplay';
+import { roleLabel, defaultRegionForPilot } from '../lib/jobDisplay';
 import '../components/jobs/jobsRedesign.css';
 
 const extractUuid = (slugId) => slugId?.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)?.[0] ?? null;
@@ -29,7 +30,7 @@ const extractUuid = (slugId) => slugId?.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{
 const REGION_TABS = ['Middle East', 'Europe', 'North America', 'Asia-Pacific', 'All'];
 // Group order + labels for the redesigned list.
 const FIT_GROUPS = [
-  { key: 'qualify', label: '✓ You qualify', cls: 'q', hint: 'best match first' },
+  { key: 'qualify', label: 'You qualify', cls: 'q', hint: 'best match first' },
   { key: 'incomplete', label: 'Complete your profile to check', cls: '', hint: '' },
   { key: 'oneShort', label: 'One requirement short', cls: '', hint: "shows what's missing" },
   { key: 'few', label: 'Few requirements stated', cls: '', hint: '' },
@@ -138,8 +139,9 @@ const POSTED_WITHIN = [
 ];
 
 const SORT_OPTIONS = [
+  { value: 'best', label: 'Best match' },
   { value: 'newest', label: 'Newest' },
-  { value: 'relevant', label: 'Most Relevant' },
+  { value: 'salary_high', label: 'Salary' },
   { value: 'deadline', label: 'Deadline' },
 ];
 
@@ -331,6 +333,7 @@ export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { list: jobs, total } = useSelector((s) => s.jobs);
   const token = useSelector((s) => s.auth.token); // logged-out: public list, no match/qualified
+  const pilot = useSelector((s) => s.auth.pilot); // has country → default region (resolved pre-fetch)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   // URL-state seeded on mount (read once — params snapshot taken eagerly so the
@@ -401,7 +404,7 @@ export default function Jobs() {
   const [qualifiedOnly, setQualifiedOnly] = useState(() => token ? searchParams.get('qualified') === '1' : false);
 
   // Sort
-  const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest');
+  const [sort, setSort] = useState(() => searchParams.get('sort') || 'best');
 
   // Saved jobs local state: map of id -> bool
   const [savedMap, setSavedMap] = useState({});
@@ -514,17 +517,29 @@ export default function Jobs() {
     }
   }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort, hoursMin, hoursMax, maxReqHours, region]);
 
-  useEffect(() => { fetchJobs(); }, [fetchJobs]);
-
-  // Default the region tab to the pilot's OWN region (from profile country) once,
-  // when no region is already in the URL. The pilot can still pick "All regions".
-  const defaultRegionApplied = useRef(false);
+  // Resolve the default region tab BEFORE the first fetch — no double fetch, no
+  // wrong-region flicker. Logged-out or an explicit ?region= is ready immediately;
+  // a logged-in pilot waits for their profile (auth.pilot has country) so the very
+  // first jobs request already carries the right region.
+  const [regionReady, setRegionReady] = useState(() => !token || !!searchParams.get('region'));
+  const regionResolved = useRef(regionReady);
   useEffect(() => {
-    if (!defaultRegionApplied.current && meta?.defaultRegion && !searchParams.get('region') && !region) {
-      defaultRegionApplied.current = true;
-      setRegion(meta.defaultRegion);
+    if (regionResolved.current) return;
+    if (pilot !== null && pilot !== undefined) { // profile loaded (or resolved)
+      regionResolved.current = true;
+      const r = defaultRegionForPilot(pilot.country);
+      if (r) setRegion(r); // else stays '' (All)
+      setRegionReady(true);
     }
-  }, [meta, region, searchParams]);
+  }, [pilot]);
+  // Fallback: if the profile never loads (e.g. token invalid), don't hang forever.
+  useEffect(() => {
+    if (regionReady) return undefined;
+    const t = setTimeout(() => { regionResolved.current = true; setRegionReady(true); }, 4000);
+    return () => clearTimeout(t);
+  }, [regionReady]);
+
+  useEffect(() => { if (regionReady) fetchJobs(); }, [fetchJobs, regionReady]);
 
   // URL-state sync — keep the address bar in step with the active filters/search/
   // sort so a /jobs view is shareable and browser-back from a job detail restores
@@ -541,7 +556,7 @@ export default function Jobs() {
     if (minSalary) next.salaryMin = minSalary;
     if (visaOnly) next.visa = '1';
     if (ntrOnly) next.ntr = '1';
-    if (sort !== 'newest') next.sort = sort;
+    if (sort !== 'best') next.sort = sort;
     if (qualifiedOnly) next.qualified = '1';
     if (hoursMin) next.hoursMin = hoursMin;
     if (hoursMax) next.hoursMax = hoursMax;
@@ -591,17 +606,21 @@ export default function Jobs() {
     (j.sourceType && j.sourceType !== 'aggregator') ? 0 : 1, // direct first within tier
     -(new Date(j.postedAt || 0).getTime()),                  // newest first
   ];
-  const orderedJobs = [...filtered].sort((a, b) => {
-    const ra = orderRank(a), rb = orderRank(b);
-    for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
-    return 0;
-  });
+  // "Best match" groups by fit + orders fresh→direct→newest within each group. Any
+  // other sort (Newest / Salary / Deadline) is a flat list in the server's order.
+  const orderedJobs = sort === 'best'
+    ? [...filtered].sort((a, b) => {
+      const ra = orderRank(a), rb = orderRank(b);
+      for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
+      return 0;
+    })
+    : filtered;
 
   // Group the filtered jobs by fit group (server already ordered them best-first).
   const grouped = FIT_GROUPS
     .map((g) => ({ ...g, jobs: orderedJobs.filter((j) => j.match && j.match.fitGroup === g.key) }))
     .filter((g) => g.jobs.length > 0);
-  const showGroups = !!token && !meta?.emptyProfile && orderedJobs.some((j) => j.match);
+  const showGroups = !!token && !meta?.emptyProfile && sort === 'best' && orderedJobs.some((j) => j.match);
   const nudge = meta?.profileNudge;
   const rc = meta?.regionCounts;
   const facet = meta?.facetCounts || {};
@@ -625,7 +644,7 @@ export default function Jobs() {
   if (!isDesktop && urlJobId) {
     return (
       <LightPage style={{ fontFamily: 'var(--font-body)' }}>
-        <div className="jobs-rd"><JobDetailPanel jobId={urlJobId} mobile onBack={() => navigate('/jobs')} /></div>
+        <div className="jobs-rd"><JobDetailPanel jobId={urlJobId} mobile seo onBack={() => navigate('/jobs')} /></div>
       </LightPage>
     );
   }
@@ -662,8 +681,8 @@ export default function Jobs() {
               <input placeholder="Search jobs…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search jobs" />
             </div>
             <div className="hscroll">
-              <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen(true)}>{hoursLabel} ▾</button>
-              <button type="button" className={`fbtn${(aircraftType || role || authority || contractType || postedWithin || minSalary || ntrOnly) ? ' act' : ''}`} onClick={() => setFiltersSheetOpen(true)}>⚙ Filters</button>
+              <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen(true)}>{hoursLabel} <ChevronDown size={13} style={{ marginLeft: 2 }} /></button>
+              <button type="button" className={`fbtn${(aircraftType || role || authority || contractType || postedWithin || minSalary || ntrOnly) ? ' act' : ''}`} onClick={() => setFiltersSheetOpen(true)}><SlidersHorizontal size={14} /> Filters</button>
               <button type="button" className={`fbtn tog${visaOnly ? ' on act' : ''}`} onClick={() => setVisaOnly((v) => !v)} aria-pressed={visaOnly}><span className="sw" />Visa</button>
               <div className="fsort" style={{ marginLeft: 'auto' }}>Sort:
                 <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">{SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
@@ -676,7 +695,7 @@ export default function Jobs() {
               <input placeholder="Search jobs…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search jobs" />
             </div>
             <div className="fwrap">
-              <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen((v) => !v)} aria-expanded={hoursOpen}>{hoursLabel} ▾</button>
+              <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen((v) => !v)} aria-expanded={hoursOpen}>{hoursLabel} <ChevronDown size={13} style={{ marginLeft: 2 }} /></button>
               {hoursOpen && (
                 <HoursPopover params={hoursParams} pilotHours={meta?.pilotHours || 0} value={maxReqHours} onApply={(v) => setMaxReqHours(v)} onClose={() => setHoursOpen(false)} />
               )}
@@ -706,14 +725,14 @@ export default function Jobs() {
 
         {(region || aircraftType || role || authority || visaOnly || search || maxReqHours) && (
           <div className="applied">
-            {region && <button className="ach" onClick={() => setRegion('')}>{region} ×</button>}
-            {maxReqHours && <button className="ach" onClick={() => setMaxReqHours('')}>Up to {Number(maxReqHours).toLocaleString()} h ×</button>}
-            {aircraftType && <button className="ach" onClick={() => setAircraftType('')}>{aircraftType} ×</button>}
-            {role && <button className="ach" onClick={() => setRole('')}>{roleLabel(role)} ×</button>}
-            {authority && <button className="ach" onClick={() => setAuthority('')}>{authority} ×</button>}
-            {visaOnly && <button className="ach" onClick={() => setVisaOnly(false)}>Visa sponsored ×</button>}
+            {region && <button className="ach" onClick={() => setRegion('')}>{region} <X size={12} style={{ marginLeft: 2 }} /></button>}
+            {maxReqHours && <button className="ach" onClick={() => setMaxReqHours('')}>Up to {Number(maxReqHours).toLocaleString()} h <X size={12} style={{ marginLeft: 2 }} /></button>}
+            {aircraftType && <button className="ach" onClick={() => setAircraftType('')}>{aircraftType} <X size={12} style={{ marginLeft: 2 }} /></button>}
+            {role && <button className="ach" onClick={() => setRole('')}>{roleLabel(role)} <X size={12} style={{ marginLeft: 2 }} /></button>}
+            {authority && <button className="ach" onClick={() => setAuthority('')}>{authority} <X size={12} style={{ marginLeft: 2 }} /></button>}
+            {visaOnly && <button className="ach" onClick={() => setVisaOnly(false)}>Visa sponsored <X size={12} style={{ marginLeft: 2 }} /></button>}
             <a href="#" onClick={(e) => { e.preventDefault(); clearAllApplied(); setRegion(''); setMaxReqHours(''); }}>Clear all</a>
-            <button className="alert-btn" type="button" title="Save this search as an alert (next slice)">🔔 Create alert from this search</button>
+            <button className="alert-btn" type="button" title="Save this search as an alert (next slice)"><Bell size={14} /> Create alert from this search</button>
           </div>
         )}
 
@@ -725,7 +744,7 @@ export default function Jobs() {
 
         <div className={isDesktop ? 'split' : undefined}>
           <div>
-            {loading && orderedJobs.length === 0 ? (
+            {(!regionReady || (loading && orderedJobs.length === 0)) ? (
               <div style={{ textAlign: 'center', padding: 60, color: 'var(--accent)' }}>Loading jobs…</div>
             ) : error ? (
               <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>{error}</div>
@@ -735,7 +754,7 @@ export default function Jobs() {
               grouped.map((g) => (
                 <React.Fragment key={g.key}>
                   <div className={`group ${g.cls}`}>
-                    <span>{g.label} · {g.jobs.length}</span>
+                    <span>{g.cls === 'q' && <Check size={13} style={{ verticalAlign: -2, marginRight: 3 }} />}{g.label} · {g.jobs.length}</span>
                     <small>{g.key === 'incomplete' && nudge ? `add ${nudge.fields.map((f) => f.field).slice(0, 2).join(', ')}` : g.hint}</small>
                   </div>
                   {g.jobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} />)}
@@ -746,7 +765,7 @@ export default function Jobs() {
             )}
           </div>
           {isDesktop && orderedJobs.length > 0 && (
-            <div className="rd-detail-pane"><JobDetailPanel jobId={selectedId} /></div>
+            <div className="rd-detail-pane"><JobDetailPanel jobId={selectedId} seo={!!urlJobId} /></div>
           )}
         </div>
 

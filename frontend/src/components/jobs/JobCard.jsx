@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check, X, HelpCircle } from 'lucide-react';
 import AirlineLogo from '../AirlineLogo';
 import { postedAgo, formatSalary } from '../../lib/jobMatch';
 import { displayTitle, countryFlag, jobChips, checklist, sourceInfo } from '../../lib/jobDisplay';
@@ -43,15 +44,15 @@ export default function JobCard({ job, selected, onClick }) {
       {checks.length > 0 && (
         <div className="check">
           {checks.map((c, i) => (
-            <span key={i} className={c.status === 'met' ? 'ok' : c.status === 'unmet' ? 'no' : 'unk'}>
-              {c.status === 'met' ? '✓' : c.status === 'unmet' ? '✗' : '?'} {c.text}
+            <span key={i} className={c.status === 'met' ? 'ok' : c.status === 'unmet' ? 'no' : 'unk'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              {c.status === 'met' ? <Check size={13} /> : c.status === 'unmet' ? <X size={13} /> : <HelpCircle size={13} />} {c.text}
             </span>
           ))}
         </div>
       )}
 
       <div className="src">
-        <span className={src.direct ? 'direct' : 'via'}>{src.direct ? '✓ ' : ''}{src.label}</span>
+        <span className={src.direct ? 'direct' : 'via'}>{src.direct && <Check size={12} style={{ verticalAlign: -1, marginRight: 2 }} />}{src.label}</span>
         <span className="sal">{sal || 'Salary not stated'}</span>
       </div>
     </button>

@@ -14,10 +14,27 @@ function titleCaseWords(str) {
   }).join('');
 }
 export function displayTitle(title) {
-  const t = String(title || '');
+  // Trim trailing separators the source often leaves ("Jet First Officers —").
+  const t = String(title || '').replace(/[\s–—-]+$/, '').trim();
   const letters = t.replace(/[^A-Za-z]/g, '');
   if (!letters || t !== t.toUpperCase()) return t;        // not ALL-CAPS → leave as-is
   return titleCaseWords(t);
+}
+
+// Client mirror of the backend region taxonomy (jobMatch.regionForCountry), used to
+// pick the pilot's default region tab BEFORE the first jobs fetch (no flicker).
+const R_NA = new Set(['united states', 'usa', 'us', 'united states of america', 'america', 'canada', 'ca']);
+const R_ME = new Set(['united arab emirates', 'uae', 'ae', 'qatar', 'qa', 'saudi arabia', 'ksa', 'sa', 'bahrain', 'bh', 'kuwait', 'kw', 'oman', 'om', 'jordan', 'jo', 'lebanon', 'lb', 'israel', 'il', 'iraq', 'iq', 'egypt', 'egitto', 'eg', 'turkey', 'türkiye', 'tr', 'syria', 'sy', 'yemen', 'ye', 'iran', 'ir']);
+const R_AP = new Set(['china', 'cn', 'hong kong', 'hk', 'japan', 'jp', 'south korea', 'korea', 'kr', 'singapore', 'sg', 'malaysia', 'my', 'thailand', 'th', 'vietnam', 'vn', 'indonesia', 'id', 'philippines', 'ph', 'india', 'in', 'pakistan', 'pk', 'australia', 'au', 'new zealand', 'nz', 'taiwan', 'tw', 'sri lanka', 'lk', 'bangladesh', 'bd']);
+const R_EU = new Set(['united kingdom', 'uk', 'gb', 'great britain', 'england', 'ireland', 'ie', 'france', 'fr', 'germany', 'de', 'spain', 'es', 'portugal', 'pt', 'italy', 'it', 'netherlands', 'nl', 'belgium', 'be', 'luxembourg', 'lu', 'switzerland', 'ch', 'austria', 'at', 'poland', 'pl', 'czech republic', 'czechia', 'cz', 'slovakia', 'sk', 'hungary', 'hu', 'romania', 'ro', 'bulgaria', 'bg', 'greece', 'gr', 'croatia', 'hr', 'slovenia', 'si', 'denmark', 'dk', 'sweden', 'se', 'norway', 'no', 'finland', 'fi', 'iceland', 'is', 'estonia', 'ee', 'latvia', 'lv', 'lithuania', 'lt', 'malta', 'mt', 'cyprus', 'cy', 'serbia', 'rs', 'ukraine', 'ua']);
+export function defaultRegionForPilot(country) {
+  const c = String(country || '').trim().toLowerCase();
+  if (!c) return '';
+  if (R_NA.has(c)) return 'North America';
+  if (R_ME.has(c)) return 'Middle East';
+  if (R_EU.has(c)) return 'Europe';
+  if (R_AP.has(c)) return 'Asia-Pacific';
+  return ''; // unknown → All regions
 }
 
 // ── Country → flag emoji (unknown → null, never a wrong flag). Kept from the old
