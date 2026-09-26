@@ -108,13 +108,19 @@ function presentJob(j) {
   };
 }
 
-async function enrichJobs(jobs, pilotId) {
+// The pilot's saved + applied jobId sets. Depends only on pilotId (not on which
+// page is shown), so getJobs fetches this CONCURRENTLY with the candidate/match
+// queries and hands the result to enrichJobs, avoiding an extra serial round-trip.
+async function fetchPilotJobSets(pilotId) {
   const [saved, applied] = await Promise.all([
     prisma.savedJob.findMany({ where: { pilotId }, select: { jobId: true } }),
     prisma.application.findMany({ where: { pilotId }, select: { jobId: true } }),
   ]);
-  const savedSet = new Set(saved.map((s) => s.jobId));
-  const appliedSet = new Set(applied.map((a) => a.jobId));
+  return { savedSet: new Set(saved.map((s) => s.jobId)), appliedSet: new Set(applied.map((a) => a.jobId)) };
+}
+
+async function enrichJobs(jobs, pilotId, prefetchedSets) {
+  const { savedSet, appliedSet } = prefetchedSets || (await fetchPilotJobSets(pilotId));
   return jobs.map((j) => ({ ...presentJob(j), isSaved: savedSet.has(j.id), isApplied: appliedSet.has(j.id) }));
 }
 
@@ -315,11 +321,17 @@ exports.getJobs = async (req, res, next) => {
     // in full for the presentation layer.
     // TEMP perf instrumentation (gated by ?_perf=1) — remove after tuning.
     const _t = {}; let _mk = Date.now(); const _mark = (k) => { _t[k] = Date.now() - _mk; _mk = Date.now(); };
-    const candidates = await prisma.job.findMany({ where, orderBy, take: 2000, select: CANDIDATE_SELECT });
-    _mark('candidates');
-
-    const ctx = req.pilot ? await buildMatchContext(req.pilot.id, prisma) : null;
-    _mark('ctx');
+    // Perf (guardrail 4): the candidate set, the pilot's match context, and the
+    // pilot's saved/applied sets are mutually independent — fetch all three
+    // concurrently instead of in series. Match, region grouping and fit-group
+    // sorting then run in JS (≈2 ms) over `candidates`; only the paged rows are
+    // re-fetched in full afterwards.
+    const [candidates, ctx, pilotSets] = await Promise.all([
+      prisma.job.findMany({ where, orderBy, take: 2000, select: CANDIDATE_SELECT }),
+      req.pilot ? buildMatchContext(req.pilot.id, prisma) : Promise.resolve(null),
+      req.pilot ? fetchPilotJobSets(req.pilot.id) : Promise.resolve(null),
+    ]);
+    _mark('fetch');
 
     // Attach region + (when logged in) match to every candidate.
     const matched = candidates.map((j) => ({
@@ -405,7 +417,7 @@ exports.getJobs = async (req, res, next) => {
     // but they still get the full presentation layer (English-first titles,
     // visa/NTR badges) — logged-out browsing is a pilot's first impression.
     const enrichedArr = req.pilot
-      ? await enrichJobs(pageJobs, req.pilot.id)
+      ? await enrichJobs(pageJobs, req.pilot.id, pilotSets)
       : pageJobs.map((j) => ({ ...presentJob(j), isSaved: false, isApplied: false }));
     _mark('enrich');
 
