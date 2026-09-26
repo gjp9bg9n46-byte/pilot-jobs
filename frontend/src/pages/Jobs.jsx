@@ -19,6 +19,7 @@ import {
 import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
 import JobCard from '../components/jobs/JobCard';
 import JobDetailPanel from '../components/jobs/JobDetailPanel';
+import HoursPopover from '../components/jobs/HoursPopover';
 import { roleLabel } from '../lib/jobDisplay';
 import '../components/jobs/jobsRedesign.css';
 
@@ -374,6 +375,10 @@ export default function Jobs() {
   // counted (same ACTIVE + reqMinTotalHours in (hoursMin, hoursMax]).
   const [hoursMin] = useState(() => searchParams.get('hoursMin') || '');
   const [hoursMax] = useState(() => searchParams.get('hoursMax') || '');
+  // Hours filter (redesign popover): "up to X hours" — maxReqHours includes jobs with
+  // no stated hours requirement (they always show). Separate from the milestone deep-link.
+  const [maxReqHours, setMaxReqHours] = useState(() => searchParams.get('maxReqHours') || '');
+  const [hoursOpen, setHoursOpen] = useState(false);
   // Region tab (redesign) + the aggregate response fields (counts, groups, banner).
   const [region, setRegion] = useState(() => searchParams.get('region') || '');
   const [meta, setMeta] = useState(null); // { regionCounts, fitGroupCounts, profileNudge, emptyProfile, qualifyCount, facetCounts, defaultRegion }
@@ -479,6 +484,7 @@ export default function Jobs() {
       if (qualifiedOnly) params.qualifiedOnly = true;
       if (hoursMin) params.hoursMin = hoursMin;
       if (hoursMax) params.hoursMax = hoursMax;
+      if (maxReqHours) params.maxReqHours = maxReqHours;
       if (region) params.region = region;
       if (sort) params.sort = sort;
       const { data } = await jobApi.list(params);
@@ -491,6 +497,7 @@ export default function Jobs() {
         qualifyCount: data.qualifyCount ?? null,
         facetCounts: data.facetCounts || null,
         defaultRegion: data.defaultRegion || null,
+        pilotHours: data.pilotHours ?? null,
         total: data.total,
       });
       const initSaved = {};
@@ -503,7 +510,7 @@ export default function Jobs() {
     } finally {
       setLoading(false);
     }
-  }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort, hoursMin, hoursMax, region]);
+  }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort, hoursMin, hoursMax, maxReqHours, region]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -536,8 +543,10 @@ export default function Jobs() {
     if (qualifiedOnly) next.qualified = '1';
     if (hoursMin) next.hoursMin = hoursMin;
     if (hoursMax) next.hoursMax = hoursMax;
+    if (maxReqHours) next.maxReqHours = maxReqHours;
+    if (region) next.region = region;
     setSearchParams(next, { replace: true });
-  }, [search, authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly, sort, qualifiedOnly, hoursMin, hoursMax, setSearchParams]);
+  }, [search, authority, aircraftType, role, contractType, postedWithin, minSalary, visaOnly, ntrOnly, sort, qualifiedOnly, hoursMin, hoursMax, maxReqHours, region, setSearchParams]);
 
   const handleSaveToggle = async (e, jobId) => {
     e.stopPropagation();
@@ -569,12 +578,19 @@ export default function Jobs() {
     return true;
   });
 
-  // Evergreen rows (old posting date, but still listed — rolling recruitment)
-  // are demoted below fresh listings and reframed on the card. The server sets
-  // job.evergreen; they're open vacancies, just not new.
-  const freshJobs = filtered.filter((j) => !j.evergreen);
-  const evergreenJobs = filtered.filter((j) => j.evergreen);
-  const orderedJobs = [...freshJobs, ...evergreenJobs];
+  // One ordering, used for both the list (within each group) and the default
+  // selection: direct-apply first, then fresh postings before ongoing/evergreen
+  // ones, then newest. An ongoing listing never tops a fresh posting in its group.
+  const orderRank = (j) => [
+    (j.sourceType && j.sourceType !== 'aggregator') ? 0 : 1, // direct first
+    j.evergreen ? 1 : 0,                                     // fresh before evergreen
+    -(new Date(j.postedAt || 0).getTime()),                 // newest first
+  ];
+  const orderedJobs = [...filtered].sort((a, b) => {
+    const ra = orderRank(a), rb = orderRank(b);
+    for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
+    return 0;
+  });
 
   // Group the filtered jobs by fit group (server already ordered them best-first).
   const grouped = FIT_GROUPS
@@ -636,6 +652,20 @@ export default function Jobs() {
           <div className="fsearch"><Search size={14} color="var(--text-secondary)" />
             <input placeholder="Search jobs…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search jobs" />
           </div>
+          <div className="fwrap">
+            <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen((v) => !v)} aria-expanded={hoursOpen}>
+              {maxReqHours ? `Hours: up to ${Number(maxReqHours).toLocaleString()}` : 'Hours'} ▾
+            </button>
+            {hoursOpen && (
+              <HoursPopover
+                params={{ ...(search ? { q: search } : {}), ...(region ? { region } : {}), ...(role ? { role } : {}), ...(authority ? { authority } : {}), ...(aircraftType ? { aircraft: aircraftType } : {}), ...(visaOnly ? { visa: 'true' } : {}), ...(qualifiedOnly ? { qualifiedOnly: true } : {}) }}
+                pilotHours={meta?.pilotHours || 0}
+                value={maxReqHours}
+                onApply={(v) => setMaxReqHours(v)}
+                onClose={() => setHoursOpen(false)}
+              />
+            )}
+          </div>
           <select className="fbtn" value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} aria-label="Aircraft">
             <option value="">Aircraft</option>
             {facetOpts(facet.aircraft).map((a) => <option key={a} value={a}>{a}</option>)}
@@ -658,14 +688,15 @@ export default function Jobs() {
           </div>
         </div>
 
-        {(region || aircraftType || role || authority || visaOnly || search) && (
+        {(region || aircraftType || role || authority || visaOnly || search || maxReqHours) && (
           <div className="applied">
             {region && <button className="ach" onClick={() => setRegion('')}>{region} ×</button>}
+            {maxReqHours && <button className="ach" onClick={() => setMaxReqHours('')}>Up to {Number(maxReqHours).toLocaleString()} h ×</button>}
             {aircraftType && <button className="ach" onClick={() => setAircraftType('')}>{aircraftType} ×</button>}
             {role && <button className="ach" onClick={() => setRole('')}>{roleLabel(role)} ×</button>}
             {authority && <button className="ach" onClick={() => setAuthority('')}>{authority} ×</button>}
             {visaOnly && <button className="ach" onClick={() => setVisaOnly(false)}>Visa sponsored ×</button>}
-            <a href="#" onClick={(e) => { e.preventDefault(); clearAllApplied(); setRegion(''); }}>Clear all</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); clearAllApplied(); setRegion(''); setMaxReqHours(''); }}>Clear all</a>
             <button className="alert-btn" type="button" title="Save this search as an alert (next slice)">🔔 Create alert from this search</button>
           </div>
         )}

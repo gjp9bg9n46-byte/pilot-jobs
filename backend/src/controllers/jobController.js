@@ -419,6 +419,7 @@ exports.getJobs = async (req, res, next) => {
       facetCounts,
       defaultRegion: ctx ? defaultRegionForPilot(ctx.country) : null,
       qualifyCount: matchable ? fitGroupCounts.qualify : null,
+      pilotHours: ctx ? Math.round(ctx.totals.totalTime || 0) : null, // for the Hours filter "You" marker
     });
   } catch (err) {
     next(err);

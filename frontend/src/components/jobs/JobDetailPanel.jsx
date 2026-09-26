@@ -65,7 +65,8 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack }) {
     } else if (m.counts.unmet > 0) {
       verdict = { cls: 'warn', ic: '!', text: <><b>{m.counts.met} of {known} known requirements met.</b> {m.counts.unmet} still short{m.counts.unknown ? `, ${m.counts.unknown} not on your profile yet` : ''}.</> };
     } else {
-      verdict = { cls: 'ok', ic: '✓', text: <><b>You meet all {known} known requirements.</b>{m.counts.unknown ? ` ${m.counts.unknown} item${m.counts.unknown > 1 ? 's aren\'t' : " isn't"} on your profile yet — add ${m.counts.unknown > 1 ? 'them' : 'it'} to confirm your match.` : ''}</> };
+      const knownPhrase = known === 1 ? 'the known requirement' : known === 2 ? 'both known requirements' : `all ${known} known requirements`;
+      verdict = { cls: 'ok', ic: '✓', text: <><b>You meet {knownPhrase}.</b>{m.counts.unknown ? ` ${m.counts.unknown} item${m.counts.unknown > 1 ? 's aren\'t' : " isn't"} on your profile yet — add ${m.counts.unknown > 1 ? 'them' : 'it'} to confirm your match.` : ''}</> };
     }
   }
 

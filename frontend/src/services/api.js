@@ -84,6 +84,7 @@ export const logbookApi = {
 
 export const jobApi = {
   list: (params) => api.get('/jobs', { params }),
+  hoursHistogram: (params) => api.get('/jobs/hours-histogram', { params }),
   get: (id) => api.get(`/jobs/${id}`),
   getAlerts: (params) => api.get('/jobs/alerts', { params }),
   getUnreadCount: () => api.get('/jobs/alerts/unread-count'),
