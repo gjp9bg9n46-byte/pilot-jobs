@@ -346,36 +346,34 @@ function computeMatchScore(pilot, pilotTotals, job) {
  * evaluations never crash on a clean profile.
  */
 async function getPilotFlightTotals(pilotId) {
-  const [logs, pilot] = await Promise.all([
-    prisma.flightLog.findMany({ where: { pilotId } }),
+  // DB-side aggregate (one row) instead of fetching every flight log and summing in
+  // JS — the previous approach loaded all 501+ rows on EVERY /jobs request and was the
+  // dominant cost of the match pipeline. Same result: sum of each stored column, then
+  // carry-forward added once.
+  const [rows, pilot] = await Promise.all([
+    prisma.$queryRaw`
+      SELECT
+        COALESCE(SUM("totalTime"), 0)        AS "totalTime",
+        COALESCE(SUM("picTime"), 0)          AS "picTime",
+        COALESCE(SUM("sicTime"), 0)          AS "sicTime",
+        COALESCE(SUM("multiEngineTime"), 0)  AS "multiEngineTime",
+        COALESCE(SUM("turbineTime"), 0)      AS "turbineTime",
+        COALESCE(SUM("instrumentTime"), 0)   AS "instrumentTime",
+        COALESCE(SUM("crossCountryTime"), 0) AS "crossCountryTime",
+        COALESCE(SUM("nightTime"), 0)        AS "nightTime"
+      FROM "FlightLog" WHERE "pilotId" = ${pilotId}`,
     prisma.pilot.findUnique({ where: { id: pilotId }, select: { carryForward: true } }),
   ]);
 
   const cf = (pilot?.carryForward) ?? {};
-
-  const totals = logs.reduce(
-    (acc, log) => {
-      acc.totalTime        += log.totalTime        ?? 0;
-      acc.picTime          += log.picTime          ?? 0;
-      acc.sicTime          += log.sicTime          ?? 0;
-      acc.multiEngineTime  += log.multiEngineTime  ?? 0;
-      acc.turbineTime      += log.turbineTime      ?? 0;
-      acc.instrumentTime   += log.instrumentTime   ?? 0;
-      acc.crossCountryTime += log.crossCountryTime ?? 0;
-      acc.nightTime        += log.nightTime        ?? 0;
-      return acc;
-    },
-    {
-      totalTime: 0, picTime: 0, sicTime: 0,
-      multiEngineTime: 0, turbineTime: 0,
-      instrumentTime: 0, crossCountryTime: 0, nightTime: 0,
-    }
-  );
-
-  for (const key of Object.keys(totals)) {
-    totals[key] += (cf[key] ?? 0);
-  }
-
+  const r = rows[0] || {};
+  const totals = {
+    totalTime: Number(r.totalTime) || 0, picTime: Number(r.picTime) || 0, sicTime: Number(r.sicTime) || 0,
+    multiEngineTime: Number(r.multiEngineTime) || 0, turbineTime: Number(r.turbineTime) || 0,
+    instrumentTime: Number(r.instrumentTime) || 0, crossCountryTime: Number(r.crossCountryTime) || 0,
+    nightTime: Number(r.nightTime) || 0,
+  };
+  for (const key of Object.keys(totals)) totals[key] += (cf[key] ?? 0);
   return totals;
 }
 
