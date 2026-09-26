@@ -379,6 +379,8 @@ export default function Jobs() {
   // no stated hours requirement (they always show). Separate from the milestone deep-link.
   const [maxReqHours, setMaxReqHours] = useState(() => searchParams.get('maxReqHours') || '');
   const [hoursOpen, setHoursOpen] = useState(false);
+  const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
+  const isPhone = useIsMobile(768); // <768 → horizontal filter strip + bottom sheets
   // Region tab (redesign) + the aggregate response fields (counts, groups, banner).
   const [region, setRegion] = useState(() => searchParams.get('region') || '');
   const [meta, setMeta] = useState(null); // { regionCounts, fitGroupCounts, profileNudge, emptyProfile, qualifyCount, facetCounts, defaultRegion }
@@ -579,12 +581,15 @@ export default function Jobs() {
   });
 
   // One ordering, used for both the list (within each group) and the default
-  // selection: direct-apply first, then fresh postings before ongoing/evergreen
-  // ones, then newest. An ongoing listing never tops a fresh posting in its group.
+  // selection: FRESH first (posted ≤30 days and not evergreen), then direct-apply
+  // first within each freshness tier, then newest. A fresh posting is never topped
+  // by an ongoing/evergreen one — even a direct one.
+  const THIRTY_DAYS = 30 * 86400000;
+  const isFresh = (j) => !j.evergreen && j.postedAt && (Date.now() - new Date(j.postedAt).getTime()) <= THIRTY_DAYS;
   const orderRank = (j) => [
-    (j.sourceType && j.sourceType !== 'aggregator') ? 0 : 1, // direct first
-    j.evergreen ? 1 : 0,                                     // fresh before evergreen
-    -(new Date(j.postedAt || 0).getTime()),                 // newest first
+    isFresh(j) ? 0 : 1,                                       // fresh first
+    (j.sourceType && j.sourceType !== 'aggregator') ? 0 : 1, // direct first within tier
+    -(new Date(j.postedAt || 0).getTime()),                  // newest first
   ];
   const orderedJobs = [...filtered].sort((a, b) => {
     const ra = orderRank(a), rb = orderRank(b);
@@ -602,6 +607,9 @@ export default function Jobs() {
   const facet = meta?.facetCounts || {};
   const openJob = (job) => navigate(`/jobs/${slugFor(job)}`);
   const facetOpts = (obj) => Object.entries(obj || {}).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k]) => k);
+  // Current filters (excluding hours) for the histogram endpoint.
+  const hoursParams = { ...(search ? { q: search } : {}), ...(region ? { region } : {}), ...(role ? { role } : {}), ...(authority ? { authority } : {}), ...(aircraftType ? { aircraft: aircraftType } : {}), ...(visaOnly ? { visa: 'true' } : {}), ...(qualifiedOnly ? { qualifiedOnly: true } : {}) };
+  const hoursLabel = maxReqHours ? `Hours: up to ${Number(maxReqHours).toLocaleString()}` : 'Hours';
 
   // Split view (≥1024): the URL /jobs/:slug selects a job in the right pane; the
   // first job is selected by default. <1024 opens the job as a full page.
@@ -648,45 +656,53 @@ export default function Jobs() {
           </div>
         )}
 
-        <div className="fbar">
-          <div className="fsearch"><Search size={14} color="var(--text-secondary)" />
-            <input placeholder="Search jobs…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search jobs" />
+        {isPhone ? (
+          <div className="mfbar">
+            <div className="fsearch"><Search size={14} color="var(--text-secondary)" />
+              <input placeholder="Search jobs…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search jobs" />
+            </div>
+            <div className="hscroll">
+              <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen(true)}>{hoursLabel} ▾</button>
+              <button type="button" className={`fbtn${(aircraftType || role || authority || contractType || postedWithin || minSalary || ntrOnly) ? ' act' : ''}`} onClick={() => setFiltersSheetOpen(true)}>⚙ Filters</button>
+              <button type="button" className={`fbtn tog${visaOnly ? ' on act' : ''}`} onClick={() => setVisaOnly((v) => !v)} aria-pressed={visaOnly}><span className="sw" />Visa</button>
+              <div className="fsort" style={{ marginLeft: 'auto' }}>Sort:
+                <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">{SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
+              </div>
+            </div>
           </div>
-          <div className="fwrap">
-            <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen((v) => !v)} aria-expanded={hoursOpen}>
-              {maxReqHours ? `Hours: up to ${Number(maxReqHours).toLocaleString()}` : 'Hours'} ▾
-            </button>
-            {hoursOpen && (
-              <HoursPopover
-                params={{ ...(search ? { q: search } : {}), ...(region ? { region } : {}), ...(role ? { role } : {}), ...(authority ? { authority } : {}), ...(aircraftType ? { aircraft: aircraftType } : {}), ...(visaOnly ? { visa: 'true' } : {}), ...(qualifiedOnly ? { qualifiedOnly: true } : {}) }}
-                pilotHours={meta?.pilotHours || 0}
-                value={maxReqHours}
-                onApply={(v) => setMaxReqHours(v)}
-                onClose={() => setHoursOpen(false)}
-              />
-            )}
-          </div>
-          <select className="fbtn" value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} aria-label="Aircraft">
-            <option value="">Aircraft</option>
-            {facetOpts(facet.aircraft).map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <select className="fbtn" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Role">
-            <option value="">Role</option>
-            {facetOpts(facet.role).map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
-          </select>
-          <select className="fbtn" value={authority} onChange={(e) => setAuthority(e.target.value)} aria-label="Licence authority">
-            <option value="">Licence</option>
-            {facetOpts(facet.authority).map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <button type="button" className={`fbtn tog${visaOnly ? ' on act' : ''}`} onClick={() => setVisaOnly((v) => !v)} aria-pressed={visaOnly}>
-            <span className="sw" />Visa sponsored
-          </button>
-          <div className="fsort">Sort:
-            <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
-              {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        ) : (
+          <div className="fbar">
+            <div className="fsearch"><Search size={14} color="var(--text-secondary)" />
+              <input placeholder="Search jobs…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search jobs" />
+            </div>
+            <div className="fwrap">
+              <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen((v) => !v)} aria-expanded={hoursOpen}>{hoursLabel} ▾</button>
+              {hoursOpen && (
+                <HoursPopover params={hoursParams} pilotHours={meta?.pilotHours || 0} value={maxReqHours} onApply={(v) => setMaxReqHours(v)} onClose={() => setHoursOpen(false)} />
+              )}
+            </div>
+            <select className="fbtn" value={aircraftType} onChange={(e) => setAircraftType(e.target.value)} aria-label="Aircraft">
+              <option value="">Aircraft</option>
+              {facetOpts(facet.aircraft).map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
+            <select className="fbtn" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Role">
+              <option value="">Role</option>
+              {facetOpts(facet.role).map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
+            </select>
+            <select className="fbtn" value={authority} onChange={(e) => setAuthority(e.target.value)} aria-label="Licence authority">
+              <option value="">Licence</option>
+              {facetOpts(facet.authority).map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <button type="button" className={`fbtn tog${visaOnly ? ' on act' : ''}`} onClick={() => setVisaOnly((v) => !v)} aria-pressed={visaOnly}>
+              <span className="sw" />Visa sponsored
+            </button>
+            <div className="fsort">Sort:
+              <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
+                {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {(region || aircraftType || role || authority || visaOnly || search || maxReqHours) && (
           <div className="applied">
@@ -733,6 +749,44 @@ export default function Jobs() {
             <div className="rd-detail-pane"><JobDetailPanel jobId={selectedId} /></div>
           )}
         </div>
+
+        {/* Mobile bottom sheets */}
+        {isPhone && hoursOpen && (
+          <div className="sheet-backdrop" onClick={() => setHoursOpen(false)}>
+            <div className="sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="sheet-grip" />
+              <HoursPopover params={hoursParams} pilotHours={meta?.pilotHours || 0} value={maxReqHours} onApply={(v) => setMaxReqHours(v)} onClose={() => setHoursOpen(false)} />
+            </div>
+          </div>
+        )}
+        {isPhone && filtersSheetOpen && (
+          <div className="sheet-backdrop" onClick={() => setFiltersSheetOpen(false)}>
+            <div className="sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="sheet-grip" />
+              <h3>Filters</h3>
+              <div className="sheet-field"><label>Aircraft</label>
+                <select value={aircraftType} onChange={(e) => setAircraftType(e.target.value)}><option value="">Any aircraft</option>{facetOpts(facet.aircraft).map((a) => <option key={a} value={a}>{a}</option>)}</select></div>
+              <div className="sheet-field"><label>Role</label>
+                <select value={role} onChange={(e) => setRole(e.target.value)}><option value="">Any role</option>{facetOpts(facet.role).map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}</select></div>
+              <div className="sheet-field"><label>Licence authority</label>
+                <select value={authority} onChange={(e) => setAuthority(e.target.value)}><option value="">Any authority</option>{facetOpts(facet.authority).map((a) => <option key={a} value={a}>{a}</option>)}</select></div>
+              <div className="sheet-field"><label>Contract</label>
+                <select value={contractType} onChange={(e) => setContractType(e.target.value)}>{CONTRACT_TYPES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div>
+              <div className="sheet-field"><label>Posted within</label>
+                <select value={postedWithin} onChange={(e) => setPostedWithin(e.target.value)}>{POSTED_WITHIN.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></div>
+              <div className="sheet-field"><label>Min salary (per year)</label>
+                <input type="number" value={minSalary} onChange={(e) => setMinSalary(e.target.value)} placeholder="Any" /></div>
+              <div className="sheet-toggle"><span>Visa sponsored</span>
+                <button className={`fbtn tog${visaOnly ? ' on act' : ''}`} onClick={() => setVisaOnly((v) => !v)} aria-pressed={visaOnly}><span className="sw" /></button></div>
+              <div className="sheet-toggle"><span>No type rating required</span>
+                <button className={`fbtn tog${ntrOnly ? ' on act' : ''}`} onClick={() => setNtrOnly((v) => !v)} aria-pressed={ntrOnly}><span className="sw" /></button></div>
+              <div className="sheet-actions">
+                <button className="clear" onClick={() => { clearAllApplied(); setRegion(''); setMaxReqHours(''); }}>Clear</button>
+                <button className="apply" onClick={() => setFiltersSheetOpen(false)}>Show {(meta?.total ?? total ?? 0).toLocaleString()} jobs</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </LightPage>
   );

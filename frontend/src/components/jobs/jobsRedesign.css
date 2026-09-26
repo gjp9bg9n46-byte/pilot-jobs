@@ -151,3 +151,22 @@
 .jobs-rd .pfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
 .jobs-rd .pfoot .plink { background: none; border: 0; color: var(--text-secondary); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .jobs-rd .pfoot .pshow { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+
+/* ── Mobile filter strip + bottom sheets ──────────────────────────────────── */
+.jobs-rd .mfbar { display: flex; flex-direction: column; gap: 8px; }
+.jobs-rd .hscroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.jobs-rd .hscroll::-webkit-scrollbar { display: none; }
+.jobs-rd .hscroll .fbtn { flex-shrink: 0; }
+.jobs-rd .sheet-backdrop { position: fixed; inset: 0; background: rgba(15,20,25,.4); z-index: 40; display: flex; align-items: flex-end; }
+.jobs-rd .sheet { background: var(--surface); width: 100%; border-radius: 18px 18px 0 0; padding: 8px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 84vh; overflow-y: auto; }
+.jobs-rd .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 6px auto 12px; }
+.jobs-rd .sheet h3 { font-family: var(--font-display); font-size: 19px; margin: 0 0 12px; }
+.jobs-rd .sheet-field { margin-bottom: 14px; }
+.jobs-rd .sheet-field label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
+.jobs-rd .sheet-field select, .jobs-rd .sheet-field input { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 9px; font: inherit; font-size: 14px; background: var(--surface); color: var(--text-primary); }
+.jobs-rd .sheet-toggle { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--border); font-size: 14px; font-weight: 600; }
+.jobs-rd .sheet-actions { display: flex; gap: 10px; margin-top: 8px; position: sticky; bottom: 0; background: var(--surface); padding-top: 10px; }
+.jobs-rd .sheet-actions .apply { flex: 1; background: var(--accent); color: #fff; border: 0; border-radius: 9px; padding: 13px; font-weight: 700; font-size: 15px; cursor: pointer; }
+.jobs-rd .sheet-actions .clear { background: none; border: 1px solid var(--border); border-radius: 9px; padding: 13px 18px; font-weight: 600; cursor: pointer; }
+/* Hours popover rendered inside a bottom sheet */
+.jobs-rd .sheet .pop { position: static; width: 100%; box-shadow: none; border: 0; padding: 0; }
