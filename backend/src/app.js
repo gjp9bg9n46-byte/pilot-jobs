@@ -351,6 +351,20 @@ cron.schedule('15 */6 * * *', async () => {
   }
 });
 
+// Weekly (Mondays 04:10 UTC): report ACTIVE jobs whose apply link has returned
+// HTTP 403 for ≥ 5 days. The nightly liveness checker SKIPS 403 (can't tell an
+// anti-bot block from a gone page), so these never expire on their own — this
+// emails ops the stuck ones to check/replace by hand.
+cron.schedule('10 4 * * 1', async () => {
+  try {
+    const { reportStuck403 } = require('./services/dbMaintenance');
+    const r = await reportStuck403();
+    if (r.count) logger.info(`Stuck-403 report: ${r.count} job(s) flagged`);
+  } catch (err) {
+    logger.error(`Stuck-403 report failed: ${err.message}`);
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
 

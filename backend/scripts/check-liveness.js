@@ -33,7 +33,7 @@ async function checkActiveJobLiveness({ limit = 1000, dryRun = false } = {}) {
   // successive nights. Scraped rows only (never first-party employer posts).
   const jobs = await prisma.job.findMany({
     where: { status: 'ACTIVE', postedByEmployerId: null, applyUrl: { not: '' } },
-    select: { id: true, applyUrl: true, company: true, title: true, livenessFailures: true },
+    select: { id: true, applyUrl: true, company: true, title: true, livenessFailures: true, liveness403Since: true },
     orderBy: [{ lastLivenessCheckAt: { sort: 'asc', nulls: 'first' } }],
     take: limit,
   });
@@ -49,21 +49,26 @@ async function checkActiveJobLiveness({ limit = 1000, dryRun = false } = {}) {
       // don't even stamp lastLivenessCheckAt for robots-disallowed (never checked).
       skipped++;
       if (status != null && !dryRun) {
-        await prisma.job.update({ where: { id: j.id }, data: { lastLivenessCheckAt: now } });
+        // 403 is skipped forever (never expires on its own), so track the start of
+        // an unbroken 403 run for the weekly stuck-403 report; other skips (401/429/
+        // anti-bot) leave the marker untouched — they aren't the reportable case.
+        const set403 = status === 403 && !j.liveness403Since ? { liveness403Since: now } : {};
+        await prisma.job.update({ where: { id: j.id }, data: { lastLivenessCheckAt: now, ...set403 } });
       }
       continue;
     }
 
     if (verdict === 'alive') {
       alive++;
-      if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { lastLivenessCheckAt: now, livenessFailures: 0 } });
+      // Reachable now → any prior 403 run is over.
+      if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { lastLivenessCheckAt: now, livenessFailures: 0, liveness403Since: null } });
       continue;
     }
 
     if (verdict === 'dead') {
       dead++; expired++;
       logger.warn({ source: 'LIVENESS', id: j.id, company: j.company, title: j.title, url: j.applyUrl, status, reason, msg: 'apply link dead — expiring' });
-      if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { status: 'EXPIRED', lastLivenessCheckAt: now } });
+      if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { status: 'EXPIRED', lastLivenessCheckAt: now, liveness403Since: null } });
       continue;
     }
 
@@ -73,10 +78,10 @@ async function checkActiveJobLiveness({ limit = 1000, dryRun = false } = {}) {
     if (failures >= EXPIRE_AFTER) {
       expired++;
       logger.warn({ source: 'LIVENESS', id: j.id, company: j.company, url: j.applyUrl, status, reason, failures, msg: `apply link failed ${failures}x consecutively — expiring` });
-      if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { status: 'EXPIRED', lastLivenessCheckAt: now, livenessFailures: failures } });
+      if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { status: 'EXPIRED', lastLivenessCheckAt: now, livenessFailures: failures, liveness403Since: null } });
     } else {
       logger.info({ source: 'LIVENESS', id: j.id, url: j.applyUrl, status, reason, failures, msg: 'transient failure — will retry next run' });
-      if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { lastLivenessCheckAt: now, livenessFailures: failures } });
+      if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { lastLivenessCheckAt: now, livenessFailures: failures, liveness403Since: null } });
     }
   }
 

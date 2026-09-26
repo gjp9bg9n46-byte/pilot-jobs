@@ -386,6 +386,7 @@ model Job {
   lastEnrichedFromWorkdayAt DateTime?
   livenessFailures          Int        @default(0)  // consecutive transient failures from the nightly apply-link checker; 3 → expire. Reset to 0 on any live check.
   lastLivenessCheckAt       DateTime?  // last time the nightly liveness checker probed this row's applyUrl
+  liveness403Since          DateTime?  // start of an unbroken run of 403 responses from the apply-link checker. 403 is "skip" (never expires on its own), so this drives a weekly stuck-403 report. Cleared when the link next resolves or is judged dead.
   descriptionEnrichedAt     DateTime?  // set once an aggregator job's truncated snippet has been enriched (or the attempt was made) — so we never re-fetch its listing page
   requirementsText          String?    // the posting's OWN requirements/qualifications section, verbatim (bullets), when present — rendered in preference to synthesised req fields
   requirementsExtractedAt   DateTime?  // marker: structured req fields were filled by the LLM extractor (once per job)

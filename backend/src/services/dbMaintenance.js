@@ -63,4 +63,37 @@ async function checkDiskAndAlert() {
   }
 }
 
-module.exports = { pruneExpiredJobAlerts, getDiskUsage, checkDiskAndAlert };
+// Weekly report of apply links stuck on HTTP 403. The nightly liveness checker
+// SKIPS 403 (can't tell an anti-bot block from a genuinely gone page), so these
+// jobs never expire on their own — they need a human to check/replace the URL.
+// We report rows whose 403 run has lasted at least MIN_DAYS (default 5), i.e.
+// seen 403 across several nightly sweeps, to skip one-off anti-bot blips.
+async function reportStuck403({ minDays = Number(process.env.STUCK_403_MIN_DAYS || 5) } = {}) {
+  const cutoff = new Date(Date.now() - minDays * 864e5);
+  const jobs = await prisma.job.findMany({
+    where: { status: 'ACTIVE', liveness403Since: { not: null, lte: cutoff } },
+    select: { id: true, company: true, title: true, applyUrl: true, sourcePlatform: true, liveness403Since: true },
+    orderBy: { liveness403Since: 'asc' },
+  });
+  logger.info({ source: 'DB-MAINT', msg: `stuck-403 report: ${jobs.length} job(s) ≥ ${minDays}d`, count: jobs.length });
+  if (!jobs.length || !ALERT_TO) return { count: jobs.length, jobs };
+
+  const row = (j) => {
+    const days = Math.floor((Date.now() - new Date(j.liveness403Since).getTime()) / 864e5);
+    return { j, days };
+  };
+  const lines = jobs.map(row).map(({ j, days }) => `• [${days}d] ${j.company} — ${j.title} (${j.sourcePlatform || '—'})\n  ${j.applyUrl}`);
+  const html = jobs.map(row).map(({ j, days }) =>
+    `<li><b>${days}d</b> — ${j.company} — ${j.title} <i>(${j.sourcePlatform || '—'})</i><br><a href="${j.applyUrl}">${j.applyUrl}</a></li>`).join('');
+  await sendEmail({
+    to: ALERT_TO,
+    subject: `CockpitHire: ${jobs.length} apply link(s) stuck on 403`,
+    text: `${jobs.length} ACTIVE job(s) have returned HTTP 403 for ≥ ${minDays} days. The liveness checker skips 403, so these won't expire on their own — check whether each URL is genuinely gone or just anti-bot, and fix/expire manually:\n\n${lines.join('\n')}`,
+    html: `<p>${jobs.length} ACTIVE job(s) have returned HTTP 403 for ≥ ${minDays} days. The liveness checker skips 403, so these won't expire on their own — check each and fix/expire manually:</p><ul>${html}</ul>`,
+    tags: ['stuck-403'],
+  });
+  logger.warn({ source: 'DB-MAINT', msg: `stuck-403 report emailed to ${ALERT_TO}`, count: jobs.length });
+  return { count: jobs.length, jobs };
+}
+
+module.exports = { pruneExpiredJobAlerts, getDiskUsage, checkDiskAndAlert, reportStuck403 };
