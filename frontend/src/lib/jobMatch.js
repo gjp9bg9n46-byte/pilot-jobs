@@ -181,26 +181,32 @@ export function postedAgo(postedAt) {
 
 const PERIOD_ABBR = { year: 'yr', annual: 'yr', annually: 'yr', yearly: 'yr', month: 'mo', monthly: 'mo', week: 'wk', weekly: 'wk', day: 'day', daily: 'day', hour: 'hr', hourly: 'hr' };
 function periodAbbr(p) {
-  if (!p) return '';
-  return PERIOD_ABBR[String(p).toLowerCase()] || String(p);
+  if (!p) return null;
+  return PERIOD_ABBR[String(p).toLowerCase()] || null; // unknown period → null (suppress the salary)
 }
 export function formatSalary(job, compact = false) {
   const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
   if (salaryMin == null && salaryMax == null) return null;
-  const currency = salaryCurrency || '';
+  const currency = salaryCurrency ? String(salaryCurrency).trim() : '';
   const per = periodAbbr(salaryPeriod);
+  // Only show a salary we can state cleanly: it needs a currency AND a known
+  // period, and for a range the two ends must plausibly share a period — a max
+  // more than 5× the min usually means mixed monthly/annual figures. Otherwise
+  // show nothing rather than a confusing/partial number.
+  if (!currency || !per) return null;
+  if (salaryMin != null && salaryMax != null && salaryMin > 0 && salaryMax > salaryMin * 5) return null;
   if (compact) {
     // Compact (cards): abbreviated period, attached with no space so it never
     // wraps mid-value ("USD 106k–138k/yr").
-    const period = per ? `/${per}` : '';
-    const fmt = (n) => n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n));
+    const period = `/${per}`;
+    const fmt = (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n)));
     if (salaryMin != null && salaryMax != null && salaryMin !== salaryMax)
-      return `${currency} ${fmt(salaryMin)}–${fmt(salaryMax)}${period}`.trim();
-    return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`.trim();
+      return `${currency} ${fmt(salaryMin)}–${fmt(salaryMax)}${period}`;
+    return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`;
   }
-  const period = per ? ` / ${per}` : '';
+  const period = ` / ${per}`;
   const fmt = (n) => n.toLocaleString();
   if (salaryMin != null && salaryMax != null && salaryMin !== salaryMax)
-    return `${currency} ${fmt(salaryMin)} – ${fmt(salaryMax)}${period}`.trim();
-  return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`.trim();
+    return `${currency} ${fmt(salaryMin)} – ${fmt(salaryMax)}${period}`;
+  return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`;
 }
