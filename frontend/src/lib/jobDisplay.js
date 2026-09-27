@@ -47,8 +47,8 @@ export function statedRequirements(job) {
   if (job.reqMinTurbineHours != null) add('Turbine', hrs(job.reqMinTurbineHours));
   if (job.reqMinInstrumentHours != null) add('Instrument', hrs(job.reqMinInstrumentHours));
   if (job.reqMinCrossCountryHours != null) add('Cross-country', hrs(job.reqMinCrossCountryHours));
-  if (job.reqMedicalClass != null) add('Medical', `Class ${job.reqMedicalClass}`);
-  add('English (ICAO)', job.reqEnglishLevel ? String(job.reqEnglishLevel) : '');
+  if (job.reqMedicalClass != null) add('Medical', `Class ${String(job.reqMedicalClass).replace(/^CLASS[_\s-]?/i, '').replace(/_/g, ' ')}`);
+  add('English (ICAO)', job.reqEnglishLevel ? String(job.reqEnglishLevel).replace(/^ICAO[_\s-]?(LEVEL[_\s-]?)?/i, '').replace(/_/g, ' ') : '');
   add('Education', job.reqEducation);
   return rows;
 }

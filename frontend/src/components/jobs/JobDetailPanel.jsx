@@ -34,15 +34,16 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
   const [reporting, setReporting] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
 
-  // Resolve the airline logo from the module-cached airline map (same source the
-  // list uses), so the detail header + About-the-airline show real logos. Kept
-  // self-contained so the standalone phone job page works without props.
+  // Airline logo: prefer the backend's exact-name airlineLogoUrl (instant on a cold
+  // deep-link), and fall back to the module-cached airline map's fuzzy match for
+  // companies whose name isn't an exact factfile match.
   useEffect(() => {
     if (!job?.company) { setLogoUrl(null); return undefined; }
+    if (job.airlineLogoUrl) { setLogoUrl(job.airlineLogoUrl); return undefined; }
     let active = true;
     fetchAirlineMap().then((map) => { if (active) setLogoUrl(resolveAirline(map, job.company)?.logoUrl || null); }).catch(() => {});
     return () => { active = false; };
-  }, [job?.company]);
+  }, [job?.company, job?.airlineLogoUrl]);
 
   useEffect(() => {
     if (!jobId) return undefined;

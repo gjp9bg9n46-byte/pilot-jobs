@@ -553,13 +553,18 @@ exports.getJob = async (req, res, next) => {
     // Also pull the airline's fleet for the "About the airline" detail row.
     let airlineId = null;
     let airlineFleet = null;
+    let airlineLogoUrl = null;
     if (job.company) {
       const airline = await prisma.airline.findFirst({
         where: { name: { equals: job.company, mode: 'insensitive' } },
-        select: { id: true, fleet: true },
+        select: { id: true, fleet: true, logoUrl: true },
       });
       airlineId = airline?.id ?? null;
       airlineFleet = airline?.fleet?.length ? airline.fleet : null;
+      // Exact-name match only — the detail header/About-the-airline logo shows
+      // instantly on a cold deep-link without waiting for the client airline map
+      // (which the frontend still uses as a fuzzy fallback for non-exact names).
+      airlineLogoUrl = airline?.logoUrl ?? null;
     }
 
     // Public-readable (optionalAuth): enrich isSaved/isApplied only when a pilot
@@ -596,7 +601,7 @@ exports.getJob = async (req, res, next) => {
       }
     }
 
-    res.json({ ...enriched, airlineId, airlineFleet, match, similarJobs });
+    res.json({ ...enriched, airlineId, airlineFleet, airlineLogoUrl, match, similarJobs });
   } catch (err) {
     next(err);
   }
