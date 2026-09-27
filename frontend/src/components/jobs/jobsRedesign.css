@@ -40,7 +40,11 @@
 /* applied chips */
 .jobs-rd .applied { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; font-size: 12.5px; }
 .jobs-rd .ach { display: inline-flex; align-items: center; gap: 5px; background: var(--accent-soft); color: var(--accent); border-radius: 14px; padding: 4px 10px; font-weight: 600; border: 0; cursor: pointer; }
-.jobs-rd .alert-btn { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--accent); border: 1px solid rgba(0,63,136,.3); border-radius: 8px; padding: 6px 11px; background: var(--surface); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+/* Chips flow on the left; Clear all + Create alert sit together on the right at
+   the same height and text size. */
+.jobs-rd .applied .rgroup { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.jobs-rd .applied .clearall { font-size: 12.5px; font-weight: 600; color: var(--accent); background: none; border: 0; cursor: pointer; height: 30px; padding: 0 4px; display: inline-flex; align-items: center; font-family: var(--font-body); }
+.jobs-rd .alert-btn { font-size: 12.5px; font-weight: 600; color: var(--accent); border: 1px solid rgba(0,63,136,.3); border-radius: 8px; height: 30px; padding: 0 11px; background: var(--surface); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 
 /* empty-profile banner */
 .jobs-rd .eprof { display: flex; gap: 12px; align-items: center; background: var(--accent-soft); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 13.5px; color: var(--text-primary); line-height: 1.5; }
@@ -152,10 +156,12 @@
 .jobs-rd .apply .facts2 { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 5px; } .jobs-rd .apply .facts2 b { color: var(--text-primary); font-weight: 600; }
 .jobs-rd .apply .report { display: block; margin-top: 12px; font-size: 12px; color: var(--faint); font-weight: 500; background: none; border: 0; cursor: pointer; padding: 0; }
 .jobs-rd .rd-back { background: none; border: 0; color: var(--accent); font: 600 14px var(--font-body); cursor: pointer; padding: 8px 0; margin-bottom: 4px; }
-/* phone fixed bottom apply bar */
-.jobs-rd .abar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 12px; z-index: 20; }
-.jobs-rd .abar .l { flex: 1; font-size: 11.5px; color: var(--text-secondary); line-height: 1.35; } .jobs-rd .abar .l b { display: block; font-family: var(--font-mono); font-size: 14px; color: var(--text-primary); }
-.jobs-rd .abar .abtn { background: var(--green); color: #fff; font-weight: 700; font-size: 14.5px; border: 0; border-radius: 10px; padding: 13px 18px; cursor: pointer; }
+/* phone fixed bottom apply bar — roomy: 14px all sides + safe-area inset so it
+   clears the iPhone home bar / Safari toolbar; salary+source centred against a
+   48px-tall Apply button. */
+.jobs-rd .abar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 14px; z-index: 60; box-shadow: 0 -2px 12px rgba(15,20,25,.06); }
+.jobs-rd .abar .l { flex: 1; min-width: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4; } .jobs-rd .abar .l b { display: block; font-family: var(--font-mono); font-size: 15px; color: var(--text-primary); }
+.jobs-rd .abar .abtn { min-height: 48px; display: inline-flex; align-items: center; gap: 6px; background: var(--green); color: #fff; font-weight: 700; font-size: 15px; border: 0; border-radius: 10px; padding: 0 22px; cursor: pointer; flex-shrink: 0; }
 
 /* ── Hours filter popover ─────────────────────────────────────────────────── */
 .jobs-rd .fwrap { position: relative; display: inline-block; }
@@ -188,9 +194,18 @@
 .jobs-rd .hscroll > * { flex-shrink: 0; }
 .jobs-rd .hscroll .fsort { margin-left: 0 !important; display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 7px 12px; }
 .jobs-rd .hscroll .fsort select { font-weight: 700; }
-/* Mobile detail content clears the fixed apply bar so nothing hides under it. */
-.jobs-rd .detail.m { padding-bottom: 88px; }
-.jobs-rd .abar { z-index: 60; }
+/* ── Phone job page: consistent vertical rhythm + clearance for the apply bar ── */
+/* Content clears the fixed apply bar (48px button + 2×14px + safe-area). */
+.jobs-rd .detail.m { padding-bottom: 104px; }
+/* Back link: aligned with the title (16px), comfortable tap target (≥44px). */
+.jobs-rd .detail.m .rd-back { display: inline-flex; align-items: center; min-height: 44px; margin: 0; padding: 12px 16px; }
+/* Header + body share one rhythm: 24px between sections, ~10px inside them. */
+.jobs-rd .detail.m .dtop { padding: 4px 16px 18px; gap: 12px; }
+.jobs-rd .detail.m .dgrid { padding: 20px 16px; gap: 24px; display: flex; flex-direction: column; }
+.jobs-rd .detail.m .dgrid > div { display: flex; flex-direction: column; gap: 24px; }
+.jobs-rd .detail.m .dgrid > div > .sec, .jobs-rd .detail.m .dgrid > div > .mt, .jobs-rd .detail.m .dgrid > div > .signin-match, .jobs-rd .detail.m .dgrid > div > .verdict { margin-top: 0; }
+.jobs-rd .detail.m .signin-match { display: flex; flex-direction: column; gap: 12px; }
+.jobs-rd .detail.m .signin-match .mt.reqonly { margin-top: 0; }
 .jobs-rd .sheet-backdrop { position: fixed; inset: 0; background: rgba(15,20,25,.4); z-index: 40; display: flex; align-items: flex-end; }
 .jobs-rd .sheet { background: var(--surface); width: 100%; border-radius: 18px 18px 0 0; padding: 8px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 84vh; overflow-y: auto; }
 .jobs-rd .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 6px auto 12px; }

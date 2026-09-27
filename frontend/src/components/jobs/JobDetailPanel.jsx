@@ -6,6 +6,7 @@ import AdzunaAttribution from './AdzunaAttribution';
 import { jobApi } from '../../services/api';
 import { postedAgo, formatSalary } from '../../lib/jobMatch';
 import { displayTitle, countryFlag, jobChips, sourceInfo, slugFor, statedRequirements } from '../../lib/jobDisplay';
+import { fetchAirlineMap, resolveAirline } from '../../lib/airlineLookup';
 
 // Where an unknown ("?") requirement's Add link takes the pilot.
 const ADD_LINK = {
@@ -31,6 +32,17 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
   const [showDesc, setShowDesc] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(null);
+
+  // Resolve the airline logo from the module-cached airline map (same source the
+  // list uses), so the detail header + About-the-airline show real logos. Kept
+  // self-contained so the standalone phone job page works without props.
+  useEffect(() => {
+    if (!job?.company) { setLogoUrl(null); return undefined; }
+    let active = true;
+    fetchAirlineMap().then((map) => { if (active) setLogoUrl(resolveAirline(map, job.company)?.logoUrl || null); }).catch(() => {});
+    return () => { active = false; };
+  }, [job?.company]);
 
   useEffect(() => {
     if (!jobId) return undefined;
@@ -123,7 +135,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
     <div className={`detail${mobile ? ' m' : ''}`}>
       {mobile && <button className="rd-back" onClick={onBack}><ArrowLeft size={15} style={{ verticalAlign: -2 }} /> Back to jobs</button>}
       <div className="dtop">
-        <div className="jc-logo" style={{ flexShrink: 0 }}><AirlineLogo name={job.company} size={56} hideIfMissing /></div>
+        <div className="jc-logo" style={{ flexShrink: 0 }}><AirlineLogo logoUrl={logoUrl} name={job.company} box={48} maxW={72} hideIfMissing /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2>{displayTitle(job.title)}</h2>
           <div className="dmeta"><b>{job.company}</b>{flag ? <> · <span aria-hidden="true">{flag}</span> {job.location || job.country}</> : (job.location ? ` · ${job.location}` : '')}{job.postedAt ? ` · ${postedAgo(job.postedAt)}` : ''}</div>
@@ -200,7 +212,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
             <div className="sec">
               <div className="label">About the airline</div>
               <div className="airline">
-                <div style={{ width: 38, height: 38 }}><AirlineLogo name={job.company} size={38} hideIfMissing /></div>
+                <div style={{ flexShrink: 0 }}><AirlineLogo logoUrl={logoUrl} name={job.company} box={38} maxW={56} hideIfMissing /></div>
                 <div><div className="n">{job.company}</div>{job.airlineFleet && <div className="s">Fleet: {job.airlineFleet.slice(0, 4).join(' · ')}</div>}</div>
                 <a href={`/airlines/${job.airlineId}`} onClick={(e) => { e.preventDefault(); navigate(`/airlines/${job.airlineId}`); }}>Airline profile <ArrowRight size={12} style={{ verticalAlign: -1 }} /></a>
               </div>

@@ -388,7 +388,9 @@ export default function Jobs() {
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
   const isPhone = useIsMobile(768); // <768 → horizontal filter strip + bottom sheets
   // Region tab (redesign) + the aggregate response fields (counts, groups, banner).
-  const [region, setRegion] = useState(() => searchParams.get('region') || '');
+  // Logged-out opens on Middle East (our primary market) — "All regions" is the
+  // first tab, one tap away. Logged-in resolves to the pilot's own region below.
+  const [region, setRegion] = useState(() => searchParams.get('region') || (token ? '' : 'Middle East'));
   const [meta, setMeta] = useState(null); // { regionCounts, fitGroupCounts, profileNudge, emptyProfile, qualifyCount, facetCounts, defaultRegion }
 
   // Pending (unapplied) filter state
@@ -743,8 +745,12 @@ export default function Jobs() {
             {role && <button className="ach" onClick={() => setRole('')}>{roleLabel(role)} <X size={12} style={{ marginLeft: 2 }} /></button>}
             {authority && <button className="ach" onClick={() => setAuthority('')}>{authority} <X size={12} style={{ marginLeft: 2 }} /></button>}
             {visaOnly && <button className="ach" onClick={() => setVisaOnly(false)}>Visa sponsored <X size={12} style={{ marginLeft: 2 }} /></button>}
-            <a href="#" onClick={(e) => { e.preventDefault(); clearAllApplied(); setRegion(''); setMaxReqHours(''); }}>Clear all</a>
-            <button className="alert-btn" type="button" title="Save this search as an alert (next slice)"><Bell size={14} /> Create alert from this search</button>
+            {/* Right group: Clear all + alert, same height/size, pinned right so the
+                chips flow on the left. On phone the alert shrinks to a bell + "Alert". */}
+            <div className="rgroup">
+              <button type="button" className="clearall" onClick={() => { clearAllApplied(); setRegion(''); setMaxReqHours(''); }}>Clear all</button>
+              <button className="alert-btn" type="button" title="Save this search as an alert (next slice)"><Bell size={14} /> <span>{isPhone ? 'Alert' : 'Create alert'}</span></button>
+            </div>
           </div>
         )}
 
@@ -769,11 +775,11 @@ export default function Jobs() {
                     <span>{g.cls === 'q' && <Check size={13} style={{ verticalAlign: -2, marginRight: 3 }} />}{g.label} · {g.jobs.length}</span>
                     <small>{g.key === 'incomplete' && nudge ? `add ${nudge.fields.map((f) => f.field).slice(0, 2).join(', ')}` : g.hint}</small>
                   </div>
-                  {g.jobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} compact={isPhone} />)}
+                  {g.jobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} compact={isPhone} logoUrl={resolveAirline(airlineMap, job.company)?.logoUrl || null} />)}
                 </React.Fragment>
               ))
             ) : (
-              <div>{orderedJobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} compact={isPhone} />)}</div>
+              <div>{orderedJobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} compact={isPhone} logoUrl={resolveAirline(airlineMap, job.company)?.logoUrl || null} />)}</div>
             )}
           </div>
           {isDesktop && orderedJobs.length > 0 && (

@@ -7,7 +7,7 @@ import { displayTitle, countryFlag, jobChips, checklist, sourceInfo } from '../.
 
 // One job card in the redesigned list (mockup .jc). Renders from a job that carries
 // the shared `match` payload. Logos use AirlineLogo (real logos, hideIfMissing).
-export default function JobCard({ job, selected, onClick, compact = false }) {
+export default function JobCard({ job, selected, onClick, compact = false, logoUrl = null }) {
   const chips = jobChips(job);
   const checks = checklist(job.match, 4);
   const src = sourceInfo(job);
@@ -42,7 +42,7 @@ export default function JobCard({ job, selected, onClick, compact = false }) {
             {timeLine ? ` · ${timeLine}` : ''}
           </div>
         </div>
-        <div className="logo-slot"><AirlineLogo name={job.company} size={42} hideIfMissing /></div>
+        <div className="logo-slot"><AirlineLogo logoUrl={logoUrl} name={job.company} box={42} maxW={42} hideIfMissing /></div>
       </div>
 
       {chips.length > 0 && (
