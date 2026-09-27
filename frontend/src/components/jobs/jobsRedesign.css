@@ -15,8 +15,9 @@
 .jobs-rd .rd-sub { color: var(--text-secondary); font-size: 14.5px; margin-top: 8px; }
 .jobs-rd .rd-sub b { color: var(--green); }
 
-/* region tabs */
-.jobs-rd .regions { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 16px 0 14px; overflow-x: auto; scrollbar-width: none; }
+/* region tabs — horizontal scroll with a right-edge fade so it's clear there are
+   more tabs off-screen; the active tab is scrolled into view from JS. */
+.jobs-rd .regions { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 16px 0 14px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); }
 .jobs-rd .regions::-webkit-scrollbar { display: none; }
 .jobs-rd .regions button { padding: 10px 14px; font: 500 14px var(--font-body); color: var(--text-secondary); border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; cursor: pointer; white-space: nowrap; }
 .jobs-rd .regions button small { font-family: var(--font-mono); font-size: 11px; color: var(--faint); margin-left: 5px; }
@@ -74,9 +75,14 @@
 .jobs-rd .check .no { color: var(--red); }
 .jobs-rd .check .unk { color: var(--faint); }
 .jobs-rd .src { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; padding-top: 10px; border-top: 1px solid var(--border); }
-.jobs-rd .src .direct { color: var(--green); font-weight: 700; }
+.jobs-rd .src .direct { color: var(--green); font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jobs-rd .src .via { color: var(--faint); font-weight: 600; }
-.jobs-rd .src .sal { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--text-primary); }
+/* Salary stays on ONE line (no wrap between the amount and "/yr") and never
+   gets squeezed by a long source label to its left. */
+.jobs-rd .src .sal { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--text-primary); white-space: nowrap; flex-shrink: 0; }
+/* Collapse the logo box when there's no logo (AirlineLogo renders nothing) so
+   there's no empty gap beside the title, on the card and the detail header. */
+.jobs-rd .jc .logo-slot:empty, .jobs-rd .dtop .jc-logo:empty { display: none; }
 
 /* Adzuna attribution — required by Adzuna API terms: "Jobs by Adzuna", ≥116×23px,
    both "Jobs" and the "Adzuna" wordmark linking to Adzuna. min-width/height meet
@@ -116,6 +122,14 @@
 .jobs-rd .mt .you.ok { color: var(--green); } .jobs-rd .mt .you.no { color: var(--red); }
 .jobs-rd .mt .you.unk { font-family: var(--font-body); font-weight: 500; color: var(--faint); }
 .jobs-rd .mt .you.unk a { font-size: 12px; margin-left: 6px; }
+/* logged-out: sign-in-to-match CTA + requirements-only table */
+.jobs-rd .signin-match { }
+.jobs-rd .sm-cta { background: var(--accent-soft); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.5; color: var(--text-primary); }
+.jobs-rd .sm-cta a { margin-left: 4px; }
+.jobs-rd .mt.reqonly { margin-top: 14px; }
+.jobs-rd .mt.reqonly td { font-size: 13px; }
+.jobs-rd .sm-none { margin-top: 12px; font-size: 13px; color: var(--text-secondary); }
+
 .jobs-rd .sec { margin-top: 22px; }
 .jobs-rd .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 .jobs-rd .fact { background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; }
@@ -164,9 +178,19 @@
 
 /* ── Mobile filter strip + bottom sheets ──────────────────────────────────── */
 .jobs-rd .mfbar { display: flex; flex-direction: column; gap: 8px; }
-.jobs-rd .hscroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+/* Search must be a normal single-line input — NOT the 220px flex-basis it inherits
+   from the desktop .fbar (which becomes a 220px HEIGHT in this column flexbox). */
+.jobs-rd .mfbar .fsearch { flex: none; width: 100%; }
+/* The strip scrolls horizontally; every child keeps its size (so "Sort: Best match"
+   isn't squeezed to "Best ma…") and a right-edge fade signals more controls. */
+.jobs-rd .hscroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; -webkit-overflow-scrolling: touch; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent); }
 .jobs-rd .hscroll::-webkit-scrollbar { display: none; }
-.jobs-rd .hscroll .fbtn { flex-shrink: 0; }
+.jobs-rd .hscroll > * { flex-shrink: 0; }
+.jobs-rd .hscroll .fsort { margin-left: 0 !important; display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 7px 12px; }
+.jobs-rd .hscroll .fsort select { font-weight: 700; }
+/* Mobile detail content clears the fixed apply bar so nothing hides under it. */
+.jobs-rd .detail.m { padding-bottom: 88px; }
+.jobs-rd .abar { z-index: 60; }
 .jobs-rd .sheet-backdrop { position: fixed; inset: 0; background: rgba(15,20,25,.4); z-index: 40; display: flex; align-items: flex-end; }
 .jobs-rd .sheet { background: var(--surface); width: 100%; border-radius: 18px 18px 0 0; padding: 8px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 84vh; overflow-y: auto; }
 .jobs-rd .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 6px auto 12px; }

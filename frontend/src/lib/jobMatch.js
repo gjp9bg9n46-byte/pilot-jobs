@@ -179,17 +179,26 @@ export function postedAgo(postedAt) {
   return `Posted ${days} days ago`;
 }
 
+const PERIOD_ABBR = { year: 'yr', annual: 'yr', annually: 'yr', yearly: 'yr', month: 'mo', monthly: 'mo', week: 'wk', weekly: 'wk', day: 'day', daily: 'day', hour: 'hr', hourly: 'hr' };
+function periodAbbr(p) {
+  if (!p) return '';
+  return PERIOD_ABBR[String(p).toLowerCase()] || String(p);
+}
 export function formatSalary(job, compact = false) {
   const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
   if (salaryMin == null && salaryMax == null) return null;
   const currency = salaryCurrency || '';
-  const period = salaryPeriod ? ` / ${salaryPeriod}` : '';
+  const per = periodAbbr(salaryPeriod);
   if (compact) {
+    // Compact (cards): abbreviated period, attached with no space so it never
+    // wraps mid-value ("USD 106k–138k/yr").
+    const period = per ? `/${per}` : '';
     const fmt = (n) => n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n));
     if (salaryMin != null && salaryMax != null && salaryMin !== salaryMax)
       return `${currency} ${fmt(salaryMin)}–${fmt(salaryMax)}${period}`.trim();
     return `${currency} ${fmt(salaryMin ?? salaryMax)}${period}`.trim();
   }
+  const period = per ? ` / ${per}` : '';
   const fmt = (n) => n.toLocaleString();
   if (salaryMin != null && salaryMax != null && salaryMin !== salaryMax)
     return `${currency} ${fmt(salaryMin)} – ${fmt(salaryMax)}${period}`.trim();

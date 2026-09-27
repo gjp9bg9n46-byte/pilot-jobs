@@ -7,7 +7,7 @@ import { displayTitle, countryFlag, jobChips, checklist, sourceInfo } from '../.
 
 // One job card in the redesigned list (mockup .jc). Renders from a job that carries
 // the shared `match` payload. Logos use AirlineLogo (real logos, hideIfMissing).
-export default function JobCard({ job, selected, onClick }) {
+export default function JobCard({ job, selected, onClick, compact = false }) {
   const chips = jobChips(job);
   const checks = checklist(job.match, 4);
   const src = sourceInfo(job);
@@ -66,7 +66,7 @@ export default function JobCard({ job, selected, onClick }) {
             "Jobs by Adzuna" attribution. Other aggregators show no source line —
             the source now lives only on the Apply button in the detail pane. */}
         {src.direct
-          ? <span className="direct"><Check size={12} style={{ verticalAlign: -1, marginRight: 2 }} />{src.label}</span>
+          ? <span className="direct"><Check size={12} style={{ verticalAlign: -1, marginRight: 2 }} />{compact ? 'Apply direct' : src.label}</span>
           : src.isAdzuna
             ? <AdzunaAttribution />
             : <span />}

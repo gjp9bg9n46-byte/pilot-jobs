@@ -16,9 +16,41 @@ function titleCaseWords(str) {
 export function displayTitle(title) {
   // Trim trailing separators the source often leaves ("Jet First Officers —").
   const t = String(title || '').replace(/[\s–—-]+$/, '').trim();
-  const letters = t.replace(/[^A-Za-z]/g, '');
-  if (!letters || t !== t.toUpperCase()) return t;        // not ALL-CAPS → leave as-is
+  const upper = (t.match(/[A-Z]/g) || []).length;
+  const lower = (t.match(/[a-z]/g) || []).length;
+  if (!upper) return t;                                   // no caps at all → leave as-is
+  // Treat as "shouty" (title-case it) when it's uppercase-dominant, not only when
+  // strictly ALL-CAPS — a stray lowercase ordinal ("191st") or code shouldn't stop
+  // us title-casing "TITLE 32 AIRPLANE PILOT (MI 191st OSS)". Normal mixed-case
+  // titles ("A320 Captain") stay untouched.
+  const shouty = lower <= Math.max(2, upper * 0.15);
+  if (!shouty) return t;
   return titleCaseWords(t);
+}
+
+// Stated requirements for the LOGGED-OUT job page — the job's own requirement
+// fields as plain "needed" rows, WITHOUT any pilot match (no ✓/✗). Logged-in
+// users get the richer match table from the server instead.
+export function statedRequirements(job) {
+  if (!job) return [];
+  const hrs = (n) => `${Number(n).toLocaleString()} h`;
+  const list = (a) => (Array.isArray(a) ? a.filter(Boolean) : []);
+  const rows = [];
+  const add = (label, text) => { if (text) rows.push({ label, text }); };
+  add('Licence authority', list(job.reqAuthorities).join(', '));
+  add('Certificate', list(job.reqCertificates).join(', '));
+  add('Type rating', list(job.reqAircraftTypes).join(', '));
+  add('Work authorisation', job.reqWorkAuthorization);
+  if (job.reqMinTotalHours != null) add('Total time', hrs(job.reqMinTotalHours));
+  if (job.reqMinPicHours != null) add('PIC time', hrs(job.reqMinPicHours));
+  if (job.reqMinMultiEngineHours != null) add('Multi-engine', hrs(job.reqMinMultiEngineHours));
+  if (job.reqMinTurbineHours != null) add('Turbine', hrs(job.reqMinTurbineHours));
+  if (job.reqMinInstrumentHours != null) add('Instrument', hrs(job.reqMinInstrumentHours));
+  if (job.reqMinCrossCountryHours != null) add('Cross-country', hrs(job.reqMinCrossCountryHours));
+  if (job.reqMedicalClass != null) add('Medical', `Class ${job.reqMedicalClass}`);
+  add('English (ICAO)', job.reqEnglishLevel ? String(job.reqEnglishLevel) : '');
+  add('Education', job.reqEducation);
+  return rows;
 }
 
 // Client mirror of the backend region taxonomy (jobMatch.regionForCountry), used to

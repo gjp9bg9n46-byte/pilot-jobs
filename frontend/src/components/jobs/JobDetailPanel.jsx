@@ -5,7 +5,7 @@ import AirlineLogo from '../AirlineLogo';
 import AdzunaAttribution from './AdzunaAttribution';
 import { jobApi } from '../../services/api';
 import { postedAgo, formatSalary } from '../../lib/jobMatch';
-import { displayTitle, countryFlag, jobChips, sourceInfo, slugFor } from '../../lib/jobDisplay';
+import { displayTitle, countryFlag, jobChips, sourceInfo, slugFor, statedRequirements } from '../../lib/jobDisplay';
 
 // Where an unknown ("?") requirement's Add link takes the pilot.
 const ADD_LINK = {
@@ -111,7 +111,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
       {src.isAdzuna && <div className="attr-line"><AdzunaAttribution /></div>}
       <div className="arow"><button onClick={doSave}><Heart size={14} fill={saved ? 'currentColor' : 'none'} style={{ verticalAlign: -2 }} /> {saved ? 'Saved' : 'Save'}</button><button onClick={doShare}><Share2 size={14} style={{ verticalAlign: -2 }} /> Share</button></div>
       <div className="facts2">
-        {job.postedAt && <span>Posted <b>{postedAgo(job.postedAt)}</b></span>}
+        {job.postedAt && <span>Posted <b>{ago(job.postedAt)}</b></span>}
         {job.lastSeenAt && <span>Link checked <b>{ago(job.lastSeenAt)}</b></span>}
         {job.expiresAt && <span>Closes <b>{dateStr(job.expiresAt)}</b></span>}
       </div>
@@ -120,13 +120,13 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
   );
 
   return (
-    <div className="detail">
+    <div className={`detail${mobile ? ' m' : ''}`}>
       {mobile && <button className="rd-back" onClick={onBack}><ArrowLeft size={15} style={{ verticalAlign: -2 }} /> Back to jobs</button>}
       <div className="dtop">
-        <div className="jc-logo" style={{ width: 56, height: 56, flexShrink: 0 }}><AirlineLogo name={job.company} size={56} hideIfMissing /></div>
+        <div className="jc-logo" style={{ flexShrink: 0 }}><AirlineLogo name={job.company} size={56} hideIfMissing /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2>{displayTitle(job.title)}</h2>
-          <div className="dmeta"><b>{job.company}</b>{flag ? <> · <span aria-hidden="true">{flag}</span> {job.location || job.country}</> : (job.location ? ` · ${job.location}` : '')}{job.postedAt ? ` · Posted ${postedAgo(job.postedAt)}` : ''}</div>
+          <div className="dmeta"><b>{job.company}</b>{flag ? <> · <span aria-hidden="true">{flag}</span> {job.location || job.country}</> : (job.location ? ` · ${job.location}` : '')}{job.postedAt ? ` · ${postedAgo(job.postedAt)}` : ''}</div>
           {chips.length > 0 && <div className="chips" style={{ marginTop: 10 }}>{chips.map((c, i) => <span key={i} className={`chip${c.visa ? ' visa' : ''}`}>{c.text}</span>)}</div>}
         </div>
       </div>
@@ -134,6 +134,27 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
       <div className="dgrid">
         <div>
           {verdict && <div className={`verdict ${verdict.cls}`}><span className="ic">{verdict.cls === 'ok' ? <Check size={13} /> : verdict.cls === 'warn' ? <AlertTriangle size={13} /> : <X size={13} />}</span><div>{verdict.text}</div></div>}
+
+          {/* Logged-out (no match): show the job's stated requirements WITHOUT any
+              ✓/✗, and invite sign-in to see the personal match. */}
+          {!m && (() => {
+            const reqs = statedRequirements(job);
+            return (
+              <div className="signin-match">
+                <div className="sm-cta"><b>Sign in to see how you match.</b> We'll check every requirement against your licence and logbook. <a href="/login" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Sign in</a></div>
+                {reqs.length > 0 ? (
+                  <table className="mt reqonly">
+                    <tbody>
+                      <tr><th>Requirement</th><th style={{ textAlign: 'right' }}>Needed</th></tr>
+                      {reqs.map((r) => (
+                        <tr key={r.label}><td>{r.label}</td><td className="need" style={{ textAlign: 'right' }}>{r.text}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : <div className="sm-none">No specific requirements stated for this role.</div>}
+              </div>
+            );
+          })()}
 
           {grouped.length > 0 && (
             <table className="mt">

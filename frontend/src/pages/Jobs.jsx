@@ -26,8 +26,11 @@ import '../components/jobs/jobsRedesign.css';
 
 const extractUuid = (slugId) => slugId?.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)?.[0] ?? null;
 
-// Region tabs (redesign) — All last. No "Other" tab; untabbed countries show under All.
-const REGION_TABS = ['Middle East', 'Europe', 'North America', 'Asia-Pacific', 'All'];
+// Region tabs (redesign) — "All regions" FIRST so the default (logged-out, and any
+// pilot whose country isn't in a tabbed region) is visible and clearly active on a
+// narrow screen instead of scrolled off the right end. No "Other" tab; untabbed
+// countries show under All.
+const REGION_TABS = ['All', 'Middle East', 'Europe', 'North America', 'Asia-Pacific'];
 // Group order + labels for the redesigned list.
 const FIT_GROUPS = [
   { key: 'qualify', label: 'You qualify', cls: 'q', hint: 'best match first' },
@@ -541,6 +544,15 @@ export default function Jobs() {
 
   useEffect(() => { if (regionReady) fetchJobs(); }, [fetchJobs, regionReady]);
 
+  // Keep the active region tab scrolled into view (it can be off-screen on a narrow
+  // strip — e.g. a pilot defaulted to Asia-Pacific), so the selected state is always
+  // visible, not just present in the DOM.
+  const regionsRef = useRef(null);
+  useEffect(() => {
+    const el = regionsRef.current?.querySelector('button.on');
+    if (el) el.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [region, meta?.regionCounts]);
+
   // URL-state sync — keep the address bar in step with the active filters/search/
   // sort so a /jobs view is shareable and browser-back from a job detail restores
   // it. Params at their default value are OMITTED (clean URLs). replace:true so we
@@ -661,7 +673,7 @@ export default function Jobs() {
         </div>
 
         {rc && (
-          <div className="regions" role="tablist" aria-label="Region">
+          <div className="regions" role="tablist" aria-label="Region" ref={regionsRef}>
             {REGION_TABS.map((r) => {
               const count = r === 'All' ? rc.All : rc[r];
               const active = r === 'All' ? !region : region === r;
@@ -757,11 +769,11 @@ export default function Jobs() {
                     <span>{g.cls === 'q' && <Check size={13} style={{ verticalAlign: -2, marginRight: 3 }} />}{g.label} · {g.jobs.length}</span>
                     <small>{g.key === 'incomplete' && nudge ? `add ${nudge.fields.map((f) => f.field).slice(0, 2).join(', ')}` : g.hint}</small>
                   </div>
-                  {g.jobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} />)}
+                  {g.jobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} compact={isPhone} />)}
                 </React.Fragment>
               ))
             ) : (
-              <div>{orderedJobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} />)}</div>
+              <div>{orderedJobs.map((job) => <JobCard key={job.id} job={job} selected={isDesktop && job.id === selectedId} onClick={() => openJob(job)} compact={isPhone} />)}</div>
             )}
           </div>
           {isDesktop && orderedJobs.length > 0 && (
