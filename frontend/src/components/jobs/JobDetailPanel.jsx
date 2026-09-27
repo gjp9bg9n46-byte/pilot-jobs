@@ -117,8 +117,8 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
 
   const applyCard = (
     <div className="apply">
-      <div className="sal">{sal || 'Salary not stated'}</div>
-      <div className="per">{sal ? 'as stated by airline' : ''}</div>
+      {sal && <div className="sal">{sal}</div>}
+      {sal && <div className="per">as stated by airline</div>}
       <button className="abtn" onClick={doApply}>{src.direct ? `Apply on ${job.company} careers` : `Apply on ${src.name}`} <ExternalLink size={14} style={{ verticalAlign: -2 }} /></button>
       <div className="how">{src.direct ? <><b><Check size={12} style={{ verticalAlign: -1 }} /> Direct application.</b> You'll go to {job.company}'s own careers site. CockpitHire isn't a middleman.</> : <>You'll continue on {src.name}, which lists this role.</>}</div>
       {src.isAdzuna && <div className="attr-line"><AdzunaAttribution /></div>}
