@@ -61,17 +61,18 @@ export default function JobCard({ job, selected, onClick, compact = false, logoU
         </div>
       )}
 
-      <div className="src">
-        {/* Direct jobs keep the green direct-apply line. Adzuna shows its required
-            "Jobs by Adzuna" attribution. Other aggregators show no source line —
-            the source now lives only on the Apply button in the detail pane. */}
-        {src.direct
-          ? <span className="direct"><Check size={12} style={{ verticalAlign: -1, marginRight: 2 }} />{compact ? 'Apply direct' : src.label}</span>
-          : src.isAdzuna
-            ? <AdzunaAttribution />
-            : <span />}
-        <span className="sal">{sal || 'Salary not stated'}</span>
-      </div>
+      {/* Bottom row only when there's something to show: the green direct line,
+          the Adzuna attribution, or a salary. No "Salary not stated" filler. */}
+      {(src.direct || src.isAdzuna || sal) && (
+        <div className="src">
+          {src.direct
+            ? <span className="direct"><Check size={12} style={{ verticalAlign: -1, marginRight: 2 }} />{compact ? 'Apply direct' : src.label}</span>
+            : src.isAdzuna
+              ? <AdzunaAttribution />
+              : <span />}
+          {sal ? <span className="sal">{sal}</span> : <span />}
+        </div>
+      )}
     </div>
   );
 }

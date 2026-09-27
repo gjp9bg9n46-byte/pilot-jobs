@@ -161,7 +161,10 @@
    48px-tall Apply button. */
 .jobs-rd .abar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 14px; z-index: 60; box-shadow: 0 -2px 12px rgba(15,20,25,.06); }
 .jobs-rd .abar .l { flex: 1; min-width: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4; } .jobs-rd .abar .l b { display: block; font-family: var(--font-mono); font-size: 15px; color: var(--text-primary); }
-.jobs-rd .abar .abtn { min-height: 48px; display: inline-flex; align-items: center; gap: 6px; background: var(--green); color: #fff; font-weight: 700; font-size: 15px; border: 0; border-radius: 10px; padding: 0 22px; cursor: pointer; flex-shrink: 0; }
+.jobs-rd .abar .abtn { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--green); color: #fff; font-weight: 700; font-size: 15px; border: 0; border-radius: 10px; padding: 0 20px; cursor: pointer; min-width: 0; flex-shrink: 1; }
+.jobs-rd .abar .abtn .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* No salary → the button fills the bar and centres its label. */
+.jobs-rd .abar.nosal .abtn { width: 100%; flex: 1; }
 
 /* ── Hours filter popover ─────────────────────────────────────────────────── */
 .jobs-rd .fwrap { position: relative; display: inline-block; }

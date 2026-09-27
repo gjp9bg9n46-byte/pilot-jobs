@@ -194,6 +194,10 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
             </table>
           )}
 
+          {/* Adzuna attribution on the phone job page (the apply bar no longer
+              carries it). Desktop shows it in the apply card instead. */}
+          {mobile && src.isAdzuna && <div className="attr-line"><AdzunaAttribution /></div>}
+
           {facts.length > 0 && (
             <div className="sec">
               <div className="label">At a glance</div>
@@ -236,9 +240,16 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
       </div>
 
       {mobile && (
-        <div className="abar">
-          <div className="l"><b>{sal || 'Salary not stated'}</b>{src.direct ? 'Direct application' : (src.isAdzuna ? <AdzunaAttribution /> : null)}</div>
-          <button className="abtn" onClick={doApply}>{src.direct ? 'Apply' : `Apply on ${src.name}`} <ExternalLink size={14} style={{ verticalAlign: -2 }} /></button>
+        // No salary → one full-width, centred Apply button that names the
+        // destination. With a salary → salary left, Apply (named) right. The
+        // required Adzuna attribution lives in the body (above), not here, so it
+        // survives either layout.
+        <div className={`abar${sal ? '' : ' nosal'}`}>
+          {sal && <div className="l"><b>{sal}</b>{src.direct ? <span>Direct application</span> : null}</div>}
+          <button className="abtn" onClick={doApply}>
+            <span className="lbl">{src.direct ? `Apply on ${job.company} careers` : `Apply on ${src.name}`}</span>
+            <ExternalLink size={14} style={{ flexShrink: 0 }} />
+          </button>
         </div>
       )}
 
