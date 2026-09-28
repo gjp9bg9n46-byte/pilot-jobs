@@ -160,13 +160,22 @@ exports.updateProfile = async (req, res, next) => {
   }
 };
 
+// The current mobile app still posts "ICAO" (not a real regulatory authority) as
+// the licence authority. Store it as "unknown" until Part 4 ships the authority
+// picker; the shared match function treats "unknown" as ? (never a fail), and it
+// surfaces in Application readiness as "Pick your licence authority" (grey).
+const normAuthorityIn = (a) => {
+  const v = String(a ?? '').trim();
+  return v.toUpperCase() === 'ICAO' ? 'unknown' : v;
+};
+
 exports.addCertificate = async (req, res, next) => {
   try {
     if (req.body.type === 'ELP') {
       return res.status(400).json({ error: 'Use the /profile/elp endpoint to add ELP records.' });
     }
     const cert = await prisma.pilotCertificate.create({
-      data: { ...req.body, pilotId: req.pilot.id },
+      data: { ...req.body, issuingAuthority: normAuthorityIn(req.body.issuingAuthority) || req.body.issuingAuthority, pilotId: req.pilot.id },
     });
     res.status(201).json(cert);
   } catch (err) {
@@ -198,6 +207,7 @@ exports.addRating = async (req, res, next) => {
       const cpl  = licences.find((l) => l.type === 'CPL');
       issuingAuthority = atpl?.issuingAuthority ?? cpl?.issuingAuthority ?? licences[0]?.issuingAuthority ?? 'FAA';
     }
+    issuingAuthority = normAuthorityIn(issuingAuthority) || issuingAuthority;
 
     const aircraftType = req.body.aircraftType?.trim().toUpperCase() ?? req.body.aircraftType;
     const rating = await prisma.pilotRating.create({
@@ -349,7 +359,7 @@ exports.addELP = async (req, res, next) => {
       data: {
         pilotId: req.pilot.id,
         type: 'ELP',
-        issuingAuthority: issuingAuthority || 'ICAO',
+        issuingAuthority: normAuthorityIn(issuingAuthority) || 'unknown',
         certificateNumber: endorsementNumber || null,
         issueDate: issueDate ? new Date(issueDate) : null,
         expiryDate: (!noExpiry && expiryDate) ? new Date(expiryDate) : null,

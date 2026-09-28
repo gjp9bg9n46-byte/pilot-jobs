@@ -45,7 +45,14 @@ function defaultRegionForPilot(country) {
 
 // ── Normalisation (mirrors the strict qualifiedOnly logic) ───────────────────
 const normCert = (t) => (t === 'ATP' ? ['ATP', 'ATPL'] : t === 'ATPL' ? ['ATPL', 'ATP'] : [t]);
-const normAuth = (a) => (a === 'CAA_UK' || a === 'CAA-UK' || a === 'CAA') ? ['CAA', 'CAA_UK', 'CAA-UK'] : [a];
+// "unknown" (migrated from the bogus "ICAO" authority) and blanks contribute NO
+// authority — so a pilot who hasn't picked their authority yet reads as ? (unknown)
+// against a job's required authority, never as an unmet/fail.
+const normAuth = (a) => {
+  const v = String(a ?? '').trim();
+  if (!v || v.toLowerCase() === 'unknown') return [];
+  return (v === 'CAA_UK' || v === 'CAA-UK' || v === 'CAA') ? ['CAA', 'CAA_UK', 'CAA-UK'] : [v];
+};
 const EU_RTW = new Set(['austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic', 'czechia', 'denmark', 'estonia', 'finland', 'france', 'germany', 'greece', 'hungary', 'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg', 'malta', 'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia', 'spain', 'sweden', 'eu', 'european union']);
 
 // Build a match context from an ALREADY-LOADED pilot (with certificates/ratings/

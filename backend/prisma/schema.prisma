@@ -126,6 +126,9 @@ model Pilot {
   education       EducationLevel?
   role            PilotRole?
   willingToRelocate Boolean @default(true)
+  // Open-to-work — airlines filter on this; availableFrom optional.
+  openToWork      Boolean   @default(false)
+  availableFrom   DateTime?
   isInstructor    Boolean   @default(false)
   isExaminer      Boolean   @default(false)
   isAdmin         Boolean   @default(false)
@@ -156,6 +159,8 @@ model Pilot {
   applications    Application[]
   jobReports      JobReport[]
   savedSearches         SavedSearch[]
+  educationRecords      PilotEducation[]
+  languages             PilotLanguage[]
   cvData                CvData?
   contributions         AirlineFactContribution[] @relation("ContributorContributions")
   reviewedContributions AirlineFactContribution[] @relation("ReviewerReviews")
@@ -175,6 +180,7 @@ model PilotCertificate {
   createdAt        DateTime        @default(now())
 
   pilot            Pilot           @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  ratings          PilotRating[]   // type ratings that link to this licence (optional)
 }
 
 model PilotRating {
@@ -188,9 +194,40 @@ model PilotRating {
   capacity             String?
   proficiencyCheckDate DateTime?
   proficiencyCheckDue  DateTime?
+  lineCheckDate        DateTime?
+  // Optional link to the licence this rating sits under (nested display).
+  licenceId            String?
   createdAt            DateTime  @default(now())
 
-  pilot                Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot                Pilot             @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  licence              PilotCertificate? @relation(fields: [licenceId], references: [id], onDelete: SetNull)
+}
+
+// Rich education history (source of truth; the CV Builder reads from here). Was
+// previously duplicated inside CvData.education (Json) — migrated across.
+model PilotEducation {
+  id           String   @id @default(uuid())
+  pilotId      String
+  institution  String?
+  degree       String?
+  fieldOfStudy String?
+  year         String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  pilot        Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+// Languages (source of truth; CV reads from here). Was CvData.languages (Json).
+model PilotLanguage {
+  id        String   @id @default(uuid())
+  pilotId   String
+  language  String
+  level     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model PilotTrainingRecord {
