@@ -86,7 +86,7 @@ exports.getCvData = async (req, res, next) => {
     const [
       pilot, certificates, ratings, medicals,
       training, rtw, cvData, logAgg, aircraftRows,
-      rec90, rec12m,
+      rec90, rec12m, eduRows, langRows,
     ] = await Promise.all([
       prisma.pilot.findUnique({ where: { id: pilotId } }),
       prisma.pilotCertificate.findMany({ where: { pilotId }, orderBy: { issueDate: 'desc' } }),
@@ -121,6 +121,9 @@ exports.getCvData = async (req, res, next) => {
         where: { pilotId, date: { gte: d12m } },
         _sum: { totalTime: true },
       }),
+      // Education + languages now live on the profile (CV source-of-truth step A).
+      prisma.pilotEducation.findMany({ where: { pilotId }, orderBy: { sortOrder: 'asc' } }),
+      prisma.pilotLanguage.findMany({ where: { pilotId }, orderBy: { sortOrder: 'asc' } }),
     ]);
 
     const { passwordHash, fcmToken, ...safePilot } = pilot;
@@ -164,31 +167,60 @@ exports.getCvData = async (req, res, next) => {
       totals,
       recency,
       aircraftTypes: aircraftRows.map(r => ({ type: r.aircraftType, hours: r._sum.totalTime ?? 0 })),
-      cv: cvData ?? { education: [], languages: [], skills: [], other: [], typeRatings: [], licenses: [], medical: null, icaoEnglish: null, accentColor: '#0D1E35', summary: null },
+      // education + languages come from the profile tables (source of truth); the
+      // rest (summary/skills/other/accentColor/photo + legacy copies) from CvData.
+      cv: {
+        ...(cvData ?? { skills: [], other: [], typeRatings: [], licenses: [], medical: null, icaoEnglish: null, accentColor: '#0D1E35', summary: null, photoUrl: null }),
+        education: eduRows.map(e => ({ year: e.year ?? '', degree: e.degree ?? '', institution: e.institution ?? '', fieldOfStudy: e.fieldOfStudy ?? '' })),
+        languages: langRows.map(l => ({ language: l.language ?? '', level: l.level ?? '' })),
+      },
     });
   } catch (err) {
     next(err);
   }
 };
 
-// PUT /cv — upsert user-entered CV fields
+// PUT /cv — upsert user-entered CV fields. education + languages now persist to the
+// profile tables (source of truth); the legacy CvData.education/languages columns are
+// left untouched (dropped later in step B). CV-only fields stay on CvData.
 exports.updateCvData = async (req, res, next) => {
   try {
+    const pilotId = req.pilot.id;
     const { education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary } = req.body;
-    const cvData = await prisma.cvData.upsert({
-      where:  { pilotId: req.pilot.id },
-      create: {
-        pilotId: req.pilot.id,
-        education: education ?? [], languages: languages ?? [],
-        skills: skills ?? [], other: other ?? [],
-        typeRatings: typeRatings ?? [], licenses: licenses ?? [],
-        medical: medical ?? undefined, icaoEnglish: icaoEnglish ?? undefined,
-        accentColor: accentColor ?? '#0D1E35',
-        summary: summary ?? undefined,
-      },
-      update: { education, languages, skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary },
+    await prisma.$transaction(async (tx) => {
+      if (education !== undefined) {
+        await tx.pilotEducation.deleteMany({ where: { pilotId } });
+        const rows = (education || [])
+          .filter((e) => (e.institution || e.degree || e.fieldOfStudy || '').toString().trim())
+          .map((e, i) => ({ pilotId, institution: e.institution || null, degree: e.degree || null, fieldOfStudy: e.fieldOfStudy || null, year: (e.year ?? '').toString() || null, sortOrder: i }));
+        if (rows.length) await tx.pilotEducation.createMany({ data: rows });
+      }
+      if (languages !== undefined) {
+        await tx.pilotLanguage.deleteMany({ where: { pilotId } });
+        const rows = (languages || [])
+          .filter((l) => (l.language || '').toString().trim())
+          .map((l, i) => ({ pilotId, language: l.language, level: l.level || null, sortOrder: i }));
+        if (rows.length) await tx.pilotLanguage.createMany({ data: rows });
+      }
+      // CV-only fields (+ legacy licenses/typeRatings/medical/icaoEnglish copies, kept
+      // for step B). education/languages columns intentionally NOT written here.
+      await tx.cvData.upsert({
+        where: { pilotId },
+        create: { pilotId, skills: skills ?? [], other: other ?? [], typeRatings: typeRatings ?? [], licenses: licenses ?? [], medical: medical ?? undefined, icaoEnglish: icaoEnglish ?? undefined, accentColor: accentColor ?? '#0D1E35', summary: summary ?? undefined },
+        update: { skills, other, typeRatings, licenses, medical, icaoEnglish, accentColor, summary },
+      });
     });
-    res.json(cvData);
+    // Return the same cv shape getCvData emits (education/languages profile-sourced).
+    const [cvData, eduRows, langRows] = await Promise.all([
+      prisma.cvData.findUnique({ where: { pilotId } }),
+      prisma.pilotEducation.findMany({ where: { pilotId }, orderBy: { sortOrder: 'asc' } }),
+      prisma.pilotLanguage.findMany({ where: { pilotId }, orderBy: { sortOrder: 'asc' } }),
+    ]);
+    res.json({
+      ...cvData,
+      education: eduRows.map((e) => ({ year: e.year ?? '', degree: e.degree ?? '', institution: e.institution ?? '', fieldOfStudy: e.fieldOfStudy ?? '' })),
+      languages: langRows.map((l) => ({ language: l.language ?? '', level: l.level ?? '' })),
+    });
   } catch (err) {
     next(err);
   }
