@@ -74,6 +74,69 @@ const PUBLISHERS = {
   ro:      { id: 7262, country: 'Romania',         region: 'Europe' },
   'en-in': { id: 7263, country: 'India',           region: 'Asia' },
   'en-ph': { id: 7264, country: 'Philippines',     region: 'Asia' },
+
+  // Batch-1 leftover IDs, resolved 2026-09-28 by probing the API once and reading
+  // the returned jobs' locations: 7237→Australia, 7249→Tanzania. (7242→Saudi =
+  // duplicate of sa/7235, skipped; 7239 returned nothing → still PENDING, not added.)
+  au:      { id: 7237, country: 'Australia',       region: 'Oceania' },
+  tz:      { id: 7249, country: 'Tanzania',        region: 'Africa' },
+
+  // Batch 2 (registered 2026-09-28; activation pending until each country goes
+  // live — unactivated ones simply return zero and are retried every cron, never
+  // dropped). 7296 (en-om) and 7298 (en-qa) intentionally omitted as duplicates of
+  // the existing om/qa publishers.
+  ar:      { id: 7283, country: 'Argentina',           region: 'Americas' },
+  bo:      { id: 7284, country: 'Bolivia',             region: 'Americas' },
+  br:      { id: 7285, country: 'Brazil',              region: 'Americas' },
+  cl:      { id: 7286, country: 'Chile',               region: 'Americas' },
+  co:      { id: 7287, country: 'Colombia',            region: 'Americas' },
+  cr:      { id: 7288, country: 'Costa Rica',          region: 'Americas' },
+  do:      { id: 7289, country: 'Dominican Republic',  region: 'Americas' },
+  ec:      { id: 7290, country: 'Ecuador',             region: 'Americas' },
+  'en-gh': { id: 7291, country: 'Ghana',               region: 'Africa' },
+  'en-id': { id: 7292, country: 'Indonesia',           region: 'Asia' },
+  'en-ke': { id: 7293, country: 'Kenya',               region: 'Africa' },
+  'en-my': { id: 7294, country: 'Malaysia',            region: 'Asia' },
+  'en-ng': { id: 7295, country: 'Nigeria',             region: 'Africa' },
+  'en-pk': { id: 7297, country: 'Pakistan',            region: 'Asia' },
+  'en-sg': { id: 7299, country: 'Singapore',           region: 'Asia' },
+  'en-ug': { id: 7300, country: 'Uganda',              region: 'Africa' },
+  'es-mx': { id: 7301, country: 'Mexico',              region: 'Americas' },
+  fi:      { id: 7302, country: 'Finland',             region: 'Europe' },
+  gt:      { id: 7303, country: 'Guatemala',           region: 'Americas' },
+  hk:      { id: 7304, country: 'Hong Kong',           region: 'Asia' },
+  hu:      { id: 7305, country: 'Hungary',             region: 'Europe' },
+  jp:      { id: 7306, country: 'Japan',               region: 'Asia' },
+  kr:      { id: 7307, country: 'South Korea',         region: 'Asia' },
+  lk:      { id: 7308, country: 'Sri Lanka',           region: 'Asia' },
+  lu:      { id: 7309, country: 'Luxembourg',          region: 'Europe' },
+  mg:      { id: 7310, country: 'Madagascar',          region: 'Africa' },
+  nz:      { id: 7311, country: 'New Zealand',         region: 'Oceania' },
+  pa:      { id: 7312, country: 'Panama',              region: 'Americas' },
+  pe:      { id: 7313, country: 'Peru',                region: 'Americas' },
+  pr:      { id: 7314, country: 'Puerto Rico',         region: 'Americas' },
+  py:      { id: 7315, country: 'Paraguay',            region: 'Americas' },
+  ru:      { id: 7316, country: 'Russia',              region: 'Europe' },
+  sn:      { id: 7317, country: 'Senegal',             region: 'Africa' },
+  sv:      { id: 7318, country: 'El Salvador',         region: 'Americas' },
+  th:      { id: 7319, country: 'Thailand',            region: 'Asia' },
+  uy:      { id: 7320, country: 'Uruguay',             region: 'Americas' },
+  ve:      { id: 7321, country: 'Venezuela',           region: 'Americas' },
+  vn:      { id: 7322, country: 'Vietnam',             region: 'Asia' },
+};
+
+// Localized primary keyword per market. WhatJobs matches the local language, so a
+// Spanish/Portuguese market needs 'piloto' and a French one 'pilote' to surface
+// local-language postings. The source's requireContext guard (config/employers.js)
+// strips the non-aviation 'pilote/piloto' jargon downstream — same as Adzuna.
+const LOCALIZED_KEYWORD = {
+  // Spanish + Portuguese ('piloto' in both)
+  es: 'piloto', pt: 'piloto', ar: 'piloto', bo: 'piloto', br: 'piloto', cl: 'piloto',
+  co: 'piloto', cr: 'piloto', do: 'piloto', ec: 'piloto', gt: 'piloto', pa: 'piloto',
+  pe: 'piloto', pr: 'piloto', py: 'piloto', sv: 'piloto', uy: 'piloto', ve: 'piloto',
+  'es-mx': 'piloto',
+  // French-speaking (new batch)
+  lu: 'pilote', sn: 'pilote', mg: 'pilote',
 };
 
 function inferRole(title) {
@@ -137,8 +200,12 @@ async function fetchWhatJobs() {
 
   for (const code of codes) {
     const meta = PUBLISHERS[code];
+    // Append the market's localized keyword (piloto/pilote) to the base English
+    // queries so local-language postings are found; requireContext filters noise.
+    const localized = LOCALIZED_KEYWORD[code];
+    const countryQueries = localized ? [...queries, localized] : queries;
     let countryKept = 0;
-    for (const keyword of queries) {
+    for (const keyword of countryQueries) {
       for (let page = 1; page <= maxPages; page++) {
         let data;
         try {
