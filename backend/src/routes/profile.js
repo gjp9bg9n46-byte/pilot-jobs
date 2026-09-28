@@ -5,6 +5,7 @@ const profileController = require('../controllers/profileController');
 router.use(authMiddleware);
 
 router.get('/', profileController.getProfile);
+router.get('/readiness', profileController.getReadiness);
 router.patch('/', profileController.updateProfile);
 router.get('/totals',         profileController.getFlightTotals);
 router.get('/airports',       profileController.getAirports);

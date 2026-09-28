@@ -103,6 +103,28 @@ exports.getAirports = async (req, res, next) => {
   }
 };
 
+// GET /profile/readiness — application-readiness strip + match-based profile
+// strength + the shared "Complete your profile" nudge (same numbers as Jobs).
+exports.getReadiness = async (req, res, next) => {
+  try {
+    const { computeReadiness, computeStrengthAndNudge } = require('../services/profileReadiness');
+    const [readiness, sn] = await Promise.all([
+      computeReadiness(req.pilot.id),
+      computeStrengthAndNudge(req.pilot.id),
+    ]);
+    res.json({
+      items: readiness.items,
+      blockers: readiness.blockers,
+      strength: sn.strength,
+      nudge: sn.nudge,
+      qualifyCount: sn.qualifyCount,
+      incompleteCount: sn.incompleteCount,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getProfile = async (req, res, next) => {
   try {
     const pilot = await prisma.pilot.findUnique({
@@ -114,9 +136,11 @@ exports.getProfile = async (req, res, next) => {
         trainingRecords: { orderBy: { completedAt: 'desc' } },
         rightToWork: true,
         preferences: true,
+        educationRecords: { orderBy: { sortOrder: 'asc' } },
+        languages: { orderBy: { sortOrder: 'asc' } },
       },
     });
-    const { passwordHash, ...profile } = pilot;
+    const { passwordHash, fcmToken, ...profile } = pilot;
     if (profile.preferences) profile.preferences = toClientPrefs(profile.preferences);
     res.json(profile);
   } catch (err) {
@@ -134,6 +158,7 @@ exports.updateProfile = async (req, res, next) => {
       dateOfBirth, passportNumber, passportExpiry,
       emergencyContactName, emergencyContactPhone,
       willingToRelocate, isInstructor, isExaminer, education, role,
+      openToWork, availableFrom,
     } = req.body;
 
     const VALID_ROLES = ['FIRST_OFFICER', 'CAPTAIN'];
@@ -149,6 +174,8 @@ exports.updateProfile = async (req, res, next) => {
         passportNumber, passportExpiry: passportExpiry ? new Date(passportExpiry) : undefined,
         emergencyContactName, emergencyContactPhone,
         willingToRelocate, isInstructor, isExaminer,
+        ...(openToWork !== undefined ? { openToWork: !!openToWork } : {}),
+        ...(availableFrom !== undefined ? { availableFrom: availableFrom ? new Date(availableFrom) : null } : {}),
         education: education === null ? null : (education || undefined),
         role: role || null,
       },
