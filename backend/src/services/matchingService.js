@@ -346,35 +346,12 @@ function computeMatchScore(pilot, pilotTotals, job) {
  * evaluations never crash on a clean profile.
  */
 async function getPilotFlightTotals(pilotId) {
-  // DB-side aggregate (one row) instead of fetching every flight log and summing in
-  // JS — the previous approach loaded all 501+ rows on EVERY /jobs request and was the
-  // dominant cost of the match pipeline. Same result: sum of each stored column, then
-  // carry-forward added once.
-  const [rows, pilot] = await Promise.all([
-    prisma.$queryRaw`
-      SELECT
-        COALESCE(SUM("totalTime"), 0)        AS "totalTime",
-        COALESCE(SUM("picTime"), 0)          AS "picTime",
-        COALESCE(SUM("sicTime"), 0)          AS "sicTime",
-        COALESCE(SUM("multiEngineTime"), 0)  AS "multiEngineTime",
-        COALESCE(SUM("turbineTime"), 0)      AS "turbineTime",
-        COALESCE(SUM("instrumentTime"), 0)   AS "instrumentTime",
-        COALESCE(SUM("crossCountryTime"), 0) AS "crossCountryTime",
-        COALESCE(SUM("nightTime"), 0)        AS "nightTime"
-      FROM "FlightLog" WHERE "pilotId" = ${pilotId}`,
-    prisma.pilot.findUnique({ where: { id: pilotId }, select: { carryForward: true } }),
-  ]);
-
-  const cf = (pilot?.carryForward) ?? {};
-  const r = rows[0] || {};
-  const totals = {
-    totalTime: Number(r.totalTime) || 0, picTime: Number(r.picTime) || 0, sicTime: Number(r.sicTime) || 0,
-    multiEngineTime: Number(r.multiEngineTime) || 0, turbineTime: Number(r.turbineTime) || 0,
-    instrumentTime: Number(r.instrumentTime) || 0, crossCountryTime: Number(r.crossCountryTime) || 0,
-    nightTime: Number(r.nightTime) || 0,
-  };
-  for (const key of Object.keys(totals)) totals[key] += (cf[key] ?? 0);
-  return totals;
+  // Use the SAME read-time derivation as /logbook/summary so matching credits
+  // derived multi-engine / turbine hours (A320 fleet) instead of the blank raw
+  // columns. A DB SUM of the raw columns understated ME/turbine as 0 for imports
+  // like this one. Loads the flights (as the summary does) rather than a SUM.
+  const { getMatchTotals } = require('./logbookSummary');
+  return getMatchTotals(pilotId);
 }
 
 // ─── Match breakdown (per-criterion buckets) ─────────────────────────────────

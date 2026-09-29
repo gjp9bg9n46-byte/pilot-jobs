@@ -256,6 +256,45 @@ async function buildLogbookSummary(pilotId) {
   return { totals, byType, milestone, limits, currency, months };
 }
 
+// Flight totals in the shape the job-match context needs — using the SAME
+// read-time derivation as the summary above (block time from off/on-blocks when a
+// row's total is blank; multi-engine/turbine derived from the resolved aircraft
+// type when the raw columns are blank). This is why matching now credits a pilot's
+// A320 hours as multi-engine + turbine, matching what /logbook/summary shows,
+// instead of reading the blank raw columns as 0. Carry-forward added once.
+async function getMatchTotals(pilotId) {
+  const [logs, pilot] = await Promise.all([
+    prisma.flightLog.findMany({ where: { pilotId } }),
+    prisma.pilot.findUnique({ where: { id: pilotId }, select: { carryForward: true } }),
+  ]);
+  const cf = (pilot && pilot.carryForward) || {};
+  const cfNum = (k) => (Number.isFinite(+cf[k]) ? +cf[k] : 0);
+
+  let total = 0, pic = 0, sic = 0, night = 0, ifr = 0, cc = 0, multi = 0, turbine = 0;
+  for (const log of logs) {
+    const block = blockHours(log);
+    total += block;
+    pic += log.picTime || 0;
+    sic += log.sicTime || 0;
+    night += log.nightTime || 0;
+    ifr += log.instrumentTime || 0;
+    cc += log.crossCountryTime || 0;
+    const cls = classForType(resolveType(log).type);
+    multi += (log.multiEngineTime > 0) ? log.multiEngineTime : (cls && cls.multi ? block : 0);
+    turbine += (log.turbineTime > 0) ? log.turbineTime : (cls && cls.turbine ? block : 0);
+  }
+  return {
+    totalTime: total + cfNum('totalTime'),
+    picTime: pic + cfNum('picTime'),
+    sicTime: sic + cfNum('sicTime'),
+    multiEngineTime: multi + cfNum('multiEngineTime'),
+    turbineTime: turbine + cfNum('turbineTime'),
+    instrumentTime: ifr + cfNum('instrumentTime'),
+    crossCountryTime: cc + cfNum('crossCountryTime'),
+    nightTime: night + cfNum('nightTime'),
+  };
+}
+
 // Display type for a flight-log row: stored aircraftType, else inferred from
 // registration (read-time; nothing stored). Shared by the list endpoint so the
 // Aircraft column can show a type even when the import left aircraftType blank.
@@ -265,6 +304,7 @@ function displayTypeFor(log) {
 
 module.exports = {
   buildLogbookSummary,
+  getMatchTotals,
   displayTypeFor,
   // exported for unit tests
   _internals: { blockFromTimes, normaliseType, classForType, typeFromRegistration, resolveType, buildLadder },

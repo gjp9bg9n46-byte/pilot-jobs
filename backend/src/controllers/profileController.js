@@ -142,6 +142,11 @@ exports.getProfile = async (req, res, next) => {
     });
     const { passwordHash, fcmToken, ...profile } = pilot;
     if (profile.preferences) profile.preferences = toClientPrefs(profile.preferences);
+    // One photo everywhere: the header shows CvData.photoUrl (the Uploadcare
+    // headshot). Pilot.profilePhoto is unused/legacy. Uploading from the Profile
+    // page hits POST /cv/photo, which writes this same field.
+    const cv = await prisma.cvData.findUnique({ where: { pilotId: req.pilot.id }, select: { photoUrl: true } });
+    profile.photoUrl = cv?.photoUrl ?? null;
     res.json(profile);
   } catch (err) {
     next(err);
