@@ -262,7 +262,24 @@ async function buildLogbookSummary(pilotId) {
 // type when the raw columns are blank). This is why matching now credits a pilot's
 // A320 hours as multi-engine + turbine, matching what /logbook/summary shows,
 // instead of reading the blank raw columns as 0. Carry-forward added once.
+// Per-pilot cache of the derived totals — deriving requires loading every flight
+// (the type resolution is JS, not a SQL SUM), which is too heavy to run on every
+// /jobs request. Totals only change when the pilot edits their logbook, so a short
+// TTL + explicit invalidation on logbook writes keeps matching fast AND correct.
+const _totalsCache = new Map(); // pilotId -> { v, exp }
+const TOTALS_TTL_MS = Number(process.env.MATCH_TOTALS_TTL_MS || 60000);
+function invalidateMatchTotals(pilotId) { _totalsCache.delete(pilotId); }
+function clearAllMatchTotals() { _totalsCache.clear(); }
+
 async function getMatchTotals(pilotId) {
+  const hit = _totalsCache.get(pilotId);
+  if (hit && hit.exp > Date.now()) return hit.v;
+  const totals = await computeMatchTotals(pilotId);
+  _totalsCache.set(pilotId, { v: totals, exp: Date.now() + TOTALS_TTL_MS });
+  return totals;
+}
+
+async function computeMatchTotals(pilotId) {
   const [logs, pilot] = await Promise.all([
     prisma.flightLog.findMany({ where: { pilotId } }),
     prisma.pilot.findUnique({ where: { id: pilotId }, select: { carryForward: true } }),
@@ -305,6 +322,8 @@ function displayTypeFor(log) {
 module.exports = {
   buildLogbookSummary,
   getMatchTotals,
+  invalidateMatchTotals,
+  clearAllMatchTotals,
   displayTypeFor,
   // exported for unit tests
   _internals: { blockFromTimes, normaliseType, classForType, typeFromRegistration, resolveType, buildLadder },
