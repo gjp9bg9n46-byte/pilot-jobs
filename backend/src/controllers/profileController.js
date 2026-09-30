@@ -671,9 +671,10 @@ exports.updateCarryForward = async (req, res, next) => {
     const result = await prisma.pilot.update({
       where: { id: req.pilot.id },
       data:  { carryForward: updated },
-      select: { carryForward: true },
+      select: { carryForward: true, id: true },
     });
 
+    await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
     res.json(result.carryForward);
   } catch (err) {
     next(err);

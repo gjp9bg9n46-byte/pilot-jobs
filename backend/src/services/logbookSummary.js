@@ -7,6 +7,7 @@
 // here (type from registration, class from type) rather than read from columns.
 
 const prisma = require('../config/database');
+const logger = require('../config/logger');
 
 // ── Time helpers ───────────────────────────────────────────────────────────
 // Block time is authoritatively re-derived from the off/on-block strings when a
@@ -100,75 +101,30 @@ async function buildLogbookSummary(pilotId) {
   // Sort ascending by date for cumulative milestone crossings + months.
   const sorted = [...logs].sort((a, b) => a.date - b.date);
 
-  // ── Per-flight derivation + accumulation ──────────────────────────────────
-  let loggedTotal = 0, loggedPic = 0, loggedSic = 0, loggedNight = 0, loggedIfr = 0;
-  let derivedMulti = 0, derivedTurbine = 0, loggedLandings = 0;
-  let anyLandingLogged = false;
-  const byTypeMap = new Map();   // typeKey -> { hours, regs:Set, inferred }
-  const monthMap = new Map();    // 'YYYY-MM' -> { hours, flights }
+  // ── Totals + byType: the ONE canonical derivation (computeDerivedTotals), the
+  // same values stored on Pilot.derivedTotals and read by matching. Refresh the
+  // stored copy so viewing the summary self-heals any drift (best-effort). ───────
+  const d = computeDerivedTotals(logs, cf);
+  prisma.pilot.update({ where: { id: pilotId }, data: { derivedTotals: d } }).catch(() => {});
+  const total = d.totalTime;
+  const totals = {
+    total: d.totalTime, pic: d.picTime, sic: d.sicTime, night: d.nightTime, ifr: d.instrumentTime,
+    multiEngine: d.multiEngineTime, turbine: d.turbineTime, landings: d.landings,
+    carryForward: d.carryForward, flightCount: d.flightCount, lastFlightDate: d.lastFlightDate,
+    picSicSplitValid: d.picSicSplitValid,
+  };
+  const byType = d.byType;
+  const anyLandingLogged = sorted.some((l) => (l.landingsDay || 0) + (l.landingsNight || 0) > 0);
 
+  // Per-month hours (list section headers) — display-only, straight from flights.
+  const monthMap = new Map();
   for (const log of sorted) {
-    const block = blockHours(log);
-    loggedTotal += block;
-    loggedPic += log.picTime || 0;
-    loggedSic += log.sicTime || 0;
-    loggedNight += log.nightTime || 0;
-    loggedIfr += log.instrumentTime || 0;
-    const ldg = (log.landingsDay || 0) + (log.landingsNight || 0);
-    loggedLandings += ldg;
-    if (ldg > 0) anyLandingLogged = true;
-
-    const { type, inferred } = resolveType(log);
-    const cls = classForType(type);
-    // Multi/turbine: stored hours win; else count this flight's block if its
-    // resolved type is in that class.
-    derivedMulti += (log.multiEngineTime > 0) ? log.multiEngineTime : (cls && cls.multi ? block : 0);
-    derivedTurbine += (log.turbineTime > 0) ? log.turbineTime : (cls && cls.turbine ? block : 0);
-
-    if (type) {
-      if (!byTypeMap.has(type)) byTypeMap.set(type, { hours: 0, regs: new Set(), inferred });
-      const e = byTypeMap.get(type);
-      e.hours += block;
-      if (log.registration) e.regs.add(log.registration);
-      if (inferred) e.inferred = true;
-    }
-
     const ym = log.date.toISOString().slice(0, 7);
     if (!monthMap.has(ym)) monthMap.set(ym, { hours: 0, flights: 0 });
     const mm = monthMap.get(ym);
-    mm.hours += block;
+    mm.hours += blockHours(log);
     mm.flights += 1;
   }
-
-  // ── Totals (carry-forward added once, all-time only) ──────────────────────
-  const total = round1(loggedTotal + cfNum('totalTime'));
-  const pic = round1(loggedPic + cfNum('picTime'));
-  const sic = round1(loggedSic + cfNum('sicTime'));
-  const night = round1(loggedNight + cfNum('nightTime'));
-  const ifr = round1(loggedIfr + cfNum('instrumentTime'));
-  const multiEngine = round1(derivedMulti + cfNum('multiEngineTime'));
-  const turbine = round1(derivedTurbine + cfNum('turbineTime'));
-  const landings = loggedLandings + cfNum('landingsDay') + cfNum('landingsNight');
-  const carryForward = round1(cfNum('totalTime'));
-
-  // PIC/SIC split is only trustworthy when pic+sic ≈ total. This pilot's
-  // carry-forward has pic 1500 AND sic 1500 vs a ~1515 total → invalid, hide it.
-  const picSicSplitValid = total > 0 && (pic + sic) <= total * 1.05 && (pic + sic) >= total * 0.5;
-
-  const lastFlightDate = sorted.length ? sorted[sorted.length - 1].date.toISOString().slice(0, 10) : null;
-
-  const totals = {
-    total, pic, sic, night, ifr, multiEngine, turbine, landings,
-    carryForward, flightCount: logs.length, lastFlightDate, picSicSplitValid,
-  };
-
-  // ── byType ────────────────────────────────────────────────────────────────
-  const byType = [...byTypeMap.entries()]
-    .map(([type, e]) => ({
-      type, hours: round1(e.hours), regs: [...e.regs].sort(),
-      ...(e.inferred ? { note: 'type inferred from registration' } : {}),
-    }))
-    .sort((a, b) => b.hours - a.hours);
 
   // ── Milestone ─────────────────────────────────────────────────────────────
   const ladder = buildLadder();
@@ -256,60 +212,122 @@ async function buildLogbookSummary(pilotId) {
   return { totals, byType, milestone, limits, currency, months };
 }
 
-// Flight totals in the shape the job-match context needs — using the SAME
-// read-time derivation as the summary above (block time from off/on-blocks when a
-// row's total is blank; multi-engine/turbine derived from the resolved aircraft
-// type when the raw columns are blank). This is why matching now credits a pilot's
-// A320 hours as multi-engine + turbine, matching what /logbook/summary shows,
-// instead of reading the blank raw columns as 0. Carry-forward added once.
-// Per-pilot cache of the derived totals — deriving requires loading every flight
-// (the type resolution is JS, not a SQL SUM), which is too heavy to run on every
-// /jobs request. Totals only change when the pilot edits their logbook, so a short
-// TTL + explicit invalidation on logbook writes keeps matching fast AND correct.
-const _totalsCache = new Map(); // pilotId -> { v, exp }
-const TOTALS_TTL_MS = Number(process.env.MATCH_TOTALS_TTL_MS || 60000);
-function invalidateMatchTotals(pilotId) { _totalsCache.delete(pilotId); }
-function clearAllMatchTotals() { _totalsCache.clear(); }
-
-async function getMatchTotals(pilotId) {
-  const hit = _totalsCache.get(pilotId);
-  if (hit && hit.exp > Date.now()) return hit.v;
-  const totals = await computeMatchTotals(pilotId);
-  _totalsCache.set(pilotId, { v: totals, exp: Date.now() + TOTALS_TTL_MS });
-  return totals;
+// ── Canonical derived totals (single source for matching + the summary) ────────
+// The full derivation runs once from the loaded flights (block time from off/on-
+// blocks; multi-engine/turbine credited from the resolved aircraft type when the
+// raw columns are blank — this is why matching credits A320 hours as ME/turbine,
+// exactly as /logbook/summary shows). The result is stored on Pilot.derivedTotals
+// and recomputed on every change that affects totals, so matching reads ONE field
+// instead of loading every flight on each /jobs request. Pure — no I/O.
+function computeDerivedTotals(logs, cf) {
+  const cfNum = (k) => (Number.isFinite(+((cf || {})[k])) ? +cf[k] : 0);
+  let total = 0, pic = 0, sic = 0, night = 0, ifr = 0, cc = 0, multi = 0, turbine = 0, landings = 0;
+  let lastDate = null;
+  const byTypeMap = new Map();
+  for (const log of logs) {
+    const block = blockHours(log);
+    total += block; pic += log.picTime || 0; sic += log.sicTime || 0;
+    night += log.nightTime || 0; ifr += log.instrumentTime || 0; cc += log.crossCountryTime || 0;
+    landings += (log.landingsDay || 0) + (log.landingsNight || 0);
+    const { type, inferred } = resolveType(log);
+    const cls = classForType(type);
+    multi += (log.multiEngineTime > 0) ? log.multiEngineTime : (cls && cls.multi ? block : 0);
+    turbine += (log.turbineTime > 0) ? log.turbineTime : (cls && cls.turbine ? block : 0);
+    if (type) {
+      if (!byTypeMap.has(type)) byTypeMap.set(type, { hours: 0, regs: new Set(), inferred });
+      const e = byTypeMap.get(type); e.hours += block;
+      if (log.registration) e.regs.add(log.registration);
+      if (inferred) e.inferred = true;
+    }
+    if (!lastDate || log.date > lastDate) lastDate = log.date;
+  }
+  const T = round1(total + cfNum('totalTime'));
+  const P = round1(pic + cfNum('picTime'));
+  const S = round1(sic + cfNum('sicTime'));
+  const byType = [...byTypeMap.entries()]
+    .map(([type, e]) => ({ type, hours: round1(e.hours), regs: [...e.regs].sort(), ...(e.inferred ? { note: 'type inferred from registration' } : {}) }))
+    .sort((a, b) => b.hours - a.hours);
+  return {
+    totalTime: T, picTime: P, sicTime: S,
+    nightTime: round1(night + cfNum('nightTime')),
+    instrumentTime: round1(ifr + cfNum('instrumentTime')),
+    crossCountryTime: round1(cc + cfNum('crossCountryTime')),
+    multiEngineTime: round1(multi + cfNum('multiEngineTime')),
+    turbineTime: round1(turbine + cfNum('turbineTime')),
+    landings: landings + cfNum('landingsDay') + cfNum('landingsNight'),
+    carryForward: round1(cfNum('totalTime')),
+    flightCount: logs.length,
+    lastFlightDate: lastDate ? lastDate.toISOString().slice(0, 10) : null,
+    picSicSplitValid: T > 0 && (P + S) <= T * 1.05 && (P + S) >= T * 0.5,
+    byType,
+  };
 }
 
-async function computeMatchTotals(pilotId) {
+// Recompute from the DB and store on Pilot.derivedTotals. Call after any change
+// that affects totals (flight add/edit/delete, import, carry-forward, type edit).
+async function recomputeDerivedTotals(pilotId) {
   const [logs, pilot] = await Promise.all([
     prisma.flightLog.findMany({ where: { pilotId } }),
     prisma.pilot.findUnique({ where: { id: pilotId }, select: { carryForward: true } }),
   ]);
-  const cf = (pilot && pilot.carryForward) || {};
-  const cfNum = (k) => (Number.isFinite(+cf[k]) ? +cf[k] : 0);
+  const d = computeDerivedTotals(logs, (pilot && pilot.carryForward) || {});
+  await prisma.pilot.update({ where: { id: pilotId }, data: { derivedTotals: d } });
+  return d;
+}
 
-  let total = 0, pic = 0, sic = 0, night = 0, ifr = 0, cc = 0, multi = 0, turbine = 0;
-  for (const log of logs) {
-    const block = blockHours(log);
-    total += block;
-    pic += log.picTime || 0;
-    sic += log.sicTime || 0;
-    night += log.nightTime || 0;
-    ifr += log.instrumentTime || 0;
-    cc += log.crossCountryTime || 0;
-    const cls = classForType(resolveType(log).type);
-    multi += (log.multiEngineTime > 0) ? log.multiEngineTime : (cls && cls.multi ? block : 0);
-    turbine += (log.turbineTime > 0) ? log.turbineTime : (cls && cls.turbine ? block : 0);
-  }
+// Read the stored totals; self-heal (backfill) if a pilot has none yet.
+async function getStoredTotals(pilotId) {
+  const p = await prisma.pilot.findUnique({ where: { id: pilotId }, select: { derivedTotals: true } });
+  if (p && p.derivedTotals) return p.derivedTotals;
+  return recomputeDerivedTotals(pilotId);
+}
+
+// Job-match shape (the 8 hour fields matchJob reads) — from the stored totals.
+async function getMatchTotals(pilotId) {
+  const d = await getStoredTotals(pilotId);
   return {
-    totalTime: total + cfNum('totalTime'),
-    picTime: pic + cfNum('picTime'),
-    sicTime: sic + cfNum('sicTime'),
-    multiEngineTime: multi + cfNum('multiEngineTime'),
-    turbineTime: turbine + cfNum('turbineTime'),
-    instrumentTime: ifr + cfNum('instrumentTime'),
-    crossCountryTime: cc + cfNum('crossCountryTime'),
-    nightTime: night + cfNum('nightTime'),
+    totalTime: d.totalTime || 0, picTime: d.picTime || 0, sicTime: d.sicTime || 0,
+    multiEngineTime: d.multiEngineTime || 0, turbineTime: d.turbineTime || 0,
+    instrumentTime: d.instrumentTime || 0, crossCountryTime: d.crossCountryTime || 0, nightTime: d.nightTime || 0,
   };
+}
+
+const AUDIT_KEYS = ['totalTime', 'picTime', 'sicTime', 'multiEngineTime', 'turbineTime', 'instrumentTime', 'crossCountryTime', 'nightTime', 'landings', 'flightCount'];
+function totalsDiffer(a, b) {
+  return AUDIT_KEYS.some((k) => Math.round((Number(a?.[k]) || 0) * 10) !== Math.round((Number(b?.[k]) || 0) * 10));
+}
+
+// One-off backfill: store derivedTotals for pilots that have none yet. Run at
+// startup so a fresh deploy populates everyone; a no-op once all are filled.
+async function backfillMissingDerivedTotals() {
+  const pilots = await prisma.pilot.findMany({ where: { deletedAt: null, derivedTotals: { equals: null } }, select: { id: true } });
+  for (const p of pilots) { try { await recomputeDerivedTotals(p.id); } catch (err) { logger.error({ source: 'TOTALS-BACKFILL', pilotId: p.id, err: err.message }); } }
+  if (pilots.length) logger.info({ source: 'TOTALS-BACKFILL', filled: pilots.length, msg: 'derivedTotals backfilled' });
+  return { filled: pilots.length };
+}
+
+// Nightly: recompute every pilot's totals and log + FIX any that drifted from the
+// stored value (a missed recompute hook, a manual DB edit, a logic change).
+async function auditAllDerivedTotals() {
+  const pilots = await prisma.pilot.findMany({ where: { deletedAt: null }, select: { id: true, derivedTotals: true } });
+  let checked = 0, drifted = 0;
+  for (const p of pilots) {
+    checked++;
+    try {
+      const [logs, pl] = await Promise.all([
+        prisma.flightLog.findMany({ where: { pilotId: p.id } }),
+        prisma.pilot.findUnique({ where: { id: p.id }, select: { carryForward: true } }),
+      ]);
+      const fresh = computeDerivedTotals(logs, (pl && pl.carryForward) || {});
+      if (totalsDiffer(p.derivedTotals, fresh)) {
+        drifted++;
+        logger.warn({ source: 'TOTALS-AUDIT', pilotId: p.id, msg: 'derivedTotals drift — fixing', storedTotal: p.derivedTotals?.totalTime ?? null, freshTotal: fresh.totalTime });
+        await prisma.pilot.update({ where: { id: p.id }, data: { derivedTotals: fresh } });
+      }
+    } catch (err) { logger.error({ source: 'TOTALS-AUDIT', pilotId: p.id, err: err.message }); }
+  }
+  logger.info({ source: 'TOTALS-AUDIT', checked, drifted, msg: 'nightly derived-totals audit complete' });
+  return { checked, drifted };
 }
 
 // Display type for a flight-log row: stored aircraftType, else inferred from
@@ -322,8 +340,11 @@ function displayTypeFor(log) {
 module.exports = {
   buildLogbookSummary,
   getMatchTotals,
-  invalidateMatchTotals,
-  clearAllMatchTotals,
+  recomputeDerivedTotals,
+  getStoredTotals,
+  computeDerivedTotals,
+  backfillMissingDerivedTotals,
+  auditAllDerivedTotals,
   displayTypeFor,
   // exported for unit tests
   _internals: { blockFromTimes, normaliseType, classForType, typeFromRegistration, resolveType, buildLadder },

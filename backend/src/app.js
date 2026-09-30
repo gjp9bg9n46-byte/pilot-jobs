@@ -365,6 +365,26 @@ cron.schedule('10 4 * * 1', async () => {
   }
 });
 
+// Nightly (04:20 UTC): recompute every pilot's derived flight totals and fix any
+// that drifted from the stored value (a missed recompute hook, a manual edit, a
+// logic change). Keeps the denormalised Pilot.derivedTotals honest.
+cron.schedule('20 4 * * *', async () => {
+  try {
+    const { auditAllDerivedTotals } = require('./services/logbookSummary');
+    const r = await auditAllDerivedTotals();
+    logger.info(`Derived-totals audit: ${r.drifted} fixed of ${r.checked} checked`);
+  } catch (err) {
+    logger.error(`Derived-totals audit failed: ${err.message}`);
+  }
+});
+
+// Backfill Pilot.derivedTotals for anyone missing it (e.g. right after the column
+// was added) — runs once at startup, a no-op thereafter.
+setImmediate(() => {
+  require('./services/logbookSummary').backfillMissingDerivedTotals()
+    .catch((err) => logger.error(`Derived-totals backfill failed: ${err.message}`));
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
 

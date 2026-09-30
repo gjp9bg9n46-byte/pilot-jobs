@@ -76,6 +76,7 @@ exports.createLog = async (req, res, next) => {
         source: 'MANUAL',
       },
     });
+    await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
     res.status(201).json(log);
   } catch (err) {
     next(err);
@@ -116,6 +117,7 @@ exports.bulkCreate = async (req, res, next) => {
         })
       )
     );
+    await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
     res.status(201).json({ logs });
   } catch (err) {
     next(err);
@@ -186,6 +188,7 @@ exports.updateLog = async (req, res, next) => {
         landingsDay, landingsNight, remarks,
       },
     });
+    await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
     res.json(log);
   } catch (err) {
     next(err);
@@ -197,6 +200,7 @@ exports.deleteLog = async (req, res, next) => {
     await prisma.flightLog.deleteMany({
       where: { id: req.params.id, pilotId: req.pilot.id },
     });
+    await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -328,6 +332,7 @@ exports.importConfirm = async (req, res, next) => {
       imported += created.count;
     }
 
+    await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
     res.status(201).json({ imported, skipped: skipped.length, batchId });
   } catch (err) {
     next(err);
@@ -366,6 +371,7 @@ exports.importLogbook = async (req, res, next) => {
       imported += created.count;
     }
 
+    await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
     res.json({ imported, total: entries.length });
   } catch (err) {
     next(err);
