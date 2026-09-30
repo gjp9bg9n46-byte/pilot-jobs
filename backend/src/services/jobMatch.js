@@ -64,16 +64,26 @@ function contextFromPilot(pilot, totals) {
   return buildContextInner(pilot, flightCerts, totals);
 }
 
+const MATCH_TOTAL_KEYS = ['totalTime', 'picTime', 'sicTime', 'multiEngineTime', 'turbineTime', 'instrumentTime', 'crossCountryTime', 'nightTime'];
+function totalsFromStored(d) {
+  const out = {};
+  for (const k of MATCH_TOTAL_KEYS) out[k] = Number(d?.[k]) || 0;
+  return out;
+}
+
 // Build the pilot's matching context once per request (reused across all jobs).
+// The derived flight totals are denormalised on the pilot row (Pilot.derivedTotals),
+// so ONE query loads the pilot + its relations + totals — no extra query and no
+// per-request flight load. Falls back to a recompute only if a pilot has none yet.
 async function buildMatchContext(pilotId, prisma) {
-  const [pilot, totals] = await Promise.all([
-    prisma.pilot.findUnique({
-      where: { id: pilotId },
-      include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
-    }),
-    getPilotFlightTotals(pilotId),
-  ]);
+  const pilot = await prisma.pilot.findUnique({
+    where: { id: pilotId },
+    include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
+  });
   if (!pilot) return null;
+  const totals = pilot.derivedTotals
+    ? totalsFromStored(pilot.derivedTotals)
+    : await getPilotFlightTotals(pilotId); // self-heal path (recomputes + stores)
   return contextFromPilot(pilot, totals);
 }
 
