@@ -43,3 +43,16 @@ test('word boundaries: bar≠Barcelona, port≠airport/transport, ship≠interns
 test('airline/operator source is kept by provenance', () => {
   assert.strictEqual(verdict({ title: 'Direct Entry Captain', company: 'Emirates', sourceType: 'operator_direct' }), 'keep');
 });
+
+// ── Regression: the two bugs found on live data ──────────────────────────────
+test('BUG1 — "Direct Entry Captain … airline" is KEPT (airline in text is a signal)', () => {
+  assert.strictEqual(verdict({ title: 'Direct Entry Captain', company: 'Air Dolomiti', description: 'Join our airline as a captain.' }), 'keep');
+  assert.strictEqual(verdict({ title: 'Captain – Lead Flights & Teams with Excellence', company: 'Air Dolomiti', description: 'Air Dolomiti, a Lufthansa Group airline, Embraer fleet.' }), 'keep');
+});
+
+test('BUG2 — maritime "Port Captain" is REJECTED even when it names harbour "pilots" / working hours', () => {
+  const msc = { title: 'Port Captain', company: 'MSC Mediterranean Shipping Company', description: 'As an FNTE Port Captain in our Marseille office you coordinate with harbour pilots and vessel crews, 24 hours port operations.' };
+  assert.strictEqual(verdict(msc), 'reject');
+  assert.strictEqual(verdict({ title: 'Marine Pilot', company: 'Port of Rotterdam' }), 'reject');
+  assert.strictEqual(verdict({ title: 'Harbour Pilot', company: 'ABP' }), 'reject');
+});
