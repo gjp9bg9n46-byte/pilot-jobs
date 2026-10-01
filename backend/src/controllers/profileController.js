@@ -103,6 +103,137 @@ exports.getAirports = async (req, res, next) => {
   }
 };
 
+// ─── Edit (PATCH) endpoints for the redesigned Profile edit sheets. Ownership is
+// enforced (findFirst by id + pilotId). Only provided fields change; dates parse
+// from ISO/yyyy-mm-dd or clear to null. No schema change — all columns exist. ────
+const parseDate = (v) => (v ? new Date(v) : null);
+
+exports.updateCertificate = async (req, res, next) => {
+  try {
+    const existing = await prisma.pilotCertificate.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id } });
+    if (!existing) return res.status(404).json({ error: 'Licence not found' });
+    if (existing.type === 'ELP') return res.status(400).json({ error: 'Use /profile/elp for English records.' });
+    const { issuingAuthority, certificateNumber, issueDate, expiryDate } = req.body;
+    const cert = await prisma.pilotCertificate.update({
+      where: { id: req.params.id },
+      data: {
+        ...(issuingAuthority !== undefined ? { issuingAuthority: normAuthorityIn(issuingAuthority) || existing.issuingAuthority } : {}),
+        ...(certificateNumber !== undefined ? { certificateNumber: certificateNumber || null } : {}),
+        ...(issueDate !== undefined ? { issueDate: parseDate(issueDate) } : {}),
+        ...(expiryDate !== undefined ? { expiryDate: parseDate(expiryDate) } : {}),
+      },
+    });
+    res.json(cert);
+  } catch (err) { next(err); }
+};
+
+exports.updateRating = async (req, res, next) => {
+  try {
+    const existing = await prisma.pilotRating.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id } });
+    if (!existing) return res.status(404).json({ error: 'Rating not found' });
+    const { aircraftType, category, issuingAuthority, expiryDate, hoursOnType, capacity, proficiencyCheckDate, proficiencyCheckDue, lineCheckDate, licenceId } = req.body;
+    // A licenceId must reference one of THIS pilot's licences, else clear it.
+    let licenceIdVal;
+    if (licenceId !== undefined) {
+      licenceIdVal = null;
+      if (licenceId) {
+        const owns = await prisma.pilotCertificate.findFirst({ where: { id: licenceId, pilotId: req.pilot.id }, select: { id: true } });
+        licenceIdVal = owns ? licenceId : null;
+      }
+    }
+    const rating = await prisma.pilotRating.update({
+      where: { id: req.params.id },
+      data: {
+        ...(aircraftType !== undefined ? { aircraftType: String(aircraftType).trim().toUpperCase() } : {}),
+        ...(category !== undefined ? { category } : {}),
+        ...(issuingAuthority !== undefined ? { issuingAuthority: normAuthorityIn(issuingAuthority) || existing.issuingAuthority } : {}),
+        ...(expiryDate !== undefined ? { expiryDate: parseDate(expiryDate) } : {}),
+        ...(hoursOnType !== undefined ? { hoursOnType: hoursOnType === '' || hoursOnType == null ? null : Number(hoursOnType) } : {}),
+        ...(capacity !== undefined ? { capacity: capacity || null } : {}),
+        ...(proficiencyCheckDate !== undefined ? { proficiencyCheckDate: parseDate(proficiencyCheckDate) } : {}),
+        ...(proficiencyCheckDue !== undefined ? { proficiencyCheckDue: parseDate(proficiencyCheckDue) } : {}),
+        ...(lineCheckDate !== undefined ? { lineCheckDate: parseDate(lineCheckDate) } : {}),
+        ...(licenceId !== undefined ? { licenceId: licenceIdVal } : {}),
+      },
+    });
+    res.json(rating);
+  } catch (err) { next(err); }
+};
+
+exports.updateMedical = async (req, res, next) => {
+  try {
+    const existing = await prisma.pilotMedical.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id } });
+    if (!existing) return res.status(404).json({ error: 'Medical not found' });
+    const { medicalClass, issuingAuthority, issueDate, expiryDate } = req.body;
+    const med = await prisma.pilotMedical.update({
+      where: { id: req.params.id },
+      data: {
+        ...(medicalClass !== undefined ? { medicalClass } : {}),
+        ...(issuingAuthority !== undefined ? { issuingAuthority: issuingAuthority || existing.issuingAuthority } : {}),
+        ...(issueDate !== undefined && issueDate ? { issueDate: new Date(issueDate) } : {}),
+        ...(expiryDate !== undefined && expiryDate ? { expiryDate: new Date(expiryDate) } : {}),
+      },
+    });
+    res.json(med);
+  } catch (err) { next(err); }
+};
+
+exports.updateTraining = async (req, res, next) => {
+  try {
+    const existing = await prisma.pilotTrainingRecord.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id } });
+    if (!existing) return res.status(404).json({ error: 'Training record not found' });
+    const { type, provider, completedAt, expiresAt, remarks } = req.body;
+    const rec = await prisma.pilotTrainingRecord.update({
+      where: { id: req.params.id },
+      data: {
+        ...(type !== undefined ? { type } : {}),
+        ...(provider !== undefined ? { provider: provider || null } : {}),
+        ...(completedAt !== undefined && completedAt ? { completedAt: new Date(completedAt) } : {}),
+        ...(expiresAt !== undefined ? { expiresAt: parseDate(expiresAt) } : {}),
+        ...(remarks !== undefined ? { remarks: remarks || null } : {}),
+      },
+    });
+    res.json(rec);
+  } catch (err) { next(err); }
+};
+
+exports.updateELP = async (req, res, next) => {
+  try {
+    const existing = await prisma.pilotCertificate.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id, type: 'ELP' } });
+    if (!existing) return res.status(404).json({ error: 'English record not found' });
+    const { level, issuingAuthority, endorsementNumber, issueDate, expiryDate, noExpiry } = req.body;
+    const cert = await prisma.pilotCertificate.update({
+      where: { id: req.params.id },
+      data: {
+        ...(level !== undefined ? { englishLevel: level } : {}),
+        ...(issuingAuthority !== undefined ? { issuingAuthority: normAuthorityIn(issuingAuthority) || 'unknown' } : {}),
+        ...(endorsementNumber !== undefined ? { certificateNumber: endorsementNumber || null } : {}),
+        ...(issueDate !== undefined ? { issueDate: parseDate(issueDate) } : {}),
+        ...(expiryDate !== undefined || noExpiry !== undefined ? { expiryDate: noExpiry ? null : parseDate(expiryDate) } : {}),
+      },
+    });
+    res.json({ id: cert.id, level: cert.englishLevel, issuingAuthority: cert.issuingAuthority, endorsementNumber: cert.certificateNumber, issueDate: cert.issueDate, expiryDate: cert.expiryDate, noExpiry: !cert.expiryDate });
+  } catch (err) { next(err); }
+};
+
+exports.updateRTW = async (req, res, next) => {
+  try {
+    const existing = await prisma.pilotRightToWork.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id } });
+    if (!existing) return res.status(404).json({ error: 'Right-to-work record not found' });
+    const { country, documentType, documentNumber, expiresAt } = req.body;
+    const rec = await prisma.pilotRightToWork.update({
+      where: { id: req.params.id },
+      data: {
+        ...(country !== undefined ? { country } : {}),
+        ...(documentType !== undefined ? { documentType } : {}),
+        ...(documentNumber !== undefined ? { documentNumber: documentNumber || null } : {}),
+        ...(expiresAt !== undefined ? { expiresAt: parseDate(expiresAt) } : {}),
+      },
+    });
+    res.json(rec);
+  } catch (err) { next(err); }
+};
+
 // GET /profile/readiness — application-readiness strip + match-based profile
 // strength + the shared "Complete your profile" nudge (same numbers as Jobs).
 exports.getReadiness = async (req, res, next) => {

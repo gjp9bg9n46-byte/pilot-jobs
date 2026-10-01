@@ -1,335 +1,505 @@
-// Profile view — mirrors frontend/src/pages/Profile.jsx section order:
-// Flight Totals → Personal Info → Licences → Medical → Type Ratings → ELP →
-// Recurrent Training → Right to Work. Plus a mobile-only "My Applications"
-// section (web has no pilot applications page). Read-only; edits happen on the
-// pushed /profile/edit screen. Verify banner mounts from (app)/_layout.
-import { useCallback, useEffect, useState } from 'react';
+// Profile — the mobile twin of the redesigned web Profile (frontend ProfileRedesign).
+// Phone layout IS the shared spec: hero → application readiness → snapshot +
+// strength → cards (Licences & ratings, Checks, Medical, Training, Right to work
+// & passport, Job preferences, Personal details). Each row opens a per-item edit
+// sheet. Mobile-only chrome (My Applications, Settings link, Log out) sits last.
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import { SecondaryButton } from '../../../../src/components/ui';
-import CredentialModal from '../../../../src/components/CredentialModal';
-import { CREDENTIALS } from '../../../../src/lib/credentialConfigs';
+import { TAB_BAR_CLEARANCE } from '../../../../src/theme/tabBar';
+import ProfileEditSheet, { EditSpec } from '../../../../src/components/ProfileEditSheet';
 import { useAuth } from '../../../../src/context/AuthContext';
 import {
-  APP_STATUS, AUTHORITY_LABEL, EDUCATION_LABEL, LICENCE_LABEL, MEDICAL_LABEL, ROLE_LABEL,
-  appliedAgo, daysUntil, formatDate,
+  APP_STATUS, EDUCATION_LABEL, ROLE_LABEL, appliedAgo, formatDate,
 } from '../../../../src/lib/profileLabels';
-import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
+import { fontFamilies, fontSizes, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
-const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DOT = { r: '#D92D20', a: '#F79009', g: '#16A34A', n: '#C4BFB4' };
+const TXT = { r: '#B42318', a: '#92400E', g: '#166534', n: '#8A8F96' };
 
-const TOTAL_STATS: [string, string][] = [
-  ['totalTime', 'Total Hours'], ['picTime', 'PIC Hours'], ['sicTime', 'SIC Hours'],
-  ['multiEngineTime', 'Multi-Engine'], ['turbineTime', 'Turbine'], ['nightTime', 'Night'],
-  ['instrumentTime', 'Instrument'],
-];
-
-function slugify(s: string) { return String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
-
-function expiryColor(dateStr?: string | null): string | null {
-  const d = daysUntil(dateStr);
-  if (d === null) return null;
-  if (d < 30) return SEM.red;
-  if (d < 90) return SEM.amber;
-  return null;
+function fmtDue(d?: any) { if (!d) return ''; const t = new Date(d); return `${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`; }
+function properCase(s?: string) {
+  return String(s || '').split(/\s+/).map((w) => w.split('-').map((p) => {
+    if (!p) return p;
+    if (/\d/.test(p)) return p.toUpperCase();
+    if (p === p.toUpperCase() && p.length <= 4) return p;
+    return p[0].toUpperCase() + p.slice(1).toLowerCase();
+  }).join(' ')).join(' ').trim();
 }
-
-function Section({ title, subtitle, onAdd, children }: { title: string; subtitle?: string; onAdd?: () => void; children: React.ReactNode }) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <View style={styles.card}>
-      <View style={styles.sectionHead}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
-        </View>
-        {onAdd ? (
-          <Pressable style={styles.addBtn} onPress={onAdd} accessibilityLabel={`Add ${title}`}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      <View style={{ marginTop: 12 }}>{children}</View>
-    </View>
-  );
+const medicalLabel = (c?: string) => `Class ${String(c || '').replace(/^CLASS[_\s-]?/i, '')}`;
+const normType = (t?: string) => String(t || '').toUpperCase().split(/[\s\-/]+/)[0];
+const notExpired = (d?: any) => !d || new Date(d) >= new Date();
+const TRAINING_VALIDITY: Record<string, number> = { CRM: 12, DGR: 24, 'FIRST AID': 24, SMS: 12 };
+function trainingDue(t: Any) {
+  if (t.expiresAt) return new Date(t.expiresAt);
+  const m = TRAINING_VALIDITY[String(t.type || '').trim().toUpperCase()];
+  if (!m || !t.completedAt) return null;
+  const d = new Date(t.completedAt); d.setMonth(d.getMonth() + m); return d;
 }
-
-function Empty({ text }: { text: string }) {
-  const styles = useThemedStyles(createStyles);
-  return <Text style={styles.emptyNote}>{text}</Text>;
-}
-
-function ItemRow({ title, sub, onDelete }: { title: string; sub?: React.ReactNode; onDelete?: () => void }) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <View style={styles.item}>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.itemTitle}>{title}</Text>
-        {sub ? <Text style={styles.itemSub}>{sub}</Text> : null}
-      </View>
-      {onDelete ? (
-        <Pressable onPress={onDelete} hitSlop={8} style={styles.trashBtn} accessibilityLabel="Delete">
-          <Ionicons name="trash-outline" size={16} color="#991B1B" />
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
+function dueLevel(due: any) { if (!due) return 'g'; const days = Math.floor((new Date(due).getTime() - Date.now()) / 86400000); if (days <= 7) return 'r'; if (days <= 90) return 'a'; return 'g'; }
+const LICENCE_RANK = ['ATPL', 'ATP', 'MPL', 'CPL', 'PPL'];
+const LICENCE_NAME: Record<string, string> = { ATPL: 'Airline Transport Pilot', ATP: 'Airline Transport Pilot', MPL: 'Multi-crew Pilot', CPL: 'Commercial Pilot', PPL: 'Private Pilot' };
+const rankOf = (t?: string) => { const i = LICENCE_RANK.indexOf(t || ''); return i === -1 ? 99 : i; };
 
 export default function ProfileView() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
-  const [tab, setTab] = useState<'licences' | 'medical' | 'ratings' | 'training' | 'details'>('licences');
-
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { logout } = useAuth();
+
   const [profile, setProfile] = useState<Any | null>(null);
-  const [totals, setTotals] = useState<Any | null>(null);
-  const [elp, setElp] = useState<Any[]>([]);
-  const [recurrent, setRecurrent] = useState<Any[]>([]);
-  const [rtw, setRtw] = useState<Any[]>([]);
+  const [readiness, setReadiness] = useState<Any | null>(null);
+  const [summary, setSummary] = useState<Any | null>(null);
   const [apps, setApps] = useState<Any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [editing, setEditing] = useState<EditSpec>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [photoOk, setPhotoOk] = useState(true);
+  const [otwSaving, setOtwSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const results = await Promise.allSettled([
-      api.get('/profile'), api.get('/profile/totals'), api.get('/profile/elp'),
-      api.get('/profile/recurrent'), api.get('/profile/rtw'), api.get('/jobs/applications'),
+    const [p, rd, s, a] = await Promise.allSettled([
+      api.get('/profile'), api.get('/profile/readiness'), api.get('/logbook/summary'), api.get('/jobs/applications'),
     ]);
-    const [p, t, e, r, w, a] = results;
     if (p.status === 'fulfilled') setProfile(p.value.data);
-    if (t.status === 'fulfilled') setTotals(t.value.data);
-    if (e.status === 'fulfilled') setElp(e.value.data || []);
-    if (r.status === 'fulfilled') setRecurrent(r.value.data || []);
-    if (w.status === 'fulfilled') setRtw(w.value.data || []);
+    if (rd.status === 'fulfilled') setReadiness(rd.value.data);
+    if (s.status === 'fulfilled') setSummary(s.value.data);
     if (a.status === 'fulfilled') setApps(a.value.data || []);
   }, []);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
-  // Full silent refetch on every focus — the tab stays mounted, so mount-only
-  // fetches go stale. This keeps totals in sync with the logbook, credentials
-  // in sync with edits, and applications current.
   useFocusEffect(useCallback(() => { load(); }, [load]));
-
   const onRefresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
 
-  const [activeCred, setActiveCred] = useState<string | null>(null);
-  const confirmDelete = (path: string) => Alert.alert(
-    'Delete record?',
-    "This permanently removes the record and can't be undone.",
-    [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { try { await api.delete(path); await load(); } catch { /* ignore */ } } },
-    ],
-  );
+  const byTypeHours = useMemo(() => {
+    const m = new Map<string, number>();
+    (summary?.byType || []).forEach((b: Any) => m.set(normType(b.type), b.hours));
+    return m;
+  }, [summary]);
+
+  const openEdit = (kind: string, id?: string | null) => () => setEditing({ kind, id });
+
+  const toggleOtw = async () => {
+    if (otwSaving || !profile) return;
+    const next = !profile.openToWork;
+    setProfile((p: Any) => ({ ...p, openToWork: next }));
+    setOtwSaving(true);
+    try { await api.patch('/profile', { openToWork: next }); } catch { setProfile((p: Any) => ({ ...p, openToWork: !next })); }
+    finally { setOtwSaving(false); }
+  };
 
   if (loading) {
-    return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><ActivityIndicator color={pilot.navy} /><Text style={styles.loadingText}>Loading your profile...</Text></View></SafeAreaView>;
+    return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><ActivityIndicator color={pilot.navy} /><Text style={styles.loadingText}>Loading your profile…</Text></View></SafeAreaView>;
+  }
+  if (!profile) {
+    return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><Text style={styles.loadingText}>Couldn’t load your profile.</Text></View></SafeAreaView>;
   }
 
-  const licences = (profile?.certificates || []).filter((c: Any) => c.type !== 'ELP');
-  const medicals = profile?.medicals || [];
-  const ratings = profile?.ratings || [];
-  const allZero = !totals || TOTAL_STATS.every(([k]) => !totals[k]);
+  const certs: Any[] = profile.certificates || [];
+  const licences = certs.filter((c) => !['ELP', 'IR', 'ME', 'SE'].includes(c.type));
+  const supportingCerts = certs.filter((c) => ['IR', 'ME', 'SE'].includes(c.type));
+  const elp = certs.find((c) => c.type === 'ELP');
+  const ratings: Any[] = profile.ratings || [];
+  const medicals: Any[] = [...(profile.medicals || [])].sort((a, b) => new Date(b.expiryDate).getTime() - new Date(a.expiryDate).getTime());
+  const training: Any[] = profile.trainingRecords || [];
+  const rtw: Any[] = profile.rightToWork || [];
+  const prefs = profile.preferences || null;
+  const totals = summary?.totals || null;
+  const mainType = summary?.byType?.[0]?.type || ratings[0]?.aircraftType || null;
 
-  const jobSlug = (job: Any) => `${slugify(job.company)}-${slugify(job.role || job.title)}-${job.id}`;
+  const highest = LICENCE_RANK.map((t) => licences.find((c) => c.type === t)).find(Boolean) || licences[0] || null;
+  const highestRank = highest ? rankOf(highest.type) : 99;
+  const nullRatings = ratings.filter((r) => !r.licenceId);
+
+  const name = properCase(`${profile.firstName || ''} ${profile.lastName || ''}`.trim());
+  const initials = (`${(profile.firstName || '')[0] || ''}${(profile.lastName || '')[0] || ''}`).toUpperCase();
+  const place = [profile.city, profile.country].filter(Boolean).map(properCase).join(', ');
+  const headline = [profile.role && ROLE_LABEL[profile.role], mainType && properCase(mainType), place || null].filter(Boolean).join(' · ');
+
+  const activeLicence = LICENCE_RANK.map((t) => licences.find((c) => c.type === t && notExpired(c.expiryDate))).find(Boolean) || null;
+  const chips: string[] = [];
+  if (activeLicence) chips.push(activeLicence.issuingAuthority && activeLicence.issuingAuthority.toLowerCase() !== 'unknown' ? `${activeLicence.type} · ${activeLicence.issuingAuthority}` : activeLicence.type);
+  if (medicals[0] && notExpired(medicals[0].expiryDate)) chips.push(`${medicalLabel(medicals[0].medicalClass)} medical`);
+  if (rtw[0]) chips.push(`Right to work: ${properCase(rtw[0].country)}`);
+  if (elp?.englishLevel && notExpired(elp.expiryDate)) chips.push(`English: ${elp.englishLevel}`);
+
+  const otwParts: string[] = [];
+  if (prefs?.preferredCountries?.length) otwParts.push(prefs.preferredCountries.map(properCase).join(', '));
+  if (prefs?.preferredAircraft?.length) otwParts.push(prefs.preferredAircraft.join(', '));
+  const otwSummary = otwParts.join(' · ');
+
+  const items: Any[] = readiness?.items || [];
+  const strength = readiness?.strength || null;
+  const nudge = readiness?.nudge || null;
+  const lv = { expired: 0, due: 0, missing: 0 };
+  items.forEach((it) => { if (it.level === 'expired' || it.level === 'expiring') lv.expired++; else if (it.level === 'due') lv.due++; else if (it.level === 'missing') lv.missing++; });
+  const attnHeader = [lv.expired && `${lv.expired} expired`, lv.due && `${lv.due} due soon`, lv.missing && `${lv.missing} to add`].filter(Boolean).join(' · ');
+
+  const readinessText = (it: Any): { cls: keyof typeof DOT; txt: string } => {
+    if (it.level === 'expired') return { cls: 'r', txt: it.date ? `Expired ${formatDate(it.date)}` : 'Expired' };
+    if (it.level === 'expiring') return { cls: 'r', txt: it.days === 0 ? 'Expires today' : `Expires in ${it.days} day${it.days === 1 ? '' : 's'}` };
+    if (it.level === 'due') return { cls: 'a', txt: `${it.days} days left` };
+    return { cls: 'n', txt: it.type === 'authority' ? 'Pick authority' : it.type === 'passport' ? 'Add date' : 'Add' };
+  };
+
+  const St = ({ cls, children }: { cls: keyof typeof DOT; children: React.ReactNode }) => (
+    <View style={styles.stRow}><View style={[styles.dot, { backgroundColor: DOT[cls] }]} /><Text style={[styles.stText, { color: TXT[cls] }]} numberOfLines={1}>{children}</Text></View>
+  );
+  const Row = ({ onPress, children, nested }: { onPress?: () => void; children: React.ReactNode; nested?: boolean }) => (
+    <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [styles.row, nested && styles.rowNested, pressed && onPress && styles.rowPressed]}>
+      {children}
+      {onPress ? <Ionicons name="chevron-forward" size={16} color={pilot.muted} style={{ marginLeft: 2 }} /> : null}
+    </Pressable>
+  );
+  const AddLink = ({ label, onPress }: { label: string; onPress: () => void }) => (
+    <Pressable onPress={onPress} hitSlop={6}><Text style={styles.addLink}>{label}</Text></Pressable>
+  );
+
+  const slug = (job: Any) => `${String(job.company || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${String(job.role || job.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${job.id}`;
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: TAB_BAR_CLEARANCE + insets.bottom + 12 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
       >
-        {/* ── Instagram-style header: avatar + name / phone / role ─────────── */}
-        <View style={styles.igHeader}>
-          <View style={styles.igAvatar}>
-            <Text style={styles.igAvatarText}>
-              {((((profile?.firstName || ' ')[0] || '') + ((profile?.lastName || ' ')[0] || '')).toUpperCase().trim()) || 'P'}
-            </Text>
-          </View>
+        {/* ── HERO (phone/email never here) ───────────────────────────────── */}
+        <View style={styles.hero}>
+          {profile.photoUrl && photoOk
+            ? <Image source={{ uri: profile.photoUrl }} style={styles.avatar} onError={() => setPhotoOk(false)} />
+            : <View style={[styles.avatar, styles.avatarInit]}><Text style={styles.avatarInitText}>{initials || 'P'}</Text></View>}
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.igName} numberOfLines={1}>
-              {[profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || 'Pilot'}
-            </Text>
-            {profile?.phone ? <Text style={styles.igPhone}>{profile.phone}</Text> : null}
-            {profile?.role ? (
-              <View style={styles.igRolePill}>
-                <Text style={styles.igRoleText}>
-                  {String(profile.role).replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, (c: string) => c.toUpperCase())}
-                </Text>
-              </View>
-            ) : null}
+            <Text style={styles.name} numberOfLines={2}>{name || 'Pilot'}</Text>
+            {headline ? <Text style={styles.headline} numberOfLines={2}>{headline}</Text> : null}
           </View>
-          <Pressable style={styles.editBtn} onPress={() => router.push('/profile/edit')}>
-            <Ionicons name="create-outline" size={16} color={pilot.navy} />
-            <Text style={styles.editBtnText}>Edit</Text>
-          </Pressable>
         </View>
 
-        {/* Hours — Instagram-style counters */}
-        <View style={styles.igStatsRow}>
-          {([['Total hours', totals?.totalTime], ['PIC', totals?.picTime], ['SIC', totals?.sicTime]] as [string, number][]).map(([label, v]) => (
-            <View key={label} style={{ alignItems: 'center' }}>
-              <Text style={styles.igStatNum}>{(Number(v) || 0).toFixed(0)}</Text>
-              <Text style={styles.igStatLabel}>{label}</Text>
+        {chips.length > 0 && (
+          <View style={styles.chips}>{chips.map((c, i) => <View key={i} style={styles.chip}><Text style={styles.chipText}>{c}</Text></View>)}</View>
+        )}
+
+        <View style={styles.otw}>
+          <Switch value={!!profile.openToWork} onValueChange={toggleOtw} trackColor={{ true: '#16A34A', false: '#D6D2C8' }} thumbColor="#fff" />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.otwTitle}>Open to work</Text>
+            <Text style={styles.otwSub} numberOfLines={1}>{profile.openToWork ? (otwSummary || 'Visible to airlines') : 'Not visible to airlines'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.actions}>
+          <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => router.push('/cv-builder')}><Ionicons name="download-outline" size={16} color={pilot.navy} /><Text style={styles.btnGhostText}>Download CV</Text></Pressable>
+          <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => setEditing({ kind: 'personal' })}><Ionicons name="pencil-outline" size={16} color="#fff" /><Text style={styles.btnPrimaryText}>Edit profile</Text></Pressable>
+        </View>
+
+        {/* ── APPLICATION READINESS ───────────────────────────────────────── */}
+        {items.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.attnLabel}>READINESS{attnHeader ? ` · ${attnHeader}` : ''}</Text>
+            <View style={{ marginTop: 6 }}>
+              {items.map((it, i) => {
+                const s = readinessText(it);
+                const right = it.date && (it.level === 'expiring' || it.level === 'due') ? `${s.txt} · ${formatDate(it.date)}` : s.txt;
+                return (
+                  <View key={i} style={styles.attnRow}>
+                    <View style={styles.attnLeft}><View style={[styles.dot, { backgroundColor: DOT[s.cls] }]} /><Text style={styles.attnName} numberOfLines={1}>{it.label}</Text></View>
+                    <Text style={[styles.attnRight, { color: TXT[s.cls] }]} numberOfLines={1}>{right}</Text>
+                  </View>
+                );
+              })}
             </View>
-          ))}
-        </View>
+          </View>
+        )}
 
-        {/* Map + airport statistics popup trigger */}
-        <Pressable
-          style={({ pressed }) => [styles.mapBtn, pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 }]}
-          onPress={() => router.push('/profile/flight-map')}
-        >
-          <Ionicons name="map-outline" size={17} color="#FFFFFF" />
-          <Text style={styles.mapBtnText}>Flight map & airports</Text>
-        </Pressable>
+        {/* ── SNAPSHOT + STRENGTH ─────────────────────────────────────────── */}
+        {totals && (
+          <View style={styles.snap}>
+            <View style={styles.snapCell}><Text style={styles.snapV}>{Math.round(totals.total).toLocaleString()}<Text style={styles.snapU}> h</Text></Text><Text style={styles.snapK}>Total time</Text></View>
+            {mainType && byTypeHours.has(normType(mainType)) && <View style={[styles.snapCell, styles.snapBorderL]}><Text style={styles.snapV}>{Math.round(byTypeHours.get(normType(mainType)) || 0).toLocaleString()}<Text style={styles.snapU}> h</Text></Text><Text style={styles.snapK}>On {properCase(mainType)}</Text></View>}
+            <View style={[styles.snapCell, styles.snapBorderT]}><Text style={styles.snapV}>{(totals.flightCount || 0).toLocaleString()}</Text><Text style={styles.snapK}>Flights logged</Text></View>
+            {ratings.length > 0 && <View style={[styles.snapCell, styles.snapBorderT, styles.snapBorderL]}><Text style={styles.snapV}>{ratings.length}</Text><Text style={styles.snapK}>Rating{ratings.length === 1 ? '' : 's'}</Text></View>}
+          </View>
+        )}
+        {strength && (
+          <View style={styles.card}>
+            <View style={styles.strengthTop}><Text style={styles.strengthLabel}>Profile strength</Text><Text style={styles.strengthPct}>{strength.pct}%</Text></View>
+            <View style={styles.bar}><View style={[styles.barFill, { width: `${strength.pct}%` }]} /></View>
+            {nudge?.fields?.length > 0 && (
+              <Text style={styles.hint}>Add <Text style={styles.hintB}>{nudge.fields.slice(0, 2).map((f: Any) => f.field).join(' and ')}</Text> to check {nudge.incompleteJobs} more job{nudge.incompleteJobs === 1 ? '' : 's'}. <Text style={styles.hintLink} onPress={() => router.push('/jobs')}>See jobs</Text></Text>
+            )}
+          </View>
+        )}
 
-        {/* Tab row — Licences is the default leftmost tab */}
-        <View style={styles.igTabs}>
-          {([['licences', 'Licences'], ['medical', 'Medical'], ['ratings', 'Ratings'], ['training', 'Training'], ['details', 'Details']] as const).map(([key, label]) => (
-            <Pressable key={key} onPress={() => setTab(key)} style={[styles.igTab, tab === key && styles.igTabActive]}>
-              <Text style={[styles.igTabText, tab === key && styles.igTabTextActive]}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {tab === 'details' && (<>
-        {/* Personal Information (read-only; edit via /profile/edit) */}
-        <Section title="Personal Information" subtitle="Basic details on your account">
-          <ItemRow title="Name" sub={[profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || '—'} />
-          <ItemRow title="Phone" sub={profile?.phone || '—'} />
-          <ItemRow title="Location" sub={[profile?.city, profile?.country].filter(Boolean).join(', ') || '—'} />
-          <ItemRow title="Education" sub={profile?.education ? EDUCATION_LABEL[profile.education] || profile.education : '—'} />
-          <ItemRow title="Role" sub={profile?.role ? ROLE_LABEL[profile.role] || profile.role : '—'} />
-          <ItemRow title="Passport Expiry" sub={profile?.passportExpiry ? formatDate(profile.passportExpiry) : '—'} />
-        </Section>
-
-        {/* Licences */}
-        </>)}
-
-        {tab === 'licences' && (<>
-        <Section title="My Pilot Licences" subtitle="Add every licence you hold" onAdd={() => setActiveCred('licence')}>
-          {licences.length === 0 ? <Empty text="No licences added yet." /> : licences.map((c: Any) => (
-            <ItemRow key={c.id} title={LICENCE_LABEL[c.type] || c.type} onDelete={() => confirmDelete(CREDENTIALS.licence.deletePath(c.id))}
-              sub={<>{AUTHORITY_LABEL[c.issuingAuthority] || c.issuingAuthority}{c.certificateNumber ? ` · #${c.certificateNumber}` : ''}{c.expiryDate ? ` · Exp ${formatDate(c.expiryDate)}` : ''}</>} />
-          ))}
-        </Section>
-
-        {/* Medical */}
-        </>)}
-
-        {tab === 'medical' && (<>
-        <Section title="Medical Certificate" subtitle="Required by most airlines" onAdd={() => setActiveCred('medical')}>
-          {medicals.length === 0 ? <Empty text="No medical certificate added." /> : medicals.map((m: Any) => {
-            const expired = new Date(m.expiryDate) < new Date();
-            return <ItemRow key={m.id} title={MEDICAL_LABEL[m.medicalClass] || m.medicalClass} onDelete={() => confirmDelete(CREDENTIALS.medical.deletePath(m.id))}
-              sub={<Text style={{ color: expired ? SEM.red : (expiryColor(m.expiryDate) || SEM.green) }}>{expired ? '⚠ Expired ' : 'Valid until '}{formatDate(m.expiryDate)}</Text>} />;
+        {/* ── LICENCES & RATINGS ──────────────────────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Licences & ratings</Text>
+          {licences.length === 0 && ratings.length === 0 ? <Text style={styles.empty}>No licences added yet.</Text> : licences.map((c) => {
+            const superseded = highest && c.id !== highest.id && rankOf(c.type) > highestRank;
+            const isHighest = highest && c.id === highest.id;
+            const item = items.find((x) => x.type === 'licence' && x.itemId === c.id);
+            let st: { cls: keyof typeof DOT; txt: string } | null = null;
+            if (superseded) st = { cls: 'n', txt: `Superseded by ${highest.type}` };
+            else if (item) st = readinessText(item);
+            else if (c.expiryDate) st = { cls: notExpired(c.expiryDate) ? 'g' : 'r', txt: notExpired(c.expiryDate) ? `Valid until ${formatDate(c.expiryDate)}` : `Expired ${formatDate(c.expiryDate)}` };
+            const nested = isHighest ? [...ratings.filter((r) => r.licenceId === c.id), ...nullRatings] : ratings.filter((r) => r.licenceId === c.id);
+            return (
+              <View key={c.id}>
+                <Row onPress={openEdit('licence', c.id)}>
+                  <View style={styles.rowMain}><Text style={[styles.rowN, superseded && styles.rowNFaint]}>{c.type} · {LICENCE_NAME[c.type] || 'Licence'}</Text>{c.issuingAuthority && c.issuingAuthority.toLowerCase() !== 'unknown' ? <Text style={styles.rowD}>{c.issuingAuthority}</Text> : null}</View>
+                  {st ? <St cls={st.cls}>{st.txt}</St> : null}
+                </Row>
+                {(nested.length > 0 || (isHighest && supportingCerts.length > 0)) && (
+                  <View style={styles.nest}>
+                    {nested.map((r) => {
+                      const h = byTypeHours.get(normType(r.aircraftType));
+                      return (
+                        <Row key={r.id} nested onPress={openEdit('rating', r.id)}>
+                          <View style={styles.rowMain}><Text style={styles.rowNnest}>{properCase(r.aircraftType)} {r.category && /single|multi/i.test(r.category) ? 'rating' : 'type rating'}</Text>{h != null ? <Text style={styles.rowD}>Hours from your logbook</Text> : null}</View>
+                          {h != null ? <Text style={styles.rowH}>{Math.round(h).toLocaleString()} h</Text> : null}
+                        </Row>
+                      );
+                    })}
+                    {isHighest && supportingCerts.map((sc) => (
+                      <Row key={sc.id} nested>
+                        <View style={styles.rowMain}><Text style={styles.rowNnest}>{sc.type === 'IR' ? 'Instrument rating (IR)' : sc.type === 'ME' ? 'Multi-engine (MEP)' : 'Single-engine (SEP)'}</Text></View>
+                        <St cls="g">{sc.expiryDate ? `Valid until ${formatDate(sc.expiryDate)}` : 'Valid'}</St>
+                      </Row>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
           })}
-        </Section>
+          {/* English proficiency is a licence endorsement, not training */}
+          <Row onPress={openEdit('elp', elp?.id)}>
+            <View style={styles.rowMain}><Text style={styles.rowN}>English proficiency (ICAO)</Text><Text style={styles.rowD}>{elp?.englishLevel ? `${elp.englishLevel}${elp.expiryDate ? ` · valid until ${formatDate(elp.expiryDate)}` : ''}` : 'Required for international operations'}</Text></View>
+            {!elp?.englishLevel ? <Text style={styles.linkSm}>Add level</Text> : null}
+          </Row>
+          <View style={styles.addRow}><AddLink label="+ Add licence" onPress={() => setEditing({ kind: 'licence' })} /><AddLink label="+ Add rating" onPress={() => setEditing({ kind: 'rating' })} /></View>
+        </View>
 
-        {/* Type Ratings */}
-        </>)}
+        {/* ── MEDICAL ─────────────────────────────────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Medical</Text>
+          {medicals.length === 0 ? <Text style={styles.empty}>No medical on file.</Text> : medicals.map((m) => {
+            const item = items.find((x) => x.type === 'medical');
+            const st = item ? readinessText(item) : { cls: 'g' as const, txt: `Valid until ${formatDate(m.expiryDate)}` };
+            return (
+              <Row key={m.id} onPress={openEdit('medical', m.id)}>
+                <View style={styles.rowMain}><Text style={styles.rowN}>{medicalLabel(m.medicalClass)}</Text><Text style={styles.rowD}>Valid until {formatDate(m.expiryDate)}</Text></View>
+                <St cls={st.cls}>{st.txt}</St>
+              </Row>
+            );
+          })}
+          <View style={styles.addRow}><AddLink label="+ Add medical" onPress={() => setEditing({ kind: 'medical' })} /></View>
+        </View>
 
-        {tab === 'ratings' && (<>
-        <Section title="Aircraft Type Ratings" subtitle="Aircraft you are rated to fly" onAdd={() => setActiveCred('rating')}>
-          {ratings.length === 0 ? <Empty text="No type ratings added." /> : ratings.map((r: Any) => (
-            <ItemRow key={r.id} title={r.aircraftType} onDelete={() => confirmDelete(CREDENTIALS.rating.deletePath(r.id))}
-              sub={r.hoursOnType > 0 ? `${r.hoursOnType.toLocaleString()} hrs on type` : undefined} />
+        {/* ── TRAINING ────────────────────────────────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Training</Text>
+          {training.length === 0 ? <Text style={styles.empty}>No training records yet.</Text> : null}
+          {training.map((t) => {
+            const due = trainingDue(t);
+            const cls = dueLevel(due) as keyof typeof DOT;
+            const months = TRAINING_VALIDITY[String(t.type || '').trim().toUpperCase()];
+            const item = items.find((x) => x.type === 'training' && x.itemId === t.id);
+            const st = item ? readinessText(item) : null;
+            return (
+              <Row key={t.id} onPress={openEdit('training', t.id)}>
+                <View style={styles.rowMain}><Text style={styles.rowN}>{t.type}</Text><Text style={styles.rowD}>Completed {formatDate(t.completedAt)}{months && !t.expiresAt ? ` · due every ${months} months` : ''}</Text></View>
+                {due ? (st && (st.cls === 'r' || st.cls === 'a') ? <St cls={st.cls}>{st.txt}</St> : <St cls={cls}>Due {fmtDue(due)}</St>) : null}
+              </Row>
+            );
+          })}
+          <View style={styles.addRow}><AddLink label="+ Add training" onPress={() => setEditing({ kind: 'training' })} /></View>
+        </View>
+
+        {/* ── RIGHT TO WORK & PASSPORT ────────────────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Right to work & passport</Text>
+          {rtw.map((w) => (
+            <Row key={w.id} onPress={openEdit('rtw', w.id)}>
+              <View style={styles.rowMain}><Text style={styles.rowN}>{properCase(w.country)}</Text>{w.documentType ? <Text style={styles.rowD}>{properCase(w.documentType)}</Text> : null}</View>
+              <St cls="g">{w.expiresAt ? `Until ${formatDate(w.expiresAt)}` : 'No expiry'}</St>
+            </Row>
           ))}
-        </Section>
+          <Row onPress={openEdit('passport')}>
+            <View style={styles.rowMain}><Text style={styles.rowN}>Passport</Text><Text style={styles.rowD}>Used for expiry reminders</Text></View>
+            {profile.passportExpiry ? <St cls="g">{formatDate(profile.passportExpiry)}</St> : <Text style={styles.linkSm}>Add expiry</Text>}
+          </Row>
+          <View style={styles.addRow}><AddLink label="+ Add right to work" onPress={() => setEditing({ kind: 'rtw' })} /></View>
+        </View>
 
-        {/* ELP */}
-        </>)}
+        {/* ── JOB PREFERENCES ─────────────────────────────────────────────── */}
+        <View style={styles.card}>
+          <View style={styles.cardHead}><Text style={styles.cardTitle}>Job preferences</Text><Pressable onPress={() => setEditing({ kind: 'prefs' })}><Text style={styles.editLink}>Edit</Text></Pressable></View>
+          {(!prefs || (!prefs.preferredCountries?.length && !prefs.preferredAircraft?.length && !prefs.preferredContractTypes?.length)) ? <Text style={styles.empty}>No preferences set yet.</Text> : (
+            <View style={{ gap: 10, marginTop: 6 }}>
+              {prefs.preferredCountries?.length > 0 && <View style={styles.kv}><Text style={styles.kvK}>Regions</Text><View style={styles.tags}>{prefs.preferredCountries.map((c: string, i: number) => <View key={i} style={styles.tag}><Text style={styles.tagText}>{properCase(c)}</Text></View>)}</View></View>}
+              {prefs.preferredAircraft?.length > 0 && <View style={styles.kv}><Text style={styles.kvK}>Aircraft</Text><View style={styles.tags}>{prefs.preferredAircraft.map((a: string, i: number) => <View key={i} style={styles.tag}><Text style={styles.tagText}>{a}</Text></View>)}</View></View>}
+              {prefs.preferredContractTypes?.length > 0 && <View style={styles.kv}><Text style={styles.kvK}>Contract</Text><Text style={styles.kvV}>{prefs.preferredContractTypes.map(properCase).join(', ')}</Text></View>}
+              <View style={styles.kv}><Text style={styles.kvK}>Relocate</Text><Text style={styles.kvV}>{profile.willingToRelocate ? 'Yes' : 'No'}</Text></View>
+            </View>
+          )}
+        </View>
 
-        {tab === 'training' && (<>
-        <Section title="English Language Proficiency" subtitle="ICAO ELP — required for all international operations" onAdd={() => setActiveCred('elp')}>
-          {elp.length === 0 ? <Empty text="No ELP record added. ICAO Level 4 minimum is required by most airlines." /> : elp.map((i: Any) => (
-            <ItemRow key={i.id} title={`ICAO ${i.level}`} onDelete={() => confirmDelete(CREDENTIALS.elp.deletePath(i.id))}
-              sub={<>{i.endorsementNumber ? `#${i.endorsementNumber}` : ''}{i.expiryDate ? ` · Exp ${formatDate(i.expiryDate)}` : (i.noExpiry || i.level === 'Level 6' ? ' · No expiry' : '')}</>} />
-          ))}
-        </Section>
+        {/* ── PERSONAL DETAILS ────────────────────────────────────────────── */}
+        <View style={styles.card}>
+          <View style={styles.cardHead}><Text style={styles.cardTitle}>Personal details</Text><Pressable onPress={() => setEditing({ kind: 'personal' })}><Text style={styles.editLink}>Edit</Text></Pressable></View>
+          <View style={{ gap: 10, marginTop: 6 }}>
+            {place ? <View style={styles.kv}><Text style={styles.kvK}>Location</Text><Text style={styles.kvV}>{place}</Text></View> : null}
+            {profile.nationality ? <View style={styles.kv}><Text style={styles.kvK}>Nationality</Text><Text style={styles.kvV}>{properCase(profile.nationality)}</Text></View> : null}
+            {profile.phone ? <View style={styles.kv}><Text style={styles.kvK}>Phone</Text><Text style={styles.kvV}>{profile.phone}</Text></View> : null}
+            {profile.education ? <View style={styles.kv}><Text style={styles.kvK}>Education</Text><Text style={styles.kvV}>{EDUCATION_LABEL[profile.education] || profile.education}</Text></View> : null}
+          </View>
+        </View>
 
-        </>)}
-
-        {tab === 'training' && (<>
-        {/* Recurrent Training */}
-        <Section title="Recurrent Training" subtitle="Track your mandatory recurrent training" onAdd={() => setActiveCred('recurrent')}>
-          {recurrent.length === 0 ? <Empty text="No recurrent training records." /> : recurrent.map((i: Any) => (
-            <ItemRow key={i.id} title={i.trainingType} onDelete={() => confirmDelete(CREDENTIALS.recurrent.deletePath(i.id))}
-              sub={<>{i.provider ? `${i.provider} · ` : ''}Completed: {formatDate(i.completionDate)}{i.expiryDate ? ` · Exp ${formatDate(i.expiryDate)}` : ''}</>} />
-          ))}
-        </Section>
-
-        </>)}
-
-        {tab === 'details' && (<>
-        {/* Right to Work */}
-        <Section title="Right to Work" subtitle="Countries where you have the right to work" onAdd={() => setActiveCred('rtw')}>
-          {rtw.length === 0 ? <Empty text="No right-to-work documents added." /> : rtw.map((i: Any) => (
-            <ItemRow key={i.id} title={i.country} onDelete={() => confirmDelete(CREDENTIALS.rtw.deletePath(i.id))}
-              sub={<>{i.documentType}{i.documentNumber ? ` · #${i.documentNumber}` : ''}{i.noExpiry ? ' · No expiry' : i.expiryDate ? ` · Exp ${formatDate(i.expiryDate)}` : ''}</>} />
-          ))}
-        </Section>
-
-        </>)}
-
-        {/* My Applications (mobile-only surface for GET /jobs/applications) */}
-        <Section title="My Applications" subtitle={`${apps.length} application${apps.length === 1 ? '' : 's'}`}>
-          {apps.length === 0 ? <Empty text="You haven't applied to any jobs yet." /> : (
-            <>
+        {/* ── Mobile-only chrome ──────────────────────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>My applications</Text>
+          {apps.length === 0 ? <Text style={styles.empty}>You haven’t applied to any jobs yet.</Text> : (
+            <View style={{ marginTop: 6 }}>
               {apps.slice(0, 5).map((a: Any) => {
                 const st = APP_STATUS[a.status] || { label: a.status, color: pilot.muted, bg: '#F1F1F1' };
                 return (
-                  <Pressable key={a.id} style={styles.appItem} onPress={() => router.push(`/jobs/${jobSlug(a.job)}`)}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.itemTitle} numberOfLines={1}>{a.job.title}</Text>
-                      <Text style={styles.itemSub}>{a.job.company} · {appliedAgo(a.appliedAt)}</Text>
-                    </View>
+                  <Row key={a.id} onPress={() => router.push(`/jobs/${slug(a.job)}`)}>
+                    <View style={styles.rowMain}><Text style={styles.rowN} numberOfLines={1}>{a.job.title}</Text><Text style={styles.rowD}>{a.job.company} · {appliedAgo(a.appliedAt)}</Text></View>
                     <View style={[styles.statusPill, { backgroundColor: st.bg }]}><Text style={[styles.statusPillText, { color: st.color }]}>{st.label}</Text></View>
-                  </Pressable>
+                  </Row>
                 );
               })}
-              {apps.length > 5 ? (
-                <Pressable onPress={() => router.push('/profile/applications')}><Text style={styles.viewAll}>View all {apps.length} applications →</Text></Pressable>
-              ) : null}
-            </>
+              {apps.length > 5 ? <Pressable onPress={() => router.push('/profile/applications')}><Text style={styles.addLink}>View all {apps.length} applications →</Text></Pressable> : null}
+            </View>
           )}
-        </Section>
-
-        <Section title="Settings">
-          <Pressable style={styles.settingsRow} onPress={() => router.push('/settings/notifications')} accessibilityLabel="Notifications settings">
-            <Ionicons name="notifications-outline" size={18} color={pilot.navy} />
-            <Text style={styles.settingsRowText}>Notifications</Text>
-            <Ionicons name="chevron-forward" size={18} color={pilot.muted} />
-          </Pressable>
-        </Section>
-
-
-        <View style={{ marginTop: 8 }}>
-          <SecondaryButton label="Log out" onPress={logout} />
         </View>
+
+        <Pressable style={styles.settingsRow} onPress={() => router.push('/settings/notifications')}>
+          <Ionicons name="notifications-outline" size={18} color={pilot.navy} /><Text style={styles.settingsRowText}>Notifications</Text><Ionicons name="chevron-forward" size={18} color={pilot.muted} />
+        </Pressable>
+        <View style={{ marginTop: 12 }}><SecondaryButton label="Log out" onPress={logout} /></View>
       </ScrollView>
-      <CredentialModal config={activeCred ? CREDENTIALS[activeCred] : null} visible={!!activeCred} onClose={() => setActiveCred(null)} onAdded={load} />
+
+      {editing && (
+        <ProfileEditSheet
+          edit={editing}
+          profile={profile}
+          onClose={() => setEditing(null)}
+          onSaved={(msg) => { setEditing(null); setToast(msg); load(); setTimeout(() => setToast(null), 2200); }}
+        />
+      )}
+      {toast && <View style={styles.toast}><Ionicons name="checkmark-circle" size={16} color="#7BE0A0" /><Text style={styles.toastText}>{toast}</Text></View>}
     </SafeAreaView>
   );
 }
 
-// ── Flight experience dashboard: PIC/SIC donut + category proportion bars ────
-// Mirrors the web Profile dashboard. Donut splits TOTAL time by role (PIC/SIC
-// sum to the total); night/instrument/multi/turbine overlap each other, so
-// they render as bars showing their share of total time instead.
+const createStyles = (pilot: ThemePalette) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: pilot.cream },
+  content: { paddingHorizontal: 16, paddingTop: spacing.xl, gap: 12 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 80 },
+  loadingText: { color: pilot.muted, fontFamily: fontFamilies.body },
+
+  hero: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: { width: 72, height: 72, borderRadius: 36 },
+  avatarInit: { backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center' },
+  avatarInitText: { color: '#fff', fontFamily: fontFamilies.display, fontSize: 26, fontWeight: '600' },
+  name: { fontFamily: fontFamilies.display, fontSize: 23, color: pilot.ink, fontWeight: '600' },
+  headline: { fontSize: 13, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 3 },
+
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 4 },
+  chipText: { fontSize: 12, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
+
+  otw: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
+  otwTitle: { fontSize: 13.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
+  otwSub: { fontSize: 12.5, color: pilot.muted, fontFamily: fontFamilies.body },
+
+  actions: { flexDirection: 'row', gap: 8 },
+  btn: { flex: 1, height: 44, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  btnGhost: { borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface },
+  btnGhostText: { color: pilot.ink, fontFamily: fontFamilies.bodySemiBold, fontSize: 13.5 },
+  btnPrimary: { backgroundColor: pilot.navy },
+  btnPrimaryText: { color: '#fff', fontFamily: fontFamilies.bodySemiBold, fontSize: 13.5 },
+
+  card: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 14, padding: 16 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardTitle: { fontFamily: fontFamilies.display, fontSize: 16, color: pilot.ink, fontWeight: '600' },
+  editLink: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: 13 },
+  empty: { fontSize: 13, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 6 },
+
+  attnLabel: { fontSize: 11, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.5, color: pilot.muted, textTransform: 'uppercase' },
+  attnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderTopWidth: 1, borderTopColor: '#F0EDE6' },
+  attnLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
+  attnName: { fontSize: 13.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink, flexShrink: 1 },
+  attnRight: { fontSize: 12.5, fontFamily: fontFamilies.bodySemiBold },
+
+  snap: { flexDirection: 'row', flexWrap: 'wrap', backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 14, overflow: 'hidden' },
+  snapCell: { width: '50%', paddingVertical: 12, alignItems: 'center' },
+  snapBorderL: { borderLeftWidth: 1, borderLeftColor: pilot.line },
+  snapBorderT: { borderTopWidth: 1, borderTopColor: pilot.line },
+  snapV: { fontFamily: fontFamilies.display, fontSize: 20, color: pilot.ink, fontWeight: '600' },
+  snapU: { fontFamily: fontFamilies.body, fontSize: 12, color: pilot.muted, fontWeight: '400' },
+  snapK: { fontSize: 11, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
+
+  strengthTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  strengthLabel: { fontSize: 12.5, fontFamily: fontFamilies.bodyMedium, color: pilot.ink },
+  strengthPct: { fontSize: 12.5, fontFamily: fontFamilies.mono, color: pilot.ink, fontWeight: '700' },
+  bar: { height: 6, borderRadius: 4, backgroundColor: '#ECE9E2', overflow: 'hidden' },
+  barFill: { height: '100%', backgroundColor: pilot.navy, borderRadius: 4 },
+  hint: { fontSize: 12.5, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 8, lineHeight: 18 },
+  hintB: { color: pilot.ink, fontFamily: fontFamilies.bodySemiBold },
+  hintLink: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
+
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderTopWidth: 1, borderTopColor: '#F0EDE6', marginHorizontal: -4, paddingHorizontal: 4, borderRadius: 8 },
+  rowNested: {},
+  rowPressed: { backgroundColor: 'rgba(0,63,136,0.06)' },
+  rowMain: { flex: 1, minWidth: 0 },
+  rowN: { fontFamily: fontFamilies.bodySemiBold, fontSize: 14, color: pilot.ink },
+  rowNFaint: { color: pilot.muted, fontFamily: fontFamilies.bodyMedium },
+  rowNnest: { fontFamily: fontFamilies.bodyMedium, fontSize: 13.5, color: pilot.ink },
+  rowD: { fontSize: 12.5, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
+  rowH: { fontFamily: fontFamilies.body, fontSize: 13, color: pilot.ink, fontWeight: '700' },
+  nest: { marginLeft: 12, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: '#ECE9E2' },
+
+  stRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  stText: { fontSize: 12.5, fontFamily: fontFamilies.bodySemiBold },
+  dot: { width: 9, height: 9, borderRadius: 5 },
+
+  addRow: { flexDirection: 'row', gap: 18, marginTop: 10 },
+  addLink: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: 13 },
+  linkSm: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: 12.5 },
+
+  kv: { flexDirection: 'row', gap: 12 },
+  kvK: { width: 92, color: pilot.muted, fontSize: 13.5, fontFamily: fontFamilies.body },
+  kvV: { flex: 1, fontSize: 13.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
+  tags: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  tag: { backgroundColor: 'rgba(0,63,136,0.07)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 3 },
+  tagText: { fontSize: 12.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.navy },
+
+  statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  statusPillText: { fontSize: 11, fontFamily: fontFamilies.bodyBold },
+
+  settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 4 },
+  settingsRowText: { flex: 1, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.base, color: pilot.ink },
+
+  toast: { position: 'absolute', bottom: 90, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#14301C', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24 },
+  toastText: { color: '#fff', fontSize: 13.5, fontFamily: fontFamilies.bodySemiBold },
+});
+
+// ── Flight experience dashboard (PIC/SIC donut + category bars) — used by the
+// Flight-map screen, which passes its own `styles`. Kept here for that import.
 export function FlightDashboard({ totals, styles, palette }: { totals: Any; styles: Any; palette: ThemePalette }) {
   const total = Number(totals?.totalTime) || 0;
   const pic = Number(totals?.picTime) || 0;
@@ -398,76 +568,3 @@ export function FlightDashboard({ totals, styles, palette }: { totals: Any; styl
     </View>
   );
 }
-
-const createStyles = (pilot: ThemePalette) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingBottom: 116 /* clears floating tab bar */ },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 80 },
-  loadingText: { color: pilot.muted, fontFamily: fontFamilies.body },
-
-  settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
-  settingsRowText: { flex: 1, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.base, color: pilot.ink },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink },
-  subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginTop: 4 },
-  editBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: pilot.navy, borderRadius: 4, paddingHorizontal: 14, paddingVertical: 8, marginTop: 4 },
-  editBtnText: { color: pilot.navy, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm },
-
-  card: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 20, marginBottom: 16 },
-  sectionHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  cardTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.lg, color: pilot.ink },
-  cardSubtitle: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
-  addBtn: { borderWidth: 1, borderColor: pilot.navy, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6 },
-  addBtnText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm },
-  trashBtn: { padding: 6 },
-  emptyNote: { color: pilot.muted, fontSize: fontSizes.sm, fontStyle: 'italic', fontFamily: fontFamilies.body },
-
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  igHeader: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 18 },
-  igAvatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center' },
-  igAvatarText: { color: '#FFFFFF', fontFamily: fontFamilies.display, fontSize: 28, fontWeight: '600' },
-  igName: { fontFamily: fontFamilies.display, fontSize: 22, color: pilot.ink, fontWeight: '600' },
-  igPhone: { fontSize: 13, fontFamily: fontFamilies.body, color: pilot.muted, marginTop: 2 },
-  igRolePill: { alignSelf: 'flex-start', backgroundColor: 'rgba(0,63,136,0.08)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 },
-  igRoleText: { fontSize: 12, fontFamily: fontFamilies.bodySemiBold, color: pilot.navy },
-  igStatsRow: { flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1, borderBottomWidth: 1, borderColor: pilot.line, paddingVertical: 12, marginBottom: 12 },
-  igStatNum: { fontFamily: fontFamilies.mono, fontSize: 20, fontWeight: '800', color: pilot.ink },
-  igStatLabel: { fontSize: 11, fontFamily: fontFamilies.bodyMedium, color: pilot.muted, marginTop: 2 },
-  mapBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: pilot.navy, borderRadius: 10, paddingVertical: 12, marginBottom: 16 },
-  mapBtnText: { color: '#FFFFFF', fontSize: 14, fontFamily: fontFamilies.bodySemiBold },
-  igTabs: { flexDirection: 'row', borderBottomWidth: 1, borderColor: pilot.line, marginBottom: 16 },
-  igTab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  igTabActive: { borderBottomColor: pilot.navy },
-  igTabText: { fontSize: 11.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted, textTransform: 'uppercase', letterSpacing: 0.4 },
-  igTabTextActive: { color: pilot.navy },
-  dashTop: { flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 16 },
-  donutWrap: { width: 124, height: 124, alignItems: 'center', justifyContent: 'center' },
-  donutCenter: { position: 'absolute', alignItems: 'center' },
-  donutNum: { fontFamily: fontFamilies.mono, fontSize: 21, fontWeight: '800', color: pilot.ink },
-  donutLabel: { fontSize: 9, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 3 },
-  legendCol: { flex: 1, gap: 8 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  legendDot: { width: 10, height: 10, borderRadius: 3 },
-  legendLabel: { fontSize: 13, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink, flex: 1 },
-  legendVal: { fontFamily: fontFamilies.mono, fontSize: 12, color: pilot.muted },
-  barBlock: { marginBottom: 10 },
-  barHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  barLabel: { fontSize: 12, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
-  barVal: { fontFamily: fontFamilies.mono, fontSize: 11, color: pilot.muted },
-  barTrack: { height: 8, backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 4, overflow: 'hidden' },
-  barFill: { height: '100%', backgroundColor: pilot.navy, borderRadius: 3 },
-  statTile: { width: '31%', backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 6, alignItems: 'center' },
-  // fontSize 16 so 5–6 digit totals fit the tile width without truncation;
-  // adjustsFontSizeToFit shrinks further on device for anything larger.
-  statNum: { fontFamily: fontFamilies.mono, fontSize: 16, color: pilot.navy, fontWeight: '800' },
-  statLabel: { fontSize: 9.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 5, textAlign: 'center' },
-
-  item: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: pilot.line },
-  itemTitle: { fontSize: fontSizes.sm, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
-  itemSub: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 3 },
-
-  appItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: pilot.line },
-  statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  statusPillText: { fontSize: 11, fontFamily: fontFamilies.bodyBold },
-  viewAll: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm, marginTop: 12 },
-});

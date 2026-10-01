@@ -23,6 +23,20 @@ function trainingDue(rec) {
   return d;
 }
 
+// Whole CALENDAR days from today to `date` (both reduced to a date, no time).
+// Date-only (not millisecond) so the count is stable through the day and never
+// drifts by one between requests — the SINGLE source both web and app render via
+// /profile/readiness. UTC components match the app's date display (fmtDate uses
+// getUTCDate), so "1 Oct → 1 Nov" is exactly 31 everywhere.
+function calendarDaysUntil(date, now = new Date()) {
+  if (!date) return null;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return Math.round((end - start) / DAY);
+}
+
 // Map a date to a readiness status relative to now.
 //   null date        → 'missing' (grey)
 //   past             → 'expired'  (red)
@@ -31,7 +45,7 @@ function trainingDue(rec) {
 //   else             → 'ok'
 function statusFor(date) {
   if (!date) return { level: 'missing', days: null };
-  const days = Math.floor((new Date(date).getTime() - Date.now()) / DAY);
+  const days = calendarDaysUntil(date);
   if (days < 0) return { level: 'expired', days };
   if (days <= 7) return { level: 'expiring', days };
   if (days <= 90) return { level: 'due', days };
@@ -56,12 +70,18 @@ async function computeReadiness(pilotId) {
     items.push({ type, label, date: date ? new Date(date).toISOString() : null, level: s.level, days: s.days, fix, blocker, ...extra });
   };
 
-  // Licences (non-ELP). Missing entirely → one grey "Add your licence" item.
-  const licences = pilot.certificates.filter((c) => c.type !== 'ELP');
+  // Licences (non-ELP; the sub-ratings IR/ME/SE aren't licences). A higher licence
+  // SUPERSEDES the lower ones (ATPL > CPL > PPL), so a superseded licence is never a
+  // readiness item or blocker — the active (highest) licence covers it.
+  const LICENCE_RANK = ['ATPL', 'ATP', 'MPL', 'CPL', 'PPL'];
+  const rankOf = (t) => { const i = LICENCE_RANK.indexOf(t); return i === -1 ? 99 : i; };
+  const licences = pilot.certificates.filter((c) => !['ELP', 'IR', 'ME', 'SE'].includes(c.type));
+  const highestRank = licences.length ? Math.min(...licences.map((c) => rankOf(c.type))) : 99;
   if (!licences.length) {
     push('licence', 'Add your licence', null, { blockerEligible: false });
   } else {
     for (const c of licences) {
+      if (rankOf(c.type) > highestRank) continue; // superseded by a higher licence → skip
       push('licence', `${c.type} licence`, c.expiryDate, { blockerEligible: true, extra: { itemId: c.id } });
     }
     // Authority still unknown (migrated from bogus "ICAO") on ANY licence → ONE grey
@@ -161,4 +181,4 @@ async function computeStrengthAndNudge(pilotId) {
   return { strength, nudge, qualifyCount, incompleteCount: incomplete.length };
 }
 
-module.exports = { computeReadiness, computeStrengthAndNudge, trainingDue, TRAINING_VALIDITY_MONTHS };
+module.exports = { computeReadiness, computeStrengthAndNudge, trainingDue, TRAINING_VALIDITY_MONTHS, calendarDaysUntil };

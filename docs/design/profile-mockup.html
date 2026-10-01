@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile Page Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F8F6F1; --surface:#fff; --text:#0F1419; --muted:#5A5F66; --faint:#8A8F96; --border:#E5E1D8;
+  --accent:#003F88; --accent-soft:rgba(0,63,136,.07);
+  --green:#166534; --green-bg:#DCFCE7; --green-bd:#BBF7D0;
+  --red:#B42318; --red-bg:#FEF2F2; --red-bd:#FECACA;
+  --amber:#92400E; --amber-bg:#FEF3C7; --amber-bd:#FDE68A;
+  --display:'Fraunces',Georgia,serif; --body:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E6DF;font-family:var(--body);color:var(--text);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1420px;margin:0 auto;padding:22px 16px 60px}
+.intro{font-size:13.5px;color:var(--muted);max-width:920px;line-height:1.5;margin:0 0 18px}
+.intro b{color:var(--text)}
+h3.cap{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:700}
+h3.cap span{text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint);margin-left:6px}
+.num{font-family:var(--mono);font-weight:700}
+.label{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+a{color:var(--accent);text-decoration:none;font-weight:600}
+
+/* shared */
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot.r{background:#D92D20}.dot.a{background:#F79009}.dot.g{background:#16A34A}.dot.n{background:#C4BFB4}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:4px 11px;white-space:nowrap}
+.btn{font-family:var(--body);font-size:14px;font-weight:600;border-radius:9px;padding:10px 16px;border:1px solid var(--border);background:#fff;color:var(--text);white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.photo{border-radius:50%;background:linear-gradient(135deg,#DDE4EE,#C3CFDF);display:grid;place-items:center;color:var(--accent);font-weight:600;position:relative;flex-shrink:0}
+.photo small{position:absolute;bottom:-4px;right:-4px;background:#fff;border:1px solid var(--border);border-radius:12px;font-size:10px;padding:2px 7px;color:var(--muted);font-weight:600}
+.toggle{display:inline-flex;align-items:center;gap:10px}
+.sw{width:36px;height:20px;border-radius:12px;background:var(--green);position:relative;flex-shrink:0}
+.sw:after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+
+.attn{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 20px}
+.attn-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.attn-h b{font-size:15px}
+.attn-h span{font-size:12.5px;color:var(--faint)}
+.attn-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.ai{border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;border:1px solid}
+.ai.r{background:var(--red-bg);border-color:var(--red-bd)}
+.ai.a{background:var(--amber-bg);border-color:var(--amber-bd)}
+.ai.n{background:var(--bg);border-color:var(--border)}
+.ai .t{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px}
+.ai .s{font-size:12.5px;color:var(--muted)}
+.ai.r .s{color:var(--red)} .ai.a .s{color:var(--amber)}
+.ai a{font-size:12.5px;margin-top:2px}
+
+.snap{display:flex;align-items:center;background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 20px;gap:0}
+.snap .it{padding:0 22px;border-left:1px solid var(--border)}
+.snap .it:first-child{padding-left:0;border-left:0}
+.snap .v{font-family:var(--display);font-weight:600;font-size:26px;line-height:1.1}
+.snap .v small{font-family:var(--body);font-size:13px;color:var(--muted);font-weight:500;margin-left:3px}
+.snap .k{font-size:12px;color:var(--muted);margin-top:3px}
+.strength{margin-left:auto;min-width:300px;max-width:360px}
+.strength .row{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px}
+.strength .row b{font-family:var(--mono)}
+.bar{height:6px;border-radius:4px;background:#ECE9E2;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.strength .hint{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.4}
+
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.card-h h4{font-family:var(--display);font-weight:600;font-size:18px;margin:0}
+.card-h a{font-size:13px}
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid #F0EDE6}
+.row:first-of-type{border-top:0}
+.row .main{flex:1;min-width:0}
+.row .n{font-weight:600;font-size:14px}
+.row .d{font-size:12.5px;color:var(--muted);margin-top:2px}
+.row .st{font-size:12.5px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.st.r{color:var(--red)} .st.a{color:var(--amber)} .st.g{color:var(--green)} .st.n{color:var(--faint)}
+.row .h{font-family:var(--mono);font-weight:700;font-size:13px}
+.sub{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--faint);margin:14px 0 2px}
+.add{display:block;margin-top:8px;font-size:13px}
+.nest{margin-left:14px;padding-left:14px;border-left:2px solid #ECE9E2}
+.nest .row{padding:8px 0}
+.nest .n{font-weight:500;font-size:13.5px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:9px 12px;font-size:13.5px;margin-top:8px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:600}
+.kv dd .pv{font-weight:500;color:var(--faint);font-size:12px;margin-left:6px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:12.5px;font-weight:600;background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:3px 10px}
+
+/* DESKTOP */
+.desk-shell{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.08);margin-bottom:36px}
+.browser{height:34px;background:#2B2D31;display:flex;align-items:center;gap:6px;padding:0 12px}
+.browser i{width:10px;height:10px;border-radius:50%;background:#5C5F66}
+.browser .url{margin:0 auto;background:#3A3D42;color:#C9CCD1;font-size:12px;border-radius:6px;padding:4px 60px}
+.scale-host{overflow:hidden}
+.desk{width:1280px;background:var(--bg);transform-origin:0 0}
+.topbar{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:34px}
+.brand{font-family:var(--display);font-weight:600;font-size:22px}
+.brand span{color:var(--accent);margin-right:6px;font-family:var(--body)}
+.nav{display:flex;gap:26px;font-size:15px;font-weight:500}
+.pill{background:var(--accent);color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 7px;margin-left:6px}
+.me{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+.av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#DDE4EE,#C3CFDF)}
+.burger{width:40px;height:40px;border-radius:8px;background:#EEF0F3;display:grid;place-items:center}
+.dpage{padding:28px 28px 36px;display:flex;flex-direction:column;gap:16px}
+.hero{display:flex;align-items:center;gap:22px;padding-bottom:6px}
+.hero h1{font-family:var(--display);font-weight:600;font-size:34px;margin:0;line-height:1.1}
+.hero .hl{font-size:15.5px;color:var(--muted);margin-top:6px}
+.hero .chips{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.hero .right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.otw{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px}
+.otw b{display:block;font-size:13.5px}
+.otw span{color:var(--muted)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.col{display:flex;flex-direction:column;gap:16px}
+
+/* PHONES */
+.phones{display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start}
+.phone{width:390px;background:#111;border-radius:52px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.screen{height:820px;border-radius:42px;overflow:hidden;background:var(--bg);position:relative;display:flex;flex-direction:column}
+.sb{height:47px;flex-shrink:0;display:flex;justify-content:space-between;align-items:flex-end;padding:0 32px 8px;font-size:14px;font-weight:600}
+.mscroll{flex:1;overflow:auto;padding:4px 14px 100px;display:flex;flex-direction:column;gap:12px}
+.mhero{display:flex;gap:14px;align-items:center;padding:4px 2px}
+.mhero h2{font-family:var(--display);font-size:23px;margin:0;font-weight:600;line-height:1.15}
+.mhero .hl{font-size:13px;color:var(--muted);margin-top:3px}
+.mchips{display:flex;gap:6px;flex-wrap:wrap}
+.mbtns{display:flex;gap:8px}
+.mbtns .btn{flex:1;text-align:center;padding:10px 8px;font-size:13.5px}
+.m-attn{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 14px}
+.m-attn .ln{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #F0EDE6;font-size:13.5px}
+.m-attn .ln:first-of-type{border-top:0}
+.m-attn .ln b{flex:1}
+.m-attn .ln span{font-size:12.5px;font-weight:600}
+.msnap{display:grid;grid-template-columns:1fr 1fr 1fr;background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 6px;text-align:center}
+.msnap .v{font-family:var(--display);font-weight:600;font-size:20px}
+.msnap .k{font-size:11px;color:var(--muted)}
+.msnap div+div{border-left:1px solid var(--border)}
+.mstrength{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 14px}
+.mcard{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.mcard .card-h h4{font-size:16px}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:78px;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:flex-start;padding-top:10px;font-size:10.5px;color:var(--faint)}
+.tabs div{text-align:center;min-width:60px}
+.tabs i{display:block;width:24px;height:24px;border-radius:7px;background:currentColor;opacity:.25;margin:0 auto 4px}
+.tabs .on{color:var(--accent);font-weight:700}.tabs .on i{opacity:1}
+
+.notes{margin-top:34px;background:#fff;border-radius:12px;padding:18px 22px;font-size:13.5px;line-height:1.6;color:#33373D}
+.notes b{color:var(--text)}
+.notes ol{margin:8px 0 0;padding-left:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="intro"><b>Profile page: design mockup.</b> Sample data based on your profile (test dates). Not connected to the project. One page, no tabs: the most urgent things first, then everything else in cards. Desktop on top, phone below.</p>
+
+  <h3 class="cap">Desktop web <span>1280px</span></h3>
+  <div class="desk-shell">
+    <div class="browser"><i></i><i></i><i></i><span class="url">cockpithire.com/profile</span></div>
+    <div class="scale-host" id="host"><div class="desk" id="desk">
+      <div class="topbar">
+        <div class="brand"><span>⇢</span>CockpitHire</div>
+        <div class="nav"><span>Jobs</span><span>Airlines</span><span>Alerts<span class="pill">55</span></span></div>
+        <div class="me"><div class="av"></div>Mohamed Alaaeldin</div>
+        <div class="burger">☰</div>
+      </div>
+
+      <div class="dpage">
+        <!-- HERO -->
+        <div class="hero">
+          <div class="photo" style="width:104px;height:104px;font-size:13px">Photo<small>Change</small></div>
+          <div>
+            <h1>Mohamed Alaaeldin</h1>
+            <div class="hl">First Officer · Airbus A320 · Cairo, Egypt</div>
+            <div class="chips">
+              <span class="chip">ATPL · ECAA</span>
+              <span class="chip">Class 1 medical</span>
+              <span class="chip">Right to work: UAE</span>
+              <span class="chip">English: not added</span>
+            </div>
+          </div>
+          <div class="right">
+            <div class="otw toggle"><span class="sw"></span><div><b>Open to work</b><span>Middle East, Europe · A320 family</span></div></div>
+            <div style="display:flex;gap:8px;align-items:center"><a href="#" style="font-size:13px;margin-right:6px">Preview as airline</a><span class="btn">Download CV</span><span class="btn primary">Edit profile</span></div>
+          </div>
+        </div>
+
+        <!-- NEEDS ATTENTION -->
+        <div class="attn">
+          <div class="attn-h"><b>Application readiness: 2 items would block applications</b><span>Airlines check these first</span></div>
+          <div class="attn-grid">
+            <div class="ai r"><div class="t"><span class="dot r"></span>ATPL (ECAA)</div><div class="s">Expires in 2 days · 30 Sep 2026</div><a href="#">Update expiry</a></div>
+            <div class="ai r"><div class="t"><span class="dot r"></span>CPL (ECAA)</div><div class="s">Expired 6 Nov 2025</div><a href="#">Renew or remove</a></div>
+            <div class="ai a"><div class="t"><span class="dot a"></span>Class 1 medical</div><div class="s">Expires in 34 days · 1 Nov 2026</div><a href="#">Update when renewed</a></div>
+            <div class="ai n"><div class="t"><span class="dot n"></span>Passport</div><div class="s">Expiry date not added</div><a href="#">Add date</a></div>
+          </div>
+        </div>
+
+        <!-- SNAPSHOT + STRENGTH -->
+        <div class="snap">
+          <div class="it"><div class="v">1,515<small>h</small></div><div class="k">Total time</div></div>
+          <div class="it"><div class="v">1,214<small>h</small></div><div class="k">On A320</div></div>
+          <div class="it"><div class="v">501</div><div class="k">Flights logged</div></div>
+          <div class="it"><div class="v">2</div><div class="k">Type ratings</div></div>
+          <div class="strength">
+            <div class="row"><span>Profile strength</span><b>72%</b></div>
+            <div class="bar"><i style="width:72%"></i></div>
+            <div class="hint">Add your <b>English level</b> and <b>multi-crew hours</b> to check 8 more jobs. <a href="#">See jobs</a></div>
+          </div>
+        </div>
+
+        <!-- CARDS -->
+        <div class="cols">
+          <div class="col">
+            <div class="card">
+              <div class="card-h"><h4>Licences &amp; ratings</h4><a href="#">Edit</a></div>
+              <div class="row"><div class="main"><div class="n">ATPL · Airline Transport Pilot</div><div class="d">ECAA (Egypt)</div></div><div class="st r"><span class="dot r"></span>Expires in 2 days</div></div>
+              <div class="nest">
+                <div class="row"><div class="main"><div class="n">Airbus A320 type rating</div><div class="d">Hours from your logbook</div></div><div class="h">1,214 h</div></div>
+                <div class="row"><div class="main"><div class="n">Multi-engine (MEP)</div></div><div class="st g"><span class="dot g"></span>Valid</div></div>
+                <div class="row"><div class="main"><div class="n">Instrument rating (IR)</div></div><div class="st g"><span class="dot g"></span>Valid</div></div>
+              </div>
+              <div class="row"><div class="main"><div class="n">CPL · Commercial Pilot</div><div class="d">ECAA (Egypt)</div></div><div class="st r"><span class="dot r"></span>Expired</div></div>
+              <div class="nest">
+                <div class="row"><div class="main"><div class="n">Cessna 172 (SEP)</div><div class="d">Hours from your logbook</div></div><div class="h">200 h</div></div>
+              </div>
+              <a class="add" href="#">+ Add licence or rating</a>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h4>Training</h4><a href="#">Edit</a></div>
+              <div class="row"><div class="main"><div class="n">CRM</div><div class="d">Completed 2 Jun 2026 · due every 12 months</div></div><div class="st g"><span class="dot g"></span>Due Jun 2027</div></div>
+              <div class="row"><div class="main"><div class="n">Dangerous Goods (DGR)</div><div class="d">Completed 1 Jun 2026 · due every 24 months</div></div><div class="st g"><span class="dot g"></span>Due Jun 2028</div></div>
+              <div class="row"><div class="main"><div class="n">First Aid</div><div class="d">Completed 1 Dec 2025 · due every 24 months</div></div><div class="st g"><span class="dot g"></span>Due Dec 2027</div></div>
+              <div class="row"><div class="main"><div class="n">English proficiency (ICAO)</div><div class="d">Required for international operations</div></div><a href="#" style="font-size:13px">Add level</a></div>
+              <a class="add" href="#">+ Add training</a>
+            </div>
+            <div class="card">
+              <div class="card-h"><h4>Checks &amp; recency</h4><a href="#">Edit</a></div>
+              <div class="row"><div class="main"><div class="n">LPC / OPC · A320</div><div class="d">Last passed 12 Aug 2026</div></div><div class="st g"><span class="dot g"></span>Due Feb 2027</div></div>
+              <div class="row"><div class="main"><div class="n">Line check</div><div class="d">Last passed 3 Mar 2026</div></div><div class="st g"><span class="dot g"></span>Due Mar 2027</div></div>
+              <div class="row"><div class="main"><div class="n">90-day recency · A320</div><div class="d">From your logbook</div></div><div class="st n"><span class="dot n"></span>Add landings to check</div></div>
+            </div>
+
+          </div>
+
+          <div class="col">
+            <div class="card">
+              <div class="card-h"><h4>Medical</h4><a href="#">Edit</a></div>
+              <div class="row"><div class="main"><div class="n">Class 1 · Airline pilots</div><div class="d">Valid until 1 Nov 2026</div></div><div class="st a"><span class="dot a"></span>34 days left</div></div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h4>Right to work &amp; passport</h4><a href="#">Edit</a></div>
+              <div class="row"><div class="main"><div class="n">United Arab Emirates</div><div class="d">Residence permit</div></div><div class="st g"><span class="dot g"></span>No expiry</div></div>
+              <div class="row"><div class="main"><div class="n">Passport</div><div class="d">Used for expiry reminders</div></div><a href="#" style="font-size:13px">Add expiry</a></div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h4>Job preferences</h4><a href="#">Edit</a></div>
+              <dl class="kv">
+                <dt>Regions</dt><dd><div class="tags"><span class="tag">Middle East</span><span class="tag">Europe</span></div></dd>
+                <dt>Aircraft</dt><dd><div class="tags"><span class="tag">A320 family</span><span class="tag">B737</span></div></dd>
+                <dt>Role</dt><dd>First Officer, open to Captain</dd>
+                <dt>Contract</dt><dd>Permanent or contract</dd>
+                <dt>Relocate</dt><dd>Yes</dd>
+              </dl>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h4>Personal details</h4><a href="#">Edit</a></div>
+              <dl class="kv">
+                <dt>Location</dt><dd>Cairo, Egypt</dd>
+                <dt>Phone</dt><dd>+20 111 789 8332<span class="pv">only you and airlines you apply to</span></dd>
+                <dt>Email</dt><dd>m•••@gmail.com<span class="pv">private</span></dd>
+                <dt>Education</dt><dd>Bachelor's degree</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="phones">
+    <div>
+      <h3 class="cap">Phone · top of the page <span>mobile web + app</span></h3>
+      <div class="phone"><div class="screen">
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="mscroll">
+          <div class="mhero">
+            <div class="photo" style="width:72px;height:72px;font-size:11px">Photo</div>
+            <div><h2>Mohamed Alaaeldin</h2><div class="hl">First Officer · A320 · Cairo</div></div>
+          </div>
+          <div class="mchips"><span class="chip">ATPL · ECAA</span><span class="chip">Class 1</span><span class="chip">RTW: UAE</span></div>
+          <div class="otw toggle" style="border-radius:14px"><span class="sw"></span><div><b>Open to work</b><span>Middle East, Europe · A320</span></div></div>
+          <div class="mbtns"><span class="btn">Download CV</span><span class="btn primary">Edit profile</span></div>
+
+          <div class="m-attn">
+            <div class="label" style="margin-bottom:4px">Application readiness · 2 blockers</div>
+            <div class="ln"><span class="dot r"></span><b>ATPL (ECAA)</b><span style="color:var(--red)">2 days</span></div>
+            <div class="ln"><span class="dot r"></span><b>CPL (ECAA)</b><span style="color:var(--red)">Expired</span></div>
+            <div class="ln"><span class="dot a"></span><b>Class 1 medical</b><span style="color:var(--amber)">34 days</span></div>
+            <div class="ln"><span class="dot n"></span><b>Passport</b><a href="#" style="font-size:12.5px">Add date</a></div>
+          </div>
+
+          <div class="msnap">
+            <div><div class="v">1,515</div><div class="k">Total h</div></div>
+            <div><div class="v">1,214</div><div class="k">A320 h</div></div>
+            <div><div class="v">501</div><div class="k">Flights</div></div>
+          </div>
+
+          <div class="mstrength strength" style="max-width:none;min-width:0">
+            <div class="row" style="padding:0;border:0"><span>Profile strength</span><b>72%</b></div>
+            <div class="bar"><i style="width:72%"></i></div>
+            <div class="hint">Add English level and multi-crew hours to check 8 more jobs. <a href="#">See jobs</a></div>
+          </div>
+
+          <div class="mcard">
+            <div class="card-h"><h4>Licences &amp; ratings</h4><a href="#">Edit</a></div>
+            <div class="row"><div class="main"><div class="n">ATPL · ECAA</div></div><div class="st r"><span class="dot r"></span>2 days</div></div>
+            <div class="nest"><div class="row"><div class="main"><div class="n">A320 type rating</div></div><div class="h">1,214 h</div></div><div class="row"><div class="main"><div class="n">MEP · IR</div></div><div class="st g"><span class="dot g"></span>Valid</div></div></div>
+            <div class="row"><div class="main"><div class="n">CPL · ECAA</div></div><div class="st r"><span class="dot r"></span>Expired</div></div>
+          </div>
+        </div>
+        <div class="tabs"><div><i></i>Jobs</div><div><i></i>Alerts</div><div><i></i>Logbook</div><div class="on"><i></i>Profile</div></div>
+      </div></div>
+    </div>
+
+    <div>
+      <h3 class="cap">Phone · further down <span>same cards, one column</span></h3>
+      <div class="phone"><div class="screen">
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="mscroll">
+          <div class="mcard">
+            <div class="card-h"><h4>Medical</h4><a href="#">Edit</a></div>
+            <div class="row"><div class="main"><div class="n">Class 1</div><div class="d">Valid until 1 Nov 2026</div></div><div class="st a"><span class="dot a"></span>34 days</div></div>
+          </div>
+          <div class="mcard">
+            <div class="card-h"><h4>Checks &amp; recency</h4><a href="#">Edit</a></div>
+            <div class="row"><div class="main"><div class="n">LPC / OPC · A320</div><div class="d">Passed 12 Aug 2026</div></div><div class="st g"><span class="dot g"></span>Feb 2027</div></div>
+            <div class="row"><div class="main"><div class="n">Line check</div><div class="d">Passed 3 Mar 2026</div></div><div class="st g"><span class="dot g"></span>Mar 2027</div></div>
+          </div>
+          <div class="mcard">
+            <div class="card-h"><h4>Training</h4><a href="#">Edit</a></div>
+            <div class="row"><div class="main"><div class="n">CRM</div><div class="d">Done 2 Jun 2026</div></div><div class="st g"><span class="dot g"></span>Due Jun 2027</div></div>
+            <div class="row"><div class="main"><div class="n">DGR</div><div class="d">Done 1 Jun 2026</div></div><div class="st g"><span class="dot g"></span>Due Jun 2028</div></div>
+            <div class="row"><div class="main"><div class="n">First Aid</div><div class="d">Done 1 Dec 2025</div></div><div class="st g"><span class="dot g"></span>Due Dec 2027</div></div>
+            <div class="row"><div class="main"><div class="n">English (ICAO)</div></div><a href="#" style="font-size:13px">Add level</a></div>
+          </div>
+          <div class="mcard">
+            <div class="card-h"><h4>Right to work &amp; passport</h4><a href="#">Edit</a></div>
+            <div class="row"><div class="main"><div class="n">United Arab Emirates</div><div class="d">Residence permit</div></div><div class="st g"><span class="dot g"></span>No expiry</div></div>
+            <div class="row"><div class="main"><div class="n">Passport</div></div><a href="#" style="font-size:13px">Add expiry</a></div>
+          </div>
+          <div class="mcard">
+            <div class="card-h"><h4>Job preferences</h4><a href="#">Edit</a></div>
+            <dl class="kv" style="grid-template-columns:90px 1fr">
+              <dt>Regions</dt><dd>Middle East, Europe</dd>
+              <dt>Aircraft</dt><dd>A320 family, B737</dd>
+              <dt>Role</dt><dd>FO, open to Captain</dd>
+              <dt>Relocate</dt><dd>Yes</dd>
+            </dl>
+          </div>
+          <div class="mcard">
+            <div class="card-h"><h4>Personal details</h4><a href="#">Edit</a></div>
+            <dl class="kv" style="grid-template-columns:90px 1fr">
+              <dt>Location</dt><dd>Cairo, Egypt</dd>
+              <dt>Phone</dt><dd>+20 111 789 8332</dd>
+              <dt>Education</dt><dd>Bachelor's degree</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="tabs"><div><i></i>Jobs</div><div><i></i>Alerts</div><div><i></i>Logbook</div><div class="on"><i></i>Profile</div></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <b>What's in this mockup</b>
+    <ol>
+      <li><b>Header:</b> photo, name in proper capitals, one line "First Officer · Airbus A320 · Cairo, Egypt", key chips, and an Open to work switch. Phone number moves out of the header.</li>
+      <li><b>Application readiness</b> (like FlightLog's "OK to fly" check): anything expired, expiring soon or missing, with a coloured dot (red, amber, grey) and a one-tap fix. Airlines check these first.</li>
+      <li><b>Snapshot:</b> same hours as the Logbook dashboard (no broken "0 PIC"), plus profile strength that links to the jobs you'd unlock.</li>
+      <li><b>One page, no tabs:</b> Licences &amp; ratings (hours on type from your logbook), Medical, Training with next due dates, Right to work &amp; passport, Job preferences (new), Personal details.</li>
+      <li><b>Ratings sit under the licence they belong to</b> (like ForeFlight), and a new <b>Checks &amp; recency</b> card holds LPC/OPC and line check dates, which airline recruiters ask for.</li>
+      <li><b>Preview as airline</b> shows exactly what a recruiter sees when you apply.</li>
+      <li><b>No red bins:</b> each card has one Edit link; deleting happens inside edit.</li>
+      <li><b>Licence authority</b> shows the real issuer (ECAA), not "ICAO", so job matching works.</li>
+    </ol>
+  </div>
+</div>
+<script>
+  function fit(){const h=document.getElementById('host'),d=document.getElementById('desk');const s=Math.min(1,h.clientWidth/1280);d.style.transform='scale('+s+')';h.style.height=(d.offsetHeight*s)+'px';h.parentElement.style.width=(1280*s)+'px';}
+  window.addEventListener('load',()=>{fit();setTimeout(fit,400)});window.addEventListener('resize',fit);
+</script>
+</body>
+</html>

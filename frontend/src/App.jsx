@@ -45,6 +45,7 @@ import AdminEmployers from './pages/AdminEmployers';
 import Alerts from './pages/Alerts';
 import Logbook from './pages/Logbook';
 import Profile from './pages/Profile';
+import ProfileRedesign from './pages/ProfileRedesign';
 import Settings from './pages/Settings';
 import Support from './pages/Support';
 import { lazy, Suspense } from 'react';
@@ -115,7 +116,7 @@ export default function App() {
           <Route path="admin/employers" element={<AdminEmployers />} />
           <Route path="alerts" element={<Alerts />} />
           <Route path="logbook" element={<Logbook />} />
-          <Route path="profile" element={<Profile />} />
+          <Route path="profile" element={<ProfileRedesign />} />
           <Route path="settings" element={<Settings />} />
           <Route path="cv" element={<Suspense fallback={<div style={{padding:48,textAlign:'center',color:'#7A8CA0'}}>Loading…</div>}><CVBuilder /></Suspense>} />
         </Route>
