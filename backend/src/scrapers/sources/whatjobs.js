@@ -24,7 +24,7 @@
  * Env:
  *   WHATJOBS_COUNTRIES  — comma list of country codes to query (default: all).
  *   WHATJOBS_MAX_PAGES  — pages/query, 20 results/page (default 2).
- *   WHATJOBS_QUERIES    — comma keywords (default 'pilot,first officer,captain').
+ *   WHATJOBS_QUERIES    — comma keywords (default 'pilot,first officer,airline captain,pilot captain').
  *   WHATJOBS_USER_IP    — override the attribution IP (default: server egress IP).
  */
 
@@ -189,9 +189,12 @@ function normalize(item, meta) {
 async function fetchWhatJobs() {
   const codes = (process.env.WHATJOBS_COUNTRIES || Object.keys(PUBLISHERS).join(','))
     .split(',').map((c) => c.trim().toLowerCase()).filter((c) => PUBLISHERS[c]);
-  // 'pilot' alone misses many; dry-run showed 'first officer' + 'captain' each
-  // add ~15-20 UNIQUE roles per country, so all three are on by default.
-  const queries = (process.env.WHATJOBS_QUERIES || 'pilot,first officer,captain').split(',').map((q) => q.trim()).filter(Boolean);
+  // 'pilot' alone misses many; 'first officer' adds unique roles. We no longer
+  // query the BARE word "captain" — it floods the feed with hospitality ("F&B
+  // Captain"), maritime ("Port Captain") and generic ("Team Captain") jobs. Use
+  // aviation-qualified captain phrases instead (the intake classifier is the
+  // safety net for anything that still slips through).
+  const queries = (process.env.WHATJOBS_QUERIES || 'pilot,first officer,airline captain,pilot captain').split(',').map((q) => q.trim()).filter(Boolean);
   const maxPages = Math.min(10, Math.max(1, parseInt(process.env.WHATJOBS_MAX_PAGES || '2', 10)));
   const userIp = await resolveUserIp();
 

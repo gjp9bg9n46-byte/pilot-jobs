@@ -242,12 +242,15 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
     }
 
     // skipFilter: true → source is already a pilot-only board (e.g. PilotCareerCentre)
-    let { kept, dropped } = empConfig.skipFilter
+    let { kept, dropped, nonAviation = 0 } = empConfig.skipFilter
       ? { kept: normalized, dropped: 0 }
       : filterAviationJobs(normalized, empConfig.source, empConfig.company, {
           excludeOnly: !!empConfig.excludeOnly,
           requireContext: !!empConfig.requireContext,
         });
+    // How many the aviation classifier rejected (hospitality/maritime/generic
+    // "captain"/military-review) — logged per source so a sudden flood is visible.
+    stats.nonAviationRejected = nonAviation;
 
     // Freshness cap for aggregators: their feeds resurface years-old evergreen
     // postings; anything older than JOB_MAX_AGE_DAYS never reaches the board.
@@ -284,7 +287,7 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
     logger.info({
       msg: 'filter result',
       source: empConfig.source, employer: empConfig.company,
-      fetched: raw.length, kept: kept.length, dropped,
+      fetched: raw.length, kept: kept.length, dropped, nonAviationRejected: nonAviation,
     });
 
     // Zero-result / failed-fetch guard: a source that returned NOTHING this run
@@ -350,10 +353,11 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
 
           // preserveMerge: a row dedup already merged stays EXPIRED + mergedInto
           // on re-scrape (sticky) rather than resurrecting and flapping.
-          // keepInactive: an admin-REMOVED row must not resurrect to ACTIVE.
+          // keepInactive: a REMOVED (admin or non-aviation filter) or NEEDS_REVIEW
+          // (ambiguous military, awaiting approval) row must not resurrect to ACTIVE.
           const upserted = await upsertJob(jobToUpsert, {
             preserveMerge: !!existing?.mergedInto,
-            keepInactive: existing?.moderationStatus === 'REMOVED',
+            keepInactive: existing?.moderationStatus === 'REMOVED' || existing?.moderationStatus === 'NEEDS_REVIEW',
           });
           seenExternalIds.push(job.externalId);
           stats.upserted++;

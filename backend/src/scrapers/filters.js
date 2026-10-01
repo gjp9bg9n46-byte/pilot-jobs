@@ -1,5 +1,7 @@
 'use strict';
 
+const { classifyJob } = require('./aviationFilter');
+
 /**
  * Aviation-role title filter.
  *
@@ -249,6 +251,11 @@ const REGULATORY_DESK_PATTERNS = new RegExp([
 
 function isAviationJob(job, { excludeOnly = false, requireContext = false } = {}) {
   const title = String(job.title || '');
+  // Hospitality ("F&B Captain"), maritime ("Port Captain") and generic ("Team
+  // Captain") roles slip past the pilot-title filter via the keyword "captain".
+  // Reject them here; ambiguous military/air-force → 'review' is also held out of
+  // the live feed at intake (a human approves existing ones from the queue).
+  if (classifyJob({ title, company: job.company, description: job.description }).verdict !== 'keep') return false;
   if (!isAviationRole(title, { excludeOnly })) return false;
   if (!requireContext) return true;
   if (/\bpilote(s)?\b/i.test(title) && !FRENCH_PILOT_TITLE.test(title)) return false;
@@ -273,9 +280,13 @@ function isAviationJob(job, { excludeOnly = false, requireContext = false } = {}
  * @returns {{ kept: import('./types').NormalizedJob[], dropped: number }}
  */
 function filterAviationJobs(jobs, source, employer, { excludeOnly = false, requireContext = false } = {}) {
-  const kept = jobs.filter((j) => isAviationJob(j, { excludeOnly, requireContext }));
+  let nonAviation = 0; // dropped specifically by the aviation classifier (hospitality/maritime/generic/review)
+  const kept = jobs.filter((j) => {
+    if (classifyJob({ title: String(j.title || ''), company: j.company, description: j.description }).verdict !== 'keep') { nonAviation++; return false; }
+    return isAviationJob(j, { excludeOnly, requireContext });
+  });
   const dropped = jobs.length - kept.length;
-  return { kept, dropped };
+  return { kept, dropped, nonAviation };
 }
 
 // "We are not hiring" notices — careers-page text scraped as if it were a
