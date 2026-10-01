@@ -109,7 +109,7 @@ export default function Landing() {
   // Prevent the shared dark body bg from showing through (iOS rubber-band).
   useEffect(() => {
     const prev = document.body.style.background;
-    document.body.style.background = '#F8F6F1';
+    document.body.style.background = '#F5F7FA';
     return () => { document.body.style.background = prev; };
   }, []);
 
@@ -191,11 +191,11 @@ export default function Landing() {
     featRow: { display: 'flex', alignItems: 'center', gap: isMobile ? 28 : 72, padding: isMobile ? '40px 0' : '72px 0', minHeight: isMobile ? 'auto' : '52vh' },
     featMediaWrap: { flex: isMobile ? 'none' : '1 1 55%', width: isMobile ? '100%' : undefined },
     featFrame: { position: 'relative', padding: isMobile ? 10 : 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 },
-    featFrameOffset: { position: 'absolute', top: isMobile ? 12 : 18, left: isMobile ? 12 : 18, right: isMobile ? -12 : -18, bottom: isMobile ? -12 : -18, border: '2px solid var(--accent-amber)', borderRadius: 8, opacity: 0.55, pointerEvents: 'none', zIndex: -1 },
+    featFrameOffset: { position: 'absolute', top: isMobile ? 12 : 18, left: isMobile ? 12 : 18, right: isMobile ? -12 : -18, bottom: isMobile ? -12 : -18, border: '1px solid var(--border)', borderRadius: 8, opacity: 0.6, pointerEvents: 'none', zIndex: -1 },
     featMedia: { width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block', borderRadius: 4 },
     featIconPanel: { background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     featCopy: { flex: isMobile ? 'none' : '1 1 45%' },
-    featIndex: { fontFamily: mono, fontWeight: 500, fontSize: 14, letterSpacing: '0.08em', color: 'var(--accent-amber)', marginBottom: 14 },
+    featIndex: { fontFamily: mono, fontWeight: 500, fontSize: 14, letterSpacing: '0.08em', color: 'var(--accent)', marginBottom: 14 },
     featTitle: { fontFamily: display, fontWeight: 500, fontSize: isMobile ? 26 : 36, letterSpacing: '-0.01em', lineHeight: 1.12, color: 'var(--text-primary)', marginBottom: 14 },
     featText: { fontFamily: body, fontWeight: 400, fontSize: isMobile ? 16 : 18, lineHeight: 1.65, color: 'var(--text-secondary)', maxWidth: 480 },
 
@@ -235,7 +235,7 @@ export default function Landing() {
     btnPrimary: { display: 'inline-block', fontFamily: body, fontWeight: 500, fontSize: 16, background: 'var(--accent)', color: '#fff', padding: '14px 28px', borderRadius: 4, textDecoration: 'none' },
 
     // Footer
-    footer: { background: '#0B1B33', borderTop: 'none' },
+    footer: { background: 'var(--navy-deep)', borderTop: 'none' },
     fSocial: { color: 'rgba(255,255,255,0.55)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)', cursor: 'default' },
     footerTop: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '56px 20px 36px' : '72px 40px 48px', display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr 1fr', gap: isMobile ? 32 : 40 },
     fBrandName: { fontFamily: display, fontWeight: 600, fontSize: 20, color: '#FFFFFF', textDecoration: 'none' },
@@ -243,7 +243,7 @@ export default function Landing() {
     fColTitle: { fontFamily: body, fontWeight: 600, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 16, marginTop: isMobile ? 28 : 0 },
     fLink: { display: 'block', fontFamily: body, fontSize: 15, color: 'rgba(255,255,255,0.85)', textDecoration: 'none', marginBottom: 11 },
     footerStrip: { borderTop: '1px solid rgba(255,255,255,0.14)', textAlign: 'center', padding: '20px', fontFamily: body, fontSize: 13, color: 'rgba(255,255,255,0.55)' },
-    footerA: { color: '#F0A84B', textDecoration: 'none' },
+    footerA: { color: 'var(--accent-soft)', textDecoration: 'none' },
   };
 
   return (
@@ -283,7 +283,7 @@ export default function Landing() {
             <Reveal style={css.dataRow}>
               {statEntries.map((s) => (
                 <div key={s.label}>
-                  <div style={{ ...css.dataNum, ...(s.amber ? { color: 'var(--accent-amber)' } : {}) }}>{s.num}</div>
+                  <div style={{ ...css.dataNum, ...(s.amber ? { color: 'var(--accent)' } : {}) }}>{s.num}</div>
                   <div style={css.dataLabel}>{s.label}</div>
                 </div>
               ))}
@@ -326,7 +326,7 @@ export default function Landing() {
                 <div style={{ position: 'relative', zIndex: 0 }}>
                   <div style={{
                     ...css.featFrameOffset,
-                    borderColor: i % 2 === 0 ? 'var(--accent-amber)' : 'var(--accent)',
+                    borderColor: 'var(--border)',
                     ...(i % 2 !== 0 && !isMobile ? { left: -18, right: 18 } : {}),
                     ...(i % 2 !== 0 && isMobile ? { left: -12, right: 12 } : {}),
                   }} />
@@ -436,7 +436,7 @@ export default function Landing() {
       <footer style={css.footer}>
         <div style={css.footerTop}>
           <div>
-            <Link to="/" style={css.fBrandName}><PlaneMark size={17} style={{ stroke: '#F0A84B', marginRight: 8 }} /> CockpitHire</Link>
+            <Link to="/" style={css.fBrandName}><PlaneMark size={17} style={{ stroke: '#FFFFFF', marginRight: 8 }} /> CockpitHire</Link>
             <div style={css.fTagline}>Built by pilots, for pilots</div>
           </div>
           {FOOTER_COLS.map(([title, links]) => (

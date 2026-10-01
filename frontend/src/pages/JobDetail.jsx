@@ -194,7 +194,7 @@ function CollapsibleText({ id, children, style }) {
             aria-hidden="true"
             style={{
               position: 'absolute', left: 0, right: 0, bottom: 0, height: 60,
-              // --bg is #F8F6F1; rgba avoids the grey tinge bare "transparent" gives.
+              // --bg is #F5F7FA; rgba avoids the grey tinge bare "transparent" gives.
               background: 'linear-gradient(to bottom, rgba(248,249,250,0) 0%, #F8F9FA 100%)',
               pointerEvents: 'none',
             }}

@@ -14,8 +14,8 @@ import { ThemePalette, useThemeColors, useThemedStyles } from '../../theme/Theme
 type Summary = Record<string, any>;
 
 const SIC = '#7FA3CF';
-const FAINT = '#8A8F96';
-const TRACK_BG = '#ECE9E2';
+const FAINT = '#8592A3';
+const TRACK_BG = '#E3E8EF';
 
 // Manual number formatting — Hermes Intl grouping is unreliable across SDKs.
 function group(intStr: string): string {

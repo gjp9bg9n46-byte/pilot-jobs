@@ -553,7 +553,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12 },
   removeText: { color: '#991B1B', fontSize: fontSizes.sm, fontFamily: fontFamilies.bodySemiBold },
 
-  paper: { flex: 1, margin: spacing.lg, borderRadius: 8, backgroundColor: '#fff', overflow: 'hidden', shadowColor: '#0F1419', shadowOpacity: 0.14, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
+  paper: { flex: 1, margin: spacing.lg, borderRadius: 8, backgroundColor: '#fff', overflow: 'hidden', shadowColor: '#0F1B2D', shadowOpacity: 0.14, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
   webview: { flex: 1, backgroundColor: '#fff' },
   previewBtns: { flexDirection: 'row', gap: 10, paddingHorizontal: spacing.xl, paddingTop: 4, paddingBottom: 12, marginBottom: 92 /* clears floating tab bar */ },
   dlPrimary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: pilot.navy, borderRadius: 6, paddingVertical: 13 },
@@ -561,6 +561,6 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   dlSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderColor: pilot.navy, borderRadius: 6, paddingVertical: 13 },
   dlSecondaryText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base },
   btnDim: { opacity: 0.5 },
-  toast: { position: 'absolute', bottom: 84, left: 24, right: 24, backgroundColor: '#0F1419', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16 },
+  toast: { position: 'absolute', bottom: 84, left: 24, right: 24, backgroundColor: '#0F1B2D', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16 },
   toastText: { color: '#fff', fontSize: fontSizes.sm, fontFamily: fontFamilies.body, textAlign: 'center' },
 });

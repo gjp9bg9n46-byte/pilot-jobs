@@ -28,7 +28,7 @@ export default function EmployerRegister() {
   const { register, isAuthenticated, status, loading: authLoading } = useEmployerAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
 
   const [form, setForm] = useState(EMP_INIT);
   const [fieldErrors, setFieldErrors] = useState({});

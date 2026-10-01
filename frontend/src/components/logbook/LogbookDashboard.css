@@ -5,9 +5,9 @@
    leaks into the rest of the app. Three layouts: >=1024, 768-1023, <768. */
 .lb-dash {
   --sic: #7FA3CF;
-  --faint: #8A8F96;
+  --faint: #8592A3;
   --green: #166534; --green-bg: #DCFCE7; --green-br: #BBF7D0;
-  --amber: #92400E; --amber-bg: #FEF3C7; --amber-bar: #D97706;
+  --amber: #92400E; --amber-bg: #FEF3C7; --amber-bar: #92400E;
   font-family: var(--font-body);
   color: var(--text-primary);
 }
@@ -38,7 +38,7 @@
 /* ── Milestone ─────────────────────────────────────────────────────────────── */
 .lb-ms-title { font-size: 15px; font-weight: 600; margin: 10px 0 2px; }
 .lb-ms-title .num { color: var(--accent); }
-.lb-track { position: relative; height: 8px; border-radius: 5px; background: #ECE9E2; margin: 38px 8px 48px 0; }
+.lb-track { position: relative; height: 8px; border-radius: 5px; background: #E3E8EF; margin: 38px 8px 48px 0; }
 .lb-track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); }
 .lb-tick { position: absolute; top: -4px; width: 2px; height: 16px; background: #CFCAC0; }
 .lb-tick.done { background: var(--accent); }
@@ -57,7 +57,7 @@
 .lb-types li { display: grid; grid-template-columns: 78px 1fr 70px; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
 .lb-types .t { font-weight: 600; }
 .lb-types .t small { display: block; font-weight: 400; color: var(--faint); font-size: 11px; }
-.lb-types .bar { height: 6px; background: #ECE9E2; border-radius: 4px; overflow: hidden; }
+.lb-types .bar { height: 6px; background: #E3E8EF; border-radius: 4px; overflow: hidden; }
 .lb-types .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 .lb-types .h { text-align: right; font-family: var(--font-mono); font-weight: 700; font-size: 13px; }
 
@@ -67,7 +67,7 @@
 .lb-gauges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 14px; }
 .lb-g .v { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
 .lb-g .v .num { font-size: 20px; color: var(--text-primary); }
-.lb-g .gbar { height: 6px; border-radius: 4px; background: #ECE9E2; overflow: hidden; }
+.lb-g .gbar { height: 6px; border-radius: 4px; background: #E3E8EF; overflow: hidden; }
 .lb-g .gbar i { display: block; height: 100%; border-radius: 4px; background: var(--green); }
 .lb-g .gbar i.warn { background: var(--amber-bar); }
 .lb-g .cap { font-size: 11.5px; color: var(--faint); margin-top: 6px; }
@@ -76,7 +76,7 @@
 .lb-ic { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
 .lb-ic.ok { background: var(--green-bg); color: var(--green); }
 .lb-ic.warnc { background: var(--amber-bg); color: var(--amber); }
-.lb-ic.neutral { background: #ECE9E2; color: var(--faint); }
+.lb-ic.neutral { background: #E3E8EF; color: var(--faint); }
 .lb-cur .m { color: var(--text-secondary); }
 
 /* The mobile expand toggle is hidden on wide layouts. */

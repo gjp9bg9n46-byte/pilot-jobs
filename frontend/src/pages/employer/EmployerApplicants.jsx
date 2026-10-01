@@ -150,7 +150,7 @@ export default function EmployerApplicants() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
 
   const [data, setData] = useState(null);   // { job, applicants }
   const [loading, setLoading] = useState(true);

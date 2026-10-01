@@ -15,7 +15,7 @@ export function hiringMeta(status: string): { label: string; fg: string; bg: str
     ACTIVELY_HIRING: { label: 'Actively Hiring', fg: semantic.success, bg: semantic.successBg },
     OCCASIONAL: { label: 'Occasional', fg: semantic.warning, bg: semantic.warningBg },
     PAUSED: { label: 'Paused', fg: semantic.error, bg: semantic.errorBg },
-    UNKNOWN: { label: 'Unknown', fg: '#5A5F66', bg: '#F1F1F1' },
+    UNKNOWN: { label: 'Unknown', fg: '#4A5668', bg: '#F1F1F1' },
   };
   return map[status] || map.UNKNOWN;
 }

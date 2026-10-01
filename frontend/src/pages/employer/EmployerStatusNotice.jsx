@@ -27,7 +27,7 @@ export default function EmployerStatusNotice({ kind }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const copy = COPY[kind] || COPY.rejected;
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
 
   const handleLogout = () => { logout(); navigate('/employer/login'); };
   if (!employer) return null;

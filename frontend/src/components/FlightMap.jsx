@@ -71,20 +71,23 @@ export default function FlightMap() {
                       geography={geo}
                       onMouseEnter={() => setHoverCountry(geo.properties.name)}
                       onMouseLeave={() => setHoverCountry(null)}
-                      fill="#FBF7F0"
+                      fill="#FFFFFF"
                       stroke="#C9D4E4"
                       strokeWidth={0.5 / zoom}
-                      style={{ default: { outline: 'none' }, hover: { outline: 'none', fill: '#F3ECE0' }, pressed: { outline: 'none' } }}
+                      style={{ default: { outline: 'none' }, hover: { outline: 'none', fill: '#DCE4EE' }, pressed: { outline: 'none' } }}
                     />
                   ))}
                 </Geographies>
                 {airports.map((a) => {
-                  const r = (3 + (a.count / maxCount) * 5) / zoom;
+                  const base = (3 + (a.count / maxCount) * 5) / zoom;
                   const hot = topCodes.has(a.code);
+                  // same navy family for every dot; "most visited" reads as a
+                  // larger + deeper-navy dot, not a different colour.
+                  const r = hot ? base * 1.5 : base;
                   const label = a.city || a.iata || a.code;
                   return (
                     <Marker key={a.code} coordinates={[a.lon, a.lat]}>
-                      <circle r={r} fill={hot ? '#F0A84B' : 'var(--accent)'} fillOpacity={0.85} stroke="#fff" strokeWidth={1 / zoom}>
+                      <circle r={r} fill={hot ? 'var(--navy-deep)' : 'var(--accent)'} fillOpacity={0.9} stroke="#fff" strokeWidth={1 / zoom}>
                         <title>{`${a.code} · ${a.city || a.name || ''} · ${a.count} visit${a.count === 1 ? '' : 's'}`}</title>
                       </circle>
                       {(showLabels || (hot && zoom >= 1.4)) && (
@@ -93,7 +96,7 @@ export default function FlightMap() {
                           y={-(r + 3 / zoom)}
                           style={{
                             fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 11 / zoom,
-                            fill: 'var(--text-primary)', paintOrder: 'stroke', stroke: '#FBF7F0', strokeWidth: 2.5 / zoom,
+                            fill: 'var(--text-primary)', paintOrder: 'stroke', stroke: '#FFFFFF', strokeWidth: 2.5 / zoom,
                             pointerEvents: 'none',
                           }}
                         >
@@ -123,7 +126,7 @@ export default function FlightMap() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 18, marginTop: 10, fontSize: 12, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-            <span><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#F0A84B', marginRight: 6 }} />Most visited</span>
+            <span><span style={{ display: 'inline-block', width: 11, height: 11, borderRadius: '50%', background: 'var(--navy-deep)', marginRight: 6 }} />Most visited</span>
             <span><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: 'var(--accent)', marginRight: 6 }} />Visited</span>
             <span style={{ marginLeft: 'auto' }}>Scroll or pinch to zoom · drag to pan · city names appear as you zoom</span>
           </div>

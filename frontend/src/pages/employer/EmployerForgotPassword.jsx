@@ -9,7 +9,7 @@ const page = { minHeight: '100vh', display: 'flex', alignItems: 'center', justif
 
 export default function EmployerForgotPassword() {
   const isMobile = useIsMobile();
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
   return (
     <div className="app-b2b" style={page}>
       <Card style={{ maxWidth: 400, width: '100%', padding: isMobile ? '32px 20px' : '40px 36px', borderRadius: 12 }}>

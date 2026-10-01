@@ -51,7 +51,7 @@ export default function EmployerProfile() {
   const [errors, setErrors] = useState({});
   const [banner, setBanner] = useState('');
   const [loading, setLoading] = useState(false);
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
 
   if (!employer) return null;
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));

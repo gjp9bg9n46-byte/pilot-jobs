@@ -477,6 +477,6 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   signOut: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: pilot.line, borderRadius: 8, paddingVertical: 13, marginTop: 4 },
   signOutText: { color: pilot.muted, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base },
 
-  toast: { position: 'absolute', bottom: 40, left: 24, right: 24, backgroundColor: '#0F1419', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16 },
+  toast: { position: 'absolute', bottom: 40, left: 24, right: 24, backgroundColor: '#0F1B2D', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16 },
   toastText: { color: '#fff', fontSize: fontSizes.sm, fontFamily: fontFamilies.body, textAlign: 'center' },
 });

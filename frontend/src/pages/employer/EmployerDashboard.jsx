@@ -57,7 +57,7 @@ export default function EmployerDashboard() {
   const [toast, setToast] = useState(location.state?.toast || '');
   const [confirmDel, setConfirmDel] = useState(null);
   const [busy, setBusy] = useState(false);
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
 
   const approved = status === 'APPROVED';
 

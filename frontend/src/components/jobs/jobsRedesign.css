@@ -1,7 +1,7 @@
 /* Jobs redesign (list + detail) — from docs/design/jobs-mockup.html, scoped under
    .jobs-rd so it can't leak. Uses the global tokens; adds a few job-local ones. */
 .jobs-rd {
-  --faint: #8A8F96;
+  --faint: #8592A3;
   --green: #166534; --green-bg: #DCFCE7; --green-bd: #BBF7D0;
   --red: #991B1B; --red-bg: #FEF2F2; --amber: #92400E;
   --accent-soft: rgba(0, 63, 136, .07);
@@ -30,7 +30,7 @@
 .jobs-rd .fsearch input { border: 0; outline: 0; background: none; font: inherit; color: var(--text-primary); width: 100%; }
 .jobs-rd .fbtn { display: inline-flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 8px 12px; font: 600 12.5px var(--font-body); color: var(--text-primary); white-space: nowrap; cursor: pointer; }
 .jobs-rd .fbtn.act { background: var(--accent); border-color: var(--accent); color: #fff; }
-.jobs-rd .sw { width: 26px; height: 15px; border-radius: 9px; background: #D6D2C8; position: relative; transition: background .15s; }
+.jobs-rd .sw { width: 26px; height: 15px; border-radius: 9px; background: #CBD3DD; position: relative; transition: background .15s; }
 .jobs-rd .fbtn.act .sw { background: rgba(255,255,255,.5); }
 .jobs-rd .sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; transition: left .15s; }
 .jobs-rd .fbtn.on .sw::after { left: 13px; }
@@ -117,7 +117,7 @@
 .jobs-rd .verdict.block .ic { background: var(--red); }
 .jobs-rd .mt { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
 .jobs-rd .mt th { text-align: left; font-size: 10.5px; letter-spacing: .6px; text-transform: uppercase; color: var(--faint); font-weight: 700; padding: 0 8px 6px; }
-.jobs-rd .mt td { padding: 8px; border-top: 1px solid #F0EDE6; vertical-align: middle; }
+.jobs-rd .mt td { padding: 8px; border-top: 1px solid #E3E8EF; vertical-align: middle; }
 .jobs-rd .mt tr.grp td { padding-top: 14px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--text-secondary); border-top: 0; }
 .jobs-rd .mt .st { width: 22px; font-weight: 800; }
 .jobs-rd .mt .st.ok { color: var(--green); } .jobs-rd .mt .st.no { color: var(--red); } .jobs-rd .mt .st.unk { color: var(--faint); }
@@ -160,7 +160,8 @@
    clears the iPhone home bar / Safari toolbar; salary+source centred against a
    48px-tall Apply button. */
 .jobs-rd .abar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 14px; z-index: 60; box-shadow: 0 -2px 12px rgba(15,20,25,.06); }
-.jobs-rd .abar .l { flex: 1; min-width: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4; } .jobs-rd .abar .l b { display: block; font-family: var(--font-mono); font-size: 15px; color: var(--text-primary); }
+.jobs-rd .abar .l { flex: 0 0 auto; min-width: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4; } .jobs-rd .abar .l b { display: block; font-family: var(--font-body); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; color: var(--text-primary); white-space: nowrap; }
+.jobs-rd .abar .abtn { flex: 1 1 auto; }
 .jobs-rd .abar .abtn { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--green); color: #fff; font-weight: 700; font-size: 15px; border: 0; border-radius: 10px; padding: 0 20px; cursor: pointer; min-width: 0; flex-shrink: 1; }
 .jobs-rd .abar .abtn .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* No salary → the button fills the bar and centres its label. */

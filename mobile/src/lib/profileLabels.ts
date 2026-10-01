@@ -26,7 +26,7 @@ export const APP_STATUS: Record<string, { label: string; color: string; bg: stri
   VIEWED: { label: 'Viewed', color: '#92400E', bg: '#FEF3C7' },
   SHORTLISTED: { label: 'Shortlisted', color: '#166534', bg: '#DCFCE7' },
   REJECTED: { label: 'Not selected', color: '#991B1B', bg: '#FEE2E2' },
-  WITHDRAWN: { label: 'Withdrawn', color: '#5A5F66', bg: '#F1F1F1' },
+  WITHDRAWN: { label: 'Withdrawn', color: '#4A5668', bg: '#F1F1F1' },
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

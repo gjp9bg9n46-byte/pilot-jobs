@@ -1,6 +1,6 @@
 /* Profile redesign — phone-first (this IS the mobile-web = mobile-app spec), then
    two columns from 768px up. Scoped under .prof-rd. Uses the app's global tokens. */
-.prof-rd { --faint: #8A8F96; --green: #166534; --red: #B42318; --amber: #92400E;
+.prof-rd { --faint: #8592A3; --green: #166534; --red: #B42318; --amber: #92400E;
   --red-bg: #FEF2F2; --red-bd: #FECACA; --amber-bg: #FEF3C7; --amber-bd: #FDE68A;
   --accent-soft: rgba(0,63,136,.07);
   font-family: var(--font-body); color: var(--text-primary); max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;
@@ -23,7 +23,7 @@
 .prof-rd .btn { font-family: var(--font-body); font-size: 13.5px; font-weight: 600; border-radius: 9px; padding: 10px 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .prof-rd .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .prof-rd .btn.link { border: 0; background: none; color: var(--accent); padding: 10px 4px; }
-.prof-rd .sw { width: 38px; height: 22px; border-radius: 12px; background: #D6D2C8; position: relative; flex-shrink: 0; transition: background .15s; border: 0; cursor: pointer; padding: 0; }
+.prof-rd .sw { width: 38px; height: 22px; border-radius: 12px; background: #CBD3DD; position: relative; flex-shrink: 0; transition: background .15s; border: 0; cursor: pointer; padding: 0; }
 .prof-rd .sw.on { background: var(--green); }
 .prof-rd .sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
 .prof-rd .sw.on::after { left: 18px; }
@@ -52,7 +52,7 @@
 /* phone/iPad: shorten to "Readiness · …" so it stays on one line */
 .prof-rd .attn .label .attn-full { display: none; }
 .prof-rd .attn .label .attn-short { display: inline; }
-.prof-rd .attn .ln { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid #F0EDE6; font-size: 13.5px; }
+.prof-rd .attn .ln { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid #E3E8EF; font-size: 13.5px; }
 .prof-rd .attn .ln:first-of-type { border-top: 0; }
 .prof-rd .attn .top { display: inline-flex; align-items: center; gap: 8px; flex: 1; min-width: 0; font-weight: 600; }
 .prof-rd .attn .ln .rt { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
@@ -67,7 +67,7 @@
 .prof-rd .snap .k { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 .prof-rd .strength { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
 .prof-rd .strength .top { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px; } .prof-rd .strength .top b { font-family: var(--font-mono); }
-.prof-rd .bar { height: 6px; border-radius: 4px; background: #ECE9E2; overflow: hidden; }
+.prof-rd .bar { height: 6px; border-radius: 4px; background: #E3E8EF; overflow: hidden; }
 .prof-rd .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 .prof-rd .strength .hint { font-size: 12.5px; color: var(--text-secondary); margin-top: 8px; line-height: 1.45; }
 .prof-rd .strength .hint b { color: var(--text-primary); }
@@ -80,14 +80,14 @@
 .prof-rd .card-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
 .prof-rd .card-h h4 { font-family: var(--font-display); font-weight: 600; font-size: 16px; margin: 0; }
 .prof-rd .card-h .edit { font-size: 13px; background: none; border: 0; cursor: pointer; color: var(--accent); font-weight: 600; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; }
-.prof-rd .row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #F0EDE6; }
+.prof-rd .row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #E3E8EF; }
 .prof-rd .row:first-of-type { border-top: 0; }
 .prof-rd .row .main { flex: 1; min-width: 0; }
 .prof-rd .row .n { font-weight: 600; font-size: 14px; }
 .prof-rd .row .d { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
 .prof-rd .row .h { font-family: var(--font-body); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; white-space: nowrap; }
 .prof-rd .row.superseded .n { color: var(--faint); font-weight: 500; }
-.prof-rd .nest { margin-left: 12px; padding-left: 12px; border-left: 2px solid #ECE9E2; }
+.prof-rd .nest { margin-left: 12px; padding-left: 12px; border-left: 2px solid #E3E8EF; }
 .prof-rd .nest .row { padding: 8px 0; } .prof-rd .nest .n { font-weight: 500; font-size: 13.5px; }
 .prof-rd .add { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 13px; background: none; border: 0; cursor: pointer; color: var(--accent); font-weight: 600; padding: 0; }
 .prof-rd .kv { display: grid; grid-template-columns: 92px 1fr; gap: 9px 12px; font-size: 13.5px; margin-top: 6px; }
@@ -132,7 +132,7 @@
 /* modal / bottom sheet for Edit */
 .prof-rd-backdrop { position: fixed; inset: 0; background: rgba(15,20,25,.45); z-index: 60; display: flex; align-items: flex-end; justify-content: center;
   /* the sheet renders OUTSIDE .prof-rd, so restate its local tokens here */
-  --faint: #8A8F96; --green: #166534; --red: #B42318; --amber: #92400E; --red-bg: #FEF2F2; --red-bd: #FECACA; }
+  --faint: #8592A3; --green: #166534; --red: #B42318; --amber: #92400E; --red-bg: #FEF2F2; --red-bd: #FECACA; }
 @media (min-width: 768px) { .prof-rd-backdrop { align-items: center; padding: 24px; } }
 .prof-rd-sheet { background: var(--surface); width: 100%; max-width: 560px; border-radius: 18px 18px 0 0; padding: 8px 18px calc(16px + env(safe-area-inset-bottom)); max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
 @media (min-width: 768px) { .prof-rd-sheet { border-radius: 16px; } }

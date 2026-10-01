@@ -45,7 +45,7 @@ export default function Login() {
   // Standalone light page: paint the body warm so overscroll matches; restore to
   // the dark app default on unmount (see primitives/README.md → body-bg pattern).
   useEffect(() => {
-    document.body.style.background = '#F8F6F1';
+    document.body.style.background = '#F5F7FA';
     return () => { document.body.style.background = '#0A1628'; };
   }, []);
 

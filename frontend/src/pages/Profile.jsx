@@ -211,7 +211,7 @@ function FlightTotalsCard({ totals }) {
         const R = 52; const C = 2 * Math.PI * R;
         const segs = [
           { label: 'PIC', value: pic, color: 'var(--accent)' },
-          { label: 'SIC', value: sic, color: '#F0A84B' },
+          { label: 'SIC', value: sic, color: '#8FB3E0' },
           { label: 'Other', value: other, color: '#C9D4E4' },
         ].filter((x) => x.value > 0.05);
         let acc = 0;

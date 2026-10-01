@@ -74,6 +74,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
   const chips = jobChips(job);
   const src = sourceInfo(job);
   const sal = formatSalary(job, false);
+  const salCompact = formatSalary(job, true); // phone apply bar: short, one-line
   const known = m ? m.counts.met + m.counts.unmet : 0;
 
   // Verdict
@@ -245,7 +246,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
         // required Adzuna attribution lives in the body (above), not here, so it
         // survives either layout.
         <div className={`abar${sal ? '' : ' nosal'}`}>
-          {sal && <div className="l"><b>{sal}</b>{src.direct ? <span>Direct application</span> : null}</div>}
+          {sal && <div className="l"><b>{salCompact}</b>{src.direct ? <span>Direct application</span> : null}</div>}
           <button className="abtn" onClick={doApply}>
             <span className="lbl">{src.direct ? `Apply on ${job.company} careers` : `Apply on ${src.name}`}</span>
             <ExternalLink size={14} style={{ flexShrink: 0 }} />

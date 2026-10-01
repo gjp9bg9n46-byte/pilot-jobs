@@ -9,7 +9,7 @@ const page = { minHeight: '100vh', display: 'flex', alignItems: 'center', justif
 
 export default function ForgotPassword() {
   const isMobile = useIsMobile();
-  useBodyBackground('#F8F6F1');
+  useBodyBackground('#F5F7FA');
   return (
     <div className="app-light" style={page}>
       <Card style={{ maxWidth: 400, width: '100%', padding: isMobile ? '32px 20px' : '40px 36px', borderRadius: 12 }}>

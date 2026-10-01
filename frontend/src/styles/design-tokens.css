@@ -4,14 +4,17 @@
    Surfaces opt into the light theme via the .app-light wrapper (or by setting
    background/color themselves). Loaded once globally from main.jsx. */
 :root {
-  --bg: #F8F6F1;
-  --surface: #FFFFFF;
-  --text-primary: #0F1419;
-  --text-secondary: #5A5F66;
-  --border: #E5E1D8;
-  --accent: #003F88;
+  --page: #FFFFFF;        /* base page background */
+  --bg: #F5F7FA;          /* section / app-screen background (behind cards) */
+  --surface: #FFFFFF;     /* card surface */
+  --text-primary: #0F1B2D;
+  --text-secondary: #4A5668;
+  --text-faint: #8592A3;
+  --border: #E3E8EF;
+  --accent: #003F88;      /* brand navy */
   --accent-hover: #002B5C;
-  --accent-amber: #D97706;
+  --navy-deep: #0B1F3A;   /* dark bands / deep navy */
+  --accent-soft: #8FB3E0; /* light steel blue — 2nd data-viz hue */
 
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-body: 'Inter', system-ui, sans-serif;
@@ -33,13 +36,18 @@
    Fraunces. A nested element that re-declares the warm vars inline (e.g. the
    JobPreviewCard "pilot view" island) renders warm regardless of this scope. */
 .app-b2b {
-  --bg: #F3F4F6;
+  /* Employer scope now shares the one product palette (white + cool grey + navy). */
+  --page: #FFFFFF;
+  --bg: #F5F7FA;
   --surface: #FFFFFF;
-  --text-primary: #16191D;
-  --text-secondary: #5B6470;
-  --border: #E2E4E8;
+  --text-primary: #0F1B2D;
+  --text-secondary: #4A5668;
+  --text-faint: #8592A3;
+  --border: #E3E8EF;
   --accent: #003F88;
   --accent-hover: #002B5C;
+  --navy-deep: #0B1F3A;
+  --accent-soft: #8FB3E0;
   /* Cool-operator uses Inter for everything, no editorial serif — collapse the
      display font to body so shared primitives (e.g. Modal titles) render Inter
      inside this scope too. The warm preview island re-declares its own vars. */

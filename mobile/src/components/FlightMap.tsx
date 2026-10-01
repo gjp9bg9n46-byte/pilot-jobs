@@ -110,11 +110,13 @@ export default function FlightMap() {
                 {airports.map((a) => {
                   const p = projection([a.lon, a.lat]);
                   if (!p) return null;
-                  const r = 2.5 + (a.count / maxCount) * 4;
                   const hot = top.has(a.code);
+                  const base = 2.5 + (a.count / maxCount) * 4;
+                  // "most visited" = larger + deeper navy, same colour family
+                  const r = hot ? base * 1.5 : base;
                   return (
                     <Circle key={a.code} cx={p[0]} cy={p[1]} r={r}
-                      fill={hot ? pilot.amber : pilot.navy}
+                      fill={hot ? pilot.navyDeep : pilot.navy}
                       stroke="#FFFFFF" strokeWidth={0.8} opacity={0.9} />
                   );
                 })}
@@ -139,7 +141,7 @@ export default function FlightMap() {
         </View>
       </GestureHandlerRootView>
       <View style={styles.legendRow}>
-        <View style={[styles.legendDot, { backgroundColor: pilot.amber }]} /><Text style={styles.legendText}>Most visited</Text>
+        <View style={[styles.legendDot, { width: 10, height: 10, borderRadius: 5, backgroundColor: pilot.navyDeep }]} /><Text style={styles.legendText}>Most visited</Text>
         <View style={[styles.legendDot, { backgroundColor: pilot.navy, marginLeft: 14 }]} /><Text style={styles.legendText}>Visited</Text>
         <Text style={[styles.legendText, { marginLeft: 'auto' }]}>Pinch to zoom · drag to pan</Text>
       </View>

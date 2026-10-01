@@ -31,12 +31,12 @@
 
 /* Ghost nav button (Log in) */
 .landing-root .nav-ghost { transition: border-color 0.18s ease-out, color 0.18s ease-out, background 0.18s ease-out, transform 0.18s ease-out; }
-.landing-root .nav-ghost:hover { border-color: var(--accent-amber) !important; color: var(--accent-amber) !important; transform: translateY(-1px); }
+.landing-root .nav-ghost:hover { border-color: var(--accent) !important; color: var(--accent) !important; transform: translateY(-1px); }
 .landing-root .nav-ghost:active { transform: translateY(0) scale(0.98); }
 
 /* Nav + footer links — amber underline slides in from the left */
 .landing-root .nav-link, .landing-root .ls-link {
-  background-image: linear-gradient(var(--accent-amber), var(--accent-amber));
+  background-image: linear-gradient(var(--accent), var(--accent));
   background-repeat: no-repeat;
   background-position: left calc(100% + 3px);
   background-size: 0% 2px;
@@ -45,7 +45,7 @@
 }
 .landing-root .nav-link:hover, .landing-root .ls-link:hover { background-size: 100% 2px; }
 .landing-root .ls-link:hover { color: #fff; }
-.landing-root .nav-link:hover { color: var(--accent-amber) !important; }
+.landing-root .nav-link:hover { color: var(--accent) !important; }
 
 /* Cards — lift + accent border */
 .landing-root .card { transition: box-shadow 0.18s ease-out, border-color 0.18s ease-out, transform 0.18s ease-out; }

@@ -26,7 +26,7 @@ import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/t
 type Any = Record<string, any>;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOT = { r: '#D92D20', a: '#F79009', g: '#16A34A', n: '#C4BFB4' };
-const TXT = { r: '#B42318', a: '#92400E', g: '#166534', n: '#8A8F96' };
+const TXT = { r: '#B42318', a: '#92400E', g: '#166534', n: '#8592A3' };
 
 function fmtDue(d?: any) { if (!d) return ''; const t = new Date(d); return `${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`; }
 function properCase(s?: string) {
@@ -193,7 +193,7 @@ export default function ProfileView() {
         )}
 
         <View style={styles.otw}>
-          <Switch value={!!profile.openToWork} onValueChange={toggleOtw} trackColor={{ true: '#16A34A', false: '#D6D2C8' }} thumbColor="#fff" />
+          <Switch value={!!profile.openToWork} onValueChange={toggleOtw} trackColor={{ true: '#16A34A', false: '#CBD3DD' }} thumbColor="#fff" />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.otwTitle}>Open to work</Text>
             <Text style={styles.otwSub} numberOfLines={1}>{profile.openToWork ? (otwSummary || 'Visible to airlines') : 'Not visible to airlines'}</Text>
@@ -440,7 +440,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   empty: { fontSize: 13, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 6 },
 
   attnLabel: { fontSize: 11, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.5, color: pilot.muted, textTransform: 'uppercase' },
-  attnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderTopWidth: 1, borderTopColor: '#F0EDE6' },
+  attnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderTopWidth: 1, borderTopColor: '#E3E8EF' },
   attnLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
   attnName: { fontSize: 13.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink, flexShrink: 1 },
   attnRight: { fontSize: 12.5, fontFamily: fontFamilies.bodySemiBold },
@@ -456,13 +456,13 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   strengthTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   strengthLabel: { fontSize: 12.5, fontFamily: fontFamilies.bodyMedium, color: pilot.ink },
   strengthPct: { fontSize: 12.5, fontFamily: fontFamilies.mono, color: pilot.ink, fontWeight: '700' },
-  bar: { height: 6, borderRadius: 4, backgroundColor: '#ECE9E2', overflow: 'hidden' },
+  bar: { height: 6, borderRadius: 4, backgroundColor: '#E3E8EF', overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: pilot.navy, borderRadius: 4 },
   hint: { fontSize: 12.5, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 8, lineHeight: 18 },
   hintB: { color: pilot.ink, fontFamily: fontFamilies.bodySemiBold },
   hintLink: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
 
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderTopWidth: 1, borderTopColor: '#F0EDE6', marginHorizontal: -4, paddingHorizontal: 4, borderRadius: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderTopWidth: 1, borderTopColor: '#E3E8EF', marginHorizontal: -4, paddingHorizontal: 4, borderRadius: 8 },
   rowNested: {},
   rowPressed: { backgroundColor: 'rgba(0,63,136,0.06)' },
   rowMain: { flex: 1, minWidth: 0 },
@@ -471,7 +471,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   rowNnest: { fontFamily: fontFamilies.bodyMedium, fontSize: 13.5, color: pilot.ink },
   rowD: { fontSize: 12.5, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
   rowH: { fontFamily: fontFamilies.body, fontSize: 13, color: pilot.ink, fontWeight: '700' },
-  nest: { marginLeft: 12, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: '#ECE9E2' },
+  nest: { marginLeft: 12, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: '#E3E8EF' },
 
   stRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   stText: { fontSize: 12.5, fontFamily: fontFamilies.bodySemiBold },
@@ -509,7 +509,7 @@ export function FlightDashboard({ totals, styles, palette }: { totals: Any; styl
   const C = 2 * Math.PI * R;
   const segs = [
     { label: 'PIC', value: pic, color: palette.navy },
-    { label: 'SIC', value: sic, color: palette.amber },
+    { label: 'SIC', value: sic, color: palette.accentSoft },
     { label: 'Other', value: other, color: palette.line },
   ].filter((x) => x.value > 0.05);
   let acc = 0;

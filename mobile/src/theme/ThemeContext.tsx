@@ -21,21 +21,26 @@ import { pilot as lightTokens } from './tokens';
 import { getItem, setItem } from '../lib/secureStore';
 
 export type ThemePalette = {
-  cream: string; surface: string; ink: string; muted: string; line: string;
-  navy: string; navyHover: string; amber: string;
+  page: string; cream: string; surface: string; ink: string; muted: string; faint: string; line: string;
+  navy: string; navyHover: string; navyDeep: string; accentSoft: string; amber: string;
 };
 export type ThemeMode = 'light' | 'dark';
 
 export const lightPalette: ThemePalette = { ...lightTokens };
 
+// Dark mode left untouched this pass (no beige; its amber is decorative there).
 export const darkPalette: ThemePalette = {
+  page: '#0A1628',
   cream: '#0A1628', // page background — deep landing-page navy (true dark)
   surface: '#14253F', // cards — lifted a step above the background
   ink: '#F2F5FA',
   muted: '#93A5C0',
+  faint: '#6E7F99',
   line: 'rgba(255,255,255,0.14)',
   navy: '#6FA9E0', // accent lightened for contrast on navy surfaces
   navyHover: '#8FBCE8',
+  navyDeep: '#0A1628',
+  accentSoft: '#6FA9E0',
   amber: '#F0A84B',
 };
 

@@ -10,14 +10,18 @@
  * Source: :root in design-tokens.css
  */
 export const pilot = {
-  cream: '#F8F6F1', // --bg
-  surface: '#FFFFFF', // --surface
-  ink: '#0F1419', // --text-primary (body text)
-  muted: '#5A5F66', // --text-secondary
-  line: '#E5E1D8', // --border (hairlines)
+  page: '#FFFFFF', // --page (base page background)
+  cream: '#F5F7FA', // --bg (section / app-screen background, behind cards)
+  surface: '#FFFFFF', // --surface (cards)
+  ink: '#0F1B2D', // --text-primary
+  muted: '#4A5668', // --text-secondary
+  faint: '#8592A3', // --text-faint
+  line: '#E3E8EF', // --border (hairlines)
   navy: '#003F88', // --accent
   navyHover: '#002B5C', // --accent-hover
-  amber: '#D97706', // --accent-amber
+  navyDeep: '#0B1F3A', // --navy-deep (dark bands)
+  accentSoft: '#8FB3E0', // --accent-soft (2nd data-viz hue)
+  amber: '#92400E', // STATUS amber (near-limit gauge); decorative orange removed
 } as const;
 
 /**
@@ -26,11 +30,11 @@ export const pilot = {
  * Source: .app-b2b in design-tokens.css
  */
 export const employer = {
-  bg: '#F3F4F6',
+  bg: '#F5F7FA',
   surface: '#FFFFFF',
-  ink: '#16191D',
-  muted: '#5B6470',
-  line: '#E2E4E8',
+  ink: '#0F1B2D',
+  muted: '#4A5668',
+  line: '#E3E8EF',
   navy: '#003F88',
   navyHover: '#002B5C',
 } as const;

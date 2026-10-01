@@ -30,7 +30,7 @@ const DESC_MAX = 10000;
 
 // Warm pilot palette for the "Live preview" island (WYSIWYG of pilot output)
 // inside the cool .app-b2b form. Mirrors :root / .app-light token values.
-const WARM = { '--bg': '#F8F6F1', '--surface': '#FFFFFF', '--border': '#E5E1D8', '--text-primary': '#0F1419', '--text-secondary': '#5A5F66', '--accent': '#003F88', '--accent-hover': '#002B5C' };
+const WARM = { '--bg': '#F5F7FA', '--surface': '#FFFFFF', '--border': '#E3E8EF', '--text-primary': '#0F1B2D', '--text-secondary': '#4A5668', '--accent': '#003F88', '--accent-hover': '#002B5C' };
 
 const css = {
   page: { minHeight: '100vh', background: 'var(--bg)', padding: '24px 0 64px', fontFamily: 'var(--font-body)' },
@@ -83,7 +83,7 @@ export default function EmployerJobForm() {
   const [loading, setLoading] = useState(false);
   const [loadingJob, setLoadingJob] = useState(isEdit);
   const [tab, setTab] = useState('form'); // mobile: form | preview
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
 
   // Edit: load the job from the employer's own list, redirect if not theirs.
   useEffect(() => {

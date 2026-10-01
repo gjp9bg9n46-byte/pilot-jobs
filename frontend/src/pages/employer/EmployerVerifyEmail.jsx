@@ -12,7 +12,7 @@ const page = { minHeight: '100vh', display: 'flex', alignItems: 'center', justif
 export default function EmployerVerifyEmail() {
   const isMobile = useIsMobile();
   const { isAuthenticated, refresh } = useEmployerAuth();
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
 
   return (
     <div className="app-b2b" style={page}>

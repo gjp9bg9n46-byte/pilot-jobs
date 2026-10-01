@@ -24,7 +24,7 @@ export default function EmployerLogin() {
   const { login, isAuthenticated, status, loading: authLoading } = useEmployerAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  useBodyBackground('#F3F4F6');
+  useBodyBackground('#F5F7FA');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

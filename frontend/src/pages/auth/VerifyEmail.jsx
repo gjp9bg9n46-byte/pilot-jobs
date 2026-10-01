@@ -14,7 +14,7 @@ export default function VerifyEmail() {
   const isMobile = useIsMobile();
   const dispatch = useDispatch();
   const loggedIn = useSelector((s) => !!s.auth.token);
-  useBodyBackground('#F8F6F1');
+  useBodyBackground('#F5F7FA');
 
   // Refresh the pilot so the "verify your email" banner clears in-session.
   const onVerified = () => { if (loggedIn) authApi.me().then(({ data }) => dispatch(setPilot(data))).catch(() => {}); };

@@ -19,7 +19,7 @@ export function makeTabBarStyle(p: ThemePalette): ViewStyle {
     paddingTop: 8,
     paddingBottom: 10,
     paddingHorizontal: 8,
-    shadowColor: '#0F1419',
+    shadowColor: '#0F1B2D',
     shadowOpacity: 0.14,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
