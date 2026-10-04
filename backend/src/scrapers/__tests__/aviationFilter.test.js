@@ -56,3 +56,14 @@ test('BUG2 — maritime "Port Captain" is REJECTED even when it names harbour "p
   assert.strictEqual(verdict({ title: 'Marine Pilot', company: 'Port of Rotterdam' }), 'reject');
   assert.strictEqual(verdict({ title: 'Harbour Pilot', company: 'ABP' }), 'reject');
 });
+
+test('BUG3 — non-aviation "officer" grades rejected; real First Officers kept', () => {
+  assert.strictEqual(verdict({ title: 'HOUSING FIRST OFFICER', company: 'Cardiff Council', description: 'Manage council housing tenancies.' }), 'reject');
+  assert.strictEqual(verdict({ title: 'Loan Officer', company: 'A Bank' }), 'reject');
+  assert.strictEqual(verdict({ title: 'Compliance Officer', company: 'A Firm' }), 'reject');
+  assert.strictEqual(verdict({ title: 'Customs First Officer', company: 'Border Agency' }), 'reject');
+  // real pilots still keep (second signal present)
+  assert.strictEqual(verdict({ title: 'First Officer A320', company: 'Wizz Air' }), 'keep');
+  assert.strictEqual(verdict({ title: 'First Officer', company: 'Emirates', description: 'Join our airline, Boeing 777 fleet.' }), 'keep');
+  assert.strictEqual(verdict({ title: 'First Officer — Airbus A350', company: 'Agency' }), 'keep');
+});

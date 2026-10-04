@@ -59,6 +59,14 @@ const RX_REJECT = new RegExp([
 
 const RX_CAPTAIN = /\bcaptain\b/i;
 
+// "<domain> Officer" grades that are NOT pilots — "Housing First Officer" (council),
+// "Loan Officer", "Compliance Officer"… "First/Second Officer" alone is not an
+// aviation signal; it needs a second one (type/airline/pilot). If the title is a
+// non-aviation officer grade and there's no aircraft type or airline, reject.
+const RX_NONAV_OFFICER = /\b(?:housing|loan|lettings|welfare|compliance|customs|immigration|police|prison|probation|revenue|benefits?|planning|security|data\s+protection|information|returning|liaison|parking|enforcement|licen[cs]ing|environmental\s+health|trading\s+standards|admissions|finance|accounts?|payroll|procurement|human\s+resources|marketing|sales|retail|duty|floor|night|front|desk|ward|safeguarding|tenancy|estates?|highways?|transport|waste|community|youth|development|project|programme|program)\s+(?:(?:first|second|chief|senior|principal|duty|support|liaison)\s+)?officers?\b/i;
+// Aircraft type codes alone (subset of STRONG) — used to clear the officer guard.
+const RX_TYPECODE = /\b(?:a2[12]0|a3[0-9]0|a220|b7[0-9]7|7[0-9]7|cl[-\s]?[36][05]0|cl\s?60[45]|challenger|global\s*[5-7]\d00|bd[-\s]?700|phenom|citation|gulfstream|g[2-7][0-9]0|\bgv\b|falcon|learjet|pilatus|pc-?\d\d|king\s+air|dash\s?8|dhc-?\d|q400|crj\d?|erj|e\d{3}|embraer|atr\s?\d|cessna|caravan|hawker|praetor|legacy\s*\d{3}|da4[02]|da62|tbm)\b/i;
+
 function textOf(job) {
   const title = String(job.title || '');
   const desc = String(job.description || '').slice(0, 2000);
@@ -73,6 +81,11 @@ function classifyJob(job) {
   const { title, text, company } = textOf(job);
   if (job.sourceType === 'direct_ats' || job.sourceType === 'operator_direct') {
     return { verdict: 'keep', reason: 'airline/operator source' };
+  }
+  // Non-aviation officer grade (Housing/Loan/Compliance … Officer) with no aircraft
+  // type and no airline employer → reject. "First Officer" needs a 2nd signal.
+  if (RX_NONAV_OFFICER.test(title) && !RX_TYPECODE.test(text) && !RX_AV_COMPANY.test(company) && !/\b(?:airlines?|airways|aviation|cockpit|flight\s+deck|flying\b)\b/i.test(text)) {
+    return { verdict: 'reject', reason: 'non-aviation officer grade, no aviation signal' };
   }
   if (RX_AV_STRONG.test(text) || RX_AV_COMPANY.test(company)) {
     return { verdict: 'keep', reason: 'aviation signal (type/licence/airline/first-officer)' };
@@ -92,4 +105,4 @@ function classifyJob(job) {
   return { verdict: 'keep', reason: 'no reject signal' };
 }
 
-module.exports = { classifyJob, RX_AV_STRONG, RX_AV_COMPANY, RX_AV_WEAK, RX_MILITARY, RX_REJECT };
+module.exports = { classifyJob, RX_AV_STRONG, RX_AV_COMPANY, RX_AV_WEAK, RX_MILITARY, RX_REJECT, RX_NONAV_OFFICER };
