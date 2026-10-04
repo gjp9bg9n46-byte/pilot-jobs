@@ -22,8 +22,10 @@
     <meta name="twitter:image" content="https://cockpithire.com/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- Landing hero LCP image — preloaded, art-directed (wide on phone, portrait on desktop) -->
+    <link rel="preload" as="image" type="image/avif" href="/hero/flightdeck-wide-800.avif" imagesrcset="/hero/flightdeck-wide-800.avif 800w, /hero/flightdeck-wide-1280.avif 1280w" imagesizes="100vw" media="(max-width:820px)" />
+    <link rel="preload" as="image" type="image/avif" href="/hero/flightdeck-port-960.avif" imagesrcset="/hero/flightdeck-port-640.avif 640w, /hero/flightdeck-port-960.avif 960w, /hero/flightdeck-port-1280.avif 1280w" imagesizes="46vw" media="(min-width:821px)" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { overflow-x: hidden; max-width: 100%; }

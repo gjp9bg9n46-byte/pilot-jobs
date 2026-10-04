@@ -18,6 +18,11 @@ api.interceptors.response.use(
   }
 );
 
+export const statsApi = {
+  get: () => api.get('/stats'),
+  landing: () => api.get('/stats/landing'),
+};
+
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (email, password) => api.post('/auth/login', { email, password }),
