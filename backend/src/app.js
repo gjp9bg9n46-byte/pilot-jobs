@@ -273,6 +273,23 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
   }
 });
 
+// Nightly re-screen of EXISTING live jobs (03:30 UTC) — intake only screens new
+// rows, so this catches jobs that became non-aviation under tightened rules and
+// collapses any exact-identity duplicates sitting across sources. Reversible.
+cron.schedule('30 3 * * *', async () => {
+  try {
+    const { reScreenNonAviation, collapseByIdentity } = require('./scrapers/dedup');
+    // Non-aviation re-screen applies immediately (validated). Identity dedup is
+    // LOG-ONLY until IDENTITY_DEDUP_APPLY=1 (3-day staged shadow rollout).
+    const apply = process.env.IDENTITY_DEDUP_APPLY === '1';
+    const av = await reScreenNonAviation({ dryRun: false });
+    const dd = await collapseByIdentity({ dryRun: !apply });
+    logger.info({ msg: `nightly re-screen complete${apply ? '' : ' [identity dedup LOG-ONLY]'}`, identityDedupApplied: apply, nonAviationHidden: av.hidden, nonAviationBySource: av.perSource, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups });
+  } catch (err) {
+    logger.error(`Nightly re-screen failed: ${err.message}`);
+  }
+});
+
 // Weekly airline fleet refresh from Wikipedia (Mondays 04:00 UTC) — fleetDetail
 // is enrichment-owned and refreshed; community-contributed fields are untouched.
 cron.schedule('0 4 * * 1', async () => {

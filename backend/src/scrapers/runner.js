@@ -47,7 +47,7 @@ const { normalize, hasAnyRequirement, extractRequirementsBlock, takeUnmappedSour
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
 const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
-const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates, collapseAggregatorPriority } = require('./dedup');
+const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates, collapseAggregatorPriority, collapseByIdentity } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
 // ─── Upsert a single normalized job ──────────────────────────────────────────
@@ -689,16 +689,21 @@ async function runAllEmployers(employers, opts = {}) {
   }
 
   if (!opts.dryRun) {
-    // WhatJobs precedence over other aggregators, AFTER clean-displacement (so a
-    // direct twin still beats WhatJobs). Retroactive: migrates leftover
-    // Adzuna/Careerjet/Jooble/Reed rows to their WhatJobs twin each cycle.
-    try { await collapseAggregatorPriority({ dryRun: false }); } catch (err) { logger.error({ err: err.message, msg: 'whatjobs-priority dedup failed' }); }
+    // Aggregator precedence, AFTER clean-displacement: Adzuna/Careerjet beat
+    // WhatJobs (canonical rule). Retroactive: migrates WhatJobs rows to their
+    // Adzuna/Careerjet twin each cycle so the surviving apply link is non-cpl.
+    try { await collapseAggregatorPriority({ dryRun: false }); } catch (err) { logger.error({ err: err.message, msg: 'aggregator-priority dedup failed' }); }
   }
 
   if (!opts.dryRun) {
     // Housekeeping: purge stored jobs that no longer pass the (stricter) filter,
     // and anything past its own expiry date.
     try { await collapseSameAdAcrossLocations(); } catch (err) { logger.error({ err: err.message, msg: 'same-ad collapse failed' }); }
+    // Identity-based dedup: collapse exact-identity clusters the source-level
+    // passes miss (type/base/variant/recruiter-repost). Conservative — certain
+    // clusters only, never recruiter-only on a soft base. LOG-ONLY until
+    // IDENTITY_DEDUP_APPLY=1 (staged rollout); per-source merge counts always logged.
+    try { const apply = process.env.IDENTITY_DEDUP_APPLY === '1'; const d = await collapseByIdentity({ dryRun: !apply }); logger.info({ msg: `per-scrape identity dedup${apply ? '' : ' [LOG-ONLY]'}`, applied: apply, clustersMerged: d.clustersMerged, rowsHidden: d.rowsHidden, leftForReview: d.reviewGroups, dupesMergedBySource: d.perSource }); } catch (err) { logger.error({ err: err.message, msg: 'identity-dedup failed' }); }
     try { await revalidateActiveJobs(employers); } catch (err) { logger.error({ err: err.message, msg: 'revalidation sweep failed' }); }
     try { await expirePastDue(); } catch (err) { logger.error({ err: err.message, msg: 'expiry sweep failed' }); }
     try {
