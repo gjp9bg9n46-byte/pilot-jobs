@@ -47,7 +47,7 @@ const { normalize, hasAnyRequirement, extractRequirementsBlock, takeUnmappedSour
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
 const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
-const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates, collapseAggregatorPriority } = require('./dedup');
+const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates, collapseAggregatorPriority, collapseByIdentity } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 
 // ─── Upsert a single normalized job ──────────────────────────────────────────
@@ -699,6 +699,10 @@ async function runAllEmployers(employers, opts = {}) {
     // Housekeeping: purge stored jobs that no longer pass the (stricter) filter,
     // and anything past its own expiry date.
     try { await collapseSameAdAcrossLocations(); } catch (err) { logger.error({ err: err.message, msg: 'same-ad collapse failed' }); }
+    // Identity-based dedup: collapse exact-identity clusters the source-level
+    // passes miss (type/base/variant/recruiter-repost). Conservative — certain
+    // clusters only; no-type+unresolved groups stay live. Per-source merge counts.
+    try { const d = await collapseByIdentity({ dryRun: false }); logger.info({ msg: 'per-scrape identity dedup', clustersMerged: d.clustersMerged, rowsHidden: d.rowsHidden, leftForReview: d.reviewGroups, dupesMergedBySource: d.perSource }); } catch (err) { logger.error({ err: err.message, msg: 'identity-dedup failed' }); }
     try { await revalidateActiveJobs(employers); } catch (err) { logger.error({ err: err.message, msg: 'revalidation sweep failed' }); }
     try { await expirePastDue(); } catch (err) { logger.error({ err: err.message, msg: 'expiry sweep failed' }); }
     try {

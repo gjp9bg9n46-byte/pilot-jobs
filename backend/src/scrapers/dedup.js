@@ -18,6 +18,8 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
+const { identityOf, makeResolver } = require('./jobIdentity');
+const { classifyJob } = require('./aviationFilter');
 const { normalizeCompany, coreCompanyKey } = require('../services/airlineEnrichmentService');
 const { sourceTypeRank } = require('./sourceType');
 
@@ -594,4 +596,64 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
   return collapsed;
 }
 
-module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore };
+// ─── Identity-based dedup (src/scrapers/jobIdentity.js) ──────────────────────
+// Conservative collapse of EXACT-identity clusters only (resolved employer ·
+// rank · aircraft type · base · variant). A cluster is merged only when it is
+// CERTAIN — some member states an aircraft type OR its employer resolved to an
+// airline. No-type + unresolved groups are left live and counted as review.
+// Canonical priority: direct_ats/operator_direct > Adzuna/Careerjet > WhatJobs,
+// then an employer apply link, then the operator-labelled row, then description.
+function canonicalByIdentity(group) {
+  const dom = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  const empLink = (u) => { const d = dom(u); return !!d && !/whatjobs\.com|adzuna|careerjet|jooble|reed\.co|indeed|talent\.com/i.test(d); };
+  const agg = (sp) => { const s = String(sp || '').toUpperCase(); if (/ADZUNA|CAREERJET/.test(s)) return 4; if (/JOOBLE/.test(s)) return 2; if (/WHATJOBS/.test(s)) return 1; return 3; };
+  const isOp = (x) => x._emp && x._emp.via && x._emp.via !== 'company-asis';
+  return [...group].sort((a, b) =>
+    (sourceTypeRank(b.sourceType) - sourceTypeRank(a.sourceType)) ||
+    (agg(b.sourcePlatform) - agg(a.sourcePlatform)) ||
+    ((empLink(b.applyUrl) ? 1 : 0) - (empLink(a.applyUrl) ? 1 : 0)) ||
+    ((isOp(b) ? 1 : 0) - (isOp(a) ? 1 : 0)) ||
+    ((b.description ? b.description.length : 0) - (a.description ? a.description.length : 0)))[0];
+}
+
+async function collapseByIdentity({ dryRun = true } = {}) {
+  const airlines = await prisma.airline.findMany({ select: { name: true, country: true, headquarters: true, bases: true } });
+  const resolver = makeResolver(airlines);
+  const jobs = await prisma.job.findMany({ where: { status: 'ACTIVE', mergedInto: null }, select: { id: true, title: true, titleEn: true, company: true, location: true, country: true, sourcePlatform: true, sourceType: true, applyUrl: true, description: true, descriptionEn: true } });
+  const groups = new Map();
+  for (const j of jobs) { const ident = identityOf({ ...j, description: j.descriptionEn || j.description }, resolver); j._ident = ident; j._emp = ident.employer; if (!groups.has(ident.key)) groups.set(ident.key, []); groups.get(ident.key).push(j); }
+  let clustersMerged = 0, rowsHidden = 0, reviewGroups = 0; const perSource = {};
+  for (const [, g] of groups) {
+    if (g.length < 2) continue;
+    const certain = g.some((x) => x._ident.types.length) || g.some((x) => x._emp.via && x._emp.via !== 'company-asis');
+    if (!certain) { reviewGroups++; continue; } // uncertain → leave live, logged
+    const canon = canonicalByIdentity(g);
+    clustersMerged++;
+    for (const d of g) {
+      if (d.id === canon.id) continue;
+      rowsHidden++; perSource[d.sourcePlatform || '?'] = (perSource[d.sourcePlatform || '?'] || 0) + 1;
+      if (!dryRun) {
+        await prisma.job.update({ where: { id: d.id }, data: { mergedInto: canon.id, status: 'EXPIRED' } });
+        await prisma.job.updateMany({ where: { mergedInto: d.id }, data: { mergedInto: canon.id } }); // flatten chains
+      }
+    }
+  }
+  logger.info({ msg: dryRun ? 'identity-dedup SHADOW (no writes)' : 'identity-dedup applied', clustersMerged, rowsHidden, reviewGroups, perSource });
+  return { clustersMerged, rowsHidden, reviewGroups, perSource };
+}
+
+// Re-run the aviation classifier over EXISTING live jobs (intake only screens new
+// rows). Reversible hide (EXPIRED + REMOVED, sticky via runner keepInactive).
+async function reScreenNonAviation({ dryRun = true } = {}) {
+  const jobs = await prisma.job.findMany({ where: { status: 'ACTIVE', mergedInto: null }, select: { id: true, title: true, company: true, description: true, sourceType: true, sourcePlatform: true } });
+  let hidden = 0; const perSource = {};
+  for (const j of jobs) {
+    if (classifyJob({ title: j.title, company: j.company, description: j.description, sourceType: j.sourceType }).verdict !== 'reject') continue;
+    hidden++; perSource[j.sourcePlatform || '?'] = (perSource[j.sourcePlatform || '?'] || 0) + 1;
+    if (!dryRun) await prisma.job.update({ where: { id: j.id }, data: { status: 'EXPIRED', moderationStatus: 'REMOVED', notes: 'non-aviation (nightly re-screen); reversible' } });
+  }
+  logger.info({ msg: dryRun ? 'non-aviation re-screen SHADOW (no writes)' : 'non-aviation re-screen applied', hidden, perSource });
+  return { hidden, perSource };
+}
+
+module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };

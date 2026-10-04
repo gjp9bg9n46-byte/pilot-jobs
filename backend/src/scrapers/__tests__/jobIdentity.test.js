@@ -33,6 +33,9 @@ test('rankOf distinguishes examiner from instructor and the pilot grades', () =>
   assert.strictEqual(rankOf('Direct Entry Captain'), 'CPT');
   assert.strictEqual(rankOf('Cadet Pilot Programme'), 'CADET');
   assert.notStrictEqual(rankOf('Examiner'), rankOf('Instructor'));
+  // plural "First Officers" must still be FO (not fall through to generic PILOT)
+  assert.strictEqual(rankOf('Direct Entry First Officers (Contract)'), 'FO');
+  assert.notStrictEqual(rankOf('Direct Entry First Officers (Contract)'), rankOf('Pilot — Singapore Airlines'));
 });
 
 // ── aircraft type: manufacturer words + distinct variants ────────────────────

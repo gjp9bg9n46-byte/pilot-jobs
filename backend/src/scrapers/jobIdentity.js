@@ -46,9 +46,9 @@ function rankOf(title) {
   const t = ` ${fold(String(title)).toLowerCase()} `;
   if (/\b(examiner|tre|flight\s+examiner)\b/.test(t)) return 'EXAMINER';
   if (/\b(instructor|tri|flight\s+instructor|line\s+trainer)\b/.test(t)) return 'INSTRUCTOR';
-  if (/\b(senior\s+first\s+officer|sfo)\b/.test(t)) return 'SFO';
-  if (/\b(first\s+officer|1st\s+officer|f\/o|co[- ]?pilots?)\b/.test(t)) return 'FO';
-  if (/\bsecond\s+officer\b/.test(t)) return 'SO';
+  if (/\b(senior\s+first\s+officers?|sfo)\b/.test(t)) return 'SFO';
+  if (/\b(first\s+officers?|1st\s+officers?|f\/o|co[- ]?pilots?)\b/.test(t)) return 'FO';
+  if (/\bsecond\s+officers?\b/.test(t)) return 'SO';
   if (/\b(cadet|ab[- ]?initio|trainee\s+pilot)\b/.test(t)) return 'CADET';
   const senior = /\bsenior\b/.test(t);
   if (/\b(captains?|commanders?)\b/.test(t)) return senior ? 'SENIOR_CPT' : 'CPT';
