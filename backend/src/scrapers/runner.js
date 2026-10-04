@@ -689,10 +689,10 @@ async function runAllEmployers(employers, opts = {}) {
   }
 
   if (!opts.dryRun) {
-    // WhatJobs precedence over other aggregators, AFTER clean-displacement (so a
-    // direct twin still beats WhatJobs). Retroactive: migrates leftover
-    // Adzuna/Careerjet/Jooble/Reed rows to their WhatJobs twin each cycle.
-    try { await collapseAggregatorPriority({ dryRun: false }); } catch (err) { logger.error({ err: err.message, msg: 'whatjobs-priority dedup failed' }); }
+    // Aggregator precedence, AFTER clean-displacement: Adzuna/Careerjet beat
+    // WhatJobs (canonical rule). Retroactive: migrates WhatJobs rows to their
+    // Adzuna/Careerjet twin each cycle so the surviving apply link is non-cpl.
+    try { await collapseAggregatorPriority({ dryRun: false }); } catch (err) { logger.error({ err: err.message, msg: 'aggregator-priority dedup failed' }); }
   }
 
   if (!opts.dryRun) {

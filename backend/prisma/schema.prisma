@@ -442,6 +442,7 @@ model Job {
   reports              JobReport[]
 
   @@unique([sourcePlatform, externalId])
+  @@index([mergedInto])  // dedup chain-flatten / canonical lookups scan by this
 }
 
 model JobAlert {

@@ -32,9 +32,13 @@ function normaliseKey(str) {
 // the scraped aggregators (Adzuna/Careerjet/Jooble/Reed). Higher = preferred.
 // This NEVER outranks a clean row: direct_ats/operator_direct still win via
 // sourceTypeRank, which is compared first.
-const AGGREGATOR_PRIORITY = { WHATJOBS: 2 };
+// Canonical rule: direct_ats/operator_direct (via sourceTypeRank) > Adzuna /
+// Careerjet > other aggregators > WhatJobs. WhatJobs ranks LOWEST so an
+// Adzuna/Careerjet twin keeps its (non-cpl) apply link.
+const AGGREGATOR_PRIORITY = { ADZUNA: 3, CAREERJET: 3, JOOBLE: 2, REED: 2, WHATJOBS: 1 };
 function aggregatorPriority(sourcePlatform) {
-  return AGGREGATOR_PRIORITY[String(sourcePlatform || '').toUpperCase()] || 1;
+  const k = String(sourcePlatform || '').toUpperCase();
+  return (k in AGGREGATOR_PRIORITY) ? AGGREGATOR_PRIORITY[k] : 2; // unknown aggregators mid (above WhatJobs)
 }
 
 /**
@@ -212,7 +216,9 @@ async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } =
 }
 
 /**
- * WhatJobs precedence over other aggregators (fuzzy twin).
+ * Aggregator precedence (fuzzy twin): Adzuna/Careerjet beat WhatJobs. The
+ * highest-priority fresh aggregator is canonical; the rest (incl. WhatJobs) are
+ * merged into it, so the surviving apply link is the non-cpl one.
  *
  * Same fuzzy fingerprint (employer + title-core-with-aircraft + city) as the
  * clean-displacement pass, but here the WINNER is the WhatJobs twin and the
@@ -248,41 +254,41 @@ async function collapseAggregatorPriority({ dryRun = true } = {}) {
     groups.get(key).push(j);
   }
 
-  const isWhatJobs = (j) => String(j.sourcePlatform || '').toUpperCase() === 'WHATJOBS';
   const pairs = [];
   let merged = 0;
   for (const group of groups.values()) {
     if (group.length < 2) continue;
-    const winners = group.filter((j) => isWhatJobs(j) && isFresh(j)); // FRESH WhatJobs only
-    const losers = group.filter((j) => !isWhatJobs(j));               // other aggregators
-    if (!winners.length || !losers.length) continue;
-
-    const canonical = pickCanonical(winners); // best (fresh) WhatJobs row
+    const fresh = group.filter(isFresh);
+    if (!fresh.length) continue;
+    // Canonical = highest-priority FRESH aggregator (Adzuna/Careerjet beat
+    // WhatJobs). Losers = everything else in the group, incl. WhatJobs.
+    const canonical = pickCanonical(fresh);
+    const losers = group.filter((j) => j.id !== canonical.id);
+    if (!losers.length) continue;
     for (const loser of losers) {
       pairs.push({
         loserId: loser.id, loserPlatform: loser.sourcePlatform, loserTitle: loser.title, loserApplyUrl: loser.applyUrl,
-        canonId: canonical.id, canonApplyUrl: canonical.applyUrl,
+        canonId: canonical.id, canonPlatform: canonical.sourcePlatform, canonApplyUrl: canonical.applyUrl,
         multiBaseCityReview: MULTI_BASE_CITIES.has(cityCore(canonical.location)),
       });
       if (!dryRun) {
-        // Runtime INVARIANT: only expire the loser if the WhatJobs canonical is live.
-        const live = await prisma.job.findUnique({ where: { id: canonical.id }, select: { status: true, sourcePlatform: true } });
-        if (!live || live.status !== 'ACTIVE' || String(live.sourcePlatform || '').toUpperCase() !== 'WHATJOBS') {
-          logger.warn({ msg: 'whatjobs-priority: canonical not live/whatjobs at write time — skipping (invariant)', loser: loser.id, canonical: canonical.id });
+        // INVARIANT: only expire the loser if the chosen canonical is still live.
+        const live = await prisma.job.findUnique({ where: { id: canonical.id }, select: { status: true } });
+        if (!live || live.status !== 'ACTIVE') {
+          logger.warn({ msg: 'aggregator-priority: canonical not live at write time — skipping (invariant)', loser: loser.id, canonical: canonical.id });
           continue;
         }
         await prisma.job.update({ where: { id: loser.id }, data: { mergedInto: canonical.id, status: 'EXPIRED' } });
         merged++;
         logger.info({
-          msg: 'aggregator displaced by WhatJobs',
-          canonicalId: canonical.id,
+          msg: 'aggregator displaced by higher-priority aggregator',
+          canonical: { id: canonical.id, platform: canonical.sourcePlatform, applyUrl: canonical.applyUrl },
           loser: { id: loser.id, platform: loser.sourcePlatform, applyUrl: loser.applyUrl },
-          canonical: { applyUrl: canonical.applyUrl },
         });
       }
     }
   }
-  logger.info({ msg: dryRun ? 'whatjobs-priority SHADOW (no writes)' : 'whatjobs-priority applied', candidatePairs: pairs.length, merged });
+  logger.info({ msg: dryRun ? 'aggregator-priority SHADOW (no writes)' : 'aggregator-priority applied', candidatePairs: pairs.length, merged });
   return { pairs, merged };
 }
 
@@ -635,7 +641,15 @@ async function collapseByIdentity({ dryRun = true } = {}) {
       rowsHidden++; perSource[d.sourcePlatform || '?'] = (perSource[d.sourcePlatform || '?'] || 0) + 1;
       if (!dryRun) {
         await prisma.job.update({ where: { id: d.id }, data: { mergedInto: canon.id, status: 'EXPIRED' } });
-        await prisma.job.updateMany({ where: { mergedInto: d.id }, data: { mergedInto: canon.id } }); // flatten chains
+        // Flatten chains: rows that were merged into this dupe re-point to the new
+        // canonical. Indexed on mergedInto (Job_mergedInto_idx) and batched at
+        // ≤5000 ids/transaction so it never runs an unbounded full-table write.
+        for (;;) {
+          const chained = await prisma.job.findMany({ where: { mergedInto: d.id }, select: { id: true }, take: 5000 });
+          if (!chained.length) break;
+          await prisma.job.updateMany({ where: { id: { in: chained.map((c) => c.id) } }, data: { mergedInto: canon.id } });
+          if (chained.length < 5000) break;
+        }
       }
     }
   }
