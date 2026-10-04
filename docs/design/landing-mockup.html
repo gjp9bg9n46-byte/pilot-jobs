@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CockpitHire Landing Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#E9EDF2;font-family:Inter,system-ui,sans-serif;color:#0F1B2D}
+  .top{max-width:1360px;margin:0 auto;padding:32px 24px 8px}
+  .top h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:28px;margin:0 0 6px}
+  .top p{margin:0;color:#4A5668;font-size:14.5px;max-width:80ch;line-height:1.55}
+  .swatches{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  .sw{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #D9DFE7;border-radius:8px;padding:6px 10px;font-size:12.5px;color:#4A5668}
+  .sw i{width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.08);display:block}
+  .stage{max-width:1360px;margin:0 auto;padding:20px 24px 60px;display:grid;grid-template-columns:1fr 412px;gap:28px;align-items:start}
+  .label{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6B778A;margin:0 0 10px}
+  .desk iframe{width:1280px;height:4200px;border:0;transform:scale(.7);transform-origin:0 0;background:#fff;display:block}
+  .deskwrap{width:896px;height:2940px;overflow:hidden;border-radius:12px;border:1px solid #D9DFE7;box-shadow:0 10px 30px rgba(15,27,45,.08);background:#fff}
+  .phonewrap{width:390px;height:844px;border-radius:36px;border:10px solid #0F1B2D;overflow:hidden;background:#fff;position:sticky;top:20px}
+  .phonewrap iframe{width:390px;height:100%;border:0;display:block}
+  @media (max-width:1380px){.stage{grid-template-columns:1fr}.deskwrap{width:100%;overflow-x:auto}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Landing page mockup</h1>
+  <p>White page, cool grey sections, navy as the one brand colour. No beige, no orange. The hero shows the product instead of a stock photo; proof is honest (live counts and airlines hiring now, no invented reviews). The job card and airline names are sample content for the mockup; the real page reads them from the live database. Left: desktop at 1280 px (shown at 70%). Right: phone at 390 px, scroll inside it.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#FFFFFF"></i>Page #FFFFFF</span>
+    <span class="sw"><i style="background:#F5F7FA"></i>Section #F5F7FA</span>
+    <span class="sw"><i style="background:#E3E8EF"></i>Line #E3E8EF</span>
+    <span class="sw"><i style="background:#0F1B2D"></i>Ink #0F1B2D</span>
+    <span class="sw"><i style="background:#003F88"></i>Navy #003F88</span>
+    <span class="sw"><i style="background:#0B1F3A"></i>Deep navy #0B1F3A</span>
+    <span class="sw"><i style="background:#15803D"></i>Met #15803D</span>
+  </div>
+</div>
+<div class="stage">
+  <div class="desk"><p class="label">Desktop · 1280</p><div class="deskwrap"><iframe id="fd" title="Desktop"></iframe></div></div>
+  <div><p class="label">Phone · 390</p><div class="phonewrap"><iframe id="fp" title="Phone"></iframe></div></div>
+</div>
+
+<script type="text/plain" id="page">
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FFFFFF;--alt:#F5F7FA;--line:#E3E8EF;--ink:#0F1B2D;--sub:#4A5668;--faint:#8592A3;--navy:#003F88;--deep:#0B1F3A;--green:#15803D;--greenbg:#ECF7EF;--grey:#9AA5B4}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1160px;margin:0 auto;padding:0 40px}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;font-weight:600;letter-spacing:-.01em;margin:0}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--navy);margin:0 0 14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 22px;border-radius:10px;font-weight:600;font-size:15px}
+.btn.primary{background:var(--navy);color:#fff}
+.btn.ghost{border:1px solid var(--line);color:var(--ink);background:#fff}
+svg{flex:none}
+
+/* nav */
+nav{border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:5}
+nav .wrap{display:flex;align-items:center;height:68px;gap:36px}
+.logo{display:flex;align-items:center;gap:9px;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:21px}
+.links{display:flex;gap:28px;font-size:14.5px;color:var(--sub);font-weight:500}
+.navr{margin-left:auto;display:flex;gap:10px;align-items:center}
+.navr .btn{height:40px;padding:0 16px;font-size:14px}
+.menu{display:none;width:40px;height:40px;border:1px solid var(--line);border-radius:10px;align-items:center;justify-content:center}
+
+/* hero */
+.hero{padding:76px 0 64px}
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.hero h1{font-size:58px;line-height:1.04}
+.hero p.lead{font-size:18.5px;line-height:1.55;color:var(--sub);margin:22px 0 32px;max-width:30em}
+.ctas{display:flex;gap:12px;flex-wrap:wrap}
+.small{font-size:13.5px;color:var(--faint);margin-top:16px}
+
+/* product visual */
+.vis{position:relative;padding:18px 0 52px}
+.job{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(15,27,45,.04),0 18px 40px rgba(15,27,45,.08);padding:22px}
+.jhead{display:flex;gap:14px;align-items:center}
+.mark{width:44px;height:44px;border-radius:10px;background:var(--alt);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--navy);font-size:14px}
+.jt{font-weight:600;font-size:16.5px}
+.jm{font-size:13.5px;color:var(--sub);margin-top:2px}
+.fit{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--green);background:var(--greenbg);border-radius:20px;padding:5px 11px;white-space:nowrap}
+.reqs{margin:18px 0 0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.reqs li{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.reqs li span.v{margin-left:auto;color:var(--sub);font-size:13.5px}
+.reqs li.unk{color:var(--sub)}
+.jfoot{display:flex;align-items:center;justify-content:space-between;margin-top:16px;font-size:13px;color:var(--faint)}
+.jfoot .btn{height:38px;font-size:13.5px;padding:0 14px}
+.notif{position:absolute;right:-24px;bottom:0;width:300px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(15,27,45,.12);padding:13px 14px;display:flex;gap:11px}
+.notif .ic{width:32px;height:32px;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center}
+.notif b{font-size:13px;display:block}
+.notif span{font-size:12.5px;color:var(--sub);line-height:1.4;display:block;margin-top:2px}
+.notif em{font-style:normal;font-size:11.5px;color:var(--faint);margin-left:auto}
+
+/* proof */
+.proof{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--alt)}
+.proof .wrap{display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:center;padding-top:26px;padding-bottom:26px}
+.counts{display:flex;gap:36px}
+.count b{display:block;font-family:Fraunces,Georgia,serif;font-size:30px;font-weight:600;font-variant-numeric:tabular-nums}
+.count span{font-size:13px;color:var(--sub)}
+.hiring{border-left:1px solid var(--line);padding-left:40px}
+.hiring p{margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.names{display:flex;flex-wrap:wrap;gap:8px 26px;font-size:16px;font-weight:600;color:#55627A}
+
+/* steps */
+section.block{padding:96px 0}
+.sechead{max-width:640px;margin-bottom:56px}
+.sechead h2{font-size:40px;line-height:1.1}
+.sechead p:not(.eyebrow){font-size:17px;color:var(--sub);line-height:1.6;margin:16px 0 0}
+.step{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;padding:40px 0;border-top:1px solid var(--line)}
+.step .num{font-size:13px;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums}
+.step h3{font-size:28px;margin:10px 0 12px;line-height:1.15}
+.step p{font-size:16px;line-height:1.65;color:var(--sub);margin:0;max-width:30em}
+.panel{background:var(--alt);border:1px solid var(--line);border-radius:16px;padding:28px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.row:last-child{border-bottom:0}
+.row .k{color:var(--sub)}
+.row .val{font-weight:600}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.legend{display:flex;gap:18px;margin-top:14px;font-size:12.5px;color:var(--sub)}
+.phone-mini{width:260px;margin:0 auto;background:#0F1B2D;border-radius:30px;padding:10px}
+.phone-mini .scr{background:linear-gradient(#1d3557,#0B1F3A);border-radius:22px;height:250px;padding:44px 12px 12px}
+.phone-mini .time{color:#fff;text-align:center;font-size:36px;font-weight:300;margin-bottom:16px;font-family:Inter}
+.pn{background:rgba(255,255,255,.92);border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.4}
+.pn b{display:block;font-size:12.5px}
+.pn small{color:#6B778A;font-size:11px}
+.src{display:flex;align-items:center;gap:12px}
+.src .url{flex:1;background:#fff;border:1px solid var(--line);border-radius:10px;height:42px;display:flex;align-items:center;padding:0 14px;font-size:13.5px;color:var(--sub)}
+
+/* factfiles */
+.alt{background:var(--alt);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.ff{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.ffc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px}
+.ffc h3{font-size:21px}
+.ffc .c{font-size:13px;color:var(--faint);margin-top:2px}
+.ffc dl{margin:18px 0 0;display:grid;grid-template-columns:auto 1fr;gap:9px 16px;font-size:13.5px}
+.ffc dt{color:var(--faint)}
+.ffc dd{margin:0;font-weight:500}
+.ffc .open{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:13.5px;font-weight:600;color:var(--navy);display:flex;justify-content:space-between}
+.more{margin-top:28px;font-weight:600;color:var(--navy);font-size:15px}
+
+/* faq */
+.faq{display:grid;grid-template-columns:1fr 1.4fr;gap:64px}
+.qa{border-top:1px solid var(--line)}
+.qa details{border-bottom:1px solid var(--line);padding:20px 0}
+.qa summary{list-style:none;cursor:pointer;font-weight:600;font-size:16.5px;display:flex;justify-content:space-between;align-items:center}
+.qa summary::-webkit-details-marker{display:none}
+.qa details p{margin:12px 0 0;color:var(--sub);line-height:1.65;font-size:15.5px}
+.qa details[open] summary svg{transform:rotate(45deg)}
+
+/* employers */
+.emp{background:var(--deep);color:#fff}
+.emp .wrap{display:flex;align-items:center;justify-content:space-between;gap:40px;padding-top:64px;padding-bottom:64px}
+.emp h2{font-size:34px;color:#fff}
+.emp p{color:#B9C4D4;font-size:16px;line-height:1.6;margin:12px 0 0;max-width:34em}
+.emp .btn{background:#fff;color:var(--deep)}
+
+footer{padding:56px 0 40px;font-size:14px}
+.fgrid{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:32px}
+footer h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:0 0 14px;font-weight:600}
+footer ul{list-style:none;margin:0;padding:0;display:grid;gap:10px;color:var(--sub)}
+.fbot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:13px;display:flex;justify-content:space-between}
+
+/* phone */
+@media (max-width:820px){
+  .wrap{padding:0 16px}
+  nav .wrap{height:60px}
+  .links,.navr .btn.primary{display:none}
+  .menu{display:flex}
+  .hero{padding:36px 0 40px}
+  .hero .wrap{grid-template-columns:1fr;gap:28px}
+  .hero h1{font-size:38px}
+  .hero p.lead{font-size:16.5px;margin:16px 0 24px}
+  .ctas{flex-direction:column}
+  .ctas .btn{width:100%}
+  .jfoot{flex-direction:column;align-items:stretch;gap:10px}
+  .jfoot .btn{height:44px}
+  .notif{position:relative;right:auto;width:auto;margin:-18px 12px 0}
+  .vis{padding:0}
+  .job{padding:18px}
+  .proof .wrap{grid-template-columns:1fr;gap:20px}
+  .counts{gap:22px;justify-content:space-between}
+  .count b{font-size:24px}
+  .hiring{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:18px}
+  .names{font-size:14.5px;gap:6px 18px}
+  section.block{padding:56px 0}
+  .sechead{margin-bottom:28px}
+  .sechead h2{font-size:30px}
+  .step{grid-template-columns:1fr;gap:22px;padding:28px 0}
+  .step h3{font-size:23px}
+  .step .panel{order:2}
+  .panel{padding:16px}
+  .ff{grid-template-columns:1fr}
+  .faq{grid-template-columns:1fr;gap:20px}
+  .emp .wrap{flex-direction:column;align-items:flex-start;padding-top:44px;padding-bottom:44px}
+  .emp h2{font-size:27px}
+  .emp .btn{width:100%}
+  .fgrid{grid-template-columns:1fr 1fr}
+  .fgrid > div:first-child{grid-column:1/-1}
+  .fbot{flex-direction:column;gap:6px}
+}
+</style></head>
+<body>
+
+<nav><div class="wrap">
+  <a class="logo" href="#"><svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="#003F88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 1 7l5 5M14 2l5 5-5 5"/></svg>CockpitHire</a>
+  <div class="links"><a>How it works</a><a>Jobs</a><a>Airlines</a><a>For employers</a></div>
+  <div class="navr"><a class="btn ghost">Log in</a><a class="btn primary">Create free profile</a>
+    <span class="menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0F1B2D" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span></div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div>
+    <p class="eyebrow">Pilot jobs, checked against your licence</p>
+    <h1>Your next command, matched to your licence.</h1>
+    <p class="lead">Every airline job is checked against your ratings, hours and licence authority, requirement by requirement. You see what you qualify for, what you are missing, and what the airline did not say.</p>
+    <div class="ctas">
+      <a class="btn primary">Create your free pilot profile</a>
+      <a class="btn ghost">Browse 585 live jobs</a>
+    </div>
+    <p class="small">Free for pilots. You apply on the airline's own site.</p>
+  </div>
+
+  <div class="vis">
+    <div class="job">
+      <div class="jhead">
+        <div class="mark">FD</div>
+        <div><div class="jt">First Officer, Boeing 737</div><div class="jm">flydubai · Dubai · 2 days ago</div></div>
+        <span class="fit">You qualify</span>
+      </div>
+      <ul class="reqs">
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>ATPL or frozen ATPL<span class="v">ATPL · ECAA</span></li>
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>1,500 h total time<span class="v">1,515 h logged</span></li>
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>Class 1 medical<span class="v">Valid to Nov 2026</span></li>
+        <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>ICAO English level 4+<span class="v">Level 5</span></li>
+        <li class="unk"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA5B4" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12h7"/></svg>Type rating<span class="v">Not stated by airline</span></li>
+      </ul>
+      <div class="jfoot"><span>Source: flydubai careers</span><a class="btn primary">Apply on airline site</a></div>
+    </div>
+    <div class="notif">
+      <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+      <div><b>New job you qualify for</b><span>Captain A320 · Air Arabia, Sharjah</span></div><em>now</em>
+    </div>
+  </div>
+</div></header>
+
+<div class="proof"><div class="wrap">
+  <div class="counts">
+    <div class="count"><b>585</b><span>live pilot jobs</span></div>
+    <div class="count"><b>483</b><span>airline factfiles</span></div>
+    <div class="count"><b>Daily</b><span>sources refreshed</span></div>
+  </div>
+  <div class="hiring"><p>Hiring now on CockpitHire</p>
+    <div class="names"><span>Emirates</span><span>flydubai</span><span>Air Arabia</span><span>Saudia</span><span>Riyadh Air</span><span>Qatar Airways</span><span>Etihad</span><span>Ryanair</span></div>
+  </div>
+</div></div>
+
+<section class="block"><div class="wrap">
+  <div class="sechead"><p class="eyebrow">How it works</p><h2>Four steps from logbook to application</h2>
+    <p>No CV upload, no guessing which job is worth your time.</p></div>
+
+  <div class="step">
+    <div><span class="num">01</span><h3>Enter your licence once</h3><p>Licences, ratings, medical and English level go into your profile. Your hours come straight from your logbook, so they are always current.</p></div>
+    <div class="panel"><div class="card">
+      <div class="row"><span class="k">Licence</span><span class="val">ATPL · ECAA</span></div>
+      <div class="row"><span class="k">Type rating</span><span class="val">Airbus A320</span></div>
+      <div class="row"><span class="k">Total time</span><span class="val">1,515 h</span></div>
+      <div class="row"><span class="k">PIC</span><span class="val">From logbook</span></div>
+      <div class="row"><span class="k">Medical</span><span class="val">Class 1 · Nov 2026</span></div>
+    </div></div>
+  </div>
+
+  <div class="step">
+    <div><span class="num">02</span><h3>Every job is checked, requirement by requirement</h3><p>We compare each listing with your profile and show the result plainly. If an airline did not state a requirement, we say so instead of guessing.</p></div>
+    <div class="panel"><div class="card">
+      <div class="row"><span><span class="dot" style="background:#15803D"></span>Total time 1,500 h</span><span class="k">1,515 h · Met</span></div>
+      <div class="row"><span><span class="dot" style="background:#15803D"></span>A320 type rating</span><span class="k">Met</span></div>
+      <div class="row"><span><span class="dot" style="background:#B42318"></span>500 h PIC</span><span class="k">Not met</span></div>
+      <div class="row"><span><span class="dot" style="background:#9AA5B4"></span>Licence authority</span><span class="k">Not stated</span></div>
+    </div>
+    <div class="legend"><span><span class="dot" style="background:#15803D"></span>Met</span><span><span class="dot" style="background:#B42318"></span>Not met</span><span><span class="dot" style="background:#9AA5B4"></span>Not stated</span></div></div>
+  </div>
+
+  <div class="step">
+    <div><span class="num">03</span><h3>An alert when a job fits</h3><p>When a new job matches your profile, your phone tells you. Only jobs you qualify for, not a daily digest of everything.</p></div>
+    <div class="panel"><div class="phone-mini"><div class="scr"><div class="time">09:41</div>
+      <div class="pn"><b>CockpitHire</b>First Officer A320 at Saudia matches your profile.<br><small>Riyadh · posted today</small></div></div></div></div>
+  </div>
+
+  <div class="step">
+    <div><span class="num">04</span><h3>Apply at the source</h3><p>One tap opens the airline's own posting. Your application goes straight to the employer. We never sit in the middle.</p></div>
+    <div class="panel"><div class="src"><span class="url">careers.saudia.com/first-officer-a320</span><a class="btn primary" style="height:42px">Apply</a></div></div>
+  </div>
+</div></section>
+
+<section class="block alt"><div class="wrap">
+  <div class="sechead"><p class="eyebrow">Airline factfiles</p><h2>Know the airline before you apply</h2>
+    <p>Fleet, bases and open pilot jobs for 483 airlines, in one place.</p></div>
+  <div class="ff">
+    <div class="ffc"><h3>Emirates</h3><div class="c">United Arab Emirates</div>
+      <dl><dt>Fleet</dt><dd>Boeing 777, Airbus A380</dd><dt>Hub</dt><dd>Dubai (DXB)</dd><dt>Pilot jobs</dt><dd>4 open</dd></dl>
+      <a class="open">View factfile<span>&rarr;</span></a></div>
+    <div class="ffc"><h3>Saudia</h3><div class="c">Saudi Arabia</div>
+      <dl><dt>Fleet</dt><dd>A320 family, 777, 787</dd><dt>Hubs</dt><dd>Jeddah (JED), Riyadh (RUH)</dd><dt>Pilot jobs</dt><dd>3 open</dd></dl>
+      <a class="open">View factfile<span>&rarr;</span></a></div>
+    <div class="ffc"><h3>flydubai</h3><div class="c">United Arab Emirates</div>
+      <dl><dt>Fleet</dt><dd>Boeing 737</dd><dt>Hub</dt><dd>Dubai (DXB)</dd><dt>Pilot jobs</dt><dd>2 open</dd></dl>
+      <a class="open">View factfile<span>&rarr;</span></a></div>
+  </div>
+  <a class="more" href="#" style="display:inline-block">Browse all 483 airlines &rarr;</a>
+</div></section>
+
+<section class="block"><div class="wrap faq">
+  <div><p class="eyebrow">Questions</p><h2 style="font-size:40px;line-height:1.1">Straight answers</h2></div>
+  <div class="qa">
+    <details open><summary>Is CockpitHire free for pilots?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A5668" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Yes. Creating a profile, matching, alerts and the logbook are free.</p></details>
+    <details><summary>Where do the jobs come from?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A5668" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Airline career pages and job platforms. Every job links to its original source.</p></details>
+    <details><summary>Who can see my profile?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A5668" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>Nobody, unless you turn on Open to work or share it yourself.</p></details>
+    <details><summary>Do you handle my application?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A5668" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary><p>No. You apply on the airline's own site, and your application goes straight to them.</p></details>
+  </div>
+</div></section>
+
+<div class="emp"><div class="wrap">
+  <div><h2>Hiring pilots?</h2><p>Post your openings and they are shown to pilots whose licence, ratings and hours meet your minimums.</p></div>
+  <a class="btn">Post a job</a>
+</div></div>
+
+<footer><div class="wrap">
+  <div class="fgrid">
+    <div><a class="logo"><svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="#003F88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 1 7l5 5M14 2l5 5-5 5"/></svg>CockpitHire</a><p style="color:var(--sub);margin:12px 0 0;max-width:22em;line-height:1.6">Aviation careers worldwide.</p></div>
+    <div><h4>Pilots</h4><ul><li>Create profile</li><li>Browse jobs</li><li>Airline factfiles</li><li>Log in</li></ul></div>
+    <div><h4>Employers</h4><ul><li>Post a job</li><li>Employer login</li></ul></div>
+    <div><h4>Company</h4><ul><li>About</li><li>Contact</li><li>Privacy</li><li>Terms</li></ul></div>
+  </div>
+  <div class="fbot"><span>&copy; 2026 CockpitHire</span><span>contact@cockpithire.com</span></div>
+</div></footer>
+</body></html>
+</script>
+
+<script>
+  var src = document.getElementById('page').textContent;
+  document.getElementById('fd').srcdoc = src;
+  document.getElementById('fp').srcdoc = src;
+</script>
+</body>
+</html>
