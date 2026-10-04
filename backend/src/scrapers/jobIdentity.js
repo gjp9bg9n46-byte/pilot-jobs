@@ -22,7 +22,7 @@ const normKey = (s) => fold(s).toLowerCase().replace(/[^a-z0-9]/g, '');
 // language tags so "Jet Aviation" = "Jet Aviation Inc.", "Luxaviation Group" =
 // "Luxaviation", "AirX Charter" = "airx". Does NOT strip aviation/air/airways
 // (those are identity-bearing). Falls back to the raw key if stripping empties it.
-const COMPANY_STRIP = /\b(incorporated|inc|llc|l\.l\.c|ltd|limited|gmbh|ag|sarl|sas|s\.?a\.?s|nv|bv|aps|a\/s|plc|corp|corporation|co|holdings?|group|charter|english|french|francais|espanol|deutsch)\b/gi;
+const COMPANY_STRIP = /\b(incorporated|inc|llc|l\.l\.c|ltd|limited|gmbh|ag|sarl|sas|s\.?a\.?s|nv|bv|aps|a\/s|plc|pty|corp|corporation|co|company|holdings?|group|charter|english|french|francais|espanol|deutsch)\b/gi;
 // Strict key: strip legal/business suffixes + language tags only. Used for airline
 // RESOLUTION (exact company → airline) — never truncated, so it can't collapse a
 // name to an abbreviation / lead token and mis-resolve (e.g. mislabelled "SAS
@@ -232,6 +232,26 @@ function makeResolver(airlines) {
   return { resolve, audit };
 }
 
+// ── Recruiters / auto-merge safety gate ─────────────────────────────────────
+// Agencies that post for MANY client airlines — two of their ads with the same
+// type + country are NOT necessarily the same job (could be different clients).
+const RECRUITER_RX = /\b(pilot\s*assessments|aviation\s*job\s*search|jobsearch|joinimagine|zenon|aeroprofessional|resource\s+group|rishworth|parc\s+aviation|brookfield|storm\s+aviation|climb\s+aviation|aviation\s+recruit\w*|recruit\w*\s+aviation|unknown\s+employer|confidential|undisclosed)\b/i;
+function isRecruiter(company) { return RECRUITER_RX.test(fold(String(company || ''))); }
+
+// Decide whether an identity cluster (array of { company, ident }) is safe to
+// auto-merge. Certain = a member states an aircraft type OR resolved to an
+// airline. NEVER auto-merge when every listing is a recruiter AND they do not
+// share a hard airport (ICAO) base — different client airlines are possible.
+function shouldAutoMerge(members) {
+  const resolvedOp = members.some((m) => m.ident.employer.via && m.ident.employer.via !== 'company-asis');
+  const anyType = members.some((m) => m.ident.types.length);
+  if (!anyType && !resolvedOp) return false; // uncertain → leave live
+  const allRecruiter = !resolvedOp && members.every((m) => isRecruiter(m.company));
+  const hardBase = members.every((m) => m.ident.base.kind === 'icao');
+  if (allRecruiter && !hardBase) return false; // recruiter-only + soft base → hold
+  return true;
+}
+
 // ── Full identity ────────────────────────────────────────────────────────────
 function identityOf(job, resolver) {
   const title = job.titleEn || job.title || '';
@@ -248,4 +268,4 @@ function identityOf(job, resolver) {
   return { employer: emp, rank, types, base, variant, key };
 }
 
-module.exports = { rankOf, typesOf, baseOf, variantOf, makeResolver, identityOf, normKey, companyKey };
+module.exports = { rankOf, typesOf, baseOf, variantOf, makeResolver, identityOf, normKey, companyKey, isRecruiter, shouldAutoMerge };

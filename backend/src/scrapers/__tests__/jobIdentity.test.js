@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { rankOf, typesOf, baseOf, variantOf, makeResolver, identityOf, companyKey } = require('../jobIdentity');
+const { rankOf, typesOf, baseOf, variantOf, makeResolver, identityOf, companyKey, shouldAutoMerge } = require('../jobIdentity');
 
 // Small airline fact-set used by the resolver tests (name · country · bases).
 const AIRLINES = [
@@ -259,6 +259,29 @@ test('companyKey collapses slug + generic-tail (Skyservice) but keeps brands dis
   assert.strictEqual(companyKey('Leidos'), companyKey('Leidos LLC'));
   assert.strictEqual(companyKey('Pilatus Aircraft'), companyKey('Pilatus Aircraft Ltd'));
   assert.notStrictEqual(companyKey('LV Aero, LLC'), companyKey('Luxaviation')); // initials/abbrev never merge
+});
+
+test('recruiter-only clusters on a soft base are NOT auto-merged (could be different client airlines)', () => {
+  const r = resolver();
+  const members = (jobs) => jobs.map((j) => ({ company: j.company, ident: identityOf(j, r) }));
+  // the three HOLD cases — all recruiter-labelled, type present, base country/office
+  assert.strictEqual(shouldAutoMerge(members([
+    { company: 'Aviation JobSearch Europa', title: 'B737NG First Officer - Middle East', location: 'Guildford', country: 'United Kingdom' },
+    { company: 'Aviation JobSearch Europa', title: 'B737NG First Officer: Tax-Free Pay', location: 'Guildford', country: 'United Kingdom' },
+  ])), false);
+  assert.strictEqual(shouldAutoMerge(members([
+    { company: 'Pilot Assessments', title: 'Global Express First Officer', country: 'Switzerland' },
+    { company: 'Pilot Assessments', title: 'Elite Global Express First Officer', country: 'Switzerland' },
+  ])), false);
+  assert.strictEqual(shouldAutoMerge(members([
+    { company: 'Pilot Assessments', title: 'BN-2 Islander First Officer', country: 'United Kingdom' },
+    { company: 'Pilot Assessments', title: 'BN-2 Islander First Officer — Training', country: 'United Kingdom' },
+  ])), false);
+  // but an OPERATOR cluster with a type still merges, and recruiters sharing a hard ICAO base do
+  assert.strictEqual(shouldAutoMerge(members([
+    { company: 'Westair', title: 'Captain F406/C425', location: 'Johannesburg', country: 'South Africa' },
+    { company: 'Westair', title: 'Flight Crew - Captain F406/C425', location: 'Johannesburg', country: 'South Africa' },
+  ])), true);
 });
 
 test('non-type-rated title reads as non-rated (not ambiguous)', () => {

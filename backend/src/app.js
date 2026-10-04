@@ -279,9 +279,12 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
 cron.schedule('30 3 * * *', async () => {
   try {
     const { reScreenNonAviation, collapseByIdentity } = require('./scrapers/dedup');
+    // Non-aviation re-screen applies immediately (validated). Identity dedup is
+    // LOG-ONLY until IDENTITY_DEDUP_APPLY=1 (3-day staged shadow rollout).
+    const apply = process.env.IDENTITY_DEDUP_APPLY === '1';
     const av = await reScreenNonAviation({ dryRun: false });
-    const dd = await collapseByIdentity({ dryRun: false });
-    logger.info({ msg: 'nightly re-screen complete', nonAviationHidden: av.hidden, nonAviationBySource: av.perSource, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups });
+    const dd = await collapseByIdentity({ dryRun: !apply });
+    logger.info({ msg: `nightly re-screen complete${apply ? '' : ' [identity dedup LOG-ONLY]'}`, identityDedupApplied: apply, nonAviationHidden: av.hidden, nonAviationBySource: av.perSource, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups });
   } catch (err) {
     logger.error(`Nightly re-screen failed: ${err.message}`);
   }

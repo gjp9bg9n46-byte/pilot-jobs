@@ -18,7 +18,7 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
-const { identityOf, makeResolver } = require('./jobIdentity');
+const { identityOf, makeResolver, shouldAutoMerge } = require('./jobIdentity');
 const { classifyJob } = require('./aviationFilter');
 const { normalizeCompany, coreCompanyKey } = require('../services/airlineEnrichmentService');
 const { sourceTypeRank } = require('./sourceType');
@@ -625,8 +625,9 @@ async function collapseByIdentity({ dryRun = true } = {}) {
   let clustersMerged = 0, rowsHidden = 0, reviewGroups = 0; const perSource = {};
   for (const [, g] of groups) {
     if (g.length < 2) continue;
-    const certain = g.some((x) => x._ident.types.length) || g.some((x) => x._emp.via && x._emp.via !== 'company-asis');
-    if (!certain) { reviewGroups++; continue; } // uncertain → leave live, logged
+    // Safety gate: certain cluster, and NOT a recruiter-only group on a soft base
+    // (those could be different client airlines — leave live, logged).
+    if (!shouldAutoMerge(g.map((x) => ({ company: x.company, ident: x._ident })))) { reviewGroups++; continue; }
     const canon = canonicalByIdentity(g);
     clustersMerged++;
     for (const d of g) {

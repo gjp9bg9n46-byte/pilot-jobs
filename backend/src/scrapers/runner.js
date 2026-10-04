@@ -701,8 +701,9 @@ async function runAllEmployers(employers, opts = {}) {
     try { await collapseSameAdAcrossLocations(); } catch (err) { logger.error({ err: err.message, msg: 'same-ad collapse failed' }); }
     // Identity-based dedup: collapse exact-identity clusters the source-level
     // passes miss (type/base/variant/recruiter-repost). Conservative — certain
-    // clusters only; no-type+unresolved groups stay live. Per-source merge counts.
-    try { const d = await collapseByIdentity({ dryRun: false }); logger.info({ msg: 'per-scrape identity dedup', clustersMerged: d.clustersMerged, rowsHidden: d.rowsHidden, leftForReview: d.reviewGroups, dupesMergedBySource: d.perSource }); } catch (err) { logger.error({ err: err.message, msg: 'identity-dedup failed' }); }
+    // clusters only, never recruiter-only on a soft base. LOG-ONLY until
+    // IDENTITY_DEDUP_APPLY=1 (staged rollout); per-source merge counts always logged.
+    try { const apply = process.env.IDENTITY_DEDUP_APPLY === '1'; const d = await collapseByIdentity({ dryRun: !apply }); logger.info({ msg: `per-scrape identity dedup${apply ? '' : ' [LOG-ONLY]'}`, applied: apply, clustersMerged: d.clustersMerged, rowsHidden: d.rowsHidden, leftForReview: d.reviewGroups, dupesMergedBySource: d.perSource }); } catch (err) { logger.error({ err: err.message, msg: 'identity-dedup failed' }); }
     try { await revalidateActiveJobs(employers); } catch (err) { logger.error({ err: err.message, msg: 'revalidation sweep failed' }); }
     try { await expirePastDue(); } catch (err) { logger.error({ err: err.message, msg: 'expiry sweep failed' }); }
     try {
