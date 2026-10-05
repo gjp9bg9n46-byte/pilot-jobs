@@ -768,3 +768,15 @@ model EmailVerificationToken {
   @@index([token])
   @@index([email])
 }
+
+// Per-day client-version request tally — for measuring new-vs-legacy app share
+// before retiring any legacy response field / the fitGroup shim. Flushed from an
+// in-memory counter (~60s) so it survives redeploys. Read via /api/admin/app-versions.
+model AppVersionStat {
+  id      String @id @default(uuid())
+  day     String // 'YYYY-MM-DD' (UTC)
+  version String // e.g. 'mobile/1.0.0', 'web/x', 'legacy'
+  count   Int    @default(0)
+
+  @@unique([day, version])
+}

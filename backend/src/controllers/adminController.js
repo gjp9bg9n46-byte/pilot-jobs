@@ -269,3 +269,16 @@ exports.getJobReports = async (req, res, next) => {
     next(err);
   }
 };
+
+// Admin-only: client-version request tally (backward-compat measurement). Flushes the
+// in-memory counter first, then returns per-day/per-version counts + a rollup.
+const appVersionStats = require('../services/appVersionStats');
+exports.getAppVersions = async (req, res, next) => {
+  try {
+    await appVersionStats.flush();
+    const rows = await prisma.appVersionStat.findMany({ orderBy: [{ day: 'desc' }, { count: 'desc' }], take: 365 });
+    const byVersion = {};
+    for (const r of rows) byVersion[r.version] = (byVersion[r.version] || 0) + r.count;
+    res.json({ byVersion, daily: rows });
+  } catch (err) { next(err); }
+};
