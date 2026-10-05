@@ -16,6 +16,7 @@ router.get('/hours-histogram', optionalAuth, c.getHoursHistogram);
 router.get('/saved', authMiddleware, c.getSavedJobs);
 // Pilot's own applications (declared before /:id so it isn't captured by it).
 router.get('/applications', authMiddleware, c.getMyApplications);
+router.patch('/applications/:id/status', authMiddleware, c.updateMyApplicationStatus);
 
 // Alerts
 router.get('/alerts', authMiddleware, c.getMyAlerts);

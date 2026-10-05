@@ -785,8 +785,10 @@ exports.applyToJob = async (req, res, next) => {
     const matchScore = ctx ? matchJob(job, ctx).pct : null;
     const matchBreakdown = computeMatchBreakdown(pilot, totals, job); // employer's per-criterion breakdown (unchanged display)
 
+    // Opening the apply link = OPENED (not APPLIED). The pilot confirms "Did you
+    // apply? Yes" to promote to APPLIED (PATCH /jobs/applications/:id/status).
     await prisma.application.create({
-      data: { pilotId, jobId, matchScore, matchBreakdown },
+      data: { pilotId, jobId, matchScore, matchBreakdown, status: 'OPENED' },
     });
 
     // Phase D notification trigger (stub — Resend wiring is the backend cluster).
@@ -955,4 +957,20 @@ exports.getUnreadCount = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+// Pilot updates the lifecycle status of their OWN application. "Did you apply? Yes"
+// promotes OPENED→APPLIED; later stages are pilot-tracked (Interview/Offer/etc.).
+const PILOT_SETTABLE_STATUS = new Set(['OPENED', 'APPLIED', 'INTERVIEW', 'OFFER', 'NOT_SELECTED', 'CLOSED']);
+exports.updateMyApplicationStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!PILOT_SETTABLE_STATUS.has(status)) return res.status(400).json({ error: 'invalid status' });
+    const r = await prisma.application.updateMany({
+      where: { id: req.params.id, pilotId: req.pilot.id },
+      data: { status, statusUpdatedAt: new Date() },
+    });
+    if (!r.count) return res.status(404).json({ error: 'Application not found' });
+    res.json({ updated: true, status });
+  } catch (err) { next(err); }
 };
