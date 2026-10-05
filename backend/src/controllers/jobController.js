@@ -5,7 +5,7 @@ const {
 } = require('../services/matchingService');
 const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
 const {
-  buildMatchContext, matchJob, regionForCountry, defaultRegionForPilot, REGIONS,
+  buildMatchContext, contextFromPilot, matchJob, regionForCountry, defaultRegionForPilot, REGIONS,
 } = require('../services/jobMatch');
 
 const EU_COUNTRIES_RTW = new Set([
@@ -28,7 +28,7 @@ function deriveJobBadges(j) {
   const visaSponsorship = VISA_RE.test(text);
   const typeRatingStatus = NTR_RE.test(text)
     ? 'NTR'
-    : ((j.reqAircraftTypes?.length || 0) > 0 ? 'RATED' : null);
+    : ((j.reqTypeRatings?.length || 0) > 0 ? 'RATED' : null); // RATED = a type rating is REQUIRED
   return { visaSponsorship, typeRatingStatus };
 }
 
@@ -89,6 +89,9 @@ const CANDIDATE_SELECT = {
   reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true, reqMinTurbineHours: true,
   reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
   reqEducation: true, reqWorkAuthorization: true, reqEnglishLevel: true,
+  // New split fields the unified matcher reads (explicit select overrides the global
+  // omit; candidates are internal — not serialized, so nothing leaks to the response).
+  aircraftTypes: true, reqTypeRatings: true,
 };
 
 // ─── Job-data cache (perf guardrail 4) ─────────────────────────────────────────
@@ -264,10 +267,11 @@ exports.getJobs = async (req, res, next) => {
       if (authorities.length > 0) where.reqAuthorities = { hasSome: authorities };
     }
 
-    // Aircraft: comma-separated list → hasSome
+    // Aircraft: comma-separated list → match the display fleet (aircraftTypes) OR the
+    // legacy field, so no job drops during the transition while aircraftTypes backfills.
     if (aircraft) {
       const types = aircraft.split(',').map((a) => a.trim()).filter(Boolean);
-      if (types.length > 0) where.reqAircraftTypes = { hasSome: types };
+      if (types.length > 0) andConditions.push({ OR: [{ aircraftTypes: { hasSome: types } }, { reqAircraftTypes: { hasSome: types } }] });
     }
 
     // Visa sponsorship — DB proxy for the deriveJobBadges() regex: match the
@@ -294,7 +298,7 @@ exports.getJobs = async (req, res, next) => {
         ]),
       });
     } else if (typeRating === 'rated') {
-      andConditions.push({ reqAircraftTypes: { isEmpty: false } });
+      andConditions.push({ reqTypeRatings: { isEmpty: false } }); // a type rating is REQUIRED
     }
 
     // Max hours required by the job (show jobs requiring ≤ maxReqHours)
@@ -440,13 +444,13 @@ exports.getJobs = async (req, res, next) => {
     // Facet counts for the filter dropdowns, over the region-filtered view.
     const facetCounts = { aircraft: {}, role: {}, authority: {} };
     for (const m of view) {
-      for (const t of (m.job.reqAircraftTypes || [])) facetCounts.aircraft[t] = (facetCounts.aircraft[t] || 0) + 1;
+      for (const t of (m.job.aircraftTypes?.length ? m.job.aircraftTypes : (m.job.reqAircraftTypes || []))) facetCounts.aircraft[t] = (facetCounts.aircraft[t] || 0) + 1;
       if (m.job.role) facetCounts.role[m.job.role] = (facetCounts.role[m.job.role] || 0) + 1;
       for (const a of (m.job.reqAuthorities || [])) facetCounts.authority[a] = (facetCounts.authority[a] || 0) + 1;
     }
 
     // qualifiedOnly === "true" means strict fitGroup "qualify".
-    if (qualifiedOnly === 'true' && matchable) view = view.filter((m) => m.match.fitGroup === 'qualify');
+    if (qualifiedOnly === 'true' && matchable) view = view.filter((m) => m.match.status === 'QUALIFY');
 
     // "best" (default when matchable): qualify → incomplete → oneShort → few → other,
     // base orderBy (direct-first, newest) preserved within each group via stable sort.
@@ -517,7 +521,7 @@ exports.getHoursHistogram = async (req, res, next) => {
     if (role) where.role = role;
     if (contractType) where.contractType = contractType;
     if (authority) { const a = authority.split(',').map((x) => x.trim()).filter(Boolean); if (a.length) where.reqAuthorities = { hasSome: a }; }
-    if (aircraft) { const a = aircraft.split(',').map((x) => x.trim()).filter(Boolean); if (a.length) where.reqAircraftTypes = { hasSome: a }; }
+    if (aircraft) { const a = aircraft.split(',').map((x) => x.trim()).filter(Boolean); if (a.length) AND.push({ OR: [{ aircraftTypes: { hasSome: a } }, { reqAircraftTypes: { hasSome: a } }] }); }
     if (salaryMin) AND.push({ OR: [{ salaryMax: null }, { salaryMax: { gte: Number(salaryMin) } }] });
     if (postedWithin) { const since = new Date(); since.setDate(since.getDate() - Number(postedWithin)); where.postedAt = { gte: since }; }
     if (AND.length) where.AND = AND;
@@ -530,7 +534,7 @@ exports.getHoursHistogram = async (req, res, next) => {
     let noRequirement = 0;
     for (const j of rows) {
       if (regionSel && regionForCountry(j.country) !== regionSel) continue;
-      if (ctx && matchJob(j, ctx).fitGroup !== 'qualify') continue;
+      if (ctx && matchJob(j, ctx).status !== 'QUALIFY') continue;
       const h = j.reqMinTotalHours;
       if (h == null) { noRequirement += 1; continue; }
       let bi = buckets.length - 1;
@@ -579,7 +583,11 @@ exports.getJob = async (req, res, next) => {
     if (req.pilot) {
       const ctx = await buildMatchContext(req.pilot.id, prisma);
       if (ctx) {
-        match = matchJob(job, ctx);
+        // The full `job` row is globally omitted of the two new columns; fetch them
+        // just for matching (NOT merged into the serialized response, so shape is
+        // unchanged). matchJob reads reqTypeRatings (type) + aircraftTypes (category).
+        const mx = await prisma.job.findUnique({ where: { id: job.id }, select: { aircraftTypes: true, reqTypeRatings: true } });
+        match = matchJob({ ...job, ...(mx || {}) }, ctx);
         const family = new Set((job.reqAircraftTypes || []).map((t) => String(t).toUpperCase()));
         const cands = await prisma.job.findMany({
           where: { status: 'ACTIVE', id: { not: job.id } },
@@ -588,7 +596,7 @@ exports.getJob = async (req, res, next) => {
         });
         const picks = [];
         for (const c of cands) {
-          if (matchJob(c, ctx).fitGroup !== 'qualify') continue;
+          if (matchJob(c, ctx).status !== 'QUALIFY') continue;
           const sameAirline = job.company && c.company && String(c.company).toLowerCase() === String(job.company).toLowerCase();
           const sameFamily = family.size && (c.reqAircraftTypes || []).some((t) => family.has(String(t).toUpperCase()));
           if (sameAirline || sameFamily) { picks.push(c.id); if (picks.length >= 4) break; }
@@ -762,17 +770,20 @@ exports.applyToJob = async (req, res, next) => {
     const [pilot, totals, job] = await Promise.all([
       prisma.pilot.findUnique({
         where: { id: pilotId },
-        include: { certificates: true, ratings: true, medicals: true, rightToWork: true },
+        include: { certificates: true, ratings: true, medicals: true, rightToWork: true, instructorRatings: true },
       }),
       getPilotFlightTotals(pilotId),
-      prisma.job.findUnique({ where: { id: jobId } }),
+      // Un-omit the two new columns for matching (job is not serialized in full here —
+      // only applyUrl is returned — so this doesn't change any response shape).
+      prisma.job.findUnique({ where: { id: jobId }, omit: { aircraftTypes: false, reqTypeRatings: false } }),
     ]);
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // Strict 0–100 match snapshot (null when the pilot hard-fails a requirement —
-    // the employer still sees the application + the breakdown of what's missing).
-    const matchScore = computeMatchScore(pilot, totals, job);
-    const matchBreakdown = computeMatchBreakdown(pilot, totals, job);
+    // Unified match snapshot — the SAME pct shown on Jobs/Dashboard (one number
+    // everywhere). null when the job states no requirements or WRONG_CATEGORY.
+    const ctx = contextFromPilot(pilot, totals);
+    const matchScore = ctx ? matchJob(job, ctx).pct : null;
+    const matchBreakdown = computeMatchBreakdown(pilot, totals, job); // employer's per-criterion breakdown (unchanged display)
 
     await prisma.application.create({
       data: { pilotId, jobId, matchScore, matchBreakdown },
