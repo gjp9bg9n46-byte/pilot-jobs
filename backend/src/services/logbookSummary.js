@@ -289,6 +289,9 @@ async function getMatchTotals(pilotId) {
     totalTime: d.totalTime || 0, picTime: d.picTime || 0, sicTime: d.sicTime || 0,
     multiEngineTime: d.multiEngineTime || 0, turbineTime: d.turbineTime || 0,
     instrumentTime: d.instrumentTime || 0, crossCountryTime: d.crossCountryTime || 0, nightTime: d.nightTime || 0,
+    // Role-split trust — lets the matcher treat a 0 PIC as a known 0 (role recorded)
+    // vs unknown (total-only import). See jobMatch roleSplitKnown.
+    picSicSplitValid: !!d.picSicSplitValid,
   };
 }
 

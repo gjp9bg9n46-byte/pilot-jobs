@@ -541,7 +541,7 @@ async function matchJobToAllPilots(job) {
   for (const pilot of pilots) {
     const totals = await getPilotFlightTotals(pilot.id);
     const ctx = jm().contextFromPilot(pilot, totals);
-    if (!ctx || jm().matchJob(job, ctx).fitGroup !== 'qualify') continue;
+    if (!ctx || jm().matchJob(job, ctx).status !== 'QUALIFY') continue;
     const score = computeMatchScore(pilot, totals, job);
     matched.push({ pilot, score: score == null ? 100 : score, totals });
   }
@@ -601,7 +601,7 @@ async function runMatchForPilot(pilotId) {
 
   let matched = 0;
   for (const job of jobs) {
-    if (!ctx || jm().matchJob(job, ctx).fitGroup !== 'qualify') continue;
+    if (!ctx || jm().matchJob(job, ctx).status !== 'QUALIFY') continue;
     const rawScore = computeAlertScore(pilot, totals, job);
     const score = rawScore == null ? 100 : rawScore;
     try {
