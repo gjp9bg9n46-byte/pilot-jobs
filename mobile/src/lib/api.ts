@@ -45,10 +45,15 @@ export function registerUnauthorizedHandler(handler: UnauthorizedHandler): void 
 
 // ---- Axios instance --------------------------------------------------------
 
+// App version — sent so the backend can measure new-vs-legacy client share before
+// retiring any legacy response field. Installed/old builds omit this header.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const APP_VERSION = (() => { try { return require('../../app.json').expo.version; } catch { return 'dev'; } })();
+
 const api = axios.create({
   baseURL: API_URL,
   timeout: 20000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json', 'X-App-Version': `mobile/${APP_VERSION}` },
 });
 
 // Inject the Bearer token on every request.

@@ -45,6 +45,20 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Client-version tally (backward-compat measurement). New web/mobile send
+// X-App-Version; installed/old builds send nothing → counted as 'legacy'. This lets
+// us measure the old-client share before ever removing a legacy response field or the
+// fitGroup shim. In-memory only (resets on deploy); read at /health/app-versions.
+const _appVersions = new Map();
+app.use('/api', (req, res, next) => {
+  const v = String(req.headers['x-app-version'] || 'legacy').slice(0, 40);
+  _appVersions.set(v, (_appVersions.get(v) || 0) + 1);
+  next();
+});
+app.get('/health/app-versions', (req, res) => {
+  res.json({ since: 'process start', counts: Object.fromEntries([..._appVersions.entries()].sort((a, b) => b[1] - a[1])) });
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/flight-logs', require('./routes/flightLogs'));
