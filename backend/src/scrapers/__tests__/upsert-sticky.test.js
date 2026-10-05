@@ -20,6 +20,7 @@ const job = (over = {}) => ({
 });
 
 (async () => {
+  require('./_assertTestDb').skipIfProdDb('upsert-sticky');
   let id;
   try {
     // 1. create (ACTIVE)

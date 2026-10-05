@@ -15,6 +15,7 @@ const D = (days) => new Date(Date.now() - days * 24 * 3600 * 1000);
 const base = { company: '__FR_CO__', title: 'Test Pilot', location: 'X', description: '', applyUrl: 'https://x.icims.com/1', status: 'ACTIVE' };
 
 (async () => {
+  require('./_assertTestDb').skipIfProdDb('freshness');
   const ids = [];
   try {
     // a) scraped, lastSeenAt 20d ago (> 14d window) → EXPIRE

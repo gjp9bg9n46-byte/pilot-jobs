@@ -145,6 +145,7 @@ async function partE(prisma) {
 (async () => {
   partA();
   partC();
+  require('./_assertTestDb').skipIfProdDb('dedup (DB parts)'); // pure partA/partC ran above
   const prisma = require('../../config/database');
   try {
     await partB(prisma);
