@@ -20,7 +20,7 @@
 
 const axios  = require('axios');
 const logger = require('../config/logger');
-const { extractRequirements, extractSalary } = require('./normalize');
+const { extractRequirements, extractSalary, deriveAircraftTypes } = require('./normalize');
 
 const WORKDAY_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 // Without a browser-style Accept header Workday returns a JSON redirect object instead of HTML.
@@ -211,7 +211,10 @@ async function enrichOneWorkdayJob(job) {
     // Arrays: union merge (never remove existing)
     updates.reqCertificates  = [...new Set([...(job.reqCertificates  || []), ...(reqs.reqCertificates  || [])])];
     updates.reqAuthorities   = [...new Set([...(job.reqAuthorities   || []), ...(reqs.reqAuthorities   || [])])];
-    updates.reqAircraftTypes = [...new Set([...(job.reqAircraftTypes || []), ...(reqs.reqAircraftTypes || [])])];
+    updates.reqAircraftTypes = [...new Set([...(job.reqAircraftTypes || []), ...(reqs.reqAircraftTypes || [])])]; // LEGACY, unchanged
+    // New additive fields kept consistent after enrichment (Option 3).
+    updates.reqTypeRatings   = [...new Set([...(job.reqTypeRatings  || []), ...(reqs.reqTypeRatings  || [])])];
+    updates.aircraftTypes    = deriveAircraftTypes(job.title || '', updates.reqAircraftTypes);
 
     // Scalars: Workday wins only if PCC didn't extract a value
     if (reqs.reqMedicalClass           && !job.reqMedicalClass)           updates.reqMedicalClass           = reqs.reqMedicalClass;

@@ -25,6 +25,9 @@ const CERT_PATTERNS = [
   { type: 'ME',   re: /\bmulti[-\s]engine\s+rating\b/i },
 ];
 
+// Legacy fleet-mention patterns — kept to populate reqAircraftTypes EXACTLY as before
+// (Option 3: the deployed search/facets/airline readers must stay untouched). A new
+// trigger-gated field (reqTypeRatings) is what the new matcher reads.
 const AIRCRAFT_PATTERNS = [
   /\b(B7\d{2})\b/i,
   /\b(A\d{3}(?:-\d+)?)\b/i,   // A320, A320-200, A220
@@ -38,47 +41,138 @@ const AIRCRAFT_PATTERNS = [
   /\b(PC[-\s]?12)\b/i,
 ];
 
+// A single aircraft-type token (B737/A320/ATR72/CRJ900/E190/DHC8/Q400/Dash8/Saab340/
+// PC12) for contextual scans.
+const AIRCRAFT_TOKEN = /\b(B7\d{2}|A\d{3}(?:-\d+)?|ATR[-\s]?\d+|CRJ[-\s]?\d+|E\d{3}|DHC[-\s]?\d+|Q[-\s]?400|Dash[-\s]?8|Saab[-\s]?340|PC[-\s]?12)\b/ig;
+
+// A type rating is a REQUIREMENT only when the ad frames it as one. A bare mention
+// in a fleet list ("our fleet: B777, A380 & A350") must NOT create a type-rating
+// requirement (change #1). We only accept an aircraft token when a trigger phrase
+// sits within a short window on either side of it.
+const TYPE_RATING_TRIGGER = /type[-\s]?rat|type[-\s]?qualif|rating\s+(?:on|for)|rated\s+(?:on|for|in)|current\s+on|qualified\s+on|endorse|checked?\s+out\s+on|hold[^.]{0,25}\brating\b/i;
+
 /**
- * Extract a minimum hours figure from text near a keyword.
- * Conservative: requires a number directly adjacent to a known hours keyword.
- * Returns null if no confident match.
- *
- * @param {string} text
- * @param {string} keyword  regex fragment to anchor against
- * @returns {number|null}
+ * Extract aircraft TYPES that the ad states as a type-rating requirement. Returns []
+ * when the only aircraft mentions are descriptive (fleet lists, company blurb).
  */
-function extractHours(text, keyword) {
-  // Pattern: "5,000 hours total time" or "total time: 5000 hours"
-  const re = new RegExp(
-    `(\\d[\\d,]*)\\s*(?:hours?|hrs?)[^.]*?${keyword}|${keyword}[^.]*?(\\d[\\d,]*)\\s*(?:hours?|hrs?)`,
-    'i',
-  );
-  const m = text.match(re);
-  if (!m) return null;
-  const raw = (m[1] || m[2]).replace(/,/g, '');
-  const val = parseFloat(raw);
-  // Sanity bounds: senior captain/instructor roles top out ~10–15k hours.
-  // Anything above 20,000 is almost certainly a salary, fleet size, year, or
-  // other non-hours number that leaked into the pattern match.
-  if (isNaN(val) || val < 10 || val > 20000) return null;
-  return val;
+function extractTypeRatings(text) {
+  const out = [];
+  const add = (raw) => { const n = raw.replace(/[-\s]+/g, '').toUpperCase(); if (!out.includes(n)) out.push(n); };
+  AIRCRAFT_TOKEN.lastIndex = 0;
+  let m;
+  while ((m = AIRCRAFT_TOKEN.exec(text)) !== null) {
+    const i = m.index;
+    const j = i + m[0].length;
+    // Windows clipped at sentence boundaries so a trigger can't bleed across a
+    // full stop / newline from an adjacent sentence (fleet list next to a rated-on line).
+    let before = text.slice(Math.max(0, i - 60), i);
+    const lastBoundary = Math.max(before.lastIndexOf('.'), before.lastIndexOf('!'), before.lastIndexOf('?'), before.lastIndexOf('\n'), before.lastIndexOf(';'));
+    if (lastBoundary >= 0) before = before.slice(lastBoundary + 1);
+    let after = text.slice(j, j + 60);
+    const nextBoundary = after.search(/[.!?\n;]/);
+    if (nextBoundary >= 0) after = after.slice(0, nextBoundary);
+    if (TYPE_RATING_TRIGGER.test(before) || TYPE_RATING_TRIGGER.test(after)) add(m[1]);
+  }
+  return out;
+}
+
+// "total" is the career total UNLESS it's an adjective of a more-specific field —
+// "total night flying" (night), "total PIC" (command). So match bare "total" only
+// when it is NOT immediately followed by such a field word; plus the explicit
+// "flight/flying time|hours" phrasings. This catches "total time", "2,000 hours
+// total", "total Fixed Wing time" while rejecting "total night flying". (change #3)
+const TOTAL_RE = /\btotal\b(?!\s+(?:night|pic|p1|command|multi|twin|turbine|turbo|jet|instrument|ifr|cross|xc)\b)|\bflight\s*(?:time|hours)\b|\bflying\s*(?:time|hours)\b/i;
+const HOUR_FIELDS = [
+  ['total', TOTAL_RE],
+  ['pic', /\bPIC\b|\bP1\b|pilot[-\s]?in[-\s]?command|\bPICUS\b|command\s+time/i],
+  ['multi', /multi[-\s]?engine|\bMEL?\b|twin[-\s]?engine/i],
+  ['turbine', /turbine|turbojet|turbo[-\s]?prop|jet\s*(?:time|hours)/i],
+  ['instrument', /\binstrument\b|\bIFR\b/i],
+  ['xc', /cross[-\s]?country|\bXC\b/i],
+];
+// Numbers in these contexts are pay/roster/recency figures, never career minima —
+// "average of 85 flying hours", "within the last 12 months", salary packages.
+const HOUR_NEG = /average|per\s+month|per\s+week|monthly|salary|take[-\s]?home|package|annual\s+leave|calendar\s+days|accommodation|within\s+the\s+(?:past|last)/i;
+
+/**
+ * Aircraft the job FLIES — for search, filter and display (condition B). Union of
+ * aircraft tokens in the title (+ titleEn) and the rated requirement. Deliberately
+ * NO description-body fleet parsing. `reqAircraftTypes` (rating required) stays the
+ * matching-only field; this is the broader display/search field.
+ */
+function deriveAircraftTypes(title, reqAircraftTypes) {
+  const out = [];
+  const add = (raw) => { const n = String(raw).replace(/[-\s]+/g, '').toUpperCase(); if (n && !out.includes(n)) out.push(n); };
+  AIRCRAFT_TOKEN.lastIndex = 0;
+  let m;
+  const t = String(title || '');
+  while ((m = AIRCRAFT_TOKEN.exec(t)) !== null) add(m[1]);
+  for (const r of (reqAircraftTypes || [])) add(r);
+  return out;
 }
 
 /**
- * Tight fallback for "Minimum of N hours" — only matches when the number
- * appears directly adjacent to "minimum [of]", preventing the general
- * extractHours sentence-window from catching distant false positives.
+ * Extract minimum-hour requirements per field. Clause-scoped with NEAREST-keyword
+ * assignment: each number is attached to the closest field keyword within a tight
+ * window (label-before-number preferred), so a flattened bullet run like
+ * "3000 hours total time 1000 hours PIC" splits correctly instead of letting one
+ * field steal another's number. Conservative — a figure with no nearby keyword, or
+ * out of the 10–20,000 sanity range, is dropped. First value per field wins.
  *
  * @param {string} text
- * @returns {number|null}
+ * @returns {{total:?number,pic:?number,multi:?number,turbine:?number,instrument:?number,xc:?number}}
  */
-function extractMinimumOfHours(text) {
-  const re = /minimum\s+(?:of\s+)?(\d[\d,]*)\s*(?:hours?|hrs?)/i;
-  const m = text.match(re);
-  if (!m) return null;
-  const val = parseFloat(m[1].replace(/,/g, ''));
-  if (isNaN(val) || val < 10 || val > 20000) return null;
-  return val;
+function extractHourRequirements(text) {
+  const out = { total: null, pic: null, multi: null, turbine: null, instrument: null, xc: null };
+  if (!text) return out;
+  const clauses = text.replace(/\s+/g, ' ').split(/[.;\n•|]+|,(?=\s)/);
+  for (const clause of clauses) {
+    // 1. All field-keyword occurrences in the clause (a keyword may repeat).
+    const kws = [];
+    for (const [field, re] of HOUR_FIELDS) {
+      const gre = new RegExp(re.source, 'ig');
+      let mm;
+      while ((mm = gre.exec(clause)) !== null) {
+        if (mm[0] === '') { gre.lastIndex += 1; continue; }
+        kws.push({ field, ks: mm.index, ke: mm.index + mm[0].length });
+      }
+    }
+    // 2. Each number binds to a label. Lists are overwhelmingly "N hours LABEL"
+    //    (label FOLLOWS), e.g. "3,500 hours total flight time 2,000 hours PIC"; the
+    //    exception is a colon form "LABEL : N hours" (label PRECEDES). So: take the
+    //    following label unless a colon separates a preceding label from the number.
+    const reNum = /(\d[\d,]*)\s*\+?\s*(?:hours?|hrs?|h\b)?/ig;
+    let m;
+    while ((m = reNum.exec(clause)) !== null) {
+      if (!m[0].trim()) { reNum.lastIndex += 1; continue; }
+      const val = parseFloat(m[1].replace(/,/g, ''));
+      if (isNaN(val) || val < 10 || val > 20000) continue;
+      // Skip digits that are part of an aircraft/type code — a letter immediately
+      // abutting the digits (G600/A320/B737, or 20T/737NG). A letter right after the
+      // digits only disqualifies when it's NOT an hours unit, so "100hrs" survives but
+      // "20T" is dropped; a space or label after the digits ("500 Total") is fine.
+      const s = m.index, e = s + m[1].length;
+      const prevCh = clause[s - 1];
+      const afterDigits = clause.slice(e);
+      const nextCh = afterDigits[0];
+      const isUnit = /^\s*(?:hours?|hrs?|h)\b/i.test(afterDigits);
+      if ((prevCh && /[A-Za-z]/.test(prevCh)) || (nextCh && /[A-Za-z]/.test(nextCh) && !isUnit)) continue;
+      if (HOUR_NEG.test(clause.slice(Math.max(0, s - 28), Math.min(clause.length, e + 28)))) continue;
+      // Nearest preceding and following keyword.
+      let pre = null, fol = null;
+      for (const k of kws) {
+        if (k.ke <= s) { const g = s - k.ke; if (!pre || g < pre.gap) pre = { field: k.field, gap: g, ke: k.ke }; }
+        else if (k.ks >= e) { const g = k.ks - e; if (!fol || g < fol.gap) fol = { field: k.field, gap: g }; }
+      }
+      const preColon = pre && pre.gap <= 28 && /:/.test(clause.slice(pre.ke, s));
+      let chosen = null;
+      if (preColon) chosen = pre;              // "Total flight time : 3000 hours"
+      else if (fol && fol.gap <= 25) chosen = fol; // "3,500 hours total flight time"
+      else if (pre && pre.gap <= 28) chosen = pre;
+      if (chosen && out[chosen.field] == null) out[chosen.field] = val;
+    }
+  }
+  return out;
 }
 
 /**
@@ -90,7 +184,7 @@ function extractMinimumOfHours(text) {
 function extractRequirements(text) {
   if (!text) {
     return {
-      reqAuthorities: [], reqCertificates: [], reqAircraftTypes: [],
+      reqAuthorities: [], reqCertificates: [], reqAircraftTypes: [], reqTypeRatings: [],
       reqMedicalClass: null, reqMinTotalHours: null, reqMinPicHours: null,
       reqMinMultiEngineHours: null, reqMinTurbineHours: null,
       reqMinInstrumentHours: null, reqMinCrossCountryHours: null,
@@ -110,49 +204,32 @@ function extractRequirements(text) {
     .filter(({ re }) => re.test(text))
     .map(({ type }) => type);
 
+  // LEGACY field, unchanged behaviour — fleet-list mentions included (deployed
+  // search/facets/airline pages read this; do not alter). First match per pattern.
   const reqAircraftTypes = [];
   for (const pattern of AIRCRAFT_PATTERNS) {
-    const m = text.match(pattern);
-    if (m) {
-      const normalised = m[1].replace(/[-\s]+/, '').toUpperCase();
+    const mm = text.match(pattern);
+    if (mm) {
+      const normalised = mm[1].replace(/[-\s]+/, '').toUpperCase();
       if (!reqAircraftTypes.includes(normalised)) reqAircraftTypes.push(normalised);
     }
   }
+  // NEW field — only type ratings the ad states as a REQUIREMENT (trigger-gated, #1).
+  // The new matcher reads this; never fleet-list mentions.
+  const reqTypeRatings = extractTypeRatings(text);
 
   const reqMedicalClass =
     /class\s*1\s+medical|first[-\s]class\s+medical|class\s+i\s+medical|1st\s+class\s+medical/i.test(text) ? 'CLASS_1' :
     /class\s*2\s+medical|second[-\s]class\s+medical|class\s+ii\s+medical|2nd\s+class\s+medical/i.test(text) ? 'CLASS_2' : null;
 
-  const reqMinTotalHours =
-    extractHours(text, 'total') ||
-    extractHours(text, 'flight\\s+time') ||
-    extractHours(text, 'flying\\s+time') ||
-    extractMinimumOfHours(text); // tight fallback: number must immediately follow "minimum [of]"
-
-  const reqMinPicHours =
-    extractHours(text, 'PIC') ||
-    extractHours(text, 'pilot[-\\s]+in[-\\s]+command') ||
-    extractHours(text, 'command');
-
-  // Multi-engine: "multi-engine", "MEL", "twin-engine", "twin engine"
-  const reqMinMultiEngineHours =
-    extractHours(text, 'multi[-\\s]*engine') ||
-    extractHours(text, '\\bMEL?\\b') ||
-    extractHours(text, 'twin[-\\s]*engine');
-
-  // Turbine: "turbine", "turbojet", "turboprop", "jet time"
-  const reqMinTurbineHours =
-    extractHours(text, 'turbine') ||
-    extractHours(text, 'turbojet') ||
-    extractHours(text, 'turboprop') ||
-    extractHours(text, 'jet\\s+time');
-
-  const reqMinInstrumentHours = extractHours(text, 'instrument');
-
-  // Cross-country: "XC", "cross.country", "cross country"
-  const reqMinCrossCountryHours =
-    extractHours(text, '\\bXC\\b') ||
-    extractHours(text, 'cross[-\\s]*country');
+  // Minimum-hour requirements — nearest-keyword, clause-scoped (change #3).
+  const hours = extractHourRequirements(text);
+  const reqMinTotalHours = hours.total;
+  const reqMinPicHours = hours.pic;
+  const reqMinMultiEngineHours = hours.multi;
+  const reqMinTurbineHours = hours.turbine;
+  const reqMinInstrumentHours = hours.instrument;
+  const reqMinCrossCountryHours = hours.xc;
 
   // Education: bachelor → high_school (most-specific first to avoid shadowing)
   const reqEducation =
@@ -161,10 +238,22 @@ function extractRequirements(text) {
     /technical\s+(?:diploma|certificate)|vocational\s+training|trade\s+school/i.test(text) ? 'technical' :
     null;
 
+  // US citizenship / federal-service eligibility — these ARE a US work-authorisation
+  // requirement (condition #1). Only US-SPECIFIC markers: Title 32 / National Guard /
+  // excepted service / USAJobs "open continuous announcement" / US Reserve components /
+  // explicit US-citizen wording. NOT bare "citizenship required" (could be any country).
+  const US_ELIGIBILITY = /u\.?s\.?\s*citizen|united\s+states\s+citizen|must\s+be\s+a\s+u\.?s\.?\s+citizen|\btitle\s*32\b|national\s+guard|dual[-\s]?status|excepted\s+service|open\s+continuous\s+announcement|air\s+(?:force\s+)?reserve|army\s+reserve|air\s+reserve\s+technician/i;
+  // "security clearance" is ambiguous (Gulf/UK/AU ads say "subject to security
+  // clearance"; an Australia role may accept "UK, US, or Canada" candidates) — count
+  // it as US ONLY when US-CITIZEN wording sits in the same clause (A), never a bare
+  // "US" that might be one item in a multi-country list.
+  const US_CLEARANCE_CTX = /security\s+clearance[^.;\n]{0,70}(?:u\.?s\.?|united\s+states)\s+citizen|(?:u\.?s\.?|united\s+states)\s+citizen[^.;\n]{0,70}security\s+clearance/i;
+
   // Work authorization — ordered EU/US/UK first, generic "required" as last resort
   const reqWorkAuthorization =
     /right\s+to\s+(?:live\s+and\s+)?work\s+in\s+(?:the\s+)?eu\b|unrestricted\s+right.{0,30}\beu\b|eu\s+work\s+(?:auth|permit)/i.test(text) ? 'EU' :
     /right\s+to\s+work\s+in\s+(?:the\s+)?(?:united\s+states|u\.?s\.?a?)\b|auth(?:orization)?\s+to\s+work\s+in\s+(?:the\s+)?(?:united\s+states|u\.?s\.?)\b|eligible\s+to\s+work\s+in\s+(?:the\s+)?u\.?s\.?\b|without\s+visa\s+sponsorship/i.test(text) ? 'US' :
+    (US_ELIGIBILITY.test(text) || US_CLEARANCE_CTX.test(text)) ? 'US' :
     /right\s+to\s+(?:live\s+and\s+)?work\s+in\s+(?:the\s+)?uk\b|uk\s+work\s+(?:auth|permit)/i.test(text) ? 'UK' :
     /\bright\s+to\s+work\b|work\s+(?:permit|authoris?ation)\s+required|must\s+(?:be\s+)?(?:authoris?ed|eligible)\s+to\s+work/i.test(text) ? 'required' :
     null;
@@ -187,6 +276,7 @@ function extractRequirements(text) {
     reqAuthorities,
     reqCertificates,
     reqAircraftTypes,
+    reqTypeRatings,
     reqMedicalClass,
     reqMinTotalHours,
     reqMinPicHours,
@@ -682,4 +772,5 @@ function extractRequirementsBlock(description) {
 
 module.exports = {
   hasAnyRequirement, normalize, extractRequirements, extractSalary, htmlToText,
-  extractRequirementsBlock, normalizeHandledSources, takeUnmappedSources };
+  extractRequirementsBlock, normalizeHandledSources, takeUnmappedSources,
+  deriveAircraftTypes };

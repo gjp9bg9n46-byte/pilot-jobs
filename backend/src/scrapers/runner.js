@@ -43,7 +43,7 @@ const { fetchReed } = require('./sources/reed');
 const { fetchBreezy } = require('./sources/breezy');
 const { fetchTraffit } = require('./sources/traffit');
 const { enrichWorkdayBatch } = require('./workday-enrichment');
-const { normalize, hasAnyRequirement, extractRequirementsBlock, takeUnmappedSources } = require('./normalize');
+const { normalize, hasAnyRequirement, extractRequirementsBlock, takeUnmappedSources, deriveAircraftTypes } = require('./normalize');
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
 const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
@@ -59,12 +59,17 @@ async function upsertJob(job, { preserveMerge = false, keepInactive = false } = 
     applyUrl, sourceUrl, postedAt, expiresAt,
     role, contractType, region,
     salaryMin, salaryMax, salaryCurrency, salaryPeriod,
-    reqCertificates, reqAuthorities, reqAircraftTypes,
+    reqCertificates, reqAuthorities, reqAircraftTypes, reqTypeRatings,
     reqMedicalClass, reqMinTotalHours, reqMinPicHours,
     reqMinMultiEngineHours, reqMinTurbineHours, reqMinInstrumentHours,
     reqMinCrossCountryHours, reqEducation, reqWorkAuthorization, reqEnglishLevel,
     reqWillingToRelocate,
   } = job;
+
+  // New additive fields (Option 3). aircraftTypes = what the job flies (title + the
+  // legacy rated types) for search/display; reqTypeRatings = type rating required,
+  // matching only. reqAircraftTypes stays the legacy field, untouched.
+  const aircraftTypes = deriveAircraftTypes(`${title || ''} ${job.titleEn || ''}`, reqAircraftTypes || []);
 
   const data = {
     title, company, location,
@@ -85,6 +90,8 @@ async function upsertJob(job, { preserveMerge = false, keepInactive = false } = 
     reqCertificates: reqCertificates || [],
     reqAuthorities: reqAuthorities || [],
     reqAircraftTypes: reqAircraftTypes || [],
+    aircraftTypes,
+    reqTypeRatings: reqTypeRatings || [],
     reqMedicalClass: reqMedicalClass || null,
     reqMinTotalHours: reqMinTotalHours || null,
     reqMinPicHours: reqMinPicHours || null,
@@ -119,6 +126,8 @@ async function upsertJob(job, { preserveMerge = false, keepInactive = false } = 
       reqCertificates: reqCertificates || [],
       reqAuthorities: reqAuthorities || [],
       reqAircraftTypes: reqAircraftTypes || [],
+      aircraftTypes,
+      reqTypeRatings: reqTypeRatings || [],
       reqMedicalClass: reqMedicalClass || null,
       reqMinTotalHours: reqMinTotalHours || null,
       reqMinPicHours: reqMinPicHours || null,
@@ -382,7 +391,7 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       // will be picked up here; already-enriched jobs are skipped automatically.
       if (empConfig.source === 'PILOTCAREERCENTRE') {
         const toEnrich = await prisma.$queryRaw`
-          SELECT id, "sourceUrl", description
+          SELECT id, title, "sourceUrl", description
           FROM "Job"
           WHERE "sourcePlatform" = 'PILOTCAREERCENTRE'
             AND description ILIKE '% is recruiting %'
@@ -404,6 +413,8 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
                   reqCertificates:         result.reqCertificates         ?? [],
                   reqAuthorities:          result.reqAuthorities          ?? [],
                   reqAircraftTypes:        result.reqAircraftTypes        ?? [],
+                  reqTypeRatings:          result.reqTypeRatings          ?? [],
+                  aircraftTypes:           deriveAircraftTypes(result.title || '', result.reqAircraftTypes || []),
                   reqMedicalClass:         result.reqMedicalClass         ?? null,
                   reqMinTotalHours:        result.reqMinTotalHours        ?? null,
                   reqMinPicHours:          result.reqMinPicHours          ?? null,
@@ -438,7 +449,7 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       const wdCutoff = new Date(Date.now() - SKIP_DAYS * 24 * 60 * 60 * 1000);
       const toWorkdayEnrich = await prisma.$queryRaw`
         SELECT id, title, company, "applyUrl", description, "contractType",
-               "reqCertificates", "reqAuthorities", "reqAircraftTypes",
+               "reqCertificates", "reqAuthorities", "reqAircraftTypes", "reqTypeRatings",
                "reqMedicalClass", "reqMinTotalHours", "reqMinPicHours",
                "reqMinMultiEngineHours", "reqMinTurbineHours", "reqMinInstrumentHours",
                "reqMinCrossCountryHours", "reqEducation", "reqWorkAuthorization",

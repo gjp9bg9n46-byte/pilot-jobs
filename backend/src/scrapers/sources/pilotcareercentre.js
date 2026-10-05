@@ -227,7 +227,7 @@ async function enrichOneJob(job) {
 
       const reqs = extractRequirements(result.text);
       const sal  = extractSalary(result.text);
-      return { id: job.id, description: result.text, notes: result.notes, ...reqs, ...(sal || {}) };
+      return { id: job.id, title: job.title, description: result.text, notes: result.notes, ...reqs, ...(sal || {}) };
     } catch (err) {
       lastErr = err;
       if (attempt < MAX_TRIES) await new Promise((r) => setTimeout(r, 500 * attempt));

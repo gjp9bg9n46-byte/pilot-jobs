@@ -145,6 +145,8 @@ model Pilot {
   // import, carry-forward edit) + nightly. Read by matching (getMatchTotals) and the
   // logbook summary — one source, so /jobs never re-loads every flight to match.
   derivedTotals   Json?
+  // Last time the pilot opened the Dashboard — drives "N new jobs since your last visit".
+  dashboardSeenAt DateTime?
   // Soft-delete
   deletedAt          DateTime?
   createdAt       DateTime  @default(now())
@@ -152,6 +154,7 @@ model Pilot {
 
   certificates    PilotCertificate[]
   ratings         PilotRating[]
+  instructorRatings PilotInstructorRating[]
   medicals        PilotMedical[]
   trainingRecords PilotTrainingRecord[]
   rightToWork     PilotRightToWork[]
@@ -181,6 +184,9 @@ model PilotCertificate {
   issueDate        DateTime?
   expiryDate       DateTime?
   englishLevel     String?
+  // 'aeroplane' | 'helicopter' — aircraft category of the licence. Backfilled ONLY
+  // from the pilot's own ratings; null = unknown (matching never assumes aeroplane).
+  category         String?
   endorsements     String[]
   createdAt        DateTime        @default(now())
 
@@ -208,6 +214,33 @@ model PilotRating {
   licence              PilotCertificate? @relation(fields: [licenceId], references: [id], onDelete: SetNull)
 }
 
+// Instructor / examiner privileges the pilot holds — set by the pilot in Profile →
+// Licences & ratings. Matching requires the right kind for FI/TRI/TRE/SFI/SFE etc.
+// roles; expiry surfaces in readiness. Replaces the un-settable Pilot.isInstructor/
+// isExaminer booleans as the match input.
+enum InstructorKind {
+  FI
+  CRI
+  IRI
+  TRI
+  SFI
+  TRE
+  SFE
+  OTHER
+}
+
+model PilotInstructorRating {
+  id        String         @id @default(uuid())
+  pilotId   String
+  kind      InstructorKind
+  expiry    DateTime?
+  createdAt DateTime       @default(now())
+
+  pilot     Pilot          @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@unique([pilotId, kind])
+}
+
 // Rich education history (source of truth; the CV Builder reads from here). Was
 // previously duplicated inside CvData.education (Json) — migrated across.
 model PilotEducation {
@@ -221,6 +254,8 @@ model PilotEducation {
   createdAt    DateTime @default(now())
 
   pilot        Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@index([pilotId])
 }
 
 // Languages (source of truth; CV reads from here). Was CvData.languages (Json).
@@ -233,6 +268,8 @@ model PilotLanguage {
   createdAt DateTime @default(now())
 
   pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@index([pilotId])
 }
 
 model PilotTrainingRecord {
@@ -401,7 +438,9 @@ model Job {
 
   reqCertificates      String[]
   reqAuthorities       String[]
-  reqAircraftTypes     String[]
+  reqAircraftTypes     String[]  // LEGACY: fleet-inclusive, read by deployed search/facets/airline pages. Retired in a later step.
+  aircraftTypes        String[]  // what the job FLIES (title + legacy rated types) — search/display
+  reqTypeRatings       String[]  // type rating REQUIRED (trigger-gated) — matching only (new matcher reads this)
   reqMedicalClass      String?
   reqMinTotalHours     Float?
   reqMinPicHours       Float?
@@ -494,6 +533,11 @@ enum ApplicationStatus {
   REVIEWED
   SHORTLISTED
   HIRED
+  OPENED
+  INTERVIEW
+  OFFER
+  NOT_SELECTED
+  CLOSED
 }
 
 model Application {
