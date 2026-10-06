@@ -5,6 +5,9 @@ import { dashboardApi, jobApi } from '../services/api';
 import { LightPage } from '../components/primitives';
 import { statusMeta } from '../lib/jobMatch';
 import { roleLabel } from '../lib/jobDisplay';
+import { companyName, locationName } from '../lib/displayNames';
+
+const fmtD = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null);
 
 const C = {
   line: '#E3E8EF', ink: '#0F1B2D', sub: '#4A5668', faint: '#8592A3', navy: '#003F88',
@@ -37,10 +40,15 @@ function Card({ title, action, children }) {
 
 function Pct({ match }) {
   const m = statusMeta(match);
-  if (!m || match.pct == null) return <span style={{ fontSize: 12.5, color: C.faint }}>Not stated</span>;
+  if (!m || match.pct == null) {
+    return <span style={{ fontSize: 12.5, color: C.faint }}>{match?.status === 'NO_REQUIREMENTS' ? 'No requirements stated' : 'Not stated'}</span>;
+  }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontFamily: serif, fontWeight: 600, fontSize: 22, fontVariantNumeric: 'tabular-nums', lineHeight: 1, color: m.color }}>
-      {match.pct}%<small style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, fontWeight: 600, color: C.faint }}>match</small>
+    <span style={{ display: 'inline-block', textAlign: 'right' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontFamily: serif, fontWeight: 600, fontSize: 22, fontVariantNumeric: 'tabular-nums', lineHeight: 1, color: m.color }}>
+        {match.pct}%<small style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, fontWeight: 600, color: C.faint }}>match</small>
+      </span>
+      {match.stated > 0 && <small style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 500, color: C.faint, marginTop: 2 }}>{match.met} of {match.stated} met</small>}
     </span>
   );
 }
@@ -49,7 +57,7 @@ function JobRow({ item, onView }) {
   const j = item.job; const m = j.match; const meta = statusMeta(m);
   const pill = m && (m.status === 'QUALIFY' ? { t: 'You qualify', bg: C.greenbg, c: C.green }
     : (m.status === 'SHORT' || m.status === 'CHECK') ? { t: m.status === 'SHORT' ? '1 short' : 'Check', bg: C.amberbg, c: C.amber } : null);
-  const sub = [j.company, j.location || j.country, ago(j.postedAt) && `${ago(j.postedAt)}`, j.sourceType && j.sourceType !== 'aggregator' ? 'Direct apply' : null].filter(Boolean).join(' · ');
+  const sub = [companyName(j.company), locationName(j.location || j.country), ago(j.postedAt) && `${ago(j.postedAt)}`, j.sourceType && j.sourceType !== 'aggregator' ? 'Direct apply' : null].filter(Boolean).join(' · ');
   return (
     <div className="dash-job" style={{ borderTop: `1px solid ${C.line}` }}>
       <div>
@@ -92,7 +100,8 @@ export default function Dashboard() {
   };
 
   const nj = data?.newJobs;
-  const list = useMemo(() => (nj ? (nj[tab] || nj.allNew || []) : []), [nj, tab]);
+  // New items first (stable — keeps the server's match%/recency order within each group).
+  const list = useMemo(() => (nj ? [...(nj[tab] || nj.allNew || [])].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0)) : []), [nj, tab]);
 
   if (err) return <LightPage><div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 32px', color: C.sub }}>{err}</div></LightPage>;
   if (!data) return <LightPage><div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 32px', color: C.sub }}>Loading your dashboard…</div></LightPage>;
@@ -114,7 +123,7 @@ export default function Dashboard() {
         {data.blockers?.count > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: C.redbg, border: '1px solid #F4CFCB', borderRadius: 12, padding: '13px 16px', marginBottom: 22, fontSize: 14, flexWrap: 'wrap' }}>
             <AlertTriangle size={18} color={C.red} />
-            <span><b style={{ fontWeight: 600 }}>{data.blockers.items.map((i) => i.label).join(' and ')} {data.blockers.items.length === 1 ? 'is' : 'are'} expired or expiring.</b> Update the dates so you show up as qualified.</span>
+            <span><b style={{ fontWeight: 600 }}>{data.blockers.items.map((i) => `${i.label}${fmtD(i.date) ? ` (${i.days != null && i.days < 0 ? 'expired' : 'expires'} ${fmtD(i.date)})` : ''}`).join(' and ')} {data.blockers.items.length === 1 ? 'is' : 'are'} expired or expiring.</b> Update the dates so you show up as qualified.</span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 16, fontWeight: 600, color: C.navy, fontSize: 13.5 }}>
               {data.blockers.items.slice(0, 2).map((i) => <a key={i.type} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>Update {i.label}</a>)}
             </span>
@@ -123,7 +132,7 @@ export default function Dashboard() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 340px', gap: 24, alignItems: 'start' }} className="dash-grid">
           <div>
-            <Card title="New jobs for you" action={<a onClick={() => navigate('/jobs')} style={{ fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer' }}>All matching jobs</a>}>
+            <Card title="Your matches" action={<a onClick={() => navigate('/jobs')} style={{ fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer' }}>All matching jobs</a>}>
               <div style={{ display: 'flex', gap: 6, padding: '14px 18px 6px', overflowX: 'auto' }}>
                 {[['allNew', 'All matches', nj.counts.all], ['qualify', 'You qualify', nj.counts.qualify], ['oneShort', '1 short', nj.counts.oneShort]].map(([k, lbl, n]) => (
                   <button key={k} onClick={() => setTab(k)} style={{ whiteSpace: 'nowrap', border: `1px solid ${tab === k ? C.ink : C.line}`, background: tab === k ? C.ink : '#fff', color: tab === k ? '#fff' : C.sub, borderRadius: 20, padding: '6px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -144,13 +153,13 @@ export default function Dashboard() {
                 <tbody>
                   {data.applications.slice(0, 6).map((a) => (
                     <tr key={a.id}>
-                      <td style={{ padding: '12px 18px', borderTop: `1px solid ${C.line}` }}>
+                      <td style={{ padding: '10px 18px', borderTop: `1px solid ${C.line}` }}>
                         <div style={{ fontWeight: 600 }}>{a.job?.title || '—'}</div>
                         <div style={{ fontSize: 12.5, color: C.sub, marginTop: 2 }}>
-                          {a.job?.company}{a.statusUpdatedAt || a.appliedAt ? ` · opened ${ago(a.appliedAt)}` : ''}{a.job && a.job.status !== 'ACTIVE' && !a.replacement ? ' · job closed' : ''}{a.replacement ? ' · still live' : ''}
+                          {companyName(a.job?.company)}{a.statusUpdatedAt || a.appliedAt ? ` · opened ${ago(a.appliedAt)}` : ''}{a.job && a.job.status !== 'ACTIVE' && !a.replacement ? ' · job closed' : ''}{a.replacement ? ' · still live' : ''}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 18px', borderTop: `1px solid ${C.line}`, textAlign: 'right' }}>
+                      <td style={{ padding: '10px 18px', borderTop: `1px solid ${C.line}`, textAlign: 'right' }}>
                         {a.status === 'OPENED' && !dismissed[a.id] ? (
                           <span style={{ fontSize: 12.5, color: C.sub, whiteSpace: 'nowrap' }}>Did you apply?
                             <a onClick={() => setStatus(a.id, 'APPLIED')} style={{ color: C.navy, fontWeight: 600, marginLeft: 8, cursor: 'pointer' }}>Yes</a>
@@ -213,7 +222,7 @@ export default function Dashboard() {
         </div>
       </div>
       <style>{`
-        .dash-job{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;padding:14px 18px}
+        .dash-job{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;padding:10px 18px}
         .dash-job>div{min-width:0}
         @media (max-width:820px){
           .dash-wrap{padding-left:16px !important;padding-right:16px !important}

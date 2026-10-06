@@ -46,9 +46,10 @@ const SIDEBAR_NAV = [
   ...BOTTOM_NAV_ITEMS,
 ];
 
-// Wide-desktop (≥1024) top bar: inline primary links + hamburger dropdown.
-const TOP_NAV = [NAV_ITEMS[0], NAV_ITEMS[1], NAV_ITEMS[2]];          // Dashboard, Jobs, Airlines
-const MENU_ITEMS = [NAV_ITEMS[3], NAV_ITEMS[4], NAV_ITEMS[5], ...BOTTOM_NAV_ITEMS]; // Logbook, CV Builder, Profile, Settings, Support
+// Wide-desktop (≥1024) top bar: all 6 primary links inline (C#8); only Settings +
+// Support live in the hamburger dropdown.
+const TOP_NAV = [...NAV_ITEMS];                 // Dashboard, Jobs, Airlines, Logbook, CV, Profile
+const MENU_ITEMS = [...BOTTOM_NAV_ITEMS];       // Settings, Support
 
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard', '/jobs': 'Job Openings', '/airlines': 'Airline Factfile', '/alerts': 'My Alerts',
@@ -230,7 +231,7 @@ export default function Layout() {
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
                 <span style={{ flex: 1 }}>{label}</span>
-                {to === '/alerts' && unread > 0 && <span style={unreadBadge}>{unread}</span>}
+                {to === '/dashboard' && unread > 0 && <span style={unreadBadge}>{unread}</span>}
               </NavLink>
             ))}
 
@@ -378,7 +379,7 @@ export default function Layout() {
             {TOP_NAV.map(({ to, label }) => (
               <NavLink key={to} to={to} className="nav-link ch-navitem" style={({ isActive }) => topLinkStyle(isActive)}>
                 {label}
-                {to === '/alerts' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 6 }}>{unread}</span>}
+                {to === '/dashboard' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 6 }}>{unread}</span>}
               </NavLink>
             ))}
           </nav>
@@ -482,7 +483,7 @@ export default function Layout() {
               <NavLink to={to} className="nav-link ch-navitem" style={({ isActive }) => navLinkStyle(isActive)}>
                 <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{icon}</span>
                 {label}
-                {to === '/alerts' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 'auto' }}>{unread}</span>}
+                {to === '/dashboard' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 'auto' }}>{unread}</span>}
               </NavLink>
             </React.Fragment>
           ))}

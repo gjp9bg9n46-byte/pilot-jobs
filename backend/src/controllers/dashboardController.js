@@ -24,7 +24,7 @@ function card(j, match) {
     id: j.id, title: j.titleEn || j.title, company: j.company, location: j.location,
     country: j.country, role: j.role, sourceType: j.sourceType, postedAt: j.postedAt,
     salaryMin: j.salaryMin ?? null, salaryMax: j.salaryMax ?? null,
-    match: match ? { status: match.status, pct: match.pct, shortfall: match.shortfall, category: match.category } : null,
+    match: match ? { status: match.status, pct: match.pct, shortfall: match.shortfall, category: match.category, met: match.met, stated: match.stated } : null,
   };
 }
 
