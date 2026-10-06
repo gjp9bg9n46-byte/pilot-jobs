@@ -1,8 +1,9 @@
-// Pilot bottom-tab navigation: Jobs / Alerts / CV Builder / Logbook / Profile.
+// Pilot bottom-tab navigation: Dashboard / Jobs / CV Builder / Logbook / Profile.
 // Employers never reach this group (they land on /(app)/employer/pending-approval,
 // which has no tabs). Jobs/Logbook/Profile are their own stacks (see the nested
-// _layout.tsx files); Alerts and CV Builder are single screens. Airlines lives
-// outside the tabs at /(app)/airlines (reached from job cards + Settings).
+// _layout.tsx files); Dashboard, Alerts and CV Builder are single screens.
+// Airlines + Alerts live outside the tab bar (href:null) — Airlines is reached
+// from job cards + Settings; Alerts is folded into the new Dashboard.
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnread } from '../../../src/context/UnreadContext';
@@ -15,7 +16,7 @@ export default function TabsLayout() {
   const { colors: pilot, mode } = useTheme();
   return (
     <Tabs
-      initialRouteName="profile"
+      initialRouteName="dashboard"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: pilot.navy,
@@ -32,21 +33,22 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="jobs"
+        name="dashboard"
         options={{
-          title: 'Jobs',
+          title: 'Dashboard',
           tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined,
           tabBarBadgeStyle: { backgroundColor: pilot.navy, fontFamily: fontFamilies.bodyBold, fontSize: 10 },
-          tabBarIcon: ({ color, size }) => <Ionicons name="briefcase-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="airlines"
+        name="jobs"
         options={{
-          title: 'Airlines',
-          tabBarIcon: ({ color, size }) => <Ionicons name="airplane-outline" size={size} color={color} />,
+          title: 'Jobs',
+          tabBarIcon: ({ color, size }) => <Ionicons name="briefcase-outline" size={size} color={color} />,
         }}
       />
+      <Tabs.Screen name="airlines" options={{ href: null }} />
       <Tabs.Screen name="alerts" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen

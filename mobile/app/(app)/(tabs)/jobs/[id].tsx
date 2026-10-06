@@ -15,9 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import { makeTabBarStyle } from '../../../../src/theme/tabBar';
 import {
-  computeMatchCount, extractUuid, formatSalary, matchLabel, matchStyle, postedAgo,
+  extractUuid, formatSalary, postedAgo, statusMeta,
 } from '../../../../src/lib/jobMatch';
-import { Requirement } from '../../../../src/lib/jobMatch';
 import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
 import { jobRequirements, parseDescriptionBlocks } from '../../../../src/lib/jobRequirements';
@@ -42,15 +41,22 @@ function toExcerpt(text: string, maxChars = 320): string {
   return lastEnd > 80 ? cut.slice(0, lastEnd + 1) : `${cut.trim()}…`;
 }
 
-function ReqRow({ req }: { req: Requirement }) {
+// A server match requirement (services/jobMatch.js), three display states:
+//   met → green tick · not_met → red (has data, falls short) · add → grey
+//   (unknown on the profile, "add X to check"). The % counts 'add' against it
+//   but it is never shown as a red failure — matches web's three-state rows.
+function ReqRow({ req }: { req: Job }) {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const color = req.state === 'met' ? SEM.green : req.state === 'not_met' ? SEM.red : pilot.muted;
+  const icon = req.state === 'met' ? 'checkmark-circle' : req.state === 'not_met' ? 'close-circle' : 'ellipse-outline';
+  const pilotText = req.state === 'add' ? (req.gap || 'Add to profile') : (req.reason || req.pilotText || '—');
   return (
-    <View style={[styles.reqRow, !req.matched && styles.reqRowMiss]}>
-      <Ionicons name={req.matched ? 'checkmark-circle' : 'close-circle'} size={16} color={req.matched ? SEM.green : SEM.red} />
+    <View style={[styles.reqRow, req.state !== 'met' && styles.reqRowMiss]}>
+      <Ionicons name={icon} size={16} color={color} />
       <Text style={styles.reqLabel}>{req.label}</Text>
-      <Text style={[styles.reqValue, { color: req.matched ? pilot.ink : SEM.red }]}>{req.reqValue}</Text>
-      <Text style={[styles.reqPilot, { color: req.matched ? SEM.green : pilot.muted }]}>{req.pilotValue ?? 'Not on profile'}</Text>
+      <Text style={[styles.reqValue, { color: req.state === 'met' ? pilot.ink : color }]}>{req.reqText}</Text>
+      <Text style={[styles.reqPilot, { color }]}>{pilotText}</Text>
     </View>
   );
 }
@@ -74,8 +80,6 @@ export default function JobDetail() {
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [profile, setProfile] = useState<Job | null>(null);
-  const [totals, setTotals] = useState<Job | null>(null);
   const [saved, setSaved] = useState(false);
   const [applied, setApplied] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -101,12 +105,6 @@ export default function JobDetail() {
     return () => { alive = false; };
   }, [jobId]);
 
-  useEffect(() => {
-    Promise.all([api.get('/profile'), api.get('/profile/totals')])
-      .then(([p, t]) => { setProfile(p.data); setTotals(t.data); })
-      .catch(() => {});
-  }, []);
-
   const toggleSave = useCallback(async () => {
     const was = saved;
     setSaved(!was);
@@ -131,9 +129,11 @@ export default function JobDetail() {
     );
   }
 
-  const mc = profile && totals ? computeMatchCount(job, profile, totals) : null;
-  const hasReqs = !!mc && mc.total > 0;
-  const serverMatch = matchLabel(job.matchScore);
+  // Server-computed match (job.match from GET /jobs/:id) — identical to web +
+  // Dashboard. statusMeta → label + tone colour; requirements carry three states.
+  const m = job.match;
+  const meta = statusMeta(m);
+  const reqs: Job[] = m?.requirements || [];
   const roleLabel = job.role ? (ROLE_LABEL[job.role] || job.role) : null;
   const expired =
     (job.status && ['CLOSED', 'EXPIRED', 'INACTIVE', 'ARCHIVED'].includes(String(job.status).toUpperCase())) ||
@@ -195,22 +195,29 @@ export default function JobDetail() {
         {/* Your Match */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>YOUR MATCH</Text>
-          {mc ? (
+          {meta ? (
             <>
               <View style={styles.matchHead}>
-                {serverMatch ? (
+                {m.pct != null ? (
                   <View>
-                    <Text style={[styles.matchScoreNum, { color: matchStyle(job.matchScore).color }]}>{job.matchScore}%</Text>
-                    <Text style={[styles.matchScoreLabel, { color: matchStyle(job.matchScore).color }]}>{matchStyle(job.matchScore).label}</Text>
+                    <Text style={[styles.matchScoreNum, { color: meta.color }]}>{m.pct}%</Text>
+                    <Text style={[styles.matchScoreLabel, { color: meta.color }]}>{meta.label || 'Match'}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.mutedBody}>{m.status === 'WRONG_CATEGORY' ? (m.category?.label || 'Different aircraft category') : 'No requirements stated'}</Text>
+                )}
+                {meta.shortfall ? (
+                  <View style={[styles.badge, { backgroundColor: meta.tone === 'green' ? semantic.successBg : meta.tone === 'amber' ? semantic.warningBg : pilot.cream }]}>
+                    <Text style={[styles.badgeText, { color: meta.color }]}>{meta.shortfall}</Text>
+                  </View>
+                ) : m.pct === 100 ? (
+                  <View style={[styles.badge, { backgroundColor: semantic.successBg }]}>
+                    <Text style={[styles.badgeText, { color: semantic.success }]}>You qualify</Text>
                   </View>
                 ) : null}
-                {mc.total > 0 ? (
-                  <View style={[styles.badge, { backgroundColor: mc.matched === mc.total ? semantic.successBg : semantic.warningBg }]}>
-                    <Text style={[styles.badgeText, { color: mc.matched === mc.total ? semantic.success : semantic.warning }]}>{mc.matched}/{mc.total} requirements matched</Text>
-                  </View>
-                ) : <Text style={styles.mutedBody}>No requirements specified</Text>}
               </View>
-              {hasReqs ? <View style={{ marginTop: 8 }}>{mc.requirements.map((r) => <ReqRow key={r.label} req={r} />)}</View> : null}
+              {reqs.length ? <View style={{ marginTop: 8 }}>{reqs.map((r) => <ReqRow key={r.key} req={r} />)}</View> : null}
+              {m.category?.advisory ? <Text style={[styles.mutedBody, { marginTop: 8 }]}>{m.category.advisory}</Text> : null}
             </>
           ) : (
             <Text style={styles.mutedBody}>Complete your pilot profile to see your match against this role.</Text>

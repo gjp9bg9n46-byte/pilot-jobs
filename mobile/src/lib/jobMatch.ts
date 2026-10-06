@@ -135,6 +135,35 @@ export function computeMatchCount(job: AnyRec, profile: AnyRec, totals: AnyRec) 
   return { matched, total: requirements.length, requirements };
 }
 
+// ─── Unified match status (server-computed) ────────────────────────────────────
+// The backend's services/jobMatch.js returns job.match = { status, pct, shortfall,
+// category }. These mirror frontend/src/lib/jobMatch.js statusMeta so the app shows
+// the SAME number + label as web (Dashboard + Jobs). The legacy score tiers below
+// stay only for the old Alerts screen's MatchBadge.
+export const MATCH_STATUS_META: Record<string, { label: string; tone: 'green' | 'amber' | 'grey' }> = {
+  QUALIFY: { label: 'You qualify', tone: 'green' },
+  CHECK: { label: 'Check', tone: 'amber' },
+  SHORT: { label: '1 short', tone: 'amber' },
+  NOT_MET: { label: 'Not a match', tone: 'grey' },
+  WRONG_CATEGORY: { label: '', tone: 'grey' },
+  NO_REQUIREMENTS: { label: 'No requirements stated', tone: 'grey' },
+};
+const TONE_COLOR: Record<string, string> = { green: '#15803D', amber: '#B45309', grey: '#4A5668' };
+
+export interface ServerMatch {
+  status?: string;
+  pct?: number | null;
+  shortfall?: string | null;
+  category?: { advisory?: string | null; label?: string | null } | null;
+}
+
+export function statusMeta(match: ServerMatch | null | undefined):
+  { label: string; tone: 'green' | 'amber' | 'grey'; color: string; pct: number | null; shortfall: string | null } | null {
+  if (!match) return null;
+  const base = MATCH_STATUS_META[match.status ?? ''] || { label: '', tone: 'grey' as const };
+  return { ...base, color: TONE_COLOR[base.tone], pct: match.pct ?? null, shortfall: match.shortfall || null };
+}
+
 export const MATCH_TIERS = { excellent: 90, great: 75, good: 60 };
 
 export function matchLabel(score: number | null | undefined): { text: string; variant: 'success' | 'info' | 'warning' } | null {

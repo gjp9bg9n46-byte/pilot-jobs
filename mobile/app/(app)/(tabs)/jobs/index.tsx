@@ -19,7 +19,7 @@ import AlertsScreen from '../alerts';
 import { useUnread } from '../../../../src/context/UnreadContext';
 import { SelectField, TextField } from '../../../../src/components/ui';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
-import { computeMatchCount, postedAgo } from '../../../../src/lib/jobMatch';
+import { postedAgo, statusMeta } from '../../../../src/lib/jobMatch';
 import { TAB_BAR_CLEARANCE } from '../../../../src/theme/tabBar';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
@@ -29,7 +29,6 @@ const SORT_OPTIONS: [string, string][] = [
   ['relevant', 'Most Relevant'],
   ['deadline', 'Deadline'],
 ];
-const SEM = { green: '#166534', amber: '#92400E' };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Job = Record<string, any>;
@@ -57,16 +56,11 @@ function JobsBrowse() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<Job | null>(null);
-  const [totals, setTotals] = useState<Job | null>(null);
   // Airline logo lookup: jobs carry only a scraped `company` string (no logoUrl),
   // so we fetch the airline list once and resolve company → airline → logoUrl.
   const [airlineMap, setAirlineMap] = useState<Awaited<ReturnType<typeof fetchAirlineMap>> | null>(null);
 
   useEffect(() => {
-    Promise.all([api.get('/profile'), api.get('/profile/totals')])
-      .then(([p, t]) => { setProfile(p.data); setTotals(t.data); })
-      .catch(() => {});
     fetchAirlineMap().then(setAirlineMap).catch(() => {});
   }, []);
 
@@ -90,13 +84,10 @@ function JobsBrowse() {
   }, [fetchJobs]);
 
   // Silent refetch on every focus — the tab stays mounted, so mount-only fetches
-  // go stale. Keeps the list, match counts (profile + logbook totals) current
-  // after edits elsewhere in the app.
+  // go stale. The server recomputes each job's match against the pilot on every
+  // GET /jobs, so the % stays current after edits elsewhere without a client recompute.
   useFocusEffect(useCallback(() => {
     fetchJobs();
-    Promise.all([api.get('/profile'), api.get('/profile/totals')])
-      .then(([p, t]) => { setProfile(p.data); setTotals(t.data); })
-      .catch(() => {});
   }, [fetchJobs]));
 
   // Persist URL state (omit defaults) like web.
@@ -135,8 +126,10 @@ function JobsBrowse() {
     const ago = eg ? null : postedAgo(job.postedAt);
     const ongoing = eg ? `↻ Ongoing · ${seen ? `confirmed listed ${postedAgo(seen)}` : 'still listed'}` : null;
     const showDivider = index === freshCount && evergreenCount > 0;
-    const mc = profile && totals ? computeMatchCount(job, profile, totals) : null;
-    const full = !!mc && mc.total > 0 && mc.matched === mc.total;
+    // Server-computed match (services/jobMatch.js) — the SAME number web + Dashboard
+    // show. statusMeta maps it to a label + tone colour; no client recompute.
+    const meta = statusMeta((job as any).match);
+    const toneBg = meta?.tone === 'green' ? '#DCFCE7' : meta?.tone === 'amber' ? '#FEF3C7' : pilot.cream;
     return (
       <>
         {showDivider ? (
@@ -152,10 +145,10 @@ function JobsBrowse() {
             ago={ago}
             ongoing={ongoing}
             right={<Ionicons name="chevron-forward" size={18} color={pilot.line} />}
-            footer={mc && mc.total > 0 ? (
-              <View style={[styles.matchPill, { backgroundColor: full ? '#DCFCE7' : '#FEF3C7' }]}>
-                <Text style={[styles.matchPillText, { color: full ? SEM.green : SEM.amber }]}>
-                  {mc.matched}/{mc.total} requirements met
+            footer={meta && meta.pct != null ? (
+              <View style={[styles.matchPill, { backgroundColor: toneBg }]}>
+                <Text style={[styles.matchPillText, { color: meta.color }]}>
+                  {meta.pct}% match{meta.label ? ` · ${meta.label}` : ''}
                 </Text>
               </View>
             ) : null}
