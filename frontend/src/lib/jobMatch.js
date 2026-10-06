@@ -143,6 +143,26 @@ export function computeMatchCount(job, profile, totals) {
   return { matched, total: requirements.length, requirements };
 }
 
+// ─── Unified server match (status + pct) → display meta ─────────────────────────
+// The single definition shown on Jobs + Dashboard. Colour by fit: green = qualify,
+// amber = one short / can't-tell, grey = other. Replaces EXCELLENT/GREAT tiers for
+// the new surfaces (old matchStyle below kept for back-compat until Alerts retires).
+export const MATCH_STATUS_META = {
+  QUALIFY:         { label: 'You qualify', tone: 'green' },
+  CHECK:           { label: 'Check',       tone: 'amber' },
+  SHORT:           { label: '1 short',     tone: 'amber' },
+  NOT_MET:         { label: 'Not a match', tone: 'grey' },
+  WRONG_CATEGORY:  { label: '',            tone: 'grey' },
+  NO_REQUIREMENTS: { label: 'No requirements stated', tone: 'grey' },
+};
+const TONE_COLOR = { green: '#15803D', amber: '#B45309', grey: '#4A5668' };
+// match = the server's job.match ({ status, pct, shortfall, category }).
+export function statusMeta(match) {
+  if (!match) return null;
+  const base = MATCH_STATUS_META[match.status] || { label: '', tone: 'grey' };
+  return { ...base, color: TONE_COLOR[base.tone], pct: match.pct, shortfall: match.shortfall || null };
+}
+
 // ─── Match-score tiers ─────────────────────────────────────────────────────────
 
 // Tier thresholds (shared so consumers can derive labels/colors consistently).

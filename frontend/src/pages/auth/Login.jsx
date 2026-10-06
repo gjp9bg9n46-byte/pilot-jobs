@@ -52,7 +52,7 @@ export default function Login() {
   // Auto-forward an already-authenticated pilot away from the auth page → Profile
   // (same landing as a fresh sign-in below).
   useEffect(() => {
-    if (pilotToken) navigate('/profile', { replace: true });
+    if (pilotToken) navigate('/dashboard', { replace: true });
   }, [pilotToken, navigate]);
 
   const handleSubmit = async (e) => {
@@ -63,7 +63,7 @@ export default function Login() {
     try {
       const { data } = await authApi.login(email, password);
       dispatch(setAuth({ token: data.token, pilot: data.pilot }));
-      navigate('/profile');
+      navigate('/dashboard');
     } catch (err) {
       if (!err.response) setError("Couldn't reach the server — check your connection and try again.");
       else setError(err.response?.data?.error || 'Invalid credentials');

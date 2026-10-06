@@ -21,11 +21,11 @@ const MODERATION_ICON = (
 );
 
 const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard',
+    icon: <Ico extra={<><path d="M3 8l6-5 6 5v6.5a1 1 0 01-1 1h-3.5v-4h-3v4H4a1 1 0 01-1-1z"/></>} /> },
   { to: '/jobs',     label: 'Jobs',
     icon: <Ico extra={<><rect x="2" y="6" width="14" height="10" rx="1.5"/><path d="M6 6V4.5A1.5 1.5 0 017.5 3h3A1.5 1.5 0 0112 4.5V6"/><line x1="2" y1="11" x2="16" y2="11"/></>} /> },
   { to: '/airlines', label: 'Airlines', icon: AIRLINES_ICON },
-  { to: '/alerts',   label: 'Alerts',
-    icon: <Ico extra={<><path d="M9 2.5a4.5 4.5 0 00-4.5 4.5v2.5L3 12h12l-1.5-2.5V7A4.5 4.5 0 009 2.5z"/><path d="M7.5 14.5a1.5 1.5 0 003 0"/></>} /> },
   { to: '/logbook',  label: 'Logbook',
     icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="6.5" x2="12" y2="6.5"/><line x1="6" y1="9" x2="12" y2="9"/><line x1="6" y1="11.5" x2="10" y2="11.5"/></>} /> },
   { to: '/cv',       label: 'CV Builder',
@@ -47,11 +47,11 @@ const SIDEBAR_NAV = [
 ];
 
 // Wide-desktop (≥1024) top bar: inline primary links + hamburger dropdown.
-const TOP_NAV = [NAV_ITEMS[0], NAV_ITEMS[1], NAV_ITEMS[2]];          // Jobs, Airlines, Alerts
+const TOP_NAV = [NAV_ITEMS[0], NAV_ITEMS[1], NAV_ITEMS[2]];          // Dashboard, Jobs, Airlines
 const MENU_ITEMS = [NAV_ITEMS[3], NAV_ITEMS[4], NAV_ITEMS[5], ...BOTTOM_NAV_ITEMS]; // Logbook, CV Builder, Profile, Settings, Support
 
 const PAGE_TITLES = {
-  '/jobs': 'Job Openings', '/airlines': 'Airline Factfile', '/alerts': 'My Alerts',
+  '/dashboard': 'Dashboard', '/jobs': 'Job Openings', '/airlines': 'Airline Factfile', '/alerts': 'My Alerts',
   '/logbook': 'Flight Logbook', '/profile': 'My Profile',
   '/cv': 'CV Builder', '/support': 'Support', '/settings': 'Settings',
   '/admin/moderation': 'Airline Moderation',

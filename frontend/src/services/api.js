@@ -114,7 +114,12 @@ export const jobApi = {
   // E1: records the application (+ snapshots match) and returns { applied, applyUrl, matchScore }
   apply: (id) => api.post(`/jobs/${id}/apply`),
   getApplications: () => api.get('/jobs/applications'),
+  setApplicationStatus: (id, status) => api.patch(`/jobs/applications/${id}/status`, { status }),
   report: (id, data) => api.post(`/jobs/${id}/report`, data),
+};
+
+export const dashboardApi = {
+  get: (params) => api.get('/dashboard', { params }),
 };
 
 export const airlineApi = {

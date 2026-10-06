@@ -32,6 +32,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminModeration = lazy(() => import('./pages/AdminModeration'));
 const AdminEmployers = lazy(() => import('./pages/AdminEmployers'));
 const Alerts = lazy(() => import('./pages/Alerts'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Logbook = lazy(() => import('./pages/Logbook'));
 const ProfileRedesign = lazy(() => import('./pages/ProfileRedesign'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -122,7 +123,9 @@ export default function App() {
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="admin/moderation" element={<AdminModeration />} />
             <Route path="admin/employers" element={<AdminEmployers />} />
-            <Route path="alerts" element={<Alerts />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            {/* Alerts replaced by Dashboard; keep deep links working. */}
+            <Route path="alerts" element={<Navigate to="/dashboard" replace />} />
             <Route path="logbook" element={<Logbook />} />
             <Route path="profile" element={<ProfileRedesign />} />
             <Route path="settings" element={<Settings />} />
@@ -147,7 +150,7 @@ export default function App() {
             <Route path="jobs/:id/applicants" element={<RequireEmployerStatus status="APPROVED"><EmployerApplicants /></RequireEmployerStatus>} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/profile" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
