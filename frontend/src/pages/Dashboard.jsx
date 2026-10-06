@@ -125,7 +125,7 @@ export default function Dashboard() {
           <div>
             <Card title="New jobs for you" action={<a onClick={() => navigate('/jobs')} style={{ fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer' }}>All matching jobs</a>}>
               <div style={{ display: 'flex', gap: 6, padding: '14px 18px 6px', overflowX: 'auto' }}>
-                {[['allNew', 'All new', nj.counts.all], ['qualify', 'You qualify', nj.counts.qualify], ['oneShort', '1 short', nj.counts.oneShort]].map(([k, lbl, n]) => (
+                {[['allNew', 'All matches', nj.counts.all], ['qualify', 'You qualify', nj.counts.qualify], ['oneShort', '1 short', nj.counts.oneShort]].map(([k, lbl, n]) => (
                   <button key={k} onClick={() => setTab(k)} style={{ whiteSpace: 'nowrap', border: `1px solid ${tab === k ? C.ink : C.line}`, background: tab === k ? C.ink : '#fff', color: tab === k ? '#fff' : C.sub, borderRadius: 20, padding: '6px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     {lbl}<span style={{ fontWeight: 500, opacity: 0.75, marginLeft: 4 }}>{n}</span>
                   </button>
