@@ -63,12 +63,31 @@ test('baseOf prefers ICAO, treats single-airport countries as one base', () => {
   assert.strictEqual(baseOf('Captain - Gulfstream G600 | KSJC', '', 'KSJC - San Jose', 'United States').base, 'KSJC');
   assert.strictEqual(baseOf('Captain - Gulfstream G600 | KVNY', '', 'KVNY - Van Nuys', 'United States').base, 'KVNY');
   assert.notStrictEqual(baseOf('x | KSJC', '', 'KSJC - a', 'US').base, baseOf('x | KVNY', '', 'KVNY - b', 'US').base);
-  // DHL Bahrain: Manama and Muharraq are the same (single-airport) base
-  assert.strictEqual(baseOf('B767 First Officer', '', 'Manama', 'Bahrain').base, baseOf('B767 First Officer', '', 'Muharraq', 'Bahrain').base);
+  // single-airport country with NO distinct city named → the country IS the base
+  assert.strictEqual(baseOf('B767 First Officer', '', 'Bahrain', 'Bahrain').base, 'bahrain');
+  assert.strictEqual(baseOf('B767 First Officer', '', '', 'Bahrain').base, 'bahrain');
   // GMR: distinct US towns stay distinct
   assert.notStrictEqual(baseOf('Fixed Wing Pilot', '', 'Amarillo, Potter County', 'United States').base, baseOf('Fixed Wing Pilot', '', 'Goodland, Sherman County', 'United States').base);
   // "X-based" phrasing in the title
   assert.strictEqual(baseOf('Captain Falcon 2000 Marseille-Based', '', '', 'France').base, 'marseille');
+});
+
+// ── C#4: a named location WINS over the country; never substitute HQ/home country ─
+test('baseOf C#4 — named location beats a mislabelled country; unresolvable → unknown', () => {
+  // "Dubai, Dubai" (repeated) with country=Luxembourg (company HQ, mislabelled)
+  // → dedupe to Dubai, and Dubai wins over the Luxembourg single-airport rule.
+  assert.strictEqual(baseOf('First Officer - Lineage', '', 'Dubai, Dubai', 'Luxembourg').base, 'dubai');
+  // The correctly-tagged sibling (country=UAE) already resolves to Dubai — so the
+  // two now share a base instead of splitting dubai vs luxembourg.
+  assert.strictEqual(baseOf('First Officer - Lineage', '', 'Dubai', 'UAE').base, 'dubai');
+  assert.strictEqual(
+    baseOf('First Officer - Lineage', '', 'Dubai, Dubai', 'Luxembourg').base,
+    baseOf('First Officer - Lineage', '', 'Dubai', 'UAE').base,
+  );
+  // Unresolvable location (no city, multi-airport country only) → unknown, NOT the country.
+  const unk = baseOf('First Officer', '', '', 'Germany');
+  assert.strictEqual(unk.base, '');
+  assert.strictEqual(unk.kind, 'unknown');
 });
 
 // ── variant: programme / eligibility / rated ─────────────────────────────────

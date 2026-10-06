@@ -133,6 +133,11 @@ const ICAO_STOP = new Set(['ONLY', 'CREW', 'BASE', 'TEAM', 'WORK', 'TIME', 'FULL
 // Bahrain's "Manama"/"Muharraq", both Bahrain International) are the same base.
 // Multi-airport countries (US, UK, UAE…) keep city/ICAO granularity.
 const SINGLE_AIRPORT_COUNTRIES = new Set(['bahrain', 'qatar', 'kuwait', 'luxembourg', 'malta', 'singapore', 'hongkong', 'macau', 'brunei', 'maldives', 'iceland', 'cyprus', 'jersey', 'guernsey', 'gibraltar', 'monaco', 'liechtenstein', 'andorra']);
+// Major international hubs (in MULTI-airport countries) that a location string may
+// name while the ad's `country` is mislabelled to a small single-airport HQ country
+// (e.g. a bizjet operator HQ'd in Luxembourg posting a Dubai job). When such a hub
+// is named, it is the base — not the mislabelled home country (fix C#4).
+const KNOWN_HUBS = new Set(['dubai', 'abudhabi', 'sharjah', 'geneva', 'zurich', 'basel', 'nice', 'paris', 'cannes', 'london', 'farnborough', 'luton', 'biggin', 'frankfurt', 'munich', 'berlin', 'cologne', 'milan', 'rome', 'venice', 'vienna', 'madrid', 'barcelona', 'lisbon', 'amsterdam', 'brussels', 'istanbul', 'moscow', 'jeddah', 'riyadh', 'cairo', 'mumbai', 'delhi', 'bangkok', 'miami', 'newyork', 'teterboro', 'losangeles', 'toronto', 'johannesburg', 'lagos', 'nairobi', 'casablanca']);
 // Words that look like a place but are not a base, or sentence words a greedy
 // capture can trail into. A captured place is cleaned of these from the right.
 const BASE_STOP = new Set(['home', 'open', 'remote', 'field', 'various', 'multiple', 'flexible', 'anywhere', 'nationwide', 'worldwide', 'the', 'as', 'we', 'this', 'our', 'an', 'and', 'join', 'your', 'you', 'a', 'with', 'for', 'easa', 'faa', 'icao', 'uk', 'usa', 'us', 'eu', 'part', 'to', 'of', 'on', 'at', 'in', 'is', 'be', 'strong', 'stable', 'career', 'roster', 'licensed', 'licenced', 'based', 'first', 'second', 'officer', 'officers', 'captain', 'captains', 'pilot', 'pilots', 'fo', 'crew', 'aircraft', 'fleet', 'position', 'role', 'vacancy', 'opportunity', 'type', 'rated', 'ltd', 'inc', 'llc']);
@@ -144,27 +149,45 @@ function cleanPlace(raw) {
   const p = words.join(' ');
   return p.length >= 3 ? p : null;
 }
+// Dedupe repeated, identical location parts before any lookup: "Dubai, Dubai" →
+// "Dubai"; "Paris, Paris, France" → "Paris, France" (case-insensitive, order kept).
+function dedupeLocation(location) {
+  const seen = new Set();
+  return String(location || '').split(',').map((s) => s.trim()).filter(Boolean)
+    .filter((p) => { const k = p.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .join(', ');
+}
+
 function baseOf(title, desc, location, country) {
   const T = `${title}  ${desc || ''}`;
   const ck = normKey(country);
+  const loc = dedupeLocation(location);
   // 1. ICAO airport codes (K### US, CY## Canada) named in the ad/location
-  const icao = (`${T} ${location || ''}`.match(/\b(?:K[A-Z]{3}|C[YZ][A-Z]{2})\b/g) || []).filter((x) => !ICAO_STOP.has(x));
+  const icao = (`${T} ${loc}`.match(/\b(?:K[A-Z]{3}|C[YZ][A-Z]{2})\b/g) || []).filter((x) => !ICAO_STOP.has(x));
   if (icao.length) return { base: icao.sort()[0].toUpperCase(), named: true, kind: 'icao' };
-  // 2. single-airport country → the country IS the base (city label is noise)
-  if (ck && SINGLE_AIRPORT_COUNTRIES.has(ck)) return { base: ck, named: true, kind: 'single-airport', label: country };
-  // 3. explicit "based in X" / "X-based" / "X base" phrasings (title first).
+  // 2. explicit "based in X" / "X-based" / "X base" phrasings (title first).
   //    X is a clean place token (1-3 Title-case words); "Home"/"Open"/"Remote"
   //    and sentence words are NOT bases.
   let m;
   if ((m = title.match(/\b([A-Z][a-zÀ-ÿ]+(?:[- ][A-Z][a-zÀ-ÿ]+){0,2})[-\s]Based\b/))) { const p = cleanPlace(m[1]); if (p) return { base: normKey(p), named: true, kind: 'city', label: p }; }
   if ((m = T.match(/\bbased\s+(?:in|at|out\s+of)\s+([A-Z][a-zÀ-ÿ]+(?:[- ][A-Z][a-zÀ-ÿ]+){0,2})/))) { const p = cleanPlace(m[1]); if (p) return { base: normKey(p), named: true, kind: 'city', label: p }; }
   if ((m = title.match(/\b([A-Z][a-zÀ-ÿ]+)\s+[Bb]ase\b/))) { const p = cleanPlace(m[1]); if (p) return { base: normKey(p), named: true, kind: 'city', label: p }; }
-  // 4. location's own city (always distinct — different towns are different jobs)
-  const locFirst = fold(String(location || '')).split(',')[0].trim();
+  // 3. location's OWN city. A named city beats the country when the country is
+  //    multi-airport, OR when the city is a major international hub that cannot
+  //    belong to the stated single-airport country — i.e. a mislabelled HQ country
+  //    (fix C#4: a Dubai job tagged country=Luxembourg bases in Dubai, not the home
+  //    country). A single-airport country's OWN city (Manama→Bahrain) still collapses.
+  const locFirst = fold(loc).split(',')[0].trim();
   const locCity = (locFirst.match(/[a-z]+/gi) || []).join('');
-  if (locCity && normKey(locCity) !== ck) return { base: normKey(locCity), named: true, kind: 'loccity', label: locFirst };
-  // 5. country only (NOT a named base)
-  return { base: ck || normKey(locCity) || '', named: false, kind: 'country', label: country || '' };
+  const cityKey = normKey(locCity);
+  if (locCity && cityKey !== ck && (!SINGLE_AIRPORT_COUNTRIES.has(ck) || KNOWN_HUBS.has(cityKey))) {
+    return { base: cityKey, named: true, kind: 'loccity', label: locFirst };
+  }
+  // 4. single-airport country → the country unambiguously IS the base
+  if (ck && SINGLE_AIRPORT_COUNTRIES.has(ck)) return { base: ck, named: true, kind: 'single-airport', label: country };
+  // 5. nothing pins a base (multi-airport country only, or no location) → UNKNOWN.
+  //    Never fall back to the country/HQ as a pseudo-base — unknown stays unknown.
+  return { base: '', named: false, kind: 'unknown', label: country || '' };
 }
 
 // ── Variant: programme · eligibility group · rated-status ────────────────────

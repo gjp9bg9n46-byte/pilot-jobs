@@ -241,34 +241,70 @@ function jobInstructorKind(job) {
   return null;
 }
 
-// A recruitment EVENT (roadshow / assessment day / open day / career fair) is not a
-// specific vacancy — it has no scored requirements and is excluded from matching.
-// Detected from the title/role only (the body may merely mention "assessment").
-const EVENT_WORD = /\b(recruitment|hiring|assessment|open|career|job)\s*(event|day|days|fair|fairs)\b|\broad\s?show\b|\bwalk[\s-]?in\b|\bmeet\s*(?:&|and)\s*greet\b|\bopen\s+house\b|\bjob\s+fair\b/i;
+// A recruitment EVENT (roadshow / assessment day / open day / career fair / info
+// session) is not a vacancy — no scored requirements, excluded from matching.
+// Detected from the TITLE/role only, and ONLY when the title names an actual event
+// — never a hiring campaign ("Cadet Pilot Recruitment", "… Recruitment 2026"),
+// which must still match as a real job (change C#1, tightened).
+const EVENT_WORD = /\b(?:recruitment|hiring)\s+(?:event|day|days|drive|fair|fairs)\b|\b(?:open|career|careers|job|jobs)\s+(?:day|days|fair|fairs)\b|\bassessment\s+day\b|\bselection\s+day\b|\broad\s?show\b|\b(?:information|info)\s+session\b|\bwebinar\b|\bmeet\s+us\s+(?:at|in|on)\b|\bopen\s+house\b|\bwalk[-\s]?in\s+(?:interview|day)\b/i;
 function jobIsEvent(job) {
   return EVENT_WORD.test(`${job.title || ''} ${job.titleEn || ''} ${job.role || ''}`);
 }
 
-// Nationality / citizenship / security-clearance eligibility (change C#2). Parsed
-// from title + body. nationality → a country/descriptor the pilot must hold;
-// clearance → a defence/security clearance we cannot verify from the profile.
-const NATIONALITY_PATTERNS = [
-  [/\b(uae|emirati)\s+national\b|\bemirati(?:s|z)ation\b|\bemirati\s+citizen\b/i, 'UAE national'],
-  [/\bsaudi\s+national\b|\bsaudi\s+citizen\b|\bsaudi(?:s|z)ation\b/i, 'Saudi national'],
-  [/\bqatari\s+national\b|\bqatari\s+citizen\b/i, 'Qatari national'],
-  [/\baustralian\s+citizen(?:ship)?\b/i, 'Australian citizen'],
-  [/\bcanadian\s+citizen(?:ship)?\b/i, 'Canadian citizen'],
-  [/\bnew\s+zealand\s+citizen\b/i, 'NZ citizen'],
-  [/\bu\.?s\.?\s+citizen|united\s+states\s+citizen\b/i, 'US citizen'],
-  [/\bbritish\s+citizen|uk\s+citizen\b/i, 'UK citizen'],
-  [/\b(?:local|national)s?\s+only\b|\bcitizens?\s+only\b/i, 'nationals only'],
+// ── Eligibility: nationality / security clearance (change C#2, tightened) ──────
+// Sentence-level so a HARD requirement is distinguished from a preference/diversity
+// programme. Returns the matched sentence for auditing.
+function sentencesOf(text) { return String(text).split(/[.;\n•|]+/).map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean); }
+
+const NAT_TOKEN = /\b(nationals?|nationality|citizens?|citizenship)\b/i;
+// A requirement marker — "only", "must be/hold", "restricted/limited to", "required".
+const NAT_REQ_MARK = /\b(only|must\s+be|must\s+hold|must\s+possess|required|mandatory|restricted\s+to|limited\s+to|exclusively|open\s+only\s+to)\b/i;
+// A preference / diversity programme — NOT a bar on other nationalities.
+const NAT_PREF_MARK = /\b(preferred|welcome|encouraged|advantage(?:ous)?|desirable|all\s+nationalities|any\s+nationality|regardless\s+of\s+nationality|emirati[sz]ation|saudi[sz]ation|qatari[sz]ation|omani[sz]ation|bahraini[sz]ation|kuwaiti[sz]ation|national[sz]ation\s+programme?)\b/i;
+const NAT_COUNTRY = [
+  [/\buae\b|united\s+arab\s+emirates|emirati/i, 'UAE national'], [/saudi/i, 'Saudi national'],
+  [/qatari|\bqatar\b/i, 'Qatari national'], [/kuwaiti/i, 'Kuwaiti national'], [/omani/i, 'Omani national'],
+  [/bahraini/i, 'Bahraini national'], [/australian/i, 'Australian citizen'], [/canadian/i, 'Canadian citizen'],
+  [/new\s+zealand/i, 'NZ citizen'], [/south\s+african/i, 'South African citizen'], [/irish/i, 'Irish citizen'],
+  [/\bus\b|u\.s\.|united\s+states|american/i, 'US citizen'], [/british|\buk\b|united\s+kingdom/i, 'UK citizen'],
 ];
-const CLEARANCE_WORD = /\b(security|defence|defense)\s+clearance\b|\b(?:nv1|nv2|pv|dv|sc|baseline)\s+clearance\b|\bclearance\s+(?:is\s+)?(?:required|mandatory)\b/i;
+// "National Guard"/"National Airline" etc. are ORG names, not a nationality bar; and
+// "citizen OR right to work" offers work-auth as an alternative (not nationals-only).
+const NAT_ORG_NEG = /\bnational\s+(?:guard|airlines?|carrier|museum|park|holiday|insurance|bank)\b/i;
+const NAT_ALT_NEG = /\bor\b[^.]{0,45}\b(?:right\s+to\s+work|authori[sz]ed?\s+to\s+work|authorization\s+to\s+work|work\s+permit|eligible\s+to\s+work|legal(?:ly)?\s+(?:right|entitled|able)\s+to\s+work|work\s+visa)\b/i;
+// Clearance: only a HELD/obtainable defence or government clearance counts — a named
+// level (NV1/NV2/Baseline/SC/DV/PV), active hold/obtain/eligibility language, or
+// "clearance (is) required/mandatory". A "subject to security clearance" / background
+// check / airside pass / section header does NOT count.
+const CLEAR_LEVEL = /\b(nv1|nv2|baseline|positive\s+vetting|developed\s+vetting|\bpv\b|\bdv\b|\bsc\b)\b/i;
+const CLEAR_ACTIVE = /\b(must\s+(?:hold|have|possess|be\s+able\s+to\s+obtain|be\s+eligible)|able\s+to\s+(?:obtain|gain|hold)|eligible\s+(?:to\s+(?:obtain|hold|gain)|for)|hold\s+or\s+obtain|obtain\s+and\s+maintain|required\s+to\s+(?:hold|obtain|maintain)|maintain\s+(?:a|an|current))\b/i;
+const CLEAR_REQ = /\bclearance\b[^.;\n]{0,25}\b(?:is\s+)?(?:required|mandatory|essential)\b|\b(?:required|mandatory|essential)\b[^.;\n]{0,20}\bclearance\b/i;
+const CLEAR_NEG = /\bsubject\s+to\b|background\s+check|airside\s+pass|airport\s+security|\bmedical\s+clearance\b|flight\s+medical|customs\s+clearance|criminal\s+record|\bdbs\b|pre[-\s]?employment|work\s+authorization\s*\/\s*security/i;
+
+// A nationality named right in the TITLE ("First Officer (UAE National)") IS the
+// requirement — titles are terse, no marker needed; country+token must be adjacent.
+const TITLE_NAT = /\b(uae|emirati|saudi|qatari|kuwaiti|omani|bahraini|australian|canadian|british|american)\s+(?:nationals?|citizens?)\b/i;
+
 function jobEligibility(job) {
-  const text = `${job.title || ''} ${job.titleEn || ''} ${String(job.requirementsText || '')} ${String(job.description || '').slice(0, 6000)}`;
+  const titleStr = `${job.title || ''} ${job.titleEn || ''}`;
+  const text = `${titleStr}. ${String(job.requirementsText || '')} ${String(job.description || '').slice(0, 6000)}`;
   let nationality = null;
-  for (const [re, label] of NATIONALITY_PATTERNS) { if (re.test(text)) { nationality = label; break; } }
-  const clearance = CLEARANCE_WORD.test(text);
+  if (TITLE_NAT.test(titleStr) && !NAT_PREF_MARK.test(titleStr)) {
+    const c = NAT_COUNTRY.find(([re]) => re.test(titleStr));
+    nationality = { label: c ? c[1] : 'nationals only', sentence: titleStr.trim().slice(0, 180) };
+  }
+  for (const s of (nationality ? [] : sentencesOf(text))) {
+    if (!NAT_TOKEN.test(s) || NAT_PREF_MARK.test(s) || !NAT_REQ_MARK.test(s)) continue;
+    if (NAT_ORG_NEG.test(s) || NAT_ALT_NEG.test(s)) continue; // org name / work-auth alternative, not a bar
+    const c = NAT_COUNTRY.find(([re]) => re.test(s));
+    nationality = { label: c ? c[1] : 'nationals only', sentence: s.slice(0, 180) };
+    break;
+  }
+  let clearance = null;
+  for (const s of sentencesOf(text)) {
+    if (!/clearance/i.test(s) || CLEAR_NEG.test(s)) continue;
+    if (CLEAR_LEVEL.test(s) || CLEAR_ACTIVE.test(s) || CLEAR_REQ.test(s)) { clearance = { sentence: s.slice(0, 180) }; break; }
+  }
   return { nationality, clearance };
 }
 
@@ -413,18 +449,19 @@ function matchJob(job, ctx) {
   //   read QUALIFY while an unverifiable defence clearance is demanded).
   const elig = jobEligibility(job);
   if (elig.nationality) {
-    const held = ctx.nationality || ctx.country; // country is a weak proxy for nationality
+    // NO country-of-residence fallback (C#2): nationality is verified only against
+    // the pilot's stated nationality. Absent → unknown ("Add nationality").
+    const want = elig.nationality.label.toLowerCase();
     let status;
-    if (!held) status = 'unknown';
+    if (!ctx.nationality) status = 'unknown';
+    else if (want.includes('nationals only')) status = 'unknown'; // which nation unknown → can't verify
     else {
-      const want = elig.nationality.toLowerCase();
-      // Map the requirement label to the nationality/country token it implies.
       const token = want.replace(/\s+(national|citizen|citizenship|only)\b/g, '').replace('nationals', '').trim();
-      const COUNTRY = { uae: ['uae', 'united arab emirates', 'emirati'], saudi: ['saudi', 'saudi arabia'], qatari: ['qatar', 'qatari'], australian: ['australia', 'australian'], canadian: ['canada', 'canadian'], nz: ['new zealand'], us: ['united states', 'usa', 'us', 'american'], uk: ['united kingdom', 'uk', 'britain', 'british'] };
+      const COUNTRY = { uae: ['uae', 'united arab emirates', 'emirati'], saudi: ['saudi', 'saudi arabia'], qatari: ['qatar', 'qatari'], kuwaiti: ['kuwait', 'kuwaiti'], omani: ['oman', 'omani'], bahraini: ['bahrain', 'bahraini'], australian: ['australia', 'australian'], canadian: ['canada', 'canadian'], nz: ['new zealand'], us: ['united states', 'usa', 'us', 'american'], uk: ['united kingdom', 'uk', 'britain', 'british', 'england', 'scotland', 'wales'] };
       const aliases = COUNTRY[token] || [token];
-      status = want.includes('nationals only') ? 'unknown' : (aliases.some((a) => held.includes(a)) ? 'met' : 'unmet');
+      status = aliases.some((a) => ctx.nationality.includes(a)) ? 'met' : 'unmet';
     }
-    push(mk('nationality', 'Nationality', 'must', status, elig.nationality, (ctx.nationality || ctx.country) ? titleCaseWord(ctx.nationality || ctx.country) : null, true));
+    push(mk('nationality', 'Nationality', 'must', status, elig.nationality.label, ctx.nationality ? titleCaseWord(ctx.nationality) : null, true));
   }
   if (elig.clearance) {
     // No profile field for clearance → always unknown (Add). Never auto-met.
@@ -577,5 +614,5 @@ function titleCaseWord(s) {
 module.exports = {
   regionForCountry, defaultRegionForPilot, REGIONS,
   buildMatchContext, contextFromPilot, matchJob, medicalLabel, workAuthLabel,
-  jobAircraftCategory, jobInstructorKind, normCategory,
+  jobAircraftCategory, jobInstructorKind, normCategory, jobIsEvent, jobEligibility,
 };

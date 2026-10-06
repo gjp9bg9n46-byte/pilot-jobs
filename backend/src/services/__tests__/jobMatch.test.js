@@ -328,3 +328,26 @@ test('C#2 Kenn Borek (no nationality/clearance wording) gets no eligibility rows
   assert.ok(!byKey(m, 'nationality'));
   assert.ok(!byKey(m, 'clearance'));
 });
+
+// ── C#1/#2 fixes: campaign ≠ event; work-auth-OR-citizen ≠ nationality bar; ──────
+//    "subject to"/medical clearance ≠ defence clearance ────────────────────────
+test('C#1 fix — hiring campaigns are NOT events', () => {
+  assert.notStrictEqual(matchJob({ title: 'Direct Entry First Officer Recruitment 2026', reqMinTotalHours: 1500 }, PILOT()).status, 'EVENT');
+  assert.notStrictEqual(matchJob({ title: 'Cadet Pilot Recruitment', reqMinTotalHours: 1500 }, PILOT()).status, 'EVENT');
+  assert.strictEqual(matchJob({ title: 'Pilot Recruitment Day — London', reqMinTotalHours: 1500 }, PILOT()).status, 'EVENT');
+  assert.strictEqual(matchJob({ title: 'Careers Fair at Farnborough', reqMinTotalHours: 1500 }, PILOT()).status, 'EVENT');
+});
+test('C#2 fix — "citizen OR right to work" is work-auth, not a nationality bar', () => {
+  const job = { title: 'First Officer', description: 'Must be a Canadian Citizen or have the legal right to work in Canada.', reqMinTotalHours: 1000 };
+  assert.ok(!byKey(matchJob(job, PILOT()), 'nationality'));
+});
+test('C#2 fix — "National Guard" org name is not a nationality requirement', () => {
+  const job = { title: 'AIRPLANE PILOT (Title 32)', description: 'Michigan Air National Guard membership is required.', reqMinTotalHours: 1000 };
+  assert.ok(!byKey(matchJob(job, PILOT()), 'nationality'));
+});
+test('C#2 fix — clearance: subject-to / medical / airport do NOT count; held/obtainable does', () => {
+  assert.ok(!byKey(matchJob({ title: 'FO', description: 'Employment is subject to security clearance.', reqMinTotalHours: 1000 }, PILOT()), 'clearance'));
+  assert.ok(!byKey(matchJob({ title: 'FO', description: 'Able to obtain airport security clearance.', reqMinTotalHours: 1000 }, PILOT()), 'clearance'));
+  assert.ok(!byKey(matchJob({ title: 'FO', description: 'Able to obtain and maintain a FAA Class II Medical Clearance.', reqMinTotalHours: 1000 }, PILOT()), 'clearance'));
+  assert.ok(byKey(matchJob({ title: 'FO', description: 'Must be eligible to hold an Australian Defence Security Clearance.', reqMinTotalHours: 1000 }, PILOT()), 'clearance'));
+});
