@@ -57,3 +57,30 @@ Post-deploy (first 30 min):
 - CronRun rows appearing; identityFirstSeenAt still 100% ACTIVE.
 Rollback = `git revert` (migrations additive).
 After healthy → tell user → they set `IDENTITY_DEDUP_APPLY=1` → report first nightly merges.
+
+---
+
+## A. Real-device findings (Expo Go on iPhone, @aladinnn tunnel — Jobs tab)
+1. **One badge only**, on the **Dashboard tab**, = **new matches since last visit** (the bell, a "Matches" tab, and the Dashboard tab all showed 34 — collapse to a single source on the Dashboard tab).
+2. **"Dashboard" tab label clipped on device; badge overlaps it.** Rename the tab to **"Home"** (or shrink labels further). (NB: the #6 pill-widen `244e81d` was not enough on device.)
+3. **Floating tab bar hides content.** Add bottom inset = **tab bar height + safe-area** on ALL scroll screens (there's a helper in `mobile/src/theme/tabBar.ts` — `TAB_BAR_SCROLL_PADDING` or similar; apply it everywhere a ScrollView/FlatList can scroll under the bar).
+4. **Jobs default sort for signed-in pilots = Best match** (status, then %, then newest); **unmet-citizenship rows last**; **Newest** as a selectable option.
+5. **Jobs subtitle** → "All cockpit roles, with your match on each."
+6. **Remove the Browse/Matches toggle** on Jobs (matches live on the Dashboard).
+7. **Hours format "1,500 h" everywhere** — device showed "1.500" (locale thousands separator bug; force `en-US`/comma + " h").
+8. **ALL-CAPS titles → Title Case** (keep acronyms like A320/ATPL/CPL); **consistent card layout**; **"Qualified only" as a proper filter chip** (not the current toggle styling).
+(The blue floating gear is Expo Go's dev menu — ignore it.)
+
+## B. New rule — mobile web (390 px) is the REFERENCE DESIGN for the app
+Port the app to match the mobile web screen-for-screen (visually identical: fonts/spacing/colors from `mobile/src/theme/tokens.ts` = `frontend/src/styles/design-tokens.css`; native components where needed).
+- **Start with Jobs**: region chips (Middle East / Europe / Asia / Americas / …), filters, sort, search, card design + content + order, badges ("Direct apply", match pill + reason), counts, empty states, pagination/infinite scroll, and the job detail page. **Reuse the same API params the web uses** for regions/filters — no app-only logic.
+- Then compare **Dashboard, Job detail, Profile, Logbook, CV** web-vs-app and **list the differences for review BEFORE porting** each.
+- **Side-by-side screenshots** (web 390 vs app) per screen → `docs/design/screens/<screen>-web-vs-app.png`. Commit per screen; keep this handoff updated.
+
+## NEXT-SESSION ORDER
+1. **#7a nationality UI** (web + mobile input + "Add nationality" link) — see REMAINING §1.
+2. **tsc / build / tests** — see REMAINING §2.
+3. **v3 screenshots** — see REMAINING §3.
+4. **Push** — pre-flight + post-deploy checks (PUSH CHECKLIST). After healthy → user sets `IDENTITY_DEDUP_APPLY=1` → report first nightly merges.
+5. **A** — real-device findings above (items 1–8).
+6. **B** — mobile-web-as-reference port, starting with Jobs (inventory + side-by-side first).
