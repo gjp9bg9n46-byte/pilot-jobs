@@ -51,7 +51,7 @@ function JobRow({ item, onView }) {
     : (m.status === 'SHORT' || m.status === 'CHECK') ? { t: m.status === 'SHORT' ? '1 short' : 'Check', bg: C.amberbg, c: C.amber } : null);
   const sub = [j.company, j.location || j.country, ago(j.postedAt) && `${ago(j.postedAt)}`, j.sourceType && j.sourceType !== 'aggregator' ? 'Direct apply' : null].filter(Boolean).join(' · ');
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '6px 16px', padding: '14px 18px', borderTop: `1px solid ${C.line}` }}>
+    <div className="dash-job" style={{ borderTop: `1px solid ${C.line}` }}>
       <div>
         <div style={{ fontWeight: 600, fontSize: 15 }}>
           {item.isNew && <i style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: C.navy, marginRight: 7, verticalAlign: 'middle' }} />}
@@ -59,7 +59,7 @@ function JobRow({ item, onView }) {
         </div>
         <div style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>{sub}</div>
       </div>
-      <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+      <div className="dash-jobside" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
         <Pct match={m} /><br />
         <button onClick={() => onView(j.id)} style={{ marginTop: 6, height: 34, padding: '0 13px', borderRadius: 8, fontWeight: 600, fontSize: 13, border: `1px solid ${m?.status === 'QUALIFY' ? C.navy : C.line}`, background: m?.status === 'QUALIFY' ? C.navy : '#fff', color: m?.status === 'QUALIFY' ? '#fff' : C.ink, cursor: 'pointer' }}>View</button>
       </div>
@@ -103,7 +103,7 @@ export default function Dashboard() {
 
   return (
     <LightPage>
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '28px 32px 80px' }}>
+      <div className="dash-wrap" style={{ maxWidth: 1180, margin: '0 auto', padding: '28px 32px 80px', boxSizing: 'border-box' }}>
         <div style={{ marginBottom: 18 }}>
           <h1 style={{ fontFamily: serif, fontWeight: 600, fontSize: 30, margin: 0 }}>Dashboard</h1>
           <p style={{ margin: '4px 0 0', color: C.sub, fontSize: 14 }}>
@@ -130,7 +130,7 @@ export default function Dashboard() {
                     {lbl}<span style={{ fontWeight: 500, opacity: 0.75, marginLeft: 4 }}>{n}</span>
                   </button>
                 ))}
-                <span style={{ marginLeft: 'auto', alignSelf: 'center', fontSize: 12.5, color: C.faint, fontWeight: 500 }}>Sorted by match %, then newest</span>
+                <span className="dash-seg-note" style={{ marginLeft: 'auto', alignSelf: 'center', fontSize: 12.5, color: C.faint, fontWeight: 500, whiteSpace: 'nowrap' }}>Sorted by match %, then newest</span>
               </div>
               {list.length === 0 ? <div style={{ padding: '18px', color: C.sub, fontSize: 14 }}>No jobs in this group yet.</div>
                 : list.map((item) => <JobRow key={item.id} item={{ job: item, isNew: item.isNew }} onView={(id) => navigate(`/jobs/${id}`)} />)}
@@ -212,7 +212,19 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      <style>{`@media (max-width:820px){.dash-grid{grid-template-columns:1fr !important}}`}</style>
+      <style>{`
+        .dash-job{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;padding:14px 18px}
+        .dash-job>div{min-width:0}
+        @media (max-width:820px){
+          .dash-wrap{padding-left:16px !important;padding-right:16px !important}
+          .dash-grid{grid-template-columns:minmax(0,1fr) !important}
+          .dash-job{grid-template-columns:minmax(0,1fr)}
+          .dash-jobside{text-align:left !important;display:flex;align-items:center;justify-content:space-between}
+          .dash-jobside br{display:none}
+          .dash-jobside button{margin-top:0 !important}
+          .dash-seg-note{display:none}
+        }
+      `}</style>
     </LightPage>
   );
 }
