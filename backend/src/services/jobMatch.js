@@ -271,7 +271,7 @@ const NAT_COUNTRY = [
 // "National Guard"/"National Airline" etc. are ORG names, not a nationality bar; and
 // "citizen OR right to work" offers work-auth as an alternative (not nationals-only).
 const NAT_ORG_NEG = /\bnational\s+(?:guard|airlines?|carrier|museum|park|holiday|insurance|bank)\b/i;
-const NAT_ALT_NEG = /\bor\b[^.]{0,45}\b(?:right\s+to\s+work|authori[sz]ed?\s+to\s+work|authorization\s+to\s+work|work\s+permit|eligible\s+to\s+work|legal(?:ly)?\s+(?:right|entitled|able)\s+to\s+work|work\s+visa)\b/i;
+const NAT_ALT_NEG = /\bor\b[^.]{0,45}\b(?:right\s+to\s+work|authori[sz]ed?\s+to\s+work|authorization\s+to\s+work|work\s+permit|eligible\s+to\s+work|legal(?:ly)?\s+(?:right|entitled|able)\s+to\s+work|work\s+visa|permanent\s+resident|\bpr\b|green\s+card)\b/i;
 // Clearance: only a HELD/obtainable defence or government clearance counts — a named
 // level (NV1/NV2/Baseline/SC/DV/PV), active hold/obtain/eligibility language, or
 // "clearance (is) required/mandatory". A "subject to security clearance" / background
@@ -281,21 +281,23 @@ const CLEAR_ACTIVE = /\b(must\s+(?:hold|have|possess|be\s+able\s+to\s+obtain|be\
 const CLEAR_REQ = /\bclearance\b[^.;\n]{0,25}\b(?:is\s+)?(?:required|mandatory|essential)\b|\b(?:required|mandatory|essential)\b[^.;\n]{0,20}\bclearance\b/i;
 const CLEAR_NEG = /\bsubject\s+to\b|background\s+check|airside\s+pass|airport\s+security|\bmedical\s+clearance\b|flight\s+medical|customs\s+clearance|criminal\s+record|\bdbs\b|pre[-\s]?employment|work\s+authorization\s*\/\s*security/i;
 
-// A nationality named right in the TITLE ("First Officer (UAE National)") IS the
-// requirement — titles are terse, no marker needed; country+token must be adjacent.
-const TITLE_NAT = /\b(uae|emirati|saudi|qatari|kuwaiti|omani|bahraini|australian|canadian|british|american)\s+(?:nationals?|citizens?)\b/i;
+// A nationality requirement needs the country token ADJACENT to national/citizen
+// ("UAE National", "nationals of Canada", "citizens only") — NOT just a country word
+// and a "citizen" word co-occurring in the same sentence (that produced the SAAB /
+// IATRA false positive). Used for both the title and the body (C#7b).
+const NAT_ADJACENT = /\b(?:uae|emirati|saudi|qatari|kuwaiti|omani|bahraini|australian|canadian|british|american|united\s+states|united\s+arab\s+emirates|new\s+zealand|south\s+african|irish)\s+(?:nationals?|citizens?|citizenship)\b|\b(?:nationals?|citizens?)\s+of\s+(?:the\s+)?[a-z][a-z ]{2,28}\b|\b(?:local\s+|home\s+)?(?:nationals?|citizens?)\s+only\b/i;
 
 function jobEligibility(job) {
   const titleStr = `${job.title || ''} ${job.titleEn || ''}`;
   const text = `${titleStr}. ${String(job.requirementsText || '')} ${String(job.description || '').slice(0, 6000)}`;
   let nationality = null;
-  if (TITLE_NAT.test(titleStr) && !NAT_PREF_MARK.test(titleStr)) {
+  if (NAT_ADJACENT.test(titleStr) && !NAT_PREF_MARK.test(titleStr)) {
     const c = NAT_COUNTRY.find(([re]) => re.test(titleStr));
     nationality = { label: c ? c[1] : 'nationals only', sentence: titleStr.trim().slice(0, 180) };
   }
   for (const s of (nationality ? [] : sentencesOf(text))) {
-    if (!NAT_TOKEN.test(s) || NAT_PREF_MARK.test(s) || !NAT_REQ_MARK.test(s)) continue;
-    if (NAT_ORG_NEG.test(s) || NAT_ALT_NEG.test(s)) continue; // org name / work-auth alternative, not a bar
+    if (NAT_PREF_MARK.test(s) || NAT_ORG_NEG.test(s) || NAT_ALT_NEG.test(s)) continue; // preference / org / work-auth
+    if (!NAT_ADJACENT.test(s)) continue; // country must be adjacent to national/citizen
     const c = NAT_COUNTRY.find(([re]) => re.test(s));
     nationality = { label: c ? c[1] : 'nationals only', sentence: s.slice(0, 180) };
     break;
