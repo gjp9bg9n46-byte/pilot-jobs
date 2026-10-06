@@ -252,6 +252,11 @@ app.get('/health/egress-ip', async (req, res) => {
 
 app.use(errorHandler);
 
+// Background schedulers (scrape / expire / dedup / liveness / match / maintenance).
+// Disabled with SCHEDULERS_OFF=1 so a LOCAL boot against the prod DB (e.g. a
+// screenshot/timing run) never fires a scrape, expiry or match. Prod leaves it unset.
+const RUN_SCHEDULERS = process.env.SCHEDULERS_OFF !== '1';
+if (RUN_SCHEDULERS) {
 // Scheduled scraping every N hours
 const intervalHours = parseInt(process.env.SCRAPE_INTERVAL_HOURS || '6', 10);
 cron.schedule(`0 */${intervalHours} * * *`, async () => {
@@ -412,6 +417,7 @@ setImmediate(() => {
   require('./services/logbookSummary').backfillMissingDerivedTotals()
     .catch((err) => logger.error(`Derived-totals backfill failed: ${err.message}`));
 });
+} // end RUN_SCHEDULERS
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
