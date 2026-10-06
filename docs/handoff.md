@@ -17,27 +17,28 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
 ## DONE (committed on main, unpushed)
-- `6f5ab00` #8 NetJets dedup guard (region variant + no-base/no-type hold) + test. Shadow: 11 merge / 11 hide / 21 held.
-- `aa991c6` round-3 partial: #1 location via `locationName` + removed flag emoji (web JobCard/JobDetailPanel, mobile JobCardShared); #2 web tab "All matches"→"All"; #3 web row % + View on one line, pill under meta; #4 web blocker one-line red/amber + "Sep".
-- (earlier) tranche 1 + 2 + fixes: `9859f83 ac88641 3b1811e 8841687` etc.; SDK 54→57 `cb93df0 2571039 46bb606`; EAS re-link `0c7b49a`.
+- `6f5ab00` #8 NetJets dedup guard (region variant + no-base/no-type hold) + test. Shadow: 11 merge / 11 hide / 21 held. The two Luxaviation(+Group) Lineage-Dubai rows MERGE (C#4); Pilot Assessments pair HELD (recruiter). User will set IDENTITY_DEDUP_APPLY=1 AFTER a healthy push.
+- `aa991c6` #1 web+mobile card: location via `locationName`, removed country flag emoji (keyed on HQ). #2 web tab "All". #3 web row (% + View one line, pill under meta). #4 web blocker one-line red/amber + "Sep".
+- `aca4bb4` #7b nationality ADJACENT (country next to national/citizen) + exclude "or permanent resident". Result: **11 genuine** nationality reqs (list below); SAAB + Air Transat false positives GONE. 43 jobMatch tests pass.
+- `6514c7f` #7a BACKEND: `Pilot.nationalities String[]` (migration `20261007120000_pilot_nationalities`), `ctx.nationalities` (match if ANY), profileController accepts `nationalities[]`. NOT in employer DTO (no leak).
+- `6ca3ff3` mobile dashboard: tabs "All", one-line blocker (red/amber), "Sep".
+- `ac897ae` mobile detail: full title (`titleEn||title`), location via `locationName`, Required/You column header, drop duplicate synth requirements list when match rows exist.
+- `244e81d` #6 mobile tab bar: widen pill (marginH 28→14, padH 8→4, h 64→66, padBottom 10→12), label 10→9/lh12, removed `overflow:'hidden'` (fixes "Dashboarc" horizontal clip). USER CONFIRMS ON DEVICE.
+- (earlier) tranche 1+2+fixes; SDK 54→57 `cb93df0 2571039 46bb606`; EAS re-link to @aladinnn `0c7b49a` (projectId 950ece23…).
+
+### #7b final nationality list (11 ACTIVE) — re-run `scratchpad/C-reports.js`
+UAE National ×3 (Air Arabia + 2 Unknown, title); Sealift Command (US citizen); Aerotime + Fly Fofa ×2 + Airlink (South African citizenship); CAE ×2 C-130J (Australian Citizenship); Air Canada AC Express (Canadian citizenship). SAAB/Canadian Inclusion + Air Transat correctly EXCLUDED ("or permanent resident").
 
 ## REMAINING — do each, commit after each
-1. **Mobile job detail location/title (#1,#5)** — `mobile/app/(app)/(tabs)/jobs/[id].tsx`:
-   - Show FULL title (currently shows `roleLabel || job.title` → shows just "First Officer"). Use `job.titleEn || job.title`.
-   - Use `locationName(job.location||job.country)` in the header meta; no flag.
-   - Requirement rows: label the two value columns **"Required"** and **"You"** (add a small header row above `ReqRow`s).
-   - Drop the duplicate plain "Requirements" synth list when it repeats the match rows (keep the verbatim block only when there's no `job.match.requirements`).
-2. **Mobile tabs clipping (#2)** — `mobile/app/(app)/(tabs)/dashboard.tsx` seg row: shorten "All matches"→"All" (match web) so the 3 segs fit at 390.
-3. **Mobile blocker one-line (#4)** — `mobile/app/(app)/(tabs)/dashboard.tsx`: one row per item, red if `days<0` (expired), amber if expiring; "<label> expired/expires <date> · Update"; date via a MONTHS[] formatter (NOT toLocaleDateString, which gives "Sept").
-4. **Mobile tab-bar safe-area clipping ("Dashboarc") (#6)** — `mobile/src/theme/tabBar.ts` (makeTabBarStyle) + `(tabs)/_layout.tsx`: ensure bottom safe-area inset + enough height/lineHeight so labels aren't cut. User will confirm on device.
-5. **#7a Nationality input** — country pick-list, **multi-select** (dual citizens), web + mobile personal-info edit. MATCHING ONLY: not on public profile header, never sent to employers unless the pilot applies.
-   - Schema: `Pilot.nationality` is a single `String?`. Multi-select needs either a `String[]` (migration) OR a comma-joined string. DECISION BELOW.
-   - Wire the matcher: `jobMatch.js` reads `ctx.nationality` (single lowercased). If multi, make `ctx.nationalities` a list and `met` if ANY matches.
-   - "Add nationality" gap link → the field (web `/profile` opens the identity edit sheet; mobile same).
-6. **#7b Tighten nationality pattern** — `jobMatch.js` `jobEligibility`: require the country token **adjacent** to national/citizen (reuse `TITLE_NAT`-style regex on the sentence), not just co-occurring. Kills the Canadian Inclusion "SAAB First Officer / IATRA" false positive. Then re-run `C-reports.js` and re-list every ACTIVE nationality-tagged job + sentence (false positive must be gone).
-7. **tsc + build**: `cd mobile && ./node_modules/.bin/tsc --noEmit`; `cd frontend && npm run build`; `node --test backend/src/services/__tests__/jobMatch.test.js` + `jobIdentity.test.js`.
-8. **v3 screenshots** → `docs/design/screens/*-v3.png`: web 1280/820/390 (via `shoot-web.js` after `npm run build` + `vite preview :4173`) + mobile (via `gen-payloads.js` → stub → expo web :8081 from main/mobile → `shoot.js`). Regenerate payloads first (they feed both).
-9. **Push** (see checklist).
+1. **#7a Nationality INPUT (UI)** — the only feature piece left. Country pick-list, **multi-select** (dual citizens), web + mobile personal-info edit. MATCHING ONLY: not on public profile header, never sent to employers unless the pilot applies (already true — not in employer DTO).
+   - Storage DONE: `Pilot.nationalities String[]`; API accepts `nationalities[]`; matcher reads it. Just the UI remains.
+   - **Web** `frontend/src/pages/ProfileRedesign.jsx`: the personal-info/identity edit sheet. Find the edit-sheet for name/country/etc. (search `openEdit(` / `editing.kind` / where `country`/`city` are *edited*, not just displayed — earlier grep only found displays, so the edit input may need adding). Add a multi-select country picker bound to `profile.nationalities`; POST via the existing profile update (sends `nationalities`). A country list util may already exist (check `frontend/src/lib` for a countries list; else a small `<select multiple>` or chip-add).
+   - **Mobile** `mobile/app/(app)/(tabs)/profile/index.tsx`: same, in the personal-info edit sheet; bind to `profile.nationalities`; PATCH via the existing profile update.
+   - **"Add nationality" link**: the matcher gap for key `nationality` → `ADD_LABEL.nationality='your nationality'`, `gapPhrase` → "add your nationality to check". Web `JobDetailPanel.jsx` has `ADD_LINK` map (key→route) → add `nationality:'/profile'` (and `clearance` if wanted). Mobile detail: the nationality "add" row should route to `/profile`.
+   - Confirm profile GET returns `nationalities` (check the profile controller GET select; prisma full-row returns it unless a select omits it).
+2. **tsc + build**: `cd mobile && ./node_modules/.bin/tsc --noEmit`; `cd frontend && npm run build`; `node --test backend/src/services/__tests__/jobMatch.test.js` + `jobIdentity.test.js`.
+3. **v3 screenshots** → `docs/design/screens/*-v3.png`: web 1280/820/390 (`npm run build` → `vite preview :4173` → `scratchpad/shoot-web.js`, but UPDATE its output names to `-v3`) + mobile (`gen-payloads.js` → stub-data → expo web :8081 from main/mobile → `scratchpad/shoot.js`, update names to `-v3`). Regenerate payloads first (`node scratchpad/gen-payloads.js` from backend/). The v2 shots already proved the pipeline; v3 just needs the new names + nationality-input shots.
+4. **Push** (see checklist). NOTE: there is now a SECOND pending migration `20261007120000_pilot_nationalities` (plus the 4 already-applied ones from the A/B deploy — check `prisma migrate status`; only the new one should be pending).
 
 ## OPEN DECISIONS
 - **Nationality storage**: single `String?` today. For multi-select, simplest reversible = add `Pilot.nationalities String[]` (additive migration) and keep old `nationality` for back-compat, OR store comma-joined in the existing column (no migration). → Leaning: **new `String[]` column** (clean), additive migration `*_pilot_nationalities`. Confirm if a migration is OK (it adds one more to the push).
