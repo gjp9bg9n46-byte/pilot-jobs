@@ -234,3 +234,60 @@ test('Gulf Air FO A320 — qualifying pilot → QUALIFY 100%', () => {
   assert.strictEqual(m.status, 'QUALIFY');
   assert.strictEqual(m.pct, 100);
 });
+
+// ── Implicit baseline: a valid licence + valid medical are required for EVERY ──
+//   pilot job whether or not the ad states them. We add a row ONLY when the pilot's
+//   own item is EXPIRED, so a job can never read QUALIFY alongside an expired
+//   licence/medical blocker. Valid-but-unstated adds nothing (% stays met ÷ stated).
+test('baseline: expired licence adds a not-met row even when the ad states no licence', () => {
+  // Ad states only hours — nothing about a licence. Pilot's only licence (ATPL) is expired.
+  const job = { title: 'First Officer', reqMinTotalHours: 1000 };
+  const expiredPilot = PILOT({ certs: [
+    { type: 'ATPL', issuingAuthority: 'EASA', category: 'aeroplane', expiryDate: '2026-09-30T00:00:00Z' },
+    { type: 'ELP', issuingAuthority: 'EASA', englishLevel: '5' },
+  ] });
+  const m = matchJob(job, expiredPilot);
+  const lic = byKey(m, 'licence');
+  assert.ok(lic, 'baseline licence row added');
+  assert.strictEqual(lic.status, 'unmet');
+  assert.strictEqual(lic.state, 'not_met');
+  assert.strictEqual(lic.gap, 'expired 30 Sep 2026');
+  assert.strictEqual(m.status, 'SHORT');                     // was QUALIFY before the baseline
+  assert.strictEqual(m.shortfall, 'Licence expired 30 Sep 2026');
+  assert.strictEqual(m.stated, 2);                           // total hours + the baseline licence
+});
+test('baseline: expired medical adds a not-met row even when the ad states no medical', () => {
+  const job = { title: 'First Officer', reqMinTotalHours: 1000 };
+  const expiredMed = PILOT({ medicals: [{ medicalClass: 'CLASS_1', expiryDate: '2026-08-15T00:00:00Z' }] });
+  const m = matchJob(job, expiredMed);
+  const med = byKey(m, 'medical');
+  assert.ok(med, 'baseline medical row added');
+  assert.strictEqual(med.status, 'unmet');
+  assert.strictEqual(med.gap, 'expired 15 Aug 2026');
+  assert.strictEqual(m.status, 'SHORT');
+  assert.strictEqual(m.shortfall, 'Medical expired 15 Aug 2026');
+});
+test('baseline: a VALID licence + medical that the ad does not state add nothing', () => {
+  const job = { title: 'First Officer', reqMinTotalHours: 1000 };
+  const m = matchJob(job, PILOT());                          // default pilot: valid ATPL + Class 1
+  assert.ok(!byKey(m, 'licence'), 'no baseline licence row when valid + unstated');
+  assert.ok(!byKey(m, 'medical'), 'no baseline medical row when valid + unstated');
+  assert.strictEqual(m.stated, 1);                           // only the stated total-hours row
+  assert.strictEqual(m.status, 'QUALIFY');
+  assert.strictEqual(m.pct, 100);
+});
+test('baseline: a MISSING licence/medical (never recorded) adds nothing — only EXPIRED does', () => {
+  const job = { title: 'First Officer', reqMinTotalHours: 1000 };
+  const bare = PILOT({ certs: [], medicals: [], ratings: [{ aircraftType: 'A320', category: 'aeroplane' }] });
+  const m = matchJob(job, bare);
+  assert.ok(!byKey(m, 'licence'), 'no baseline licence row when none on file (missing ≠ expired)');
+  assert.ok(!byKey(m, 'medical'), 'no baseline medical row when none on file');
+  assert.strictEqual(m.stated, 1);
+});
+test('baseline: a stated expired medical is not double-counted by the baseline', () => {
+  const job = { title: 'First Officer', reqMedicalClass: 'CLASS_1', reqMinTotalHours: 1000 };
+  const expiredMed = PILOT({ medicals: [{ medicalClass: 'CLASS_1', expiryDate: '2026-08-15T00:00:00Z' }] });
+  const m = matchJob(job, expiredMed);
+  assert.strictEqual(m.requirements.filter((r) => r.key === 'medical').length, 1); // exactly one row
+  assert.strictEqual(byKey(m, 'medical').gap, 'expired 15 Aug 2026');
+});

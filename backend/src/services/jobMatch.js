@@ -361,6 +361,29 @@ function matchJob(job, ctx) {
     push(mk('instructor', 'Instructor rating', 'must', status, 'Instructor (FI/TRI/…)', ctx.hasAnyInstructorRating ? [...ctx.instructorKinds].join(', ') : null, true));
   }
 
+  // ── Implicit baseline — every pilot job needs a valid licence + valid medical ─
+  //   A valid licence (highest held in the job's category) and a valid medical are
+  //   required whether or not the ad states them. We add a row ONLY when the pilot's
+  //   own item is EXPIRED, and only if the ad didn't already state that requirement
+  //   (so we never double-count). The expired row is `not_met`, so a job can never
+  //   read QUALIFY while the blocker bar shows an expired licence/medical. A valid
+  //   item — or one simply absent from the profile — adds nothing here, so the % stays
+  //   met ÷ (stated) for everyone whose licence/medical is current. ───────────────
+  if (!reqs.some((r) => r.key === 'licence')) {
+    const sameCat = (l) => !jobCat || l.category == null || l.category === jobCat;
+    const held = ctx.licences.filter(sameCat)
+      .sort((a, b) => b.rank - a.rank || Number(b.valid) - Number(a.valid) || (b.expiryMs || 0) - (a.expiryMs || 0));
+    const top = held[0];
+    if (top && !top.valid) {
+      push(mk('licence', 'Licence', 'must', 'unmet', 'Valid licence', top.type, false,
+        top.expiryMs ? `expired ${fmtDate(top.expiryMs)}` : null));
+    }
+  }
+  if (!reqs.some((r) => r.key === 'medical') && ctx.medicalAllExpired) {
+    push(mk('medical', 'Medical', 'ratings', 'unmet', 'Valid medical', null, false,
+      ctx.medicalLatestExpiry ? `expired ${fmtDate(ctx.medicalLatestExpiry)}` : null));
+  }
+
   // ── Aircraft category is a GATE, not a scored requirement (change #1/#2). It
   //    never adds to met/stated and never moves the %. A mismatch (the pilot flies
   //    a different category) parks the job as WRONG_CATEGORY with no %. An unknown
