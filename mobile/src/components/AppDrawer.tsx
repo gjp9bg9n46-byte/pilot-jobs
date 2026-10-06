@@ -123,7 +123,7 @@ export default function AppDrawer({ open, onClose }: { open: boolean; onClose: (
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15,20,25,0.5)' },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,20,25,0.5)' },
   panel: {
     position: 'absolute', top: 0, left: 0, bottom: 0,
     backgroundColor: pilot.surface,
