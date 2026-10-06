@@ -783,3 +783,21 @@ model AppVersionStat {
 
   @@unique([day, version])
 }
+
+// A trace for every scheduled task run — who ran what, when, and with what result.
+// Written at start (status RUNNING) and finalised at end (OK / ERROR) so a crashed
+// run still leaves a dangling RUNNING row. `counts` holds task-specific tallies.
+model CronRun {
+  id        String    @id @default(uuid())
+  jobName   String // the scheduler's name, e.g. 'scrape', 'match', 'liveness'
+  host      String? // os.hostname() of the process that ran it
+  commit    String? // RAILWAY_GIT_COMMIT_SHA (short) of the running build
+  status    String    @default("RUNNING") // RUNNING | OK | ERROR
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  durationMs Int?
+  counts    Json? // task-specific result counts (e.g. { scraped, upserted, expired })
+  error     String? // message (truncated) when status = ERROR
+
+  @@index([jobName, startedAt])
+}

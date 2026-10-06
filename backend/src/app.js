@@ -11,6 +11,7 @@ const errorHandler = require('./middleware/errorHandler');
 const { runIngestion } = require('./scrapers/index');
 const { runFullMatch } = require('./services/matchingService');
 const { recomputeJobDerivedStats, refreshWikiFleet } = require('./services/airlineEnrichmentService');
+const { withCronRun } = require('./services/cronRun');
 
 const app = express();
 app.use(helmet());
@@ -257,11 +258,17 @@ app.use(errorHandler);
 // screenshot/timing run) never fires a scrape, expiry or match. Prod leaves it unset.
 const RUN_SCHEDULERS = process.env.SCHEDULERS_OFF !== '1';
 if (RUN_SCHEDULERS) {
+// Every scheduled task is wrapped in withCronRun(name, fn): it writes a CronRun
+// trace (name, host/commit, start, end, counts, error) and absorbs any throw so a
+// failure logs but never crashes the process. Each fn returns a counts object.
+
 // Scheduled scraping every N hours
 const intervalHours = parseInt(process.env.SCRAPE_INTERVAL_HOURS || '6', 10);
-cron.schedule(`0 */${intervalHours} * * *`, async () => {
+cron.schedule(`0 */${intervalHours} * * *`, () => withCronRun('scrape', async () => {
+  const counts = {};
   try {
-    await runIngestion();
+    const r = await runIngestion();
+    if (r && typeof r === 'object') Object.assign(counts, r);
   } catch (err) {
     logger.error(`Scheduled scrape failed: ${err.message}`);
   }
@@ -269,7 +276,8 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
   // (once each, robots-respecting, rate-limited). Bounded per cycle.
   try {
     const { enrichAggregatorDescriptions } = require('../scripts/enrich-aggregator-descriptions');
-    await enrichAggregatorDescriptions({ limit: 40 });
+    const r = await enrichAggregatorDescriptions({ limit: 40 });
+    if (r && typeof r === 'object') counts.enriched = r.updated ?? r.enriched ?? undefined;
   } catch (err) {
     logger.error(`Aggregator description enrichment failed: ${err.message}`);
   }
@@ -277,7 +285,8 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
   // replaces regex junk. Once per job; no-ops without ANTHROPIC_API_KEY.
   try {
     const { extractRequirementsLLM } = require('../scripts/extract-requirements-llm');
-    await extractRequirementsLLM({ limit: 25 });
+    const r = await extractRequirementsLLM({ limit: 25 });
+    if (r && typeof r === 'object') counts.llmExtracted = r.updated ?? r.processed ?? undefined;
   } catch (err) {
     logger.error(`LLM requirement extraction failed: ${err.message}`);
   }
@@ -287,34 +296,29 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
   } catch (err) {
     logger.error(`Airline stats recompute failed: ${err.message}`);
   }
-});
+  return counts;
+}));
 
 // Nightly re-screen of EXISTING live jobs (03:30 UTC) — intake only screens new
 // rows, so this catches jobs that became non-aviation under tightened rules and
 // collapses any exact-identity duplicates sitting across sources. Reversible.
-cron.schedule('30 3 * * *', async () => {
-  try {
-    const { reScreenNonAviation, collapseByIdentity } = require('./scrapers/dedup');
-    // Non-aviation re-screen applies immediately (validated). Identity dedup is
-    // LOG-ONLY until IDENTITY_DEDUP_APPLY=1 (3-day staged shadow rollout).
-    const apply = process.env.IDENTITY_DEDUP_APPLY === '1';
-    const av = await reScreenNonAviation({ dryRun: false });
-    const dd = await collapseByIdentity({ dryRun: !apply });
-    logger.info({ msg: `nightly re-screen complete${apply ? '' : ' [identity dedup LOG-ONLY]'}`, identityDedupApplied: apply, nonAviationHidden: av.hidden, nonAviationBySource: av.perSource, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups });
-  } catch (err) {
-    logger.error(`Nightly re-screen failed: ${err.message}`);
-  }
-});
+cron.schedule('30 3 * * *', () => withCronRun('nightly-rescreen', async () => {
+  const { reScreenNonAviation, collapseByIdentity } = require('./scrapers/dedup');
+  // Non-aviation re-screen applies immediately (validated). Identity dedup is
+  // LOG-ONLY until IDENTITY_DEDUP_APPLY=1 (3-day staged shadow rollout).
+  const apply = process.env.IDENTITY_DEDUP_APPLY === '1';
+  const av = await reScreenNonAviation({ dryRun: false });
+  const dd = await collapseByIdentity({ dryRun: !apply });
+  logger.info({ msg: `nightly re-screen complete${apply ? '' : ' [identity dedup LOG-ONLY]'}`, identityDedupApplied: apply, nonAviationHidden: av.hidden, nonAviationBySource: av.perSource, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups });
+  return { identityDedupApplied: apply, nonAviationHidden: av.hidden, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups };
+}));
 
 // Weekly airline fleet refresh from Wikipedia (Mondays 04:00 UTC) — fleetDetail
 // is enrichment-owned and refreshed; community-contributed fields are untouched.
-cron.schedule('0 4 * * 1', async () => {
-  try {
-    await refreshWikiFleet();
-  } catch (err) {
-    logger.error(`Airline fleet refresh failed: ${err.message}`);
-  }
-});
+cron.schedule('0 4 * * 1', () => withCronRun('fleet-refresh', async () => {
+  const r = await refreshWikiFleet();
+  return r && typeof r === 'object' ? r : undefined;
+}));
 
 // Immediate run on dev startup so fresh data is available without waiting for cron
 if (process.env.NODE_ENV !== 'production') {
@@ -324,99 +328,78 @@ if (process.env.NODE_ENV !== 'production') {
 // On every boot (incl. production deploys): purge stored jobs that fail the
 // current filter rules or are past their expiry date — stale/invalid listings
 // vanish immediately instead of waiting for the next scrape cron.
-setImmediate(async () => {
-  try {
-    const { revalidateActiveJobs, expirePastDue } = require('./scrapers/runner');
-    const employerConfigs = require('./scrapers/config/employers');
-    await revalidateActiveJobs(employerConfigs);
-    await expirePastDue();
-    await require('./scrapers/dedup').collapseSameAdAcrossLocations();
-    await require('./services/translationService').translateUntranslatedJobs();
-  } catch (err) {
-    logger.error(`Startup job cleanup failed: ${err.message}`);
-  }
-});
+setImmediate(() => withCronRun('startup-cleanup', async () => {
+  const { revalidateActiveJobs, expirePastDue } = require('./scrapers/runner');
+  const employerConfigs = require('./scrapers/config/employers');
+  await revalidateActiveJobs(employerConfigs);
+  const expired = await expirePastDue();
+  await require('./scrapers/dedup').collapseSameAdAcrossLocations();
+  await require('./services/translationService').translateUntranslatedJobs();
+  return expired && typeof expired === 'object' ? expired : undefined;
+}));
 
 // Run matching on startup to catch missed matches
-cron.schedule('0 2 * * *', async () => {
-  try {
-    await runFullMatch();
-  } catch (err) {
-    logger.error(`Scheduled match failed: ${err.message}`);
-  }
-});
+cron.schedule('0 2 * * *', () => withCronRun('match', async () => {
+  const r = await runFullMatch();
+  return r && typeof r === 'object' ? r : undefined;
+}));
 
 // Nightly apply-link liveness sweep (03:00 UTC): probe every ACTIVE job's
 // applyUrl and expire dead links (404/410/parked), retrying transient failures
 // up to 3 nights. Off-peak so its rate-limited fetches don't compete with the
 // scrape cron. Robots/UA/rate-limit enforced via http.js.
-cron.schedule('0 3 * * *', async () => {
-  try {
-    const { checkActiveJobLiveness } = require('../scripts/check-liveness');
-    const r = await checkActiveJobLiveness({});
-    logger.info(`Liveness sweep: ${r.expired} expired (${r.dead} dead, ${r.transient} transient) of ${r.considered} checked`);
-  } catch (err) {
-    logger.error(`Liveness sweep failed: ${err.message}`);
-  }
-});
+cron.schedule('0 3 * * *', () => withCronRun('liveness', async () => {
+  const { checkActiveJobLiveness } = require('../scripts/check-liveness');
+  const r = await checkActiveJobLiveness({});
+  logger.info(`Liveness sweep: ${r.expired} expired (${r.dead} dead, ${r.transient} transient) of ${r.considered} checked`);
+  return { considered: r.considered, expired: r.expired, dead: r.dead, transient: r.transient };
+}));
 
 // Nightly (03:40 UTC): prune JobAlert rows whose job has EXPIRED. Jobs expire by
 // status change (not deletion), so their alerts would accumulate forever — this is
 // what filled the disk on 2026-09-25. Batched so no single statement bloats WAL.
-cron.schedule('40 3 * * *', async () => {
-  try {
-    const { pruneExpiredJobAlerts } = require('./services/dbMaintenance');
-    const r = await pruneExpiredJobAlerts();
-    if (r.removed) logger.info(`Expired-alert prune: removed ${r.removed} rows in ${r.batches} batches`);
-  } catch (err) {
-    logger.error(`Expired-alert prune failed: ${err.message}`);
-  }
-});
+cron.schedule('40 3 * * *', () => withCronRun('alert-prune', async () => {
+  const { pruneExpiredJobAlerts } = require('./services/dbMaintenance');
+  const r = await pruneExpiredJobAlerts();
+  if (r.removed) logger.info(`Expired-alert prune: removed ${r.removed} rows in ${r.batches} batches`);
+  return { removed: r.removed, batches: r.batches };
+}));
 
 // Every 6h: DB volume-usage check; emails ops (SCRAPER_ALERT_EMAIL / DISK_ALERT_EMAIL)
 // once usage crosses 75%, so we resize before Postgres ever hits "no space left".
-cron.schedule('15 */6 * * *', async () => {
-  try {
-    const { checkDiskAndAlert } = require('./services/dbMaintenance');
-    await checkDiskAndAlert();
-  } catch (err) {
-    logger.error(`DB disk check failed: ${err.message}`);
-  }
-});
+cron.schedule('15 */6 * * *', () => withCronRun('disk-check', async () => {
+  const { checkDiskAndAlert } = require('./services/dbMaintenance');
+  const r = await checkDiskAndAlert();
+  return r && typeof r === 'object' ? r : undefined;
+}));
 
 // Weekly (Mondays 04:10 UTC): report ACTIVE jobs whose apply link has returned
 // HTTP 403 for ≥ 5 days. The nightly liveness checker SKIPS 403 (can't tell an
 // anti-bot block from a gone page), so these never expire on their own — this
 // emails ops the stuck ones to check/replace by hand.
-cron.schedule('10 4 * * 1', async () => {
-  try {
-    const { reportStuck403 } = require('./services/dbMaintenance');
-    const r = await reportStuck403();
-    if (r.count) logger.info(`Stuck-403 report: ${r.count} job(s) flagged`);
-  } catch (err) {
-    logger.error(`Stuck-403 report failed: ${err.message}`);
-  }
-});
+cron.schedule('10 4 * * 1', () => withCronRun('stuck-403', async () => {
+  const { reportStuck403 } = require('./services/dbMaintenance');
+  const r = await reportStuck403();
+  if (r.count) logger.info(`Stuck-403 report: ${r.count} job(s) flagged`);
+  return { count: r.count };
+}));
 
 // Nightly (04:20 UTC): recompute every pilot's derived flight totals and fix any
 // that drifted from the stored value (a missed recompute hook, a manual edit, a
 // logic change). Keeps the denormalised Pilot.derivedTotals honest.
-cron.schedule('20 4 * * *', async () => {
-  try {
-    const { auditAllDerivedTotals } = require('./services/logbookSummary');
-    const r = await auditAllDerivedTotals();
-    logger.info(`Derived-totals audit: ${r.drifted} fixed of ${r.checked} checked`);
-  } catch (err) {
-    logger.error(`Derived-totals audit failed: ${err.message}`);
-  }
-});
+cron.schedule('20 4 * * *', () => withCronRun('totals-audit', async () => {
+  const { auditAllDerivedTotals } = require('./services/logbookSummary');
+  const r = await auditAllDerivedTotals();
+  logger.info(`Derived-totals audit: ${r.drifted} fixed of ${r.checked} checked`);
+  return { checked: r.checked, drifted: r.drifted };
+}));
 
 // Backfill Pilot.derivedTotals for anyone missing it (e.g. right after the column
 // was added) — runs once at startup, a no-op thereafter.
-setImmediate(() => {
-  require('./services/logbookSummary').backfillMissingDerivedTotals()
-    .catch((err) => logger.error(`Derived-totals backfill failed: ${err.message}`));
-});
+setImmediate(() => withCronRun('totals-backfill', async () => {
+  const r = await require('./services/logbookSummary').backfillMissingDerivedTotals();
+  return r && typeof r === 'object' ? r : undefined;
+}));
 } // end RUN_SCHEDULERS
 
 const PORT = process.env.PORT || 3000;
