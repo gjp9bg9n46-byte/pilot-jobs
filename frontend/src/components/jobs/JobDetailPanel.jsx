@@ -5,7 +5,8 @@ import AirlineLogo from '../AirlineLogo';
 import AdzunaAttribution from './AdzunaAttribution';
 import { jobApi } from '../../services/api';
 import { postedAgo, formatSalary } from '../../lib/jobMatch';
-import { displayTitle, countryFlag, jobChips, sourceInfo, slugFor, statedRequirements } from '../../lib/jobDisplay';
+import { displayTitle, jobChips, sourceInfo, slugFor, statedRequirements } from '../../lib/jobDisplay';
+import { locationName, companyName } from '../../lib/displayNames';
 import { fetchAirlineMap, resolveAirline } from '../../lib/airlineLookup';
 
 // Where an unknown ("?") requirement's Add link takes the pilot.
@@ -70,7 +71,6 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
   if (!job) return <div className="detail" style={{ padding: 40, color: 'var(--text-secondary)' }}>Job not found.</div>;
 
   const m = job.match;
-  const flag = countryFlag(job.country);
   const chips = jobChips(job);
   const src = sourceInfo(job);
   const sal = formatSalary(job, false);
@@ -140,7 +140,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
         <div className="jc-logo" style={{ flexShrink: 0 }}><AirlineLogo logoUrl={logoUrl} name={job.company} box={48} maxW={72} hideIfMissing /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2>{displayTitle(job.title)}</h2>
-          <div className="dmeta"><b>{job.company}</b>{flag ? <> · <span aria-hidden="true">{flag}</span> {job.location || job.country}</> : (job.location ? ` · ${job.location}` : '')}{job.postedAt ? ` · ${postedAgo(job.postedAt)}` : ''}</div>
+          <div className="dmeta"><b>{companyName(job.company)}</b>{locationName(job.location || job.country) ? ` · ${locationName(job.location || job.country)}` : ''}{job.postedAt ? ` · ${postedAgo(job.postedAt)}` : ''}</div>
           {chips.length > 0 && <div className="chips" style={{ marginTop: 10 }}>{chips.map((c, i) => <span key={i} className={`chip${c.visa ? ' visa' : ''}`}>{c.text}</span>)}</div>}
         </div>
       </div>

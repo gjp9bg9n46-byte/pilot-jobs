@@ -3,7 +3,8 @@ import { Check, X, HelpCircle } from 'lucide-react';
 import AirlineLogo from '../AirlineLogo';
 import AdzunaAttribution from './AdzunaAttribution';
 import { postedAgo, formatSalary } from '../../lib/jobMatch';
-import { displayTitle, countryFlag, jobChips, checklist, sourceInfo } from '../../lib/jobDisplay';
+import { displayTitle, jobChips, checklist, sourceInfo } from '../../lib/jobDisplay';
+import { locationName } from '../../lib/displayNames';
 
 // One job card in the redesigned list (mockup .jc). Renders from a job that carries
 // the shared `match` payload. Logos use AirlineLogo (real logos, hideIfMissing).
@@ -12,8 +13,7 @@ export default function JobCard({ job, selected, onClick, compact = false, logoU
   const checks = checklist(job.match, 4);
   const src = sourceInfo(job);
   const sal = formatSalary(job, true);
-  const flag = countryFlag(job.country);
-  const loc = job.location || job.country || '';
+  const loc = locationName(job.location || job.country); // deduped; no HQ flag (C#1)
   // Evergreen/ongoing rows keep an honest "Ongoing · link checked {date}" label
   // (their posted date is stale but the vacancy is live — the liveness checker
   // confirms it). Fresh rows show "posted X ago".
@@ -38,7 +38,7 @@ export default function JobCard({ job, selected, onClick, compact = false, logoU
           <div className="title">{displayTitle(job.title)}</div>
           <div className="meta">
             <b>{job.company}</b>
-            {flag ? <> · <span aria-hidden="true">{flag}</span> {loc}</> : (loc ? ` · ${loc}` : '')}
+            {loc ? ` · ${loc}` : ''}
             {timeLine ? ` · ${timeLine}` : ''}
           </div>
         </div>

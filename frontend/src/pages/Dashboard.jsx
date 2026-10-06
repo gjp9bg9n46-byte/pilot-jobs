@@ -7,7 +7,8 @@ import { statusMeta } from '../lib/jobMatch';
 import { roleLabel } from '../lib/jobDisplay';
 import { companyName, locationName } from '../lib/displayNames';
 
-const fmtD = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmtD = (iso) => { if (!iso) return null; const d = new Date(iso); return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
 
 const C = {
   line: '#E3E8EF', ink: '#0F1B2D', sub: '#4A5668', faint: '#8592A3', navy: '#003F88',
@@ -60,24 +61,25 @@ function JobRow({ item, onView }) {
   const sub = [companyName(j.company), locationName(j.location || j.country), ago(j.postedAt) && `${ago(j.postedAt)}`, j.sourceType && j.sourceType !== 'aggregator' ? 'Direct apply' : null].filter(Boolean).join(' · ');
   return (
     <div className="dash-job" style={{ borderTop: `1px solid ${C.line}` }}>
-      <div>
+      <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 15 }}>
           {item.isNew && <i style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: C.navy, marginRight: 7, verticalAlign: 'middle' }} />}
           {j.title}
         </div>
         <div style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>{sub}</div>
+        {(pill || meta?.shortfall) && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, marginTop: 4, flexWrap: 'wrap' }}>
+            {pill && <span style={{ borderRadius: 20, padding: '2px 10px', fontWeight: 600, fontSize: 12, background: pill.bg, color: pill.c }}>{pill.t}</span>}
+            {meta?.shortfall && <span style={{ color: C.sub }}>{meta.shortfall}</span>}
+            {m?.category?.advisory && <span style={{ color: C.faint }}>· {m.category.advisory}</span>}
+          </div>
+        )}
       </div>
-      <div className="dash-jobside" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-        <Pct match={m} /><br />
-        <button onClick={() => onView(j.id)} style={{ marginTop: 6, height: 34, padding: '0 13px', borderRadius: 8, fontWeight: 600, fontSize: 13, border: `1px solid ${m?.status === 'QUALIFY' ? C.navy : C.line}`, background: m?.status === 'QUALIFY' ? C.navy : '#fff', color: m?.status === 'QUALIFY' ? '#fff' : C.ink, cursor: 'pointer' }}>View</button>
+      {/* % and View on ONE line, right side (#3) */}
+      <div className="dash-jobside" style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
+        <Pct match={m} />
+        <button onClick={() => onView(j.id)} style={{ height: 34, padding: '0 14px', borderRadius: 8, fontWeight: 600, fontSize: 13, border: `1px solid ${m?.status === 'QUALIFY' ? C.navy : C.line}`, background: m?.status === 'QUALIFY' ? C.navy : '#fff', color: m?.status === 'QUALIFY' ? '#fff' : C.ink, cursor: 'pointer' }}>View</button>
       </div>
-      {(pill || meta?.shortfall) && (
-        <div style={{ gridColumn: '1/-1', display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5 }}>
-          {pill && <span style={{ borderRadius: 20, padding: '3px 10px', fontWeight: 600, fontSize: 12, background: pill.bg, color: pill.c }}>{pill.t}</span>}
-          {meta?.shortfall && <span style={{ color: C.sub }}>{meta.shortfall}</span>}
-          {m?.category?.advisory && <span style={{ color: C.faint }}>· {m.category.advisory}</span>}
-        </div>
-      )}
     </div>
   );
 }
@@ -121,12 +123,18 @@ export default function Dashboard() {
         </div>
 
         {data.blockers?.count > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: C.redbg, border: '1px solid #F4CFCB', borderRadius: 12, padding: '13px 16px', marginBottom: 22, fontSize: 14, flexWrap: 'wrap' }}>
-            <AlertTriangle size={18} color={C.red} />
-            <span><b style={{ fontWeight: 600 }}>{data.blockers.items.map((i) => `${i.label}${fmtD(i.date) ? ` (${i.days != null && i.days < 0 ? 'expired' : 'expires'} ${fmtD(i.date)})` : ''}`).join(' and ')} {data.blockers.items.length === 1 ? 'is' : 'are'} expired or expiring.</b> Update the dates so you show up as qualified.</span>
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: 16, fontWeight: 600, color: C.navy, fontSize: 13.5 }}>
-              {data.blockers.items.slice(0, 2).map((i) => <a key={i.type} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>Update {i.label}</a>)}
-            </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 22 }}>
+            {data.blockers.items.map((i) => {
+              const expired = i.days != null && i.days < 0;
+              const col = expired ? { bg: C.redbg, bd: '#F4CFCB', fg: C.red } : { bg: C.amberbg, bd: '#F5E0B8', fg: C.amber };
+              return (
+                <div key={i.type} style={{ display: 'flex', alignItems: 'center', gap: 10, background: col.bg, border: `1px solid ${col.bd}`, borderRadius: 10, padding: '10px 14px', fontSize: 13.5 }}>
+                  <AlertTriangle size={16} color={col.fg} />
+                  <span style={{ color: C.ink }}><b style={{ fontWeight: 600, color: col.fg }}>{i.label} {expired ? 'expired' : 'expires'} {fmtD(i.date)}</b></span>
+                  <a onClick={() => navigate('/profile')} style={{ marginLeft: 'auto', color: C.navy, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>· Update</a>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -134,7 +142,7 @@ export default function Dashboard() {
           <div>
             <Card title="Your matches" action={<a onClick={() => navigate('/jobs')} style={{ fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer' }}>All matching jobs</a>}>
               <div style={{ display: 'flex', gap: 6, padding: '14px 18px 6px', overflowX: 'auto' }}>
-                {[['allNew', 'All matches', nj.counts.all], ['qualify', 'You qualify', nj.counts.qualify], ['oneShort', '1 short', nj.counts.oneShort]].map(([k, lbl, n]) => (
+                {[['allNew', 'All', nj.counts.all], ['qualify', 'You qualify', nj.counts.qualify], ['oneShort', '1 short', nj.counts.oneShort]].map(([k, lbl, n]) => (
                   <button key={k} onClick={() => setTab(k)} style={{ whiteSpace: 'nowrap', border: `1px solid ${tab === k ? C.ink : C.line}`, background: tab === k ? C.ink : '#fff', color: tab === k ? '#fff' : C.sub, borderRadius: 20, padding: '6px 13px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     {lbl}<span style={{ fontWeight: 500, opacity: 0.75, marginLeft: 4 }}>{n}</span>
                   </button>
@@ -222,7 +230,7 @@ export default function Dashboard() {
         </div>
       </div>
       <style>{`
-        .dash-job{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;padding:10px 18px}
+        .dash-job{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 16px;padding:10px 18px}
         .dash-job>div{min-width:0}
         @media (max-width:820px){
           .dash-wrap{padding-left:16px !important;padding-right:16px !important}

@@ -8,6 +8,7 @@ import { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AirlineLogo from './AirlineLogo';
+import { locationName } from '../lib/displayNames';
 import { fontFamilies, fontSizes } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
@@ -46,7 +47,7 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
 }) {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
-  const flag = countryFlag(job?.country);
+  const locText = locationName(job?.location || job?.country); // deduped, no HQ flag (C#1)
 
   const specRows: [string, string][] = [];
   if (job?.reqMinTotalHours) specRows.push(['Total time', `${Number(job.reqMinTotalHours).toLocaleString()} hrs`]);
@@ -73,9 +74,9 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
         ) : null}
 
         <View style={styles.jcMetaRow}>
-          {job?.location ? (
+          {locText ? (
             <Text style={styles.jcMeta} numberOfLines={1}>
-              <Ionicons name="location-outline" size={11} color={pilot.muted} /> {flag ? `${flag} ` : ''}{job.location}
+              <Ionicons name="location-outline" size={11} color={pilot.muted} /> {locText}
             </Text>
           ) : null}
         </View>
