@@ -101,7 +101,9 @@ async function computeReadiness(pilotId) {
 
   // English (ELP cert expiry).
   const elp = pilot.certificates.find((c) => c.type === 'ELP');
-  if (elp && elp.expiryDate) push('english', 'English (ICAO) expiry', elp.expiryDate);
+  // Label carries no "expiry" of its own — the dashboard blocker line appends
+  // "expires"/"expired" after it ("English (ICAO) expires 15 Nov 2026").
+  if (elp && elp.expiryDate) push('english', 'English (ICAO)', elp.expiryDate);
 
   // Type-rating proficiency checks (LPC/OPC) + line checks.
   for (const r of pilot.ratings) {

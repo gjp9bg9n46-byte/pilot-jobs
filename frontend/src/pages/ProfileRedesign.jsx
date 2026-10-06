@@ -140,6 +140,19 @@ export default function ProfileRedesign() {
   items.forEach((it) => { if (it.level === 'expired' || it.level === 'expiring') lv.expired++; else if (it.level === 'due') lv.due++; else if (it.level === 'missing') lv.missing++; });
   const attnHeader = [lv.expired && `${lv.expired} expired`, lv.due && `${lv.due} due soon`, lv.missing && `${lv.missing} to add`].filter(Boolean).join(' · ');
 
+  // English proficiency status comes from the SAME readiness item the dashboard
+  // blocker reads (ELP certificate expiryDate) — never a second, hand-rolled
+  // "valid until" that can disagree with it.
+  const elpStatus = (elpRec) => {
+    const it = items.find((x) => x.type === 'english');
+    if (it) return readinessText(it);
+    if (!elpRec?.expiryDate) return null;
+    // No readiness item (service says ok, or it failed to load) → still read the
+    // stored date rather than assuming "valid", same as the licence rows.
+    return notExpired(elpRec.expiryDate)
+      ? { cls: 'g', txt: `Valid until ${fmtDate(elpRec.expiryDate)}` }
+      : { cls: 'r', txt: `Expired ${fmtDate(elpRec.expiryDate)}` };
+  };
   const readinessText = (it) => {
     if (it.level === 'expired') return { cls: 'r', txt: it.date ? `Expired ${fmtDate(it.date)}` : 'Expired' };
     if (it.level === 'expiring') return { cls: 'r', txt: it.days === 0 ? 'Expires today' : `Expires in ${it.days} day${it.days === 1 ? '' : 's'}` };
@@ -198,7 +211,8 @@ export default function ProfileRedesign() {
         })}
       {/* English proficiency is a licence endorsement, not training */}
       <div className="row tappable" role="button" tabIndex={0} onClick={openEdit('elp', elp?.id)} onKeyDown={(e) => { if (e.key === 'Enter') setEditing({ kind: 'elp', id: elp?.id }); }}>
-        <div className="main"><div className="n">English proficiency (ICAO)</div><div className="d">{elp?.englishLevel ? `${elp.englishLevel}${elp.expiryDate ? ` · valid until ${fmtDate(elp.expiryDate)}` : ''}` : 'Required for international operations'}</div></div>
+        <div className="main"><div className="n">English proficiency (ICAO)</div><div className="d">{elp?.englishLevel || 'Required for international operations'}</div></div>
+        {(() => { const st = elpStatus(elp); return st ? <div className={`st ${st.cls}`}><span className={`dot ${st.cls}`} />{st.txt}</div> : null; })()}
         {!elp?.englishLevel && <span className="link-sm">Add level</span>}
         <Chev />
       </div>

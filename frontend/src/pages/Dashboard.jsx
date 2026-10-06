@@ -131,7 +131,7 @@ export default function Dashboard() {
                 <div key={i.type} style={{ display: 'flex', alignItems: 'center', gap: 10, background: col.bg, border: `1px solid ${col.bd}`, borderRadius: 10, padding: '10px 14px', fontSize: 13.5 }}>
                   <AlertTriangle size={16} color={col.fg} />
                   <span style={{ color: C.ink }}><b style={{ fontWeight: 600, color: col.fg }}>{i.label} {expired ? 'expired' : 'expires'} {fmtD(i.date)}</b></span>
-                  <a onClick={() => navigate('/profile')} style={{ marginLeft: 'auto', color: C.navy, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>· Update</a>
+                  <a onClick={() => navigate('/profile')} style={{ marginLeft: 'auto', color: C.navy, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Update</a>
                 </div>
               );
             })}

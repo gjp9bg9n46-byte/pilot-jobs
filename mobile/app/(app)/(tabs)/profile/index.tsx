@@ -156,6 +156,19 @@ export default function ProfileView() {
     return { cls: 'n', txt: it.type === 'authority' ? 'Pick authority' : it.type === 'passport' ? 'Add date' : 'Add' };
   };
 
+  // English proficiency status comes from the SAME readiness item the dashboard
+  // blocker reads (ELP certificate expiryDate) — never a second, hand-rolled
+  // "valid until" that can disagree with it.
+  const elpItem = items.find((x: Any) => x.type === 'english');
+  // No readiness item (service says ok, or it failed to load) → still read the
+  // stored date rather than assuming "valid", same as the licence rows.
+  const elpSt = elpItem ? readinessText(elpItem)
+    : (elp?.expiryDate
+      ? (notExpired(elp.expiryDate)
+        ? { cls: 'g' as const, txt: `Valid until ${formatDate(elp.expiryDate)}` }
+        : { cls: 'r' as const, txt: `Expired ${formatDate(elp.expiryDate)}` })
+      : null);
+
   const St = ({ cls, children }: { cls: keyof typeof DOT; children: React.ReactNode }) => (
     <View style={styles.stRow}><View style={[styles.dot, { backgroundColor: DOT[cls] }]} /><Text style={[styles.stText, { color: TXT[cls] }]} numberOfLines={1}>{children}</Text></View>
   );
@@ -286,7 +299,8 @@ export default function ProfileView() {
           })}
           {/* English proficiency is a licence endorsement, not training */}
           <Row onPress={openEdit('elp', elp?.id)}>
-            <View style={styles.rowMain}><Text style={styles.rowN}>English proficiency (ICAO)</Text><Text style={styles.rowD}>{elp?.englishLevel ? `${elp.englishLevel}${elp.expiryDate ? ` · valid until ${formatDate(elp.expiryDate)}` : ''}` : 'Required for international operations'}</Text></View>
+            <View style={styles.rowMain}><Text style={styles.rowN}>English proficiency (ICAO)</Text><Text style={styles.rowD}>{elp?.englishLevel || 'Required for international operations'}</Text></View>
+            {elpSt ? <St cls={elpSt.cls}>{elpSt.txt}</St> : null}
             {!elp?.englishLevel ? <Text style={styles.linkSm}>Add level</Text> : null}
           </Row>
           <View style={styles.addRow}><AddLink label="+ Add licence" onPress={() => setEditing({ kind: 'licence' })} /><AddLink label="+ Add rating" onPress={() => setEditing({ kind: 'rating' })} /></View>
