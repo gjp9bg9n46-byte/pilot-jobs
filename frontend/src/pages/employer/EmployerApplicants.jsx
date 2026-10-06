@@ -4,7 +4,7 @@ import { employerApi } from '../../services/employerApi';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useBodyBackground } from '../../hooks/useBodyBackground';
 import { Badge, Button } from '../../components/primitives';
-import MatchScore from '../../components/MatchScore';
+import { statusMeta } from '../../lib/jobMatch';
 
 const STATUS = {
   APPLIED:     { label: 'Applied',     variant: 'neutral' },
@@ -52,12 +52,37 @@ const css = {
   errorMsg: { fontSize: 13, color: SEM.red, marginTop: 8 },
 };
 
-function Bucket({ items, color, glyph }) {
-  if (!items || items.length === 0) return null;
+// Unified match % + status label (same services/jobMatch.js the pilot sees). No
+// EXCELLENT/GREAT tiers — colour + label come straight from statusMeta.
+function Pct({ match, size }) {
+  const m = statusMeta(match);
+  if (!m || match?.pct == null) {
+    return <div><div style={{ fontFamily: 'var(--font-mono)', fontSize: size === 'lg' ? 22 : 16, fontWeight: 600, color: 'var(--text-secondary)' }}>—</div><div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{match?.status === 'WRONG_CATEGORY' ? 'Wrong category' : 'Not stated'}</div></div>;
+  }
+  const num = size === 'lg' ? 34 : 26;
   return (
-    <div style={{ marginBottom: 10 }}>
-      {items.map((t, i) => (
-        <div key={i} style={css.bucketRow}><span style={{ color, fontWeight: 700, flexShrink: 0 }}>{glyph}</span><span style={{ color: 'var(--text-primary)' }}>{t}</span></div>
+    <div style={{ textAlign: 'right' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: num, fontWeight: 600, color: m.color, lineHeight: 1 }}>{match.pct}%</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: m.color, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4 }}>{m.label || 'match'}</div>
+    </div>
+  );
+}
+
+// Three-state requirement rows (met · not_met · add) from the unified match.
+const REQ_COLOR = { met: SEM.green, not_met: SEM.red, add: 'var(--text-secondary)' };
+const REQ_GLYPH = { met: '✓', not_met: '✗', add: '•' };
+function ReqRows({ requirements }) {
+  if (!requirements || requirements.length === 0) return <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>No stated requirements.</div>;
+  return (
+    <div>
+      {requirements.map((r, i) => (
+        <div key={i} style={css.bucketRow}>
+          <span style={{ color: REQ_COLOR[r.state], fontWeight: 700, flexShrink: 0 }}>{REQ_GLYPH[r.state]}</span>
+          <span style={{ color: 'var(--text-primary)' }}>
+            {r.label}: {r.reqText}
+            {r.state !== 'met' && r.gap ? <span style={{ color: 'var(--text-secondary)' }}> — {r.gap}</span> : r.pilotText ? <span style={{ color: 'var(--text-secondary)' }}> ({r.pilotText})</span> : null}
+          </span>
+        </div>
       ))}
     </div>
   );
@@ -66,7 +91,6 @@ function Bucket({ items, color, glyph }) {
 function Drawer({ app, jobApplyUrl, isMobile, onClose, onStatusChange }) {
   const [confirm, setConfirm] = useState('');
   const [err, setErr] = useState('');
-  const bd = app.matchBreakdown || {};
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -100,20 +124,13 @@ function Drawer({ app, jobApplyUrl, isMobile, onClose, onStatusChange }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          {app.matchScore != null
-            ? <MatchScore score={app.matchScore} size="lg" />
-            : <div><div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, color: 'var(--text-secondary)' }}>—</div><div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Below requirements</div></div>}
+          <Pct match={app.match} size="lg" />
           <Badge variant={(STATUS[app.status] || STATUS.APPLIED).variant}>{(STATUS[app.status] || STATUS.APPLIED).label}</Badge>
+          {app.match?.shortfall && <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{app.match.shortfall}</span>}
         </div>
 
-        <div style={css.sectionLabel}>Match breakdown</div>
-        {(bd.matched?.length || bd.marginal?.length || bd.missing?.length) ? (
-          <div>
-            <Bucket items={bd.matched} color={SEM.green} glyph="✓" />
-            <Bucket items={bd.marginal} color={SEM.amber} glyph="~" />
-            <Bucket items={bd.missing} color={SEM.red} glyph="✗" />
-          </div>
-        ) : <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>No requirement breakdown captured.</div>}
+        <div style={css.sectionLabel}>Requirements</div>
+        <ReqRows requirements={app.match?.requirements} />
 
         <div style={css.sectionLabel}>Pilot snapshot</div>
         <div style={css.snapGrid}>
@@ -170,9 +187,9 @@ export default function EmployerApplicants() {
   }, [id]);
   useEffect(() => { load(); }, [load]);
 
-  // Ranked by match desc; null scores sorted to the end (Postgres puts NULLS FIRST on DESC).
+  // Ranked by the unified match % desc; applicants with no % sort to the end.
   const ranked = useMemo(
-    () => [...(data?.applicants || [])].sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1)),
+    () => [...(data?.applicants || [])].sort((a, b) => (b.match?.pct ?? b.matchScore ?? -1) - (a.match?.pct ?? a.matchScore ?? -1)),
     [data],
   );
   const counts = useMemo(() => {
@@ -228,9 +245,7 @@ export default function EmployerApplicants() {
               return (
                 <div key={a.applicationId} style={css.card} onClick={() => setOpenId(a.applicationId)}>
                   <div style={{ minWidth: 72, flexShrink: 0 }}>
-                    {a.matchScore != null
-                      ? <MatchScore score={a.matchScore} size="sm" />
-                      : <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>—</span>}
+                    <Pct match={a.match} size="sm" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={css.name}>{a.pilotName}</div>

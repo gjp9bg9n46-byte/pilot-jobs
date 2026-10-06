@@ -2,6 +2,7 @@
 
 const prisma = require('../config/database');
 const { getPilotFlightTotals, matchJobToAllPilots } = require('../services/matchingService');
+const { contextFromPilot, matchJob } = require('../services/jobMatch');
 const logger = require('../config/logger');
 
 const APPLICATION_STATUSES = ['APPLIED', 'REVIEWED', 'SHORTLISTED', 'HIRED'];
@@ -225,7 +226,7 @@ exports.repostJob = async (req, res, next) => {
 // Whitelisted applicant DTO — first name + last initial, qualifications, and the
 // snapshotted match/breakdown. NEVER email/phone/full surname/CV (privacy enforced
 // here at the API layer, not just in the frontend).
-function toApplicantDTO(app, totals) {
+function toApplicantDTO(app, totals, match) {
   const p = app.pilot;
   const elp = p.certificates.find((c) => c.type === 'ELP');
   const bestMedical = p.medicals.reduce(
@@ -238,7 +239,11 @@ function toApplicantDTO(app, totals) {
     appliedAt: app.appliedAt,
     status: app.status,
     statusUpdatedAt: app.statusUpdatedAt,
-    matchScore: app.matchScore,
+    // Unified match (same services/jobMatch.js the pilot sees) — status + pct +
+    // three-state requirement rows. Legacy matchScore/matchBreakdown kept for old
+    // installed clients until they update (additive, never removed).
+    match: match ? { status: match.status, pct: match.pct, shortfall: match.shortfall, category: match.category, requirements: match.requirements } : null,
+    matchScore: match ? match.pct : app.matchScore,
     matchBreakdown: app.matchBreakdown,
     snapshot: {
       role: p.role,
@@ -261,10 +266,21 @@ exports.listApplicants = async (req, res, next) => {
 
     const apps = await prisma.application.findMany({
       where: { jobId: job.id },
-      orderBy: [{ matchScore: { sort: 'desc', nulls: 'last' } }, { appliedAt: 'asc' }],
-      include: { pilot: { include: { certificates: true, ratings: true, medicals: true, rightToWork: true } } },
+      orderBy: [{ appliedAt: 'asc' }],
+      include: { pilot: { include: { certificates: true, ratings: true, medicals: true, rightToWork: true, instructorRatings: true } } },
     });
-    const applicants = await Promise.all(apps.map(async (a) => toApplicantDTO(a, await getPilotFlightTotals(a.pilotId))));
+    // The two new match columns are globally omitted — fetch them once for this job
+    // so matchJob reads reqTypeRatings (type) + aircraftTypes (category), as getJob does.
+    const mx = await prisma.job.findUnique({ where: { id: job.id }, select: { aircraftTypes: true, reqTypeRatings: true } });
+    const jobForMatch = { ...job, ...(mx || {}) };
+    const applicants = await Promise.all(apps.map(async (a) => {
+      const totals = await getPilotFlightTotals(a.pilotId);
+      const ctx = contextFromPilot(a.pilot, totals);
+      const match = ctx ? matchJob(jobForMatch, ctx) : null;
+      return toApplicantDTO(a, totals, match);
+    }));
+    // Rank by the unified pct (desc, nulls last), then earliest applied.
+    applicants.sort((a, b) => (b.match?.pct ?? -1) - (a.match?.pct ?? -1) || new Date(a.appliedAt) - new Date(b.appliedAt));
     res.json({ job: { id: job.id, title: job.title, status: job.status, applyUrl: job.applyUrl }, applicants });
   } catch (err) {
     next(err);

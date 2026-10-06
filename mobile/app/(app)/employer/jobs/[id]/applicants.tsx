@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../../src/lib/api';
-import { matchStyle } from '../../../../../src/lib/jobMatch';
+import { statusMeta } from '../../../../../src/lib/jobMatch';
 import { employer as emp, fontFamilies, fontSizes, semantic, spacing } from '../../../../../src/theme/tokens';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,13 +42,14 @@ function StatusPill({ status }: { status: string }) {
   const s = STATUS[status] || STATUS.APPLIED;
   return <View style={[styles.pill, { backgroundColor: s.bg }]}><Text style={[styles.pillText, { color: s.fg }]}>{s.label}</Text></View>;
 }
-function Score({ score, size = 'sm' }: { score: number | null; size?: 'sm' | 'lg' }) {
-  if (score == null) return <Text style={styles.noScore}>—</Text>;
-  const st = matchStyle(score);
+// Unified match % + status (same services/jobMatch.js the pilot sees) — no tiers.
+function Score({ match, size = 'sm' }: { match: App | null; size?: 'sm' | 'lg' }) {
+  const m = statusMeta(match);
+  if (!m || match?.pct == null) return <Text style={styles.noScore}>—</Text>;
   return (
     <View style={{ alignItems: size === 'lg' ? 'flex-start' : 'center' }}>
-      <Text style={[styles.scoreNum, { color: st.color, fontSize: size === 'lg' ? 26 : 18 }]}>{score}%</Text>
-      {size === 'lg' ? <Text style={[styles.scoreLabel, { color: st.color }]}>{st.label}</Text> : null}
+      <Text style={[styles.scoreNum, { color: m.color, fontSize: size === 'lg' ? 26 : 18 }]}>{match.pct}%</Text>
+      {size === 'lg' ? <Text style={[styles.scoreLabel, { color: m.color }]}>{m.label || 'match'}</Text> : null}
     </View>
   );
 }
@@ -75,7 +76,7 @@ export default function Applicants() {
   }, [id]);
   useEffect(() => { load(); }, [load]);
 
-  const ranked = useMemo(() => [...(data?.applicants || [])].sort((a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1)), [data]);
+  const ranked = useMemo(() => [...(data?.applicants || [])].sort((a, b) => (b.match?.pct ?? b.matchScore ?? -1) - (a.match?.pct ?? a.matchScore ?? -1)), [data]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { ALL: ranked.length };
     STATUS_ORDER.forEach((s) => { c[s] = ranked.filter((a) => a.status === s).length; });
@@ -103,7 +104,7 @@ export default function Applicants() {
     const snap = a.snapshot || {};
     return (
       <Pressable style={styles.card} onPress={() => { setConfirm(''); setOpenId(a.applicationId); }}>
-        <View style={styles.cardScore}><Score score={a.matchScore} /></View>
+        <View style={styles.cardScore}><Score match={a.match} /></View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.name}>{a.pilotName}</Text>
           <View style={styles.meta}>
@@ -178,18 +179,13 @@ export default function Applicants() {
               <Text style={styles.drawerName}>{openApp.pilotName}</Text>
               <Text style={styles.drawerApplied}>Applied {appliedAgo(openApp.appliedAt)}</Text>
               <View style={styles.drawerHead}>
-                <Score score={openApp.matchScore} size="lg" />
+                <Score match={openApp.match} size="lg" />
                 <StatusPill status={openApp.status} />
               </View>
+              {openApp.match?.shortfall ? <Text style={[styles.muted, { marginTop: 8 }]}>{openApp.match.shortfall}</Text> : null}
 
-              <Text style={styles.sectionLabel}>MATCH BREAKDOWN</Text>
-              {(openApp.matchBreakdown?.matched?.length || openApp.matchBreakdown?.marginal?.length || openApp.matchBreakdown?.missing?.length) ? (
-                <View>
-                  <Bucket items={openApp.matchBreakdown.matched} color={SEM.green} glyph="✓" />
-                  <Bucket items={openApp.matchBreakdown.marginal} color={SEM.amber} glyph="~" />
-                  <Bucket items={openApp.matchBreakdown.missing} color={SEM.red} glyph="✗" />
-                </View>
-              ) : <Text style={styles.muted}>No requirement breakdown captured.</Text>}
+              <Text style={styles.sectionLabel}>REQUIREMENTS</Text>
+              <ReqRows requirements={openApp.match?.requirements} />
 
               <Text style={styles.sectionLabel}>PILOT SNAPSHOT</Text>
               {(() => { const s = openApp.snapshot || {}; return (
@@ -231,10 +227,16 @@ export default function Applicants() {
   );
 }
 
-function Bucket({ items, color, glyph }: { items?: string[]; color: string; glyph: string }) {
-  if (!items || items.length === 0) return null;
-  return <View style={{ marginBottom: 8 }}>{items.map((t, i) => (
-    <View key={i} style={styles.bucketRow}><Text style={{ color, fontFamily: fontFamilies.bodyBold }}>{glyph} </Text><Text style={styles.bucketText}>{t}</Text></View>
+// Three-state requirement rows (met · not_met · add) from the unified match.
+const REQ_COLOR: Record<string, string> = { met: SEM.green, not_met: SEM.red, add: emp.muted };
+const REQ_GLYPH: Record<string, string> = { met: '✓', not_met: '✗', add: '•' };
+function ReqRows({ requirements }: { requirements?: App[] }) {
+  if (!requirements || requirements.length === 0) return <Text style={styles.muted}>No stated requirements.</Text>;
+  return <View>{requirements.map((r, i) => (
+    <View key={i} style={styles.bucketRow}>
+      <Text style={{ color: REQ_COLOR[r.state] || emp.muted, fontFamily: fontFamilies.bodyBold }}>{REQ_GLYPH[r.state] || '•'} </Text>
+      <Text style={styles.bucketText}>{r.label}: {r.reqText}{r.state !== 'met' && r.gap ? ` — ${r.gap}` : r.pilotText ? ` (${r.pilotText})` : ''}</Text>
+    </View>
   ))}</View>;
 }
 function Snap({ k, v }: { k: string; v: string }) {
