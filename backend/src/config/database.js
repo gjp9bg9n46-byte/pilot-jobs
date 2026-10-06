@@ -8,7 +8,11 @@ const prisma = new PrismaClient({
   // them (the new matcher/readers, the backfill verifier) selects them explicitly,
   // which overrides this. Removed when the coordinated frontend wiring ships.
   omit: {
-    job: { aircraftTypes: true, reqTypeRatings: true },
+    // aircraftTypes/reqTypeRatings: Option-3 match inputs. identityKey/
+    // identityFirstSeenAt: precomputed clustering internals (jobIdentityStore).
+    // All four are read via explicit select where needed (which overrides this)
+    // and kept OUT of default API responses so the response shape is unchanged.
+    job: { aircraftTypes: true, reqTypeRatings: true, identityKey: true, identityFirstSeenAt: true },
   },
 });
 
