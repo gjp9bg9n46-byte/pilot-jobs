@@ -26,6 +26,12 @@ function properCase(s) {
   }).join(' ')).join(' ').trim();
 }
 const canonCountry = (v) => { const m = COUNTRIES.find((c) => c.toLowerCase() === String(v || '').trim().toLowerCase()); return m || (v || ''); };
+// The pilot's nationalities, falling back to the legacy single `nationality`
+// column for accounts saved before the multi-select shipped.
+export const pilotNationalities = (p) => {
+  const list = Array.isArray(p?.nationalities) && p.nationalities.length ? p.nationalities : (p?.nationality ? [p.nationality] : []);
+  return list.map(canonCountry).filter(Boolean);
+};
 
 // ── Field primitives ─────────────────────────────────────────────────────────
 function Field({ label, error, hint, children }) {
@@ -57,7 +63,7 @@ function AuthoritySelect({ value, onChange }) {
   );
 }
 // Generic searchable combobox over a flat string list (country / nationality).
-function SearchCombo({ value, onChange, options, placeholder }) {
+function SearchCombo({ value, onChange, options, placeholder, autoFocus = false }) {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(-1);
   const box = useRef(null);
@@ -73,7 +79,7 @@ function SearchCombo({ value, onChange, options, placeholder }) {
   return (
     <div className="scombo" ref={box}>
       <input
-        value={value || ''} placeholder={placeholder} autoComplete="off"
+        value={value || ''} placeholder={placeholder} autoComplete="off" autoFocus={autoFocus}
         onChange={(e) => { onChange(e.target.value); setOpen(true); setHi(-1); }}
         onFocus={() => setOpen(true)}
         onKeyDown={(e) => {
@@ -94,6 +100,43 @@ function SearchCombo({ value, onChange, options, placeholder }) {
   );
 }
 
+// Multi-select country list (nationalities — dual citizens keep both). Chips
+// with a remove ×, plus an "Add nationality" link that opens the same
+// searchable combo. Matching only: never shown publicly, never sent to an
+// employer unless the pilot applies.
+function MultiCountry({ values, onChange, addLabel = 'Add nationality' }) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState('');
+  const left = useMemo(() => COUNTRIES.filter((c) => !values.some((v) => v.toLowerCase() === c.toLowerCase())), [values]);
+  const add = (v) => {
+    const c = canonCountry(v);
+    if (!c || values.some((x) => x.toLowerCase() === c.toLowerCase())) return;
+    onChange([...values, c]);
+    setDraft(''); setAdding(false);
+  };
+  return (
+    <div className="mcountry">
+      {values.length > 0 && (
+        <div className="mc-chips">
+          {values.map((v) => (
+            <span className="mc-chip" key={v}>
+              {v}
+              <button type="button" aria-label={`Remove ${v}`} onClick={() => onChange(values.filter((x) => x !== v))}><X size={12} /></button>
+            </span>
+          ))}
+        </div>
+      )}
+      {adding ? (
+        <SearchCombo
+          autoFocus value={draft} options={left} placeholder="Search countries…"
+          onChange={(v) => { if (left.some((c) => c.toLowerCase() === String(v).toLowerCase())) add(v); else setDraft(v); }}
+        />
+      ) : (
+        <button type="button" className="mc-add" onClick={() => { setDraft(''); setAdding(true); }}>+ {addLabel}</button>
+      )}
+    </div>
+  );
+}
 // ── Sheet shell: sticky footer (Cancel outline + Save primary, 44px), Escape /
 // outside close with a discard prompt only when edited, bottom-left Remove with a
 // confirm step (grey text, red only on the final button). ─────────────────────
@@ -147,7 +190,7 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }) {
   const [form, setForm] = useState(() => {
     let f;
     if (kind === 'personal') {
-      f = { firstName: profile.firstName || '', lastName: profile.lastName || '', role: profile.role || '', city: profile.city || '', country: canonCountry(profile.country), nationality: canonCountry(profile.nationality), phone: profile.phone || '', education: profile.education || '' };
+      f = { firstName: profile.firstName || '', lastName: profile.lastName || '', role: profile.role || '', city: profile.city || '', country: canonCountry(profile.country), nationalities: pilotNationalities(profile), phone: profile.phone || '', education: profile.education || '' };
     } else if (kind === 'prefs') {
       const p = profile.preferences || {};
       f = { preferredCountries: (p.preferredCountries || []).join(', '), preferredAircraft: (p.preferredAircraft || []).join(', '), preferredContractTypes: (p.preferredContractTypes || []).join(', '), willingToRelocate: !!profile.willingToRelocate };
@@ -216,10 +259,16 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }) {
         // Only send changed fields, so untouched values keep their stored casing.
         const orig = JSON.parse(initial.current);
         const body = {};
-        for (const k of ['firstName', 'lastName', 'role', 'city', 'country', 'nationality', 'phone', 'education']) {
+        for (const k of ['firstName', 'lastName', 'role', 'city', 'country', 'phone', 'education']) {
           if (form[k] === orig[k]) continue;
           const v = String(form[k]).trim();
           body[k] = v === '' ? null : v; // required names can't blank out (validated above)
+        }
+        // Nationalities are a list (dual citizens); the legacy single column is
+        // kept in sync with the first one so the CV and older reads still work.
+        if (JSON.stringify(form.nationalities) !== JSON.stringify(orig.nationalities)) {
+          body.nationalities = form.nationalities;
+          body.nationality = form.nationalities[0] || null;
         }
         if (Object.keys(body).length) await profileApi.update(body);
       } else if (kind === 'prefs') {
@@ -269,7 +318,9 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }) {
           <Field label="Role (headline)"><select value={form.role} onChange={(e) => set('role', e.target.value)}>{ROLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
           <Field label="City"><input value={form.city} onChange={(e) => set('city', e.target.value)} /></Field>
           <Field label="Country"><SearchCombo value={form.country} onChange={(v) => set('country', v)} options={COUNTRIES} placeholder="Search countries…" /></Field>
-          <Field label="Nationality"><SearchCombo value={form.nationality} onChange={(v) => set('nationality', v)} options={COUNTRIES} placeholder="Search countries…" /></Field>
+          <Field label="Nationality" hint="Used only to check job eligibility — not shown on your profile, and only sent to an airline if you apply. Add more than one if you hold dual citizenship.">
+            <MultiCountry values={form.nationalities} onChange={(v) => set('nationalities', v)} />
+          </Field>
           <Field label="Phone (private)"><input value={form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
           <Field label="Education"><select value={form.education} onChange={(e) => set('education', e.target.value)}>{EDU.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
           <p className="fnote">Email is shown to airlines you apply to — change it in account settings.</p>

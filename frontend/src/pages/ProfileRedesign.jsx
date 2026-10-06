@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { profileApi, logbookApi } from '../services/api';
 import { LightPage } from '../components/primitives';
-import ProfileEditSheet from './ProfileEditSheets';
+import ProfileEditSheet, { pilotNationalities } from './ProfileEditSheets';
 import './profileRedesign.css';
 
 // ── formatting helpers (display only; data is stored as entered) ──────────────
@@ -286,12 +286,13 @@ export default function ProfileRedesign() {
     </div>
   );
 
+  const nationalities = pilotNationalities(profile);
   const cardPersonal = (
     <div className="card" key="per">
       <div className="card-h"><h4>Personal details</h4><EditBtn kind="personal" /></div>
       <dl className="kv">
         {place && <><dt>Location</dt><dd>{place}</dd></>}
-        {profile.nationality && <><dt>Nationality</dt><dd>{properCase(profile.nationality)}</dd></>}
+        {nationalities.length > 0 && <><dt>{nationalities.length > 1 ? 'Nationalities' : 'Nationality'}</dt><dd>{nationalities.map(properCase).join(', ')}<span className="pv">matching only</span></dd></>}
         {profile.phone && <><dt>Phone</dt><dd>{profile.phone}<span className="pv">only you &amp; airlines you apply to</span></dd></>}
         {profile.email && <><dt>Email</dt><dd>{maskEmail(profile.email)}<span className="pv">private</span></dd></>}
         {profile.education && <><dt>Education</dt><dd>{EDU_LABEL[profile.education] || profile.education}</dd></>}

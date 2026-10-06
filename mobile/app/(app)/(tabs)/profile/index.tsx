@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import { SecondaryButton } from '../../../../src/components/ui';
 import { TAB_BAR_CLEARANCE } from '../../../../src/theme/tabBar';
-import ProfileEditSheet, { EditSpec } from '../../../../src/components/ProfileEditSheet';
+import ProfileEditSheet, { EditSpec, pilotNationalities } from '../../../../src/components/ProfileEditSheet';
 import { useAuth } from '../../../../src/context/AuthContext';
 import {
   APP_STATUS, EDUCATION_LABEL, ROLE_LABEL, appliedAgo, formatDate,
@@ -127,6 +127,7 @@ export default function ProfileView() {
   const name = properCase(`${profile.firstName || ''} ${profile.lastName || ''}`.trim());
   const initials = (`${(profile.firstName || '')[0] || ''}${(profile.lastName || '')[0] || ''}`).toUpperCase();
   const place = [profile.city, profile.country].filter(Boolean).map(properCase).join(', ');
+  const nationalities = pilotNationalities(profile);
   const headline = [profile.role && ROLE_LABEL[profile.role], mainType && properCase(mainType), place || null].filter(Boolean).join(' · ');
 
   const activeLicence = LICENCE_RANK.map((t) => licences.find((c) => c.type === t && notExpired(c.expiryDate))).find(Boolean) || null;
@@ -361,7 +362,7 @@ export default function ProfileView() {
           <View style={styles.cardHead}><Text style={styles.cardTitle}>Personal details</Text><Pressable onPress={() => setEditing({ kind: 'personal' })}><Text style={styles.editLink}>Edit</Text></Pressable></View>
           <View style={{ gap: 10, marginTop: 6 }}>
             {place ? <View style={styles.kv}><Text style={styles.kvK}>Location</Text><Text style={styles.kvV}>{place}</Text></View> : null}
-            {profile.nationality ? <View style={styles.kv}><Text style={styles.kvK}>Nationality</Text><Text style={styles.kvV}>{properCase(profile.nationality)}</Text></View> : null}
+            {nationalities.length > 0 ? <View style={styles.kv}><Text style={styles.kvK}>{nationalities.length > 1 ? 'Nationalities' : 'Nationality'}</Text><Text style={styles.kvV}>{nationalities.map((n) => properCase(n)).join(', ')}</Text></View> : null}
             {profile.phone ? <View style={styles.kv}><Text style={styles.kvK}>Phone</Text><Text style={styles.kvV}>{profile.phone}</Text></View> : null}
             {profile.education ? <View style={styles.kv}><Text style={styles.kvK}>Education</Text><Text style={styles.kvV}>{EDUCATION_LABEL[profile.education] || profile.education}</Text></View> : null}
           </View>

@@ -13,6 +13,7 @@ import { fetchAirlineMap, resolveAirline } from '../../lib/airlineLookup';
 const ADD_LINK = {
   authority: '/profile', licence: '/profile', medical: '/profile', typeRating: '/profile',
   english: '/profile', workAuth: '/profile', education: '/profile',
+  nationality: '/profile', clearance: '/profile',
   totalHours: '/logbook', picHours: '/logbook', multiHours: '/logbook',
   turbineHours: '/logbook', instrumentHours: '/logbook', ccHours: '/logbook',
 };

@@ -46,20 +46,40 @@ function toExcerpt(text: string, maxChars = 320): string {
 //   met → green tick · not_met → red (has data, falls short) · add → grey
 //   (unknown on the profile, "add X to check"). The % counts 'add' against it
 //   but it is never shown as a red failure — matches web's three-state rows.
+// Where an unknown ("add") requirement's row takes the pilot — mirrors the web
+// ADD_LINK map in JobDetailPanel.jsx.
+const ADD_LINK: Record<string, string> = {
+  authority: '/profile', licence: '/profile', medical: '/profile', typeRating: '/profile',
+  english: '/profile', workAuth: '/profile', education: '/profile',
+  nationality: '/profile', clearance: '/profile',
+  totalHours: '/logbook', picHours: '/logbook', multiHours: '/logbook',
+  turbineHours: '/logbook', instrumentHours: '/logbook', ccHours: '/logbook',
+};
+
 function ReqRow({ req }: { req: Job }) {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const router = useRouter();
   const color = req.state === 'met' ? SEM.green : req.state === 'not_met' ? SEM.red : pilot.muted;
   const icon = req.state === 'met' ? 'checkmark-circle' : req.state === 'not_met' ? 'close-circle' : 'ellipse-outline';
   const pilotText = req.state === 'add' ? (req.gap || 'Add to profile') : (req.reason || req.pilotText || '—');
-  return (
-    <View style={[styles.reqRow, req.state !== 'met' && styles.reqRowMiss]}>
+  const addTo = req.state === 'add' ? (ADD_LINK[req.key] || '/profile') : null;
+  const body = (
+    <>
       <Ionicons name={icon} size={16} color={color} />
       <Text style={styles.reqLabel}>{req.label}</Text>
       <Text style={[styles.reqValue, { color: req.state === 'met' ? pilot.ink : color }]}>{req.reqText}</Text>
-      <Text style={[styles.reqPilot, { color }]}>{pilotText}</Text>
-    </View>
+      <Text style={[styles.reqPilot, addTo ? styles.reqPilotAdd : { color }]}>{pilotText}</Text>
+    </>
   );
+  if (addTo) {
+    return (
+      <Pressable onPress={() => router.push(addTo as never)} style={[styles.reqRow, styles.reqRowMiss]} accessibilityRole="button" accessibilityLabel={`${req.label} — ${pilotText}`}>
+        {body}
+      </Pressable>
+    );
+  }
+  return <View style={[styles.reqRow, req.state !== 'met' && styles.reqRowMiss]}>{body}</View>;
 }
 
 export default function JobDetail() {
@@ -383,6 +403,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   reqLabel: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, minWidth: 80 },
   reqValue: { flex: 1, minWidth: 80, fontSize: fontSizes.sm, fontFamily: fontFamilies.bodySemiBold },
   reqPilot: { fontSize: fontSizes.xs, fontFamily: fontFamilies.body, textAlign: 'right' },
+  reqPilotAdd: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, textDecorationLine: 'underline' },
 
   bodyText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24 },
   paraText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24, marginBottom: 10 },

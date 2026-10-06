@@ -32,6 +32,12 @@ export const COUNTRIES = ['Afghanistan', 'Albania', 'Algeria', 'Angola', 'Argent
 const toISO = (d: string) => (d ? new Date(`${d}T00:00:00.000Z`).toISOString() : null);
 const isoDay = (d: any) => (d ? new Date(d).toISOString().slice(0, 10) : '');
 const canonCountry = (v?: string) => COUNTRIES.find((c) => c.toLowerCase() === String(v || '').trim().toLowerCase()) || (v || '');
+// The pilot's nationalities, falling back to the legacy single `nationality`
+// column for accounts saved before the multi-select shipped.
+export const pilotNationalities = (p: Any): string[] => {
+  const list: string[] = Array.isArray(p?.nationalities) && p.nationalities.length ? p.nationalities : (p?.nationality ? [p.nationality] : []);
+  return list.map((x) => canonCountry(x)).filter(Boolean);
+};
 function properCase(s?: string) {
   return String(s || '').split(/\s+/).map((w) => w.split('-').map((p) => {
     if (!p) return p;
@@ -74,6 +80,51 @@ function CountryField({ label, value, error, onChange }: { label: string; value:
   );
 }
 
+// Multi-select country list (nationalities — dual citizens keep both). Chips
+// with a remove ×, plus an "Add nationality" link opening the same picker.
+// Matching only: never on the public profile, never sent unless the pilot applies.
+function MultiCountryField({ label, values, hint, onChange }: { label: string; values: string[]; hint?: string; onChange: (v: string[]) => void }) {
+  const styles = useThemedStyles(createStyles);
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const left = COUNTRIES.filter((c) => !values.some((v) => v.toLowerCase() === c.toLowerCase()));
+  const matches = q.trim() ? left.filter((c) => c.toLowerCase().includes(q.trim().toLowerCase())) : left;
+  const add = (c: string) => { onChange([...values, c]); setOpen(false); };
+  return (
+    <View style={{ marginBottom: 0 }}>
+      <FieldLabel label={label} />
+      {values.length > 0 && (
+        <View style={styles.chipWrap}>
+          {values.map((v) => (
+            <View key={v} style={styles.chip}>
+              <Text style={styles.chipText}>{v}</Text>
+              <Pressable onPress={() => onChange(values.filter((x) => x !== v))} hitSlop={8} accessibilityLabel={`Remove ${v}`} style={NO_OUTLINE}>
+                <Ionicons name="close" size={13} color={styles.chipText.color as string} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+      <Pressable onPress={() => { setQ(''); setOpen(true); }} style={NO_OUTLINE}>
+        <Text style={styles.addLink}>+ Add nationality</Text>
+      </Pressable>
+      {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.pickBackdrop} onPress={() => setOpen(false)}>
+          <Pressable style={styles.pickSheet} onPress={(e) => e.stopPropagation()}>
+            <TextInput autoFocus placeholder="Search countries…" placeholderTextColor="#9AA0A6" value={q} onChangeText={setQ} style={[styles.input, { marginBottom: 10 }]} />
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {matches.map((c) => (
+                <Pressable key={c} onPress={() => add(c)} style={styles.pickRow}><Text style={styles.pickRowText}>{c}</Text></Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
 // Suppress the browser's blue focus ring in the react-native-web render (no
 // effect on native, where there is no focus outline). Cast — RN style types
 // don't list outline* on all versions.
@@ -102,7 +153,7 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }: { 
 
   const [form, setForm] = useState<Any>(() => {
     let f: Any = {};
-    if (kind === 'personal') f = { firstName: profile?.firstName || '', lastName: profile?.lastName || '', role: profile?.role || '', city: profile?.city || '', country: canonCountry(profile?.country), nationality: canonCountry(profile?.nationality), phone: profile?.phone || '', education: profile?.education || '' };
+    if (kind === 'personal') f = { firstName: profile?.firstName || '', lastName: profile?.lastName || '', role: profile?.role || '', city: profile?.city || '', country: canonCountry(profile?.country), nationalities: pilotNationalities(profile), phone: profile?.phone || '', education: profile?.education || '' };
     else if (kind === 'prefs') { const p = profile?.preferences || {}; f = { preferredCountries: (p.preferredCountries || []).join(', '), preferredAircraft: (p.preferredAircraft || []).join(', '), preferredContractTypes: (p.preferredContractTypes || []).join(', '), willingToRelocate: !!profile?.willingToRelocate }; }
     else if (kind === 'licence') { const std = LIC_TYPES.some(([v]) => v === cert?.type); f = { type: cert ? (std ? cert.type : 'Other') : '', typeOther: cert && !std ? cert.type : '', issuingAuthority: cert?.issuingAuthority || '', certificateNumber: cert?.certificateNumber || '', issueDate: isoDay(cert?.issueDate), expiryDate: isoDay(cert?.expiryDate) }; }
     else if (kind === 'rating') f = { aircraft: properCase(rating?.aircraftType || ''), licenceId: rating?.licenceId || '', lineCheckDate: isoDay(rating?.lineCheckDate) };
@@ -161,10 +212,16 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }: { 
       const orig = JSON.parse(initial.current);
       if (kind === 'personal') {
         const body: Any = {};
-        for (const k of ['firstName', 'lastName', 'role', 'city', 'country', 'nationality', 'phone', 'education']) {
+        for (const k of ['firstName', 'lastName', 'role', 'city', 'country', 'phone', 'education']) {
           if (form[k] === orig[k]) continue;
           const v = String(form[k]).trim();
           body[k] = v === '' ? null : v;
+        }
+        // Nationalities are a list (dual citizens); the legacy single column is
+        // kept in sync with the first one so the CV and older reads still work.
+        if (JSON.stringify(form.nationalities) !== JSON.stringify(orig.nationalities)) {
+          body.nationalities = form.nationalities;
+          body.nationality = form.nationalities[0] || null;
         }
         if (Object.keys(body).length) await api.patch('/profile', body);
       } else if (kind === 'prefs') {
@@ -220,7 +277,10 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }: { 
                 <SelectField label="Role (headline)" value={form.role} options={ROLES} onSelect={(v) => set('role', v)} />
                 <TextField label="City" value={form.city} onChangeText={(v) => set('city', v)} />
                 <CountryField label="Country" value={form.country} onChange={(v) => set('country', v)} />
-                <CountryField label="Nationality" value={form.nationality} onChange={(v) => set('nationality', v)} />
+                <MultiCountryField
+                  label="Nationality" values={form.nationalities} onChange={(v) => set('nationalities', v)}
+                  hint="Used only to check job eligibility — not shown on your profile, and only sent to an airline if you apply. Add more than one if you hold dual citizenship."
+                />
                 <TextField label="Phone (private)" value={form.phone} onChangeText={(v) => set('phone', v)} keyboardType="phone-pad" />
                 <SelectField label="Education" value={form.education} options={EDU} onSelect={(v) => set('education', v)} />
                 <Text style={styles.note}>Email is shown to airlines you apply to — change it in account settings.</Text>
@@ -330,6 +390,11 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   selPh: { fontFamily: fontFamilies.body, fontSize: fontSizes.md, color: '#9AA0A6' },
   chev: { color: pilot.muted, fontSize: 14 },
   fieldErr: { color: '#B42318', fontSize: fontSizes.xs, fontFamily: fontFamilies.body, marginTop: 5 },
+  fieldHint: { color: pilot.muted, fontSize: fontSizes.xs, fontFamily: fontFamilies.body, lineHeight: 16, marginTop: 6 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: pilot.navy, backgroundColor: 'transparent', borderRadius: 20, paddingVertical: 5, paddingLeft: 11, paddingRight: 8 },
+  chipText: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm, color: pilot.navy },
+  addLink: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm, color: pilot.navy },
 
   pickBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
   pickSheet: { backgroundColor: pilot.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: spacing.xl, maxHeight: '75%' },
