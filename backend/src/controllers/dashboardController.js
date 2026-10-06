@@ -14,6 +14,7 @@ const MATCH_SELECT = {
   reqMedicalClass: true, reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true,
   reqMinTurbineHours: true, reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
   reqEducation: true, reqWorkAuthorization: true, reqEnglishLevel: true,
+  requirementsText: true, description: true, // eligibility (nationality/clearance) detection
   identityKey: true, identityFirstSeenAt: true, // precomputed cluster (no in-request clustering)
 };
 
@@ -73,7 +74,7 @@ exports.getDashboard = async (req, res, next) => {
       if (seenCard.has(j._key)) continue; // one card per identity cluster (re-posts collapse)
       seenCard.add(j._key);
       const m = ctx ? matchJob(j, ctx) : null;
-      if (m && m.status === 'WRONG_CATEGORY') continue; // excluded from "new jobs for you"
+      if (m && (m.status === 'WRONG_CATEGORY' || m.status === 'EVENT')) continue; // not real vacancies for this pilot
       // identity-first-seen: NEW only if the cluster first appeared after the last
       // visit. identityFirstSeenAt is precomputed; fall back to createdAt if unset.
       const firstSeen = j.identityFirstSeenAt ? new Date(j.identityFirstSeenAt).getTime() : new Date(j.createdAt).getTime();

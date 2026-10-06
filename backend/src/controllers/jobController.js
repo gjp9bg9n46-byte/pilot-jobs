@@ -83,12 +83,15 @@ function deriveApplyTrust(j) {
 // Light projection for the candidate fetch — every field matching/region/sort/facets
 // need, and nothing heavy (no description/descriptionEn). Keep in sync with matchJob.
 const CANDIDATE_SELECT = {
-  id: true, company: true, country: true, sourceType: true, postedAt: true, role: true,
+  id: true, title: true, titleEn: true, company: true, country: true, sourceType: true, postedAt: true, role: true,
   salaryMax: true, salaryMin: true, expiresAt: true,
   reqCertificates: true, reqAuthorities: true, reqAircraftTypes: true, reqMedicalClass: true,
   reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true, reqMinTurbineHours: true,
   reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
   reqEducation: true, reqWorkAuthorization: true, reqEnglishLevel: true,
+  // title + requirementsText let the matcher classify category / instructor / event /
+  // eligibility on the candidate scan too (title was previously absent here).
+  requirementsText: true,
   // New split fields the unified matcher reads (explicit select overrides the global
   // omit; candidates are internal — not serialized, so nothing leaks to the response).
   aircraftTypes: true, reqTypeRatings: true,

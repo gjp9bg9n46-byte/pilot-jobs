@@ -23,6 +23,7 @@ const PILOT = (o = {}) => contextFromPilot({
   role: o.role ?? null,
   willingToRelocate: false,
   country: o.country ?? null,
+  nationality: o.nationality ?? null,
 }, o.totals || { totalTime: 2000, picTime: 800, sicTime: 0 });
 
 const byKey = (m, k) => m.requirements.find((r) => r.key === k);
@@ -290,4 +291,40 @@ test('baseline: a stated expired medical is not double-counted by the baseline',
   const m = matchJob(job, expiredMed);
   assert.strictEqual(m.requirements.filter((r) => r.key === 'medical').length, 1); // exactly one row
   assert.strictEqual(byKey(m, 'medical').gap, 'expired 15 Aug 2026');
+});
+
+// ── C#1 Recruitment events are not vacancies → EVENT, excluded from matching ──
+test('C#1 recruitment event → EVENT status, no %, no requirement rows', () => {
+  const m = matchJob({ title: 'Pilot Recruitment Event in Rome', reqMedicalClass: 'CLASS_1', reqMinTotalHours: 1500 }, PILOT());
+  assert.strictEqual(m.status, 'EVENT');
+  assert.strictEqual(m.pct, null);
+  assert.strictEqual(m.requirements.length, 0);
+  assert.strictEqual(m.shortfall, 'Recruitment event');
+});
+test('C#1 "assessment" only in the body does NOT make a real FO vacancy an event', () => {
+  const m = matchJob({ title: 'First Officer A320', requirementsText: 'An assessment day will follow shortlisting.', reqMinTotalHours: 1500 }, PILOT());
+  assert.notStrictEqual(m.status, 'EVENT');
+});
+
+// ── C#2 Nationality / security-clearance eligibility ─────────────────────────
+test('C#2 security clearance in the description → unknown (Add) row, never QUALIFY', () => {
+  const job = { title: 'C-130J Simulator Pilot Instructor', description: 'Applicants must hold or be able to obtain a security clearance.', reqMinMultiEngineHours: 1000 };
+  const m = matchJob(job, PILOT());
+  const cl = byKey(m, 'clearance');
+  assert.ok(cl, 'clearance row added');
+  assert.strictEqual(cl.status, 'unknown');
+  assert.strictEqual(cl.state, 'add');
+  assert.notStrictEqual(m.status, 'QUALIFY');
+});
+test('C#2 nationality: met when the pilot matches, unmet on mismatch, Add when unknown', () => {
+  const job = { title: 'First Officer A320 (UAE National)', aircraftTypes: ['A320'], reqMinTotalHours: 1000 };
+  assert.strictEqual(byKey(matchJob(job, PILOT({ nationality: 'United Arab Emirates' })), 'nationality').status, 'met');
+  assert.strictEqual(byKey(matchJob(job, PILOT({ nationality: 'Egypt' })), 'nationality').status, 'unmet');
+  assert.strictEqual(byKey(matchJob(job, PILOT()), 'nationality').status, 'unknown'); // no nationality on file
+});
+test('C#2 Kenn Borek (no nationality/clearance wording) gets no eligibility rows', () => {
+  const job = { title: 'Aviation First Officer', company: 'Kenn Borek Air Ltd.', country: 'Canada', reqMinTotalHours: 750 };
+  const m = matchJob(job, PILOT());
+  assert.ok(!byKey(m, 'nationality'));
+  assert.ok(!byKey(m, 'clearance'));
 });

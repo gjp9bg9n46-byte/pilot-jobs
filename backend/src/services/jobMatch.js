@@ -198,6 +198,7 @@ function buildContextInner(pilot, flightCerts, totals) {
     willingToRelocate: !!pilot.willingToRelocate,
     totals: totals || {}, roleSplitKnown,
     country: pilot.country ?? null,
+    nationality: pilot.nationality ? String(pilot.nationality).toLowerCase().trim() : null,
     // Empty-profile rule: with no licence AND no hours there is nothing to match on,
     // so the caller shows a "complete your profile" banner instead of fit groups.
     matchable: certTypes.size > 0 || ((totals && totals.totalTime) > 0),
@@ -240,6 +241,37 @@ function jobInstructorKind(job) {
   return null;
 }
 
+// A recruitment EVENT (roadshow / assessment day / open day / career fair) is not a
+// specific vacancy — it has no scored requirements and is excluded from matching.
+// Detected from the title/role only (the body may merely mention "assessment").
+const EVENT_WORD = /\b(recruitment|hiring|assessment|open|career|job)\s*(event|day|days|fair|fairs)\b|\broad\s?show\b|\bwalk[\s-]?in\b|\bmeet\s*(?:&|and)\s*greet\b|\bopen\s+house\b|\bjob\s+fair\b/i;
+function jobIsEvent(job) {
+  return EVENT_WORD.test(`${job.title || ''} ${job.titleEn || ''} ${job.role || ''}`);
+}
+
+// Nationality / citizenship / security-clearance eligibility (change C#2). Parsed
+// from title + body. nationality → a country/descriptor the pilot must hold;
+// clearance → a defence/security clearance we cannot verify from the profile.
+const NATIONALITY_PATTERNS = [
+  [/\b(uae|emirati)\s+national\b|\bemirati(?:s|z)ation\b|\bemirati\s+citizen\b/i, 'UAE national'],
+  [/\bsaudi\s+national\b|\bsaudi\s+citizen\b|\bsaudi(?:s|z)ation\b/i, 'Saudi national'],
+  [/\bqatari\s+national\b|\bqatari\s+citizen\b/i, 'Qatari national'],
+  [/\baustralian\s+citizen(?:ship)?\b/i, 'Australian citizen'],
+  [/\bcanadian\s+citizen(?:ship)?\b/i, 'Canadian citizen'],
+  [/\bnew\s+zealand\s+citizen\b/i, 'NZ citizen'],
+  [/\bu\.?s\.?\s+citizen|united\s+states\s+citizen\b/i, 'US citizen'],
+  [/\bbritish\s+citizen|uk\s+citizen\b/i, 'UK citizen'],
+  [/\b(?:local|national)s?\s+only\b|\bcitizens?\s+only\b/i, 'nationals only'],
+];
+const CLEARANCE_WORD = /\b(security|defence|defense)\s+clearance\b|\b(?:nv1|nv2|pv|dv|sc|baseline)\s+clearance\b|\bclearance\s+(?:is\s+)?(?:required|mandatory)\b/i;
+function jobEligibility(job) {
+  const text = `${job.title || ''} ${job.titleEn || ''} ${String(job.requirementsText || '')} ${String(job.description || '').slice(0, 6000)}`;
+  let nationality = null;
+  for (const [re, label] of NATIONALITY_PATTERNS) { if (re.test(text)) { nationality = label; break; } }
+  const clearance = CLEARANCE_WORD.test(text);
+  return { nationality, clearance };
+}
+
 // Does the pilot's right-to-work satisfy a job's workAuthorization requirement?
 function rtwSatisfies(ctx, req) {
   if (req === 'required') return true; // any RTW on file counts as "authorised somewhere"
@@ -275,6 +307,18 @@ function hoursReq(key, label, reqVal, pilotVal, known) {
 function matchJob(job, ctx) {
   const reqs = [];
   const push = (r) => { if (r) reqs.push(r); };
+
+  // ── Recruitment EVENT (change C#1): not a vacancy → excluded from matching.
+  //    No requirements, no %, parked under its own status so lists can drop it. ──
+  if (jobIsEvent(job)) {
+    return {
+      requirements: [], counts: { met: 0, unmet: 0, unknown: 0 }, known: 0,
+      stated: 0, met: 0, notMet: 0, addCount: 0,
+      pct: null, status: 'EVENT', shortfall: 'Recruitment event', category: { jobCategory: null, gate: 'n/a', label: null, advisory: null },
+      unmetKeys: [], unknownKeys: [], blocker: null, fitGroup: 'few',
+    };
+  }
+
   const jobCat = jobAircraftCategory(job); // needed by the licence-category check below
 
   // ── Must-haves ─────────────────────────────────────────────────────────
@@ -359,6 +403,32 @@ function matchJob(job, ctx) {
   } else if (jobInstr === 'instructor') {
     const status = !ctx.hasAnyInstructorRating ? 'unknown' : (ctx.hasInstructor ? 'met' : 'unmet');
     push(mk('instructor', 'Instructor rating', 'must', status, 'Instructor (FI/TRI/…)', ctx.hasAnyInstructorRating ? [...ctx.instructorKinds].join(', ') : null, true));
+  }
+
+  // ── Eligibility: nationality / security clearance (change C#2) ──────────────
+  //   nationality: met when the pilot's nationality (or country, as a fallback)
+  //   matches; unmet on a clear mismatch; unknown when no nationality is on file.
+  //   clearance: we hold no clearance field, so it is always 'unknown' → an Add
+  //   row ("holds the required clearance?"), which keeps the job honest (it cannot
+  //   read QUALIFY while an unverifiable defence clearance is demanded).
+  const elig = jobEligibility(job);
+  if (elig.nationality) {
+    const held = ctx.nationality || ctx.country; // country is a weak proxy for nationality
+    let status;
+    if (!held) status = 'unknown';
+    else {
+      const want = elig.nationality.toLowerCase();
+      // Map the requirement label to the nationality/country token it implies.
+      const token = want.replace(/\s+(national|citizen|citizenship|only)\b/g, '').replace('nationals', '').trim();
+      const COUNTRY = { uae: ['uae', 'united arab emirates', 'emirati'], saudi: ['saudi', 'saudi arabia'], qatari: ['qatar', 'qatari'], australian: ['australia', 'australian'], canadian: ['canada', 'canadian'], nz: ['new zealand'], us: ['united states', 'usa', 'us', 'american'], uk: ['united kingdom', 'uk', 'britain', 'british'] };
+      const aliases = COUNTRY[token] || [token];
+      status = want.includes('nationals only') ? 'unknown' : (aliases.some((a) => held.includes(a)) ? 'met' : 'unmet');
+    }
+    push(mk('nationality', 'Nationality', 'must', status, elig.nationality, (ctx.nationality || ctx.country) ? titleCaseWord(ctx.nationality || ctx.country) : null, true));
+  }
+  if (elig.clearance) {
+    // No profile field for clearance → always unknown (Add). Never auto-met.
+    push(mk('clearance', 'Security clearance', 'must', 'unknown', 'Security/defence clearance', null, true));
   }
 
   // ── Implicit baseline — every pilot job needs a valid licence + valid medical ─
@@ -470,6 +540,7 @@ const ADD_LABEL = {
   typeRating: 'a type rating', medical: 'your medical', english: 'your English level',
   authority: 'your licence authority', licence: 'your licence', workAuth: 'work authorisation',
   education: 'your education', category: 'your licence category', instructor: 'an instructor rating', examiner: 'an examiner rating',
+  nationality: 'your nationality', clearance: 'your security clearance',
 };
 function gapPhrase(r) {
   if (r.status === 'met') return null;
