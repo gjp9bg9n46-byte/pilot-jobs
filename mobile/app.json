@@ -7,7 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "backgroundColor": "#F8F6F1",
       "resizeMode": "contain",
@@ -35,7 +34,9 @@
       "expo-font",
       "expo-secure-store",
       "expo-notifications",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-image",
+      "expo-sharing"
     ],
     "extra": {
       "router": {},
