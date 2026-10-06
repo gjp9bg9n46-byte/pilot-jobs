@@ -14,6 +14,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../src/lib/api';
 import { statusMeta } from '../../../src/lib/jobMatch';
+import { companyName, locationName } from '../../../src/lib/displayNames';
 import { useUnread } from '../../../src/context/UnreadContext';
 import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
@@ -31,6 +32,8 @@ const ago = (d?: string | null) => {
   if (days <= 0) return 'today'; if (days === 1) return '1 day ago'; return `${days} days ago`;
 };
 const weekday = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-US', { weekday: 'long' }) : null);
+const fmtD = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null);
+const daysSince = (iso?: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : Infinity);
 
 export default function DashboardScreen() {
   const pilot = useThemeColors();
@@ -63,7 +66,8 @@ export default function DashboardScreen() {
   if (!data) return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><ActivityIndicator color={pilot.navy} /><Text style={styles.dim}>Loading your dashboard…</Text></View></SafeAreaView>;
 
   const nj = data.newJobs;
-  const list: Any[] = (nj && (nj[tab] || nj.allNew)) || [];
+  // New items first (stable — keeps the server's match%/recency order within each group).
+  const list: Any[] = [...((nj && (nj[tab] || nj.allNew)) || [])].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
   const newCount = nj?.newSinceLastVisit ?? 0;
   const lastDay = weekday(nj?.lastVisit);
   const prof = data.profile || {};
@@ -89,7 +93,7 @@ export default function DashboardScreen() {
             <Ionicons name="warning-outline" size={18} color={SEM.red} style={{ marginTop: 1 }} />
             <View style={{ flex: 1 }}>
               <Text style={styles.blockerText}>
-                <Text style={{ fontFamily: fontFamilies.bodyBold }}>{data.blockers.items.map((i: Any) => i.label).join(' and ')} {data.blockers.items.length === 1 ? 'is' : 'are'} expired or expiring.</Text>
+                <Text style={{ fontFamily: fontFamilies.bodyBold }}>{data.blockers.items.map((i: Any) => `${i.label}${fmtD(i.date) ? ` (${i.days != null && i.days < 0 ? 'expired' : 'expires'} ${fmtD(i.date)})` : ''}`).join(' and ')} {data.blockers.items.length === 1 ? 'is' : 'are'} expired or expiring.</Text>
                 {' '}Update the dates so you show up as qualified.
               </Text>
               <View style={styles.blockerLinks}>
@@ -104,7 +108,7 @@ export default function DashboardScreen() {
         {/* New jobs for you */}
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <Text style={styles.cardTitle}>New jobs for you</Text>
+            <Text style={styles.cardTitle}>Your matches</Text>
             <Pressable onPress={() => router.push('/jobs')}><Text style={styles.link}>All matching jobs</Text></Pressable>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segRow}>
@@ -131,28 +135,34 @@ export default function DashboardScreen() {
           </View>
           {data.applications.length === 0
             ? <Text style={styles.emptyRow}>No applications yet. Opening a job's apply link tracks it here.</Text>
-            : data.applications.slice(0, 6).map((a: Any) => (
-              <View key={a.id} style={styles.appRow}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.appTitle} numberOfLines={1}>{a.job?.title || '—'}</Text>
+            : data.applications.slice(0, 6).map((a: Any) => {
+              // Prompt only on a RECENT (≤30d) open of a LIVE job (#10) — stale/closed
+              // ones just show their status pill.
+              const live = a.job?.status === 'ACTIVE' || !!a.replacement;
+              const showPrompt = a.status === 'OPENED' && !dismissed[a.id] && live && daysSince(a.appliedAt) <= 30;
+              return (
+                <View key={a.id} style={styles.appRow}>
+                  <Text style={styles.appTitle} numberOfLines={2}>{a.job?.title || '—'}</Text>
                   <Text style={styles.appSub} numberOfLines={1}>
-                    {a.job?.company}{a.appliedAt ? ` · opened ${ago(a.appliedAt)}` : ''}{a.job && a.job.status !== 'ACTIVE' && !a.replacement ? ' · job closed' : ''}{a.replacement ? ' · still live' : ''}
+                    {companyName(a.job?.company)}{a.appliedAt ? ` · opened ${ago(a.appliedAt)}` : ''}{a.job && a.job.status !== 'ACTIVE' && !a.replacement ? ' · job closed' : ''}{a.replacement ? ' · still live' : ''}
                   </Text>
+                  <View style={styles.appActionRow}>
+                    {showPrompt ? (
+                      <View style={styles.applyAsk}>
+                        <Text style={styles.appSub}>Did you apply?</Text>
+                        <Pressable onPress={() => setStatus(a.id, 'APPLIED')} style={styles.ynBtn} hitSlop={6}><Text style={styles.ynText}>Yes</Text></Pressable>
+                        <Pressable onPress={() => setDismissed((d) => ({ ...d, [a.id]: true }))} style={styles.ynBtn} hitSlop={6}><Text style={styles.ynText}>No</Text></Pressable>
+                      </View>
+                    ) : (
+                      <View style={styles.statusPill}>
+                        <View style={[styles.statusDot, { backgroundColor: STATUS_DOT[a.status] || pilot.muted }]} />
+                        <Text style={[styles.statusPillText, { color: a.status === 'CLOSED' ? pilot.muted : pilot.ink }]}>{STATUS_LABEL[a.status] || a.status}</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-                {a.status === 'OPENED' && !dismissed[a.id] ? (
-                  <View style={styles.applyAsk}>
-                    <Text style={styles.appSub}>Did you apply?</Text>
-                    <Pressable onPress={() => setStatus(a.id, 'APPLIED')}><Text style={styles.linkBold}>Yes</Text></Pressable>
-                    <Pressable onPress={() => setDismissed((d) => ({ ...d, [a.id]: true }))}><Text style={styles.linkBold}>No</Text></Pressable>
-                  </View>
-                ) : (
-                  <View style={styles.statusPill}>
-                    <View style={[styles.statusDot, { backgroundColor: STATUS_DOT[a.status] || pilot.muted }]} />
-                    <Text style={[styles.statusPillText, { color: a.status === 'CLOSED' ? pilot.muted : pilot.ink }]}>{STATUS_LABEL[a.status] || a.status}</Text>
-                  </View>
-                )}
-              </View>
-            ))}
+              );
+            })}
           <Text style={styles.footNote}>Statuses: Opened · Applied · Interview · Offer · Not selected · Closed</Text>
         </View>
 
@@ -222,7 +232,7 @@ function JobRow({ job, onView, styles, pilot }: { job: Any; onView: () => void; 
   const meta = statusMeta(m);
   const pill = m && (m.status === 'QUALIFY' ? { t: 'You qualify', bg: SEM.greenbg, c: SEM.green }
     : (m.status === 'SHORT' || m.status === 'CHECK') ? { t: m.status === 'SHORT' ? '1 short' : 'Check', bg: SEM.amberbg, c: SEM.amber } : null);
-  const sub = [job.company, job.location || job.country, ago(job.postedAt), job.sourceType && job.sourceType !== 'aggregator' ? 'Direct apply' : null].filter(Boolean).join(' · ');
+  const sub = [companyName(job.company), locationName(job.location || job.country), ago(job.postedAt), job.sourceType && job.sourceType !== 'aggregator' ? 'Direct apply' : null].filter(Boolean).join(' · ');
   const isQualify = m?.status === 'QUALIFY';
   return (
     <View style={styles.jobRow}>
@@ -234,9 +244,12 @@ function JobRow({ job, onView, styles, pilot }: { job: Any; onView: () => void; 
           <Text style={styles.jobSub} numberOfLines={1}>{sub}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          {meta && m.pct != null
-            ? <Text style={[styles.pct, { color: meta.color }]}>{m.pct}%<Text style={styles.pctSuffix}> match</Text></Text>
-            : <Text style={styles.notStated}>Not stated</Text>}
+          {meta && m.pct != null ? (
+            <>
+              <Text style={[styles.pct, { color: meta.color }]}>{m.pct}%<Text style={styles.pctSuffix}> match</Text></Text>
+              {m.stated > 0 ? <Text style={styles.metLine}>{m.met} of {m.stated} met</Text> : null}
+            </>
+          ) : <Text style={styles.notStated}>{m?.status === 'NO_REQUIREMENTS' ? 'No requirements stated' : 'Not stated'}</Text>}
           <Pressable onPress={onView} style={[styles.viewBtn, isQualify && styles.viewBtnPrimary]}>
             <Text style={[styles.viewBtnText, isQualify && { color: '#fff' }]}>View</Text>
           </Pressable>
@@ -302,12 +315,13 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   emptyRow: { padding: 16, color: pilot.muted, fontSize: fontSizes.base, fontFamily: fontFamilies.body },
   footNote: { padding: 14, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: pilot.line, fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, lineHeight: 18 },
 
-  jobRow: { borderTopWidth: 1, borderTopColor: pilot.line, paddingHorizontal: 16, paddingVertical: 14 },
+  jobRow: { borderTopWidth: 1, borderTopColor: pilot.line, paddingHorizontal: 16, paddingVertical: 10 },
   jobTop: { flexDirection: 'row', alignItems: 'flex-start' },
   jobTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 20 },
   jobSub: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
   pct: { fontFamily: fontFamilies.display, fontSize: 22, lineHeight: 24 },
   pctSuffix: { fontFamily: fontFamilies.body, fontSize: 11, color: pilot.muted },
+  metLine: { fontFamily: fontFamilies.body, fontSize: 11, color: pilot.muted, marginTop: 2, textAlign: 'right' },
   notStated: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body },
   viewBtn: { marginTop: 6, height: 34, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface, alignItems: 'center', justifyContent: 'center' },
   viewBtnPrimary: { borderColor: pilot.navy, backgroundColor: pilot.navy },
@@ -317,10 +331,13 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   jobShort: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body },
   jobAdvisory: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body },
 
-  appRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: pilot.line, paddingHorizontal: 16, paddingVertical: 12 },
+  appRow: { borderTopWidth: 1, borderTopColor: pilot.line, paddingHorizontal: 16, paddingVertical: 10 },
   appTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base, color: pilot.ink },
   appSub: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
-  applyAsk: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  appActionRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  applyAsk: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ynBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  ynText: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.base, color: pilot.navy },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: pilot.line, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusPillText: { fontSize: fontSizes.sm, fontFamily: fontFamilies.bodySemiBold },
