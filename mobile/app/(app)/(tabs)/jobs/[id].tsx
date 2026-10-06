@@ -20,6 +20,7 @@ import {
 import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
 import { jobRequirements, parseDescriptionBlocks } from '../../../../src/lib/jobRequirements';
+import { locationName } from '../../../../src/lib/displayNames';
 import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
@@ -164,9 +165,9 @@ export default function JobDetail() {
           )}
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.company}>{job.company}</Text>
-            <Text style={styles.jobTitle}>{roleLabel || job.title}</Text>
+            <Text style={styles.jobTitle}>{job.titleEn || job.title}</Text>
             <View style={styles.metaRow}>
-              {job.location ? <Text style={styles.meta}><Ionicons name="location-outline" size={12} color={pilot.muted} /> {job.location}</Text> : null}
+              {(job.location || job.country) ? <Text style={styles.meta}><Ionicons name="location-outline" size={12} color={pilot.muted} /> {locationName(job.location || job.country)}</Text> : null}
               {job.reqAircraftTypes?.[0] ? <Text style={styles.meta}>{job.reqAircraftTypes.join(', ')}</Text> : null}
               {ago ? <Text style={styles.meta}>{ago}</Text> : null}
               {airline?.domain ? (
@@ -216,7 +217,17 @@ export default function JobDetail() {
                   </View>
                 ) : null}
               </View>
-              {reqs.length ? <View style={{ marginTop: 8 }}>{reqs.map((r) => <ReqRow key={r.key} req={r} />)}</View> : null}
+              {reqs.length ? (
+                <View style={{ marginTop: 8 }}>
+                  <View style={styles.reqRow}>
+                    <View style={{ width: 16 }} />
+                    <Text style={[styles.reqLabel, { fontFamily: fontFamilies.bodySemiBold, color: pilot.muted }]} />
+                    <Text style={[styles.reqValue, { color: pilot.muted, fontSize: fontSizes.xs }]}>Required</Text>
+                    <Text style={[styles.reqPilot, { color: pilot.muted }]}>You</Text>
+                  </View>
+                  {reqs.map((r) => <ReqRow key={r.key} req={r} />)}
+                </View>
+              ) : null}
               {m.category?.advisory ? <Text style={[styles.mutedBody, { marginTop: 8 }]}>{m.category.advisory}</Text> : null}
             </>
           ) : (
@@ -230,6 +241,9 @@ export default function JobDetail() {
           const verbatim = String(job.requirementsText || '').split('\n').map((l: string) => l.replace(/^•\s*/, '').trim()).filter(Boolean);
           const synth = jobRequirements(job);
           const hasFullDesc = !job.descriptionIsExcerpt && String(job.description || '').length >= 300;
+          // Drop the synth list when the match rows above already cover it (#5) —
+          // only the verbatim posting block is worth showing alongside the rows.
+          if (verbatim.length < 2 && reqs.length) return null;
           const showSynth = synth.length >= 2 || (synth.length >= 1 && hasFullDesc);
           return (
             <View style={styles.section}>
