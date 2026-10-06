@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "backgroundColor": "#F8F6F1",
-      "resizeMode": "contain",
-      "image": "./assets/splash-icon.png"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.cockpithire.app"
@@ -36,7 +31,16 @@
       "expo-notifications",
       "@react-native-community/datetimepicker",
       "expo-image",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F8F6F1",
+          "resizeMode": "contain",
+          "image": "./assets/splash-icon.png"
+        }
+      ]
     ],
     "extra": {
       "router": {},
