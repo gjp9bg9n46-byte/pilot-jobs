@@ -205,6 +205,10 @@ function variantOf(title, desc) {
   // "experienced hire" phrase, not a distinct programme, and would split real dups.
   let m;
   if ((m = t.match(/\bfor\s+(non[- ]?)?([a-z][a-z /&.'-]{1,30}?)\s+pilots?\s+only\b/))) parts.push('only:' + (m[1] ? 'non-' : '') + normKey(m[2]));
+  // Regional posting (e.g. NetJets "… - West Region") → a distinct variant, so
+  // different regions never collapse into one job (C#8).
+  const reg = t.match(/\b(north|south|east|west|central|northeast|northwest|southeast|southwest|mid[- ]?atlantic|midwest|pacific|atlantic|gulf|mountain|great\s+lakes|new\s+england)\s+region\b/);
+  if (reg) parts.push('region:' + normKey(reg[1]));
   // Rated status from the TITLE only — if the title doesn't state it, the status
   // is UNKNOWN (no token), so it will not merge with a row that states one. Bare
   // "rated" is not a signal (matches "highly rated employer").
@@ -269,6 +273,11 @@ function shouldAutoMerge(members) {
   const resolvedOp = members.some((m) => m.ident.employer.via && m.ident.employer.via !== 'company-asis');
   const anyType = members.some((m) => m.ident.types.length);
   if (!anyType && !resolvedOp) return false; // uncertain → leave live
+  // Without BOTH a pinned (named) base AND a type, same company+role is too weak to
+  // merge — e.g. NetJets "First Officer" postings across regions with no type in the
+  // title all key to company|FO|?|?. Hold for review (C#8).
+  const anyNamedBase = members.some((m) => m.ident.base.named);
+  if (!anyType && !anyNamedBase) return false;
   const allRecruiter = !resolvedOp && members.every((m) => isRecruiter(m.company));
   const hardBase = members.every((m) => m.ident.base.kind === 'icao');
   if (allRecruiter && !hardBase) return false; // recruiter-only + soft base → hold

@@ -315,3 +315,16 @@ test('resolver keeps DHL Air Bahrain distinct from DHL Air UK via base', () => {
   const uk = { company: 'DHL', title: 'B767 First Officer', location: 'East Midlands', country: 'United Kingdom', description: 'DHL Air UK.' };
   assert.ok(!same(bah, uk, r)); // same employer, different base → different jobs
 });
+
+// ── C#8: NetJets-style regional FO postings never auto-merge ──────────────────
+test('C#8 region variant + no-type/no-base guard keep regional postings apart', () => {
+  // Different "X Region" → distinct variants → different identity keys.
+  const west = identityOf({ title: 'Pilot (First Officer) - West Region', company: 'NetJets', location: '', country: 'United States' }, null);
+  const east = identityOf({ title: 'Pilot (First Officer) - East Region', company: 'NetJets', location: '', country: 'United States' }, null);
+  assert.notStrictEqual(west.key, east.key);
+  // No type + no named base → not safe to auto-merge even within one key.
+  const a = identityOf({ title: 'Concierge Private Pilot - First Officer', company: 'NetJets', location: '', country: 'United States' }, null);
+  const b = identityOf({ title: 'Elite Private Aviation Pilot - First Officer', company: 'NetJets', location: '', country: 'United States' }, null);
+  assert.strictEqual(a.key, b.key); // same weak key…
+  assert.strictEqual(shouldAutoMerge([{ company: 'NetJets', ident: a }, { company: 'NetJets', ident: b }]), false); // …but HELD, never merged
+});
