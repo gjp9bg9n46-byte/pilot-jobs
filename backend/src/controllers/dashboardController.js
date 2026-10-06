@@ -34,7 +34,7 @@ exports.getDashboard = async (req, res, next) => {
     const PAGE = Math.min(Number(req.query.limit) || 8, 24);
 
     const [pilot, ctx, readiness, strength, activeJobs, alerts, apps, prefs, savedSearches, savedJobs] = await Promise.all([
-      prisma.pilot.findUnique({ where: { id: pilotId }, select: { dashboardSeenAt: true, derivedTotals: true, emailVerified: true } }),
+      prisma.pilot.findUnique({ where: { id: pilotId }, select: { dashboardSeenAt: true, previousDashboardSeenAt: true, derivedTotals: true, emailVerified: true } }),
       buildMatchContext(pilotId, prisma),
       computeReadiness(pilotId),
       computeStrengthAndNudge(pilotId),
@@ -46,7 +46,13 @@ exports.getDashboard = async (req, res, next) => {
       prisma.savedJob.findMany({ where: { pilotId }, select: { jobId: true } }),
     ]);
 
-    const prevSeenAt = pilot?.dashboardSeenAt ? new Date(pilot.dashboardSeenAt) : null;
+    // Visit window (#2): a NEW visit starts only when the last visit is >30 min stale.
+    // Within a visit, "new" stays stable (same jobs + dots) across refreshes. "New" is
+    // measured against the PREVIOUS visit's start, never "now".
+    const now = new Date();
+    const last = pilot?.dashboardSeenAt ? new Date(pilot.dashboardSeenAt) : null;
+    const newVisit = !last || (now - last) > 30 * 60 * 1000;
+    const prevSeenAt = newVisit ? last : (pilot?.previousDashboardSeenAt ? new Date(pilot.previousDashboardSeenAt) : null);
 
     // ── Identity clustering over ACTIVE jobs (first-seen + replacement lookup) ──
     const airlines = await prisma.airline.findMany({ select: { name: true, country: true, headquarters: true, bases: true } });
@@ -135,8 +141,10 @@ exports.getDashboard = async (req, res, next) => {
       savedCount: savedJobs.length,
     };
 
-    // dashboardSeenAt: update AFTER computing "new since last visit".
-    await prisma.pilot.update({ where: { id: pilotId }, data: { dashboardSeenAt: new Date() } });
+    // Advance the visit window only on a NEW visit (so refreshing keeps the same "new").
+    if (newVisit) {
+      await prisma.pilot.update({ where: { id: pilotId }, data: { previousDashboardSeenAt: last, dashboardSeenAt: now } });
+    }
 
     res.json(response);
   } catch (err) { next(err); }

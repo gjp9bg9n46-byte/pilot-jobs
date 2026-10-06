@@ -146,8 +146,11 @@ model Pilot {
   // import, carry-forward edit) + nightly. Read by matching (getMatchTotals) and the
   // logbook summary — one source, so /jobs never re-loads every flight to match.
   derivedTotals   Json?
-  // Last time the pilot opened the Dashboard — drives "N new jobs since your last visit".
+  // Dashboard visit tracking. dashboardSeenAt = this visit's start; previousDashboardSeenAt
+  // = the prior visit's start. A new "visit" begins only when dashboardSeenAt is >30 min
+  // stale, so refreshing within a visit keeps the same "new since last visit" set + dots.
   dashboardSeenAt DateTime?
+  previousDashboardSeenAt DateTime?
   // Soft-delete
   deletedAt          DateTime?
   createdAt       DateTime  @default(now())
