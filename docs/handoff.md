@@ -1,4 +1,4 @@
-# Handoff — Batch C round 3 (display polish + #7 nationality) → push
+# Handoff — Batch C round 3 (display polish + #7 nationality) → **push plan on the table, awaiting OK**
 
 Living doc. Keep updated as items land. Everything is on local `main`, **unpushed**.
 Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
@@ -17,6 +17,10 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
 ## DONE (committed on main, unpushed)
+- `8dab906` **English (ICAO) expiry — one source + blocker wording.** Stored value is **30 Sep 2026 (EXPIRED)**; the "15 Nov 2026" on the old dashboard shot was never in the DB (hand-written stub blockers). Profile's English row now reads the SAME readiness item as the dashboard, and its no-item fallback checks the date instead of assuming "valid" (it used to render an expired ELP green). Label `English (ICAO)` (was `English (ICAO) expiry` → "expiry expires"); web blocker's leading "·" before Update removed.
+- `5ddd8c8` **v3 screenshots, PII-free.** gen-payloads.js redacts phone + email in every stub payload, and blockers/readiness now come from the real `profileReadiness` service (no invented dates). OCR sweep over every PNG in `docs/design/screens` AND every image blob reachable from `main` (114): zero real phone/email.
+- `eb02de4` **#7a nationality UI (web + mobile)** — chip multi-select over the existing country list; "+ Add nationality" opens the same searchable combo; × removes a chip. Legacy `Pilot.nationality` kept in sync with the FIRST entry (CV templates, completeness widget, older reads). `pilotNationalities(profile)` exported from both edit sheets (array, falling back to the legacy column). Read views show the full list ("Nationalities" when >1); web marks it "matching only". Web `ADD_LINK` gains `nationality` + `clearance` → `/profile`; mobile job-detail "add" rows are now TAPPABLE and route through the same map (`/profile` or `/logbook`).
+- `5b741f8` **v3 screenshots** (19 files, `docs/design/screens/*-v3.png`) — dashboard 1280/820/390 + mobile, plus the new nationality shots: `profile-nationality-{read,sheet,add}-{1280,390}-v3`, `job-detail-nationality-{1280,390}-v3`, `mobile-profile-nationality-{read,sheet,add}-v3`, `mobile-job-detail-nationality-v3`.
 - `6f5ab00` #8 NetJets dedup guard (region variant + no-base/no-type hold) + test. Shadow: 11 merge / 11 hide / 21 held. The two Luxaviation(+Group) Lineage-Dubai rows MERGE (C#4); Pilot Assessments pair HELD (recruiter). User will set IDENTITY_DEDUP_APPLY=1 AFTER a healthy push.
 - `aa991c6` #1 web+mobile card: location via `locationName`, removed country flag emoji (keyed on HQ). #2 web tab "All". #3 web row (% + View one line, pill under meta). #4 web blocker one-line red/amber + "Sep".
 - `aca4bb4` #7b nationality ADJACENT (country next to national/citizen) + exclude "or permanent resident". Result: **11 genuine** nationality reqs (list below); SAAB + Air Transat false positives GONE. 43 jobMatch tests pass.
@@ -29,19 +33,40 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 ### #7b final nationality list (11 ACTIVE) — re-run `scratchpad/C-reports.js`
 UAE National ×3 (Air Arabia + 2 Unknown, title); Sealift Command (US citizen); Aerotime + Fly Fofa ×2 + Airlink (South African citizenship); CAE ×2 C-130J (Australian Citizenship); Air Canada AC Express (Canadian citizenship). SAAB/Canadian Inclusion + Air Transat correctly EXCLUDED ("or permanent resident").
 
-## REMAINING — do each, commit after each
-1. **#7a Nationality INPUT (UI)** — the only feature piece left. Country pick-list, **multi-select** (dual citizens), web + mobile personal-info edit. MATCHING ONLY: not on public profile header, never sent to employers unless the pilot applies (already true — not in employer DTO).
-   - Storage DONE: `Pilot.nationalities String[]`; API accepts `nationalities[]`; matcher reads it. Just the UI remains.
-   - **Web** `frontend/src/pages/ProfileRedesign.jsx`: the personal-info/identity edit sheet. Find the edit-sheet for name/country/etc. (search `openEdit(` / `editing.kind` / where `country`/`city` are *edited*, not just displayed — earlier grep only found displays, so the edit input may need adding). Add a multi-select country picker bound to `profile.nationalities`; POST via the existing profile update (sends `nationalities`). A country list util may already exist (check `frontend/src/lib` for a countries list; else a small `<select multiple>` or chip-add).
-   - **Mobile** `mobile/app/(app)/(tabs)/profile/index.tsx`: same, in the personal-info edit sheet; bind to `profile.nationalities`; PATCH via the existing profile update.
-   - **"Add nationality" link**: the matcher gap for key `nationality` → `ADD_LABEL.nationality='your nationality'`, `gapPhrase` → "add your nationality to check". Web `JobDetailPanel.jsx` has `ADD_LINK` map (key→route) → add `nationality:'/profile'` (and `clearance` if wanted). Mobile detail: the nationality "add" row should route to `/profile`.
-   - Confirm profile GET returns `nationalities` (check the profile controller GET select; prisma full-row returns it unless a select omits it).
-2. **tsc + build**: `cd mobile && ./node_modules/.bin/tsc --noEmit`; `cd frontend && npm run build`; `node --test backend/src/services/__tests__/jobMatch.test.js` + `jobIdentity.test.js`.
-3. **v3 screenshots** → `docs/design/screens/*-v3.png`: web 1280/820/390 (`npm run build` → `vite preview :4173` → `scratchpad/shoot-web.js`, but UPDATE its output names to `-v3`) + mobile (`gen-payloads.js` → stub-data → expo web :8081 from main/mobile → `scratchpad/shoot.js`, update names to `-v3`). Regenerate payloads first (`node scratchpad/gen-payloads.js` from backend/). The v2 shots already proved the pipeline; v3 just needs the new names + nationality-input shots.
-4. **Push** (see checklist). NOTE: there is now a SECOND pending migration `20261007120000_pilot_nationalities` (plus the 4 already-applied ones from the A/B deploy — check `prisma migrate status`; only the new one should be pending).
+## PRE-PUSH AUDIT (user-requested, 2026-10-07)
+1. **Did any screenshot step write to prod? NO.** Prod `Pilot.nationality` is still **null** and the `nationalities` column does not exist on prod at all, so the "Egypt + United Kingdom" in the shots can only have come from the stub payload. `Pilot.updatedAt` = 2026-10-06T22:29:10Z, i.e. **before** this session's first command (~22:56Z) — and it is explained by the app's own `dashboardSeenAt` write at 22:13Z. Mechanically: `gen-payloads.js` only reads (findFirst/findMany/findUnique + fs.writeFileSync); both shooters run `page.setRequestInterception(true)` and answer **every** URL containing `/api/` from `stub-data` — web `baseURL` is `/api`, mobile `EXPO_PUBLIC_API_URL=https://cockpithire.com/api`, so all traffic was captured; Save was never clicked. **Rule: screenshot data is mocked, never written.**
+2. **PII in screenshots — fixed at the source.** 6 v3 images had the real phone. Those commits were **rewritten locally before any push** (reset → re-commit), so no pushable commit ever contains them; the old blobs survive only as unreachable objects in the local reflog (`git reflog expire --expire-unreachable=now --all && git gc --prune=now` to drop them). Payloads are now redacted (`+20 ••• ••• ••00`, `pilot@example.com`). An OCR sweep (`scratchpad/ocr`, Vision framework) covers every PNG in the folder and every image blob in `main`'s history — the only email/number hits are synthetic `*@example.com` test accounts and `contact@cockpithire.com` in the old `backend/data/design-migration-audit/` shots.
+3. **Deploy scoping.** `backend/railway.json` (Railway service root = `backend/`; its start command runs `npx prisma migrate deploy`) and `frontend/vercel.json` (Vercel root = `frontend/`, with the `/api/*` rewrite to Railway). There is **no root `package.json`**, so neither platform can build from the repo root. `mobile/` has no deploy config and is not referenced by either. Dashboard "Root Directory" settings are the final authority and were NOT verifiable from here (Railway CLI unauthenticated, Vercel CLI absent) — worth a 30-second check.
+4. **Open question (not changed):** `profileReadiness` only makes licence / medical / passport blocker-eligible, so an **expired English (ICAO) is not a dashboard blocker** — it shows in the readiness strip. Say if it should block.
+5. **Superseded `*-v2.png` dashboard shots** still show the old phantom "English (ICAO) expiry (expires 15 Nov 2026)". No PII; left as-is.
+
+## REMAINING
+1. ~~#7a nationality INPUT (UI)~~ — **DONE** (`eb02de4`).
+2. ~~tsc + build + tests~~ — **DONE, all green**: `mobile tsc --noEmit` clean · `frontend npm run build` OK (ProfileRedesign chunk 40.9 kB / 11.5 kB gzip) · `jobMatch` 43 pass · `jobIdentity` 32 pass.
+3. ~~v3 screenshots~~ — **DONE** (`5b741f8`).
+4. **PUSH — waiting on the user's OK.** Plan below; nothing is pushed and nothing is hidden until then.
+5. **A** — real-device findings (items 1–8 below).
+6. **B** — mobile-web-as-reference port, starting with Jobs (inventory + side-by-side first).
+
+### Push plan as it stands (pre-flight already run, read-only)
+- **26 unpushed commits** on `main`; 58 files, +2843 / −3695 (most of the delta is `mobile/package-lock.json` from the SDK 54→57 bump).
+- **Backend in the push**: `jobMatch.js` (events/eligibility/multi-nationality), `jobIdentity.js` (+#8 guard), `profileController.js` (accepts `nationalities[]`), `dashboardController.js`, `jobController.js`, both test files, `schema.prisma`, and ONE pending migration.
+- **Pending migration (the only one)**: `20261007120000_pilot_nationalities` —
+  `ALTER TABLE "Pilot" ADD COLUMN "nationalities" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];`
+  Additive, no data change, no backfill. `prisma migrate status` shows 26 found / this one unapplied; the other 25 are already applied on prod.
+- **Dedup shadow is untouched**: `IDENTITY_DEDUP_APPLY` stays unset — the engine still only shadows. The user sets it on Railway AFTER the push is confirmed healthy.
+- Pre-flight remaining before the push itself: `pg_dump` prod backup → `~/pilot-jobs-backups/predeploy-<date>.dump` (+ verify size and `pg_restore --list`).
+
+### Screenshot pipeline notes (v3)
+- Scripts live in this session's scratchpad: `gen-payloads.js`, `shoot-web.js`, `shoot.js`, `stub-data/`.
+- `gen-payloads.js` now also writes `profile.json`, `applications.json` and `detail-nationality.json`. Two gotchas it encodes:
+  - the pilot row is read with an explicit `select` that **omits `nationalities`** — the column doesn't exist on prod yet, so a full-row read throws P2022;
+  - the stub `profile.json` seeds **two** nationalities (Egypt + United Kingdom) purely so the shot shows the dual-citizen case. Nothing is written back.
+  - `/api/jobs/applications` must be stubbed as an **array** (the mobile profile screen does `apps.slice`); returning `{}` crashes that screen.
+- `detail-nationality.json` = the live "Captain-A320 (UAE National)" job matched against a context with no nationality → the row renders as "add your nationality to check".
 
 ## OPEN DECISIONS
-- **Nationality storage**: single `String?` today. For multi-select, simplest reversible = add `Pilot.nationalities String[]` (additive migration) and keep old `nationality` for back-compat, OR store comma-joined in the existing column (no migration). → Leaning: **new `String[]` column** (clean), additive migration `*_pilot_nationalities`. Confirm if a migration is OK (it adds one more to the push).
+- ~~**Nationality storage**~~ — **SETTLED**: new `Pilot.nationalities String[]` (additive migration `20261007120000_pilot_nationalities`), legacy `nationality` kept and written with the first entry. Still needs the user's OK on shipping the extra migration with this push.
 - `IDENTITY_DEDUP_APPLY=1`: user sets on Railway AFTER push is confirmed healthy. Reversible (mergedInto + status EXPIRED). Then report first nightly run merges.
 
 ## PUSH CHECKLIST (same as last time)
@@ -78,9 +103,6 @@ Port the app to match the mobile web screen-for-screen (visually identical: font
 - **Side-by-side screenshots** (web 390 vs app) per screen → `docs/design/screens/<screen>-web-vs-app.png`. Commit per screen; keep this handoff updated.
 
 ## NEXT-SESSION ORDER
-1. **#7a nationality UI** (web + mobile input + "Add nationality" link) — see REMAINING §1.
-2. **tsc / build / tests** — see REMAINING §2.
-3. **v3 screenshots** — see REMAINING §3.
-4. **Push** — pre-flight + post-deploy checks (PUSH CHECKLIST). After healthy → user sets `IDENTITY_DEDUP_APPLY=1` → report first nightly merges.
-5. **A** — real-device findings above (items 1–8).
-6. **B** — mobile-web-as-reference port, starting with Jobs (inventory + side-by-side first).
+1. **Push** — user's OK → `pg_dump` backup → `git push origin main` → post-deploy checks (PUSH CHECKLIST). After healthy → user sets `IDENTITY_DEDUP_APPLY=1` → report first nightly merges.
+2. **A** — real-device findings above (items 1–8).
+3. **B** — mobile-web-as-reference port, starting with Jobs (inventory + side-by-side first).
