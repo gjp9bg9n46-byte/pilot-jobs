@@ -3,7 +3,6 @@
 const prisma = require('../config/database');
 const { buildMatchContext, matchJob } = require('../services/jobMatch');
 const { computeReadiness, computeStrengthAndNudge } = require('../services/profileReadiness');
-const { makeResolver, identityOf } = require('../scrapers/jobIdentity');
 
 // Fields the unified matcher reads (explicit select overrides the global omit of the
 // two new columns). These rows are matched/clustered, not serialized wholesale.
@@ -15,6 +14,7 @@ const MATCH_SELECT = {
   reqMedicalClass: true, reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true,
   reqMinTurbineHours: true, reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
   reqEducation: true, reqWorkAuthorization: true, reqEnglishLevel: true,
+  identityKey: true, identityFirstSeenAt: true, // precomputed cluster (no in-request clustering)
 };
 
 // A slim, shape-stable job card for the dashboard (never exposes the omitted columns).
@@ -54,18 +54,14 @@ exports.getDashboard = async (req, res, next) => {
     const newVisit = !last || (now - last) > 30 * 60 * 1000;
     const prevSeenAt = newVisit ? last : (pilot?.previousDashboardSeenAt ? new Date(pilot.previousDashboardSeenAt) : null);
 
-    // ── Identity clustering over ACTIVE jobs (first-seen + replacement lookup) ──
-    const airlines = await prisma.airline.findMany({ select: { name: true, country: true, headquarters: true, bases: true } });
-    const resolver = makeResolver(airlines);
-    const byId = new Map(activeJobs.map((j) => [j.id, j]));
-    const clusterFirstSeen = new Map(); // identity key -> earliest createdAt across ACTIVE cluster
-    const activeByKey = new Map();       // identity key -> a representative ACTIVE job (replacement target)
+    // ── Identity clustering is PRECOMPUTED (jobIdentityStore, run at ingest + after
+    //    each scrape/dedup). The request does ZERO clustering — it just reads the
+    //    stored identityKey + identityFirstSeenAt. Building this Map over the ACTIVE
+    //    set is a trivial O(n) pass (no resolver, no identityOf). ──────────────────
+    const activeByKey = new Map(); // identityKey -> a representative ACTIVE job (replacement target)
     for (const j of activeJobs) {
-      const key = identityOf({ ...j, description: j.titleEn || j.title }, resolver).key;
-      j._key = key;
-      const c = new Date(j.createdAt).getTime();
-      if (!clusterFirstSeen.has(key) || c < clusterFirstSeen.get(key)) clusterFirstSeen.set(key, c);
-      if (!activeByKey.has(key)) activeByKey.set(key, j);
+      j._key = j.identityKey || j.id;
+      if (!activeByKey.has(j._key)) activeByKey.set(j._key, j);
     }
 
     // ── New jobs for you: the pilot's matched (alert) jobs that are live + canonical ──
@@ -78,8 +74,9 @@ exports.getDashboard = async (req, res, next) => {
       seenCard.add(j._key);
       const m = ctx ? matchJob(j, ctx) : null;
       if (m && m.status === 'WRONG_CATEGORY') continue; // excluded from "new jobs for you"
-      // identity-first-seen: NEW only if the cluster first appeared after the last visit.
-      const firstSeen = clusterFirstSeen.get(j._key);
+      // identity-first-seen: NEW only if the cluster first appeared after the last
+      // visit. identityFirstSeenAt is precomputed; fall back to createdAt if unset.
+      const firstSeen = j.identityFirstSeenAt ? new Date(j.identityFirstSeenAt).getTime() : new Date(j.createdAt).getTime();
       const isNew = prevSeenAt ? firstSeen > prevSeenAt.getTime() : true;
       items.push({ job: j, match: m, isNew });
     }
@@ -94,14 +91,14 @@ exports.getDashboard = async (req, res, next) => {
     const appJobIds = apps.map((a) => a.jobId);
     const appJobs = new Map((await prisma.job.findMany({
       where: { id: { in: appJobIds } },
-      select: { id: true, title: true, titleEn: true, company: true, location: true, status: true, applyUrl: true, createdAt: true },
+      select: { id: true, title: true, titleEn: true, company: true, location: true, status: true, applyUrl: true, createdAt: true, identityKey: true },
     })).map((j) => [j.id, j]));
     const applications = apps.map((a) => {
       const j = appJobs.get(a.jobId);
       let followed = null;
       if (j && j.status !== 'ACTIVE') {
-        const key = identityOf({ ...j, description: j.titleEn || j.title }, resolver).key;
-        const repl = activeByKey.get(key);
+        // Replacement-follow via the stored identityKey (no in-request clustering).
+        const repl = j.identityKey ? activeByKey.get(j.identityKey) : null;
         if (repl && repl.id !== j.id) followed = { id: repl.id, title: repl.titleEn || repl.title, company: repl.company, status: 'ACTIVE' };
       }
       return {

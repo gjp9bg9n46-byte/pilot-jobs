@@ -12,6 +12,7 @@ const { runIngestion } = require('./scrapers/index');
 const { runFullMatch } = require('./services/matchingService');
 const { recomputeJobDerivedStats, refreshWikiFleet } = require('./services/airlineEnrichmentService');
 const { withCronRun } = require('./services/cronRun');
+const { recomputeJobIdentity } = require('./services/jobIdentityStore');
 
 const app = express();
 app.use(helmet());
@@ -296,6 +297,13 @@ cron.schedule(`0 */${intervalHours} * * *`, () => withCronRun('scrape', async ()
   } catch (err) {
     logger.error(`Airline stats recompute failed: ${err.message}`);
   }
+  // Precompute identity clusters off the request path (powers /api/dashboard).
+  try {
+    const r = await recomputeJobIdentity();
+    counts.identityUpdated = r.updated;
+  } catch (err) {
+    logger.error(`Job-identity recompute failed: ${err.message}`);
+  }
   return counts;
 }));
 
@@ -309,8 +317,10 @@ cron.schedule('30 3 * * *', () => withCronRun('nightly-rescreen', async () => {
   const apply = process.env.IDENTITY_DEDUP_APPLY === '1';
   const av = await reScreenNonAviation({ dryRun: false });
   const dd = await collapseByIdentity({ dryRun: !apply });
+  // Hidden/merged rows change clusters → refresh the precomputed identity store.
+  const idr = await recomputeJobIdentity().catch((err) => { logger.error(`Job-identity recompute failed: ${err.message}`); return null; });
   logger.info({ msg: `nightly re-screen complete${apply ? '' : ' [identity dedup LOG-ONLY]'}`, identityDedupApplied: apply, nonAviationHidden: av.hidden, nonAviationBySource: av.perSource, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups });
-  return { identityDedupApplied: apply, nonAviationHidden: av.hidden, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups };
+  return { identityDedupApplied: apply, nonAviationHidden: av.hidden, clustersMerged: dd.clustersMerged, rowsHidden: dd.rowsHidden, leftForReview: dd.reviewGroups, identityUpdated: idr?.updated };
 }));
 
 // Weekly airline fleet refresh from Wikipedia (Mondays 04:00 UTC) — fleetDetail
@@ -335,6 +345,9 @@ setImmediate(() => withCronRun('startup-cleanup', async () => {
   const expired = await expirePastDue();
   await require('./scrapers/dedup').collapseSameAdAcrossLocations();
   await require('./services/translationService').translateUntranslatedJobs();
+  // One-shot on every boot (covers the coordinated-deploy backfill): fill
+  // identityKey/identityFirstSeenAt for any rows still missing or stale.
+  await recomputeJobIdentity();
   return expired && typeof expired === 'object' ? expired : undefined;
 }));
 

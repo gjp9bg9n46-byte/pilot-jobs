@@ -476,6 +476,14 @@ model Job {
   requirementsText          String?    // the posting's OWN requirements/qualifications section, verbatim (bullets), when present — rendered in preference to synthesised req fields
   requirementsExtractedAt   DateTime?  // marker: structured req fields were filled by the LLM extractor (once per job)
 
+  // Identity dedup, PRECOMPUTED (not per request). identityKey is the cluster key
+  // from jobIdentity.identityOf; identityFirstSeenAt is the earliest createdAt
+  // across the whole cluster (any status). Recomputed at ingest + after each
+  // scrape/dedup run (services/jobIdentityStore.recomputeJobIdentity), so
+  // /api/dashboard reads them directly and never clusters in-request.
+  identityKey          String?
+  identityFirstSeenAt  DateTime?
+
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 
@@ -486,6 +494,7 @@ model Job {
 
   @@unique([sourcePlatform, externalId])
   @@index([mergedInto])  // dedup chain-flatten / canonical lookups scan by this
+  @@index([identityKey]) // replacement-follow: find a live job sharing an identity
 }
 
 model JobAlert {
