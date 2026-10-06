@@ -32,7 +32,8 @@ const ago = (d?: string | null) => {
   if (days <= 0) return 'today'; if (days === 1) return '1 day ago'; return `${days} days ago`;
 };
 const weekday = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-US', { weekday: 'long' }) : null);
-const fmtD = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmtD = (iso?: string | null) => { if (!iso) return null; const d = new Date(iso); return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
 const daysSince = (iso?: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : Infinity);
 
 export default function DashboardScreen() {
@@ -87,23 +88,20 @@ export default function DashboardScreen() {
             : 'No new jobs since your last visit.'}
         </Text>
 
-        {/* Blocker bar */}
-        {data.blockers?.count > 0 && (
-          <View style={styles.blocker}>
-            <Ionicons name="warning-outline" size={18} color={SEM.red} style={{ marginTop: 1 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.blockerText}>
-                <Text style={{ fontFamily: fontFamilies.bodyBold }}>{data.blockers.items.map((i: Any) => `${i.label}${fmtD(i.date) ? ` (${i.days != null && i.days < 0 ? 'expired' : 'expires'} ${fmtD(i.date)})` : ''}`).join(' and ')} {data.blockers.items.length === 1 ? 'is' : 'are'} expired or expiring.</Text>
-                {' '}Update the dates so you show up as qualified.
+        {/* Blocker bar — one line per item (#4): red=expired, amber=expiring */}
+        {data.blockers?.count > 0 && data.blockers.items.map((i: Any) => {
+          const expired = i.days != null && i.days < 0;
+          const c = expired ? { bg: SEM.redbg, bd: '#F4CFCB', fg: SEM.red } : { bg: SEM.amberbg, bd: '#F5E0B8', fg: SEM.amber };
+          return (
+            <Pressable key={i.type} onPress={() => router.push('/profile')} style={[styles.blocker, { backgroundColor: c.bg, borderColor: c.bd }]}>
+              <Ionicons name="warning-outline" size={16} color={c.fg} style={{ marginTop: 1 }} />
+              <Text style={[styles.blockerText, { flex: 1 }]}>
+                <Text style={{ fontFamily: fontFamilies.bodyBold, color: c.fg }}>{i.label} {expired ? 'expired' : 'expires'} {fmtD(i.date)}</Text>
               </Text>
-              <View style={styles.blockerLinks}>
-                {data.blockers.items.slice(0, 2).map((i: Any) => (
-                  <Pressable key={i.type} onPress={() => router.push('/profile')}><Text style={styles.link}>Update {i.label}</Text></Pressable>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
+              <Text style={[styles.link, { color: pilot.navy }]}>Update</Text>
+            </Pressable>
+          );
+        })}
 
         {/* New jobs for you */}
         <View style={styles.card}>
@@ -112,7 +110,7 @@ export default function DashboardScreen() {
             <Pressable onPress={() => router.push('/jobs')}><Text style={styles.link}>All matching jobs</Text></Pressable>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segRow}>
-            {([['allNew', 'All matches', nj.counts.all], ['qualify', 'You qualify', nj.counts.qualify], ['oneShort', '1 short', nj.counts.oneShort]] as [typeof tab, string, number][]).map(([k, lbl, n]) => {
+            {([['allNew', 'All', nj.counts.all], ['qualify', 'You qualify', nj.counts.qualify], ['oneShort', '1 short', nj.counts.oneShort]] as [typeof tab, string, number][]).map(([k, lbl, n]) => {
               const active = tab === k;
               return (
                 <Pressable key={k} onPress={() => setTab(k)} style={[styles.seg, active && styles.segActive]}>
