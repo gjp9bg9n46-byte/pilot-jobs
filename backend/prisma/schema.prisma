@@ -117,6 +117,7 @@ model Pilot {
   country         String?
   city            String?
   nationality     String?
+  nationalities   String[]  @default([]) // C#7: country pick-list, multi (dual citizens); matching only
   dateOfBirth     DateTime?
   passportNumber  String?
   passportExpiry  DateTime?

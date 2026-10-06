@@ -198,7 +198,8 @@ function buildContextInner(pilot, flightCerts, totals) {
     willingToRelocate: !!pilot.willingToRelocate,
     totals: totals || {}, roleSplitKnown,
     country: pilot.country ?? null,
-    nationality: pilot.nationality ? String(pilot.nationality).toLowerCase().trim() : null,
+    // Multi-nationality (dual citizens) + legacy single field, lowercased (C#7).
+    nationalities: [...(pilot.nationalities || []), pilot.nationality].filter(Boolean).map((x) => String(x).toLowerCase().trim()),
     // Empty-profile rule: with no licence AND no hours there is nothing to match on,
     // so the caller shows a "complete your profile" banner instead of fit groups.
     matchable: certTypes.size > 0 || ((totals && totals.totalTime) > 0),
@@ -451,19 +452,21 @@ function matchJob(job, ctx) {
   //   read QUALIFY while an unverifiable defence clearance is demanded).
   const elig = jobEligibility(job);
   if (elig.nationality) {
-    // NO country-of-residence fallback (C#2): nationality is verified only against
-    // the pilot's stated nationality. Absent → unknown ("Add nationality").
+    // NO country-of-residence fallback (C#2): verified only against the pilot's
+    // stated nationalities (any of them, for dual citizens). Absent → unknown
+    // ("Add nationality"). A generic "nationals only" (no country) can't be verified.
     const want = elig.nationality.label.toLowerCase();
+    const held = ctx.nationalities || [];
     let status;
-    if (!ctx.nationality) status = 'unknown';
-    else if (want.includes('nationals only')) status = 'unknown'; // which nation unknown → can't verify
+    if (!held.length) status = 'unknown';
+    else if (want.includes('nationals only')) status = 'unknown';
     else {
       const token = want.replace(/\s+(national|citizen|citizenship|only)\b/g, '').replace('nationals', '').trim();
-      const COUNTRY = { uae: ['uae', 'united arab emirates', 'emirati'], saudi: ['saudi', 'saudi arabia'], qatari: ['qatar', 'qatari'], kuwaiti: ['kuwait', 'kuwaiti'], omani: ['oman', 'omani'], bahraini: ['bahrain', 'bahraini'], australian: ['australia', 'australian'], canadian: ['canada', 'canadian'], nz: ['new zealand'], us: ['united states', 'usa', 'us', 'american'], uk: ['united kingdom', 'uk', 'britain', 'british', 'england', 'scotland', 'wales'] };
+      const COUNTRY = { uae: ['uae', 'united arab emirates', 'emirati'], saudi: ['saudi', 'saudi arabia'], qatari: ['qatar', 'qatari'], kuwaiti: ['kuwait', 'kuwaiti'], omani: ['oman', 'omani'], bahraini: ['bahrain', 'bahraini'], australian: ['australia', 'australian'], canadian: ['canada', 'canadian'], nz: ['new zealand'], 'south african': ['south africa', 'south african'], irish: ['ireland', 'irish'], us: ['united states', 'usa', 'us', 'american'], uk: ['united kingdom', 'uk', 'britain', 'british', 'england', 'scotland', 'wales'] };
       const aliases = COUNTRY[token] || [token];
-      status = aliases.some((a) => ctx.nationality.includes(a)) ? 'met' : 'unmet';
+      status = held.some((h) => aliases.some((a) => h.includes(a))) ? 'met' : 'unmet';
     }
-    push(mk('nationality', 'Nationality', 'must', status, elig.nationality.label, ctx.nationality ? titleCaseWord(ctx.nationality) : null, true));
+    push(mk('nationality', 'Nationality', 'must', status, elig.nationality.label, held.length ? held.map(titleCaseWord).join(', ') : null, true));
   }
   if (elig.clearance) {
     // No profile field for clearance → always unknown (Add). Never auto-met.

@@ -290,7 +290,7 @@ exports.updateProfile = async (req, res, next) => {
     if (!errors.isEmpty()) return res.status(422).json({ errors: errors.array() });
 
     const {
-      firstName, lastName, phone, country, city, nationality,
+      firstName, lastName, phone, country, city, nationality, nationalities,
       dateOfBirth, passportNumber, passportExpiry,
       emergencyContactName, emergencyContactPhone,
       willingToRelocate, isInstructor, isExaminer, education, role,
@@ -306,6 +306,7 @@ exports.updateProfile = async (req, res, next) => {
       where: { id: req.pilot.id },
       data: {
         firstName, lastName, phone, country, city, nationality,
+        nationalities: Array.isArray(nationalities) ? nationalities.filter(Boolean) : undefined,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
         passportNumber, passportExpiry: passportExpiry ? new Date(passportExpiry) : undefined,
         emergencyContactName, emergencyContactPhone,
