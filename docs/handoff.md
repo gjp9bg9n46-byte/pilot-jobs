@@ -1,4 +1,4 @@
-# Handoff — Batch C round 3 → **PUSHED 2026-10-07 (origin/main 40bb928)**, post-deploy watch
+# Handoff — Batch C round 3 → **PUSHED + HEALTHY** (origin/main 40bb928, 2026-10-07)
 
 Living doc. Keep updated as items land. Everything is on local `main`, **unpushed**.
 Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
@@ -39,10 +39,12 @@ UAE National ×3 (Air Arabia + 2 Unknown, title); Sealift Command (US citizen); 
 - **Key-set diff**: `/api/jobs` 61 keys → 61, **no removals, no additions**, no identity-field leaks. `/api/jobs/:id` 200, 65 keys, no leaks.
 - **Readiness on prod**: english item is `label="English (ICAO)" level=expired date=2026-09-30` ✅ (wording + single-source fix live). Blockers: `ATPL licence (expired)` only.
 - **CronRun**: `totals-backfill OK 1479ms` + `startup-cleanup OK 300704ms`, both `commit=40bb928` ✅.
-- **5xx**: one 502 at 23:51:56Z — the Railway restart itself. Clean afterwards (monitor running to ~00:22Z).
-- **identityFirstSeenAt**: ACTIVE 365/368. The 3 gaps are rows the startup ADZUNA scrape inserted at 23:55 (Pacific Seafood, National Airlines, ABX Air) — i.e. **new rows are inserted without `identityFirstSeenAt`** and only get it from the backfill pass. Worth fixing at insert before the dedup rollout.
-- **Dedup is still shadow-only for the identity engine** (`collapseByIdentity({ dryRun: !IDENTITY_DEDUP_APPLY })`, env unset). The 505 merged-away + 1347 plain-expiry rows touched since the deploy come from the **legacy, ungated** `src/scrapers/dedup.js` passes + the `expireUnseen` backstop, which run on every scrape — the same run pre-push (18:25, commit 822d6e4) touched 10408 + 13512, an order of magnitude more. ACTIVE feed: 368.
-- **Timings (from my laptop, so network-inclusive; `/stats/landing` ≈ 250 ms is the RTT floor)**: `/jobs?limit=20` 3691 / 898 / 717 ms; `/dashboard` 3953 / 1314 / 2327 ms. Server-side `?_perf=1` on `/jobs`: `fetch` 858–1142 ms, `matchJS` 10–19 ms — i.e. the 45 s job-data cache was **not** hitting, which is expected while the startup scrape was still inserting rows and busting it. **No pre-push baseline was captured from this vantage** — re-measure once the feed is quiet before calling it a regression.
+- **5xx**: **one** 502, at 23:51:56Z — the Railway restart itself. The monitor then probed `/api/jobs`, `/api/stats/landing`, `/api/airlines` and the public web root every 60 s for **64 minutes** with **zero** further 5xx. Final sweep: `/api/jobs` 200, `/api/stats/landing` 200, `/api/airlines` 200, `/health` 200, `/health/requirements-coverage` 200, `https://cockpithire.com/` 200.
+- **identityFirstSeenAt**: **360/360 ACTIVE** ✅ (the 3 gaps seen right after the deploy were rows the startup scrape had just inserted; the next pass filled them). Still worth setting at insert so there is never a window — see follow-ups.
+- **Nightly scrape ran on the new code**: `CronRun scrape OK 923922ms commit=40bb928` at 00:00Z, plus `disk-check OK`. So the jobIdentity/#8 changes have now run in anger once.
+- **Dedup still shadow-only for the identity engine.** `mergedInto` total went 10926 → 10946 (+20) across that scrape — the **legacy, ungated** `src/scrapers/dedup.js` passes, which have always run; `collapseByIdentity` stays `dryRun` until `IDENTITY_DEDUP_APPLY=1`.
+- **Timings — no regression from this push.** Unauthenticated `/jobs?limit=20&_perf=1`: `fetch 0ms, matchJS 1ms` on repeat calls, i.e. the 45 s job-data cache is working perfectly. Authenticated calls cost ~760–1650 ms in the `fetch` phase, but that phase is `Promise.all(getCandidates, buildMatchContext, fetchPilotJobSets)` and the per-pilot **`buildMatchContext` is deliberately never cached** — that read, not the job scan, is the cost. Pre-existing design, and the obvious next perf target. (This push did add `requirementsText`/`description` to the match selects for the nationality/clearance detection, which makes the cached candidate scan heavier — but the scan itself measures 0 ms on a cache hit.)
+- **Requirements coverage gate: 77.8 %** (280/360 active), below the 80.4 % recorded when the gate was set. Not caused by this push — it tracks the scraped job mix (WHATJOBS 141/200). Flagging it as drift to watch.
 
 ### ⚠️ One prod write I caused (not profile data)
 `postdeploy.js` calls `GET /api/dashboard` **as the pilot**, and that endpoint advances the visit window:
