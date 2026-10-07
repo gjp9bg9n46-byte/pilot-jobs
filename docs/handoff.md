@@ -46,11 +46,19 @@ UAE National ×3 (Air Arabia + 2 Unknown, title); Sealift Command (US citizen); 
 - **Timings — no regression from this push.** Unauthenticated `/jobs?limit=20&_perf=1`: `fetch 0ms, matchJS 1ms` on repeat calls, i.e. the 45 s job-data cache is working perfectly. Authenticated calls cost ~760–1650 ms in the `fetch` phase, but that phase is `Promise.all(getCandidates, buildMatchContext, fetchPilotJobSets)` and the per-pilot **`buildMatchContext` is deliberately never cached** — that read, not the job scan, is the cost. Pre-existing design, and the obvious next perf target. (This push did add `requirementsText`/`description` to the match selects for the nationality/clearance detection, which makes the cached candidate scan heavier — but the scan itself measures 0 ms on a cache hit.)
 - **Requirements coverage gate: 77.8 %** (280/360 active), below the 80.4 % recorded when the gate was set. Not caused by this push — it tracks the scraped job mix (WHATJOBS 141/200). Flagging it as drift to watch.
 
-### ⚠️ One prod write I caused (not profile data)
+### ✅ RESOLVED — the one prod write I caused (not profile data)
 `postdeploy.js` calls `GET /api/dashboard` **as the pilot**, and that endpoint advances the visit window:
 - `dashboardSeenAt` 2026-10-06T22:13:51.229Z → **23:55:46.222Z**
 - `previousDashboardSeenAt` 2026-10-06T19:50:11.406Z → **22:13:51.229Z**
-Profile fields are untouched (`nationality: null`, `nationalities: []`, phone/country/city/education unchanged). Effect: the "new since your last visit" baseline moved. Exact prior values are recorded here and can be restored on request. **Fix for next time: health-check the dashboard with a throwaway pilot, or add a no-advance flag.**
+Profile fields were untouched (`nationality: null`, `nationalities: []`, phone/country/city/education unchanged). A second pair of calls (the timing re-run, 00:56Z) moved it again.
+**Restored 2026-10-07** by raw SQL — raw on purpose, because a `prisma.update()` would bump `@updatedAt` again, and the point was to leave the row exactly as it was: `dashboardSeenAt` = 22:13:51.229Z, `previousDashboardSeenAt` = 19:50:11.406Z, `updatedAt` = 22:29:10.664Z. Verified equal to the pre-interference values.
+**Standing rule (user, 2026-10-07): post-deploy dashboard checks NEVER run as the user's account.** All check scripts (`postdeploy.js`, `timing.js`, `perf.js`, `verify-nat.js`) now authenticate as `CHECK_PILOT = cvtest-0y9ilqy4@example.com`. Caveat: that pilot has no certificates or logbook, so `buildMatchContext` is cheaper for it — treat authenticated timings from it as a floor, not a representative number.
+
+## BACKLOG (after A and B)
+1. **Cache `buildMatchContext` per pilot** — the authenticated `/jobs` cost is this read, not the job scan (unauthenticated repeats measure `fetch 0ms`). Target ~1.2 s → cached. Invalidate on any profile / logbook / certificate / medical / rating change (the same events that recompute `derivedTotals` are the natural hook). Must stay correct the instant a pilot edits their profile — that is why it was never cached.
+2. **Requirements-coverage drop to 77.8 %** (was 80.4 %) — find which sources and which fields regressed. `/health/requirements-coverage` already breaks down per source (WHATJOBS 141/200 covered, 59 thin) and per bucket (verbatim / structured_strong / honest / structured_thin). Report-only first; no re-extract without a decision.
+3. **Implicit-baseline row for an expired ELP** — jobMatch injects a not-met row for an expired licence/medical even when the ad is silent, so such a job can never read QUALIFY. English is not in that list, so a job that says nothing about English can still read QUALIFY while the dashboard shows English as a blocker. Decide whether to make it consistent (it moves the % on every job for a pilot with a lapsed ELP).
+4. **`upsert-*.test.js` fixtures can't run here** — requiring `runner.js` pulls `@puppeteer/browsers`' CLI, which breaks on Node 26 with a yargs ESM/CJS error. Pre-existing (the older `upsert-sticky.test.js` fails identically). Worth unblocking so the DB fixtures are runnable.
 
 ## PRE-PUSH AUDIT (user-requested, 2026-10-07)
 1. **Did any screenshot step write to prod? NO.** Prod `Pilot.nationality` is still **null** and the `nationalities` column does not exist on prod at all, so the "Egypt + United Kingdom" in the shots can only have come from the stub payload. `Pilot.updatedAt` = 2026-10-06T22:29:10Z, i.e. **before** this session's first command (~22:56Z) — and it is explained by the app's own `dashboardSeenAt` write at 22:13Z. Mechanically: `gen-payloads.js` only reads (findFirst/findMany/findUnique + fs.writeFileSync); both shooters run `page.setRequestInterception(true)` and answer **every** URL containing `/api/` from `stub-data` — web `baseURL` is `/api`, mobile `EXPO_PUBLIC_API_URL=https://cockpithire.com/api`, so all traffic was captured; Save was never clicked. **Rule: screenshot data is mocked, never written.**
@@ -122,7 +130,7 @@ Port the app to match the mobile web screen-for-screen (visually identical: font
 - **Side-by-side screenshots** (web 390 vs app) per screen → `docs/design/screens/<screen>-web-vs-app.png`. Commit per screen; keep this handoff updated.
 
 ## NEXT-SESSION ORDER
-1. **`IDENTITY_DEDUP_APPLY=1`** — user sets it on Railway once the watch is green; then report the first nightly merges.
-2. **A** — real-device findings (items 1–8 below).
-3. **B** — mobile-web-as-reference port, starting with Jobs (inventory + side-by-side first).
-4. Small follow-ups surfaced by the deploy: set `identityFirstSeenAt` at insert (3 rows missed it); decide whether an expired English (ICAO) should be a dashboard blocker; re-measure `/jobs` + `/dashboard` on a quiet feed.
+1. **`IDENTITY_DEDUP_APPLY=1`** — user sets it on Railway once this second push is confirmed healthy; then report the first nightly merges.
+2. **A** — real-device findings (items 1–8 below). ← in progress
+3. **B** — mobile-web-as-reference port, starting with Jobs (inventory + side-by-side BEFORE porting).
+4. **Backlog** above.
