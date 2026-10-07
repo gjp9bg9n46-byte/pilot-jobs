@@ -8,11 +8,12 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import FlightMap from '../../../../src/components/FlightMap';
 import { FlightDashboard } from './index';
-import { TAB_BAR_CLEARANCE } from '../../../../src/theme/tabBar';
+import { useTabBarClearance } from '../../../../src/theme/tabBar';
 import { fontFamilies, fontSizes, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 export default function FlightMapScreen() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function FlightMapScreen() {
 
   return (
     <View style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
         <View style={styles.headRow}>
           <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn} accessibilityLabel="Back to profile">
             <Ionicons name="chevron-back" size={22} color={pilot.navy} />
@@ -47,7 +48,7 @@ export default function FlightMapScreen() {
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingBottom: TAB_BAR_CLEARANCE },
+  content: { padding: spacing.xl }, // bottom padding comes from useTabBarClearance()
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, alignItems: 'center', justifyContent: 'center' },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['2xl'], color: pilot.ink },

@@ -1,16 +1,28 @@
 // Display helpers for the Jobs redesign (list + detail). Pure, shared by web now
 // and mirrored for the app later.
 
-// ── Title case for ALL-CAPS titles (Part 0d) — display only, never overwrites
-// the stored title. Only touches titles that are entirely uppercase; preserves
-// acronyms and codes (FAA, ATP, A320, B737, ANG, 191st).
-const KEEP_UPPER = /^(FAA|EASA|ATP|ATPL|CPL|MPL|PPL|IR|ME|ELP|ICAO|GCAA|GACA|CAA|DGCA|JAA|OSS|ANG|USAF|EU|UK|US|USA|UAE|KSA|II|III|IV|VI|VII|VIII|IX|XI|XII|PIC|SIC|FO|DEC|NTR|LST|IFR|VFR)$/;
+// ── Title case for SHOUTED / lowercased titles (Part 0d, A#8) — display only,
+// never overwrites the stored title. Preserves genuine acronyms and codes
+// (FAA, ATPL, A320, B737-800, 191st). Mobile keeps an identical copy in
+// mobile/src/lib/displayNames.ts — the two must agree, or the same job reads
+// differently on web and app.
+const KEEP_UPPER = /^(FAA|EASA|ATP|ATPL|CPL|MPL|PPL|IR|ME|SE|ELP|ICAO|GCAA|GACA|QCAA|BCAA|CARC|CAA|DGCA|CASA|TCCA|CAAC|JAA|AOC|ATO|FTO|OSS|ANG|USAF|RAF|EU|UK|US|USA|UAE|KSA|II|III|IV|VI|VII|VIII|IX|XI|XII|PIC|SIC|FO|SO|DEC|NTR|LST|IFR|VFR|TRI|TRE|SFI|SFE|LPC|OPC|CRM|MCC|JOC|AQP|RHS|LHS|HEMS|EMS|SAR|VIP|VVIP|PF|PM|QRH|SOP|GA|MPA|SEP|MEP)$/;
+// Title-case one hyphen-joined part, skipping leading punctuation so "(TITLE"
+// capitalises the letter and not the bracket (which left "(title 32)").
+const tcPart = (p) => (p ? p.toLowerCase().replace(/^([^a-z]*)([a-z])/, (_m, pre, ch) => pre + ch.toUpperCase()) : p);
 function titleCaseWords(str) {
   return String(str).split(/(\s+)/).map((tok) => {
     if (/^\s+$/.test(tok) || tok === '') return tok;
-    if (/\d/.test(tok)) return tok;                       // codes/ordinals: A320, B737-800, 191st
-    if (tok === tok.toUpperCase() && (tok.length <= 4 || KEEP_UPPER.test(tok))) return tok; // acronyms
-    return tok.split('-').map((p) => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p)).join('-');
+    // Codes/ordinals keep their shape — but a lowercase aircraft code ("a320",
+    // "b737-800") is a code shouting quietly, so uppercase its leading letters.
+    // Ordinals ("191st") start with digits and are left alone.
+    if (/\d/.test(tok)) return /^[a-z]+\d/.test(tok) ? tok.replace(/^[a-z]+/, (m) => m.toUpperCase()) : tok;
+    const letters = tok.replace(/[^A-Za-z]/g, '');
+    // Keep a SHOUTED token only when it is a genuine abbreviation: a known
+    // aviation/geo acronym, or 1–2 letters (US, UK, MI, FO). The old rule kept
+    // ANY token of ≤4 characters, which left "NON TYPE" shouting.
+    if (tok === tok.toUpperCase() && (KEEP_UPPER.test(letters) || letters.length <= 2)) return tok;
+    return tok.split('-').map(tcPart).join('-');
   }).join('');
 }
 export function displayTitle(title) {
@@ -18,11 +30,12 @@ export function displayTitle(title) {
   const t = String(title || '').replace(/[\s–—-]+$/, '').trim();
   const upper = (t.match(/[A-Z]/g) || []).length;
   const lower = (t.match(/[a-z]/g) || []).length;
-  if (!upper) return t;                                   // no caps at all → leave as-is
-  // Treat as "shouty" (title-case it) when it's uppercase-dominant, not only when
-  // strictly ALL-CAPS — a stray lowercase ordinal ("191st") or code shouldn't stop
-  // us title-casing "TITLE 32 AIRPLANE PILOT (MI 191st OSS)". Normal mixed-case
-  // titles ("A320 Captain") stay untouched.
+  // No capitals at all ("a320 non type rated first officers") reads as badly as
+  // a shouted one — title-case it too.
+  if (!upper) return lower ? titleCaseWords(t) : t;
+  // "Shouty" = uppercase-dominant, not strictly ALL-CAPS: a stray lowercase
+  // ordinal ("191st") shouldn't stop us title-casing the rest. Normal
+  // mixed-case titles ("A320 Captain") stay untouched.
   const shouty = lower <= Math.max(2, upper * 0.15);
   if (!shouty) return t;
   return titleCaseWords(t);

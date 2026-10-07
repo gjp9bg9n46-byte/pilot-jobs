@@ -13,7 +13,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import { SecondaryButton } from '../../../../src/components/ui';
-import { TAB_BAR_CLEARANCE } from '../../../../src/theme/tabBar';
+import { useTabBarClearance } from '../../../../src/theme/tabBar';
 import ProfileEditSheet, { EditSpec, pilotNationalities } from '../../../../src/components/ProfileEditSheet';
 import { useAuth } from '../../../../src/context/AuthContext';
 import {
@@ -21,6 +21,7 @@ import {
 } from '../../../../src/lib/profileLabels';
 import { fontFamilies, fontSizes, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { hours } from '../../../../src/lib/format';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -53,6 +54,7 @@ const LICENCE_NAME: Record<string, string> = { ATPL: 'Airline Transport Pilot', 
 const rankOf = (t?: string) => { const i = LICENCE_RANK.indexOf(t || ''); return i === -1 ? 99 : i; };
 
 export default function ProfileView() {
+  const tabBarClearance = useTabBarClearance(12);
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -187,7 +189,7 @@ export default function ProfileView() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: TAB_BAR_CLEARANCE + insets.bottom + 12 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
       >
@@ -282,7 +284,7 @@ export default function ProfileView() {
                       return (
                         <Row key={r.id} nested onPress={openEdit('rating', r.id)}>
                           <View style={styles.rowMain}><Text style={styles.rowNnest}>{properCase(r.aircraftType)} {r.category && /single|multi/i.test(r.category) ? 'rating' : 'type rating'}</Text>{h != null ? <Text style={styles.rowD}>Hours from your logbook</Text> : null}</View>
-                          {h != null ? <Text style={styles.rowH}>{Math.round(h).toLocaleString()} h</Text> : null}
+                          {h != null ? <Text style={styles.rowH}>{hours(Math.round(h))}</Text> : null}
                         </Row>
                       );
                     })}

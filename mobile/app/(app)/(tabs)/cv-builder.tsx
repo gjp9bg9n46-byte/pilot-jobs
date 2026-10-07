@@ -27,6 +27,8 @@ import { TextField } from '../../../src/components/ui';
 import { renderCv } from '../../../src/cv';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import { num } from '../../../src/lib/format';
+import { useTabBarClearance } from '../../../src/theme/tabBar';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -46,7 +48,7 @@ const TEMPLATES = [
   { id: 'final', label: 'Final', desc: 'Full-width header · modern blocks' },
 ];
 
-const fmt = (n?: number) => (n ? Math.round(n).toLocaleString() : '0');
+const fmt = (n?: number) => (n ? num(Math.round(n)) : '0');
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '—');
 
 // ─── Native template mini-thumbnails (decorative — mirror web's ThumbApproach/Final) ─
@@ -139,6 +141,7 @@ function AddButton({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 export default function CVBuilder() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const [loading, setLoading] = useState(true);
@@ -296,7 +299,7 @@ export default function CVBuilder() {
       </View>
 
       {/* EDIT — kept mounted (display toggled). */}
-      <ScrollView style={[styles.flex1, tab !== 'edit' && styles.hidden]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView style={[styles.flex1, tab !== 'edit' && styles.hidden]} contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Template picker */}
             <Text style={styles.sectionCaps}>Choose a template</Text>
             <View style={styles.tmplGrid}>

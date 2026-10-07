@@ -22,20 +22,23 @@ export default function TabsLayout() {
         tabBarActiveTintColor: pilot.navy,
         tabBarInactiveTintColor: pilot.muted,
         tabBarStyle: makeTabBarStyle(pilot),
-        tabBarItemStyle: { borderRadius: 24, marginHorizontal: 1 },
+        tabBarItemStyle: { borderRadius: 26, marginHorizontal: 1 },
         tabBarActiveBackgroundColor: mode === 'dark' ? 'rgba(111,169,224,0.16)' : 'rgba(0,63,136,0.08)',
         // allowFontScaling off + explicit lineHeight: long labels ("Logbook")
         // were truncated/descender-clipped when the phone's text size scaled
         // the label beyond its ~60px slot in the floating pill.
         tabBarAllowFontScaling: false,
-        tabBarLabelStyle: { fontFamily: fontFamilies.bodyMedium, fontSize: 9, lineHeight: 12 },
+        tabBarLabelStyle: { fontFamily: fontFamilies.bodyMedium, fontSize: 9, lineHeight: 12, marginBottom: 0, paddingBottom: 0 },
         sceneStyle: { backgroundColor: pilot.cream },
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
+          // A#2 — "Dashboard" was clipped on a real device and the badge sat on
+          // top of it. "Home" fits the pill at any text size.
+          title: 'Home',
+          // A#1 — the ONE badge in the app: new matches since the last visit.
           tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined,
           tabBarBadgeStyle: { backgroundColor: pilot.navy, fontFamily: fontFamilies.bodyBold, fontSize: 10 },
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,

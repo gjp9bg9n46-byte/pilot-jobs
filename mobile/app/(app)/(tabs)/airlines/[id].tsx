@@ -14,6 +14,7 @@ import { EMPTY_FIELD, contractLabel, hiringFreqLabel, hiringMeta, relativeDate }
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 import { resolveFieldDate, formatFieldDate, hashStage } from '../../../../src/lib/fieldDates';
+import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Airline = Record<string, any>;
@@ -51,6 +52,7 @@ function Val({ children }: { children: string }) {
   const styles = useThemedStyles(createStyles); return <Text style={styles.valText}>{children}</Text>; }
 
 export default function AirlineDetail() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -78,7 +80,7 @@ export default function AirlineDetail() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
         <Pressable onPress={() => router.replace('/airlines')} style={styles.backRow}><Text style={styles.back}>← Back to Airlines</Text></Pressable>
 
         {/* Hero */}

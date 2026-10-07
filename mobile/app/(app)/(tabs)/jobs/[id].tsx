@@ -20,7 +20,7 @@ import {
 import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
 import { jobRequirements, parseDescriptionBlocks } from '../../../../src/lib/jobRequirements';
-import { locationName } from '../../../../src/lib/displayNames';
+import { displayTitle, locationName } from '../../../../src/lib/displayNames';
 import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
@@ -185,7 +185,7 @@ export default function JobDetail() {
           )}
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.company}>{job.company}</Text>
-            <Text style={styles.jobTitle}>{job.titleEn || job.title}</Text>
+            <Text style={styles.jobTitle}>{displayTitle(job.titleEn || job.title)}</Text>
             <View style={styles.metaRow}>
               {(job.location || job.country) ? <Text style={styles.meta}><Ionicons name="location-outline" size={12} color={pilot.muted} /> {locationName(job.location || job.country)}</Text> : null}
               {job.reqAircraftTypes?.[0] ? <Text style={styles.meta}>{job.reqAircraftTypes.join(', ')}</Text> : null}

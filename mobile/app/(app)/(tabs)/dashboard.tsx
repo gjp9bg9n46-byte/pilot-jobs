@@ -18,6 +18,8 @@ import { companyName, locationName } from '../../../src/lib/displayNames';
 import { useUnread } from '../../../src/context/UnreadContext';
 import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import { hours } from '../../../src/lib/format';
+import { useTabBarClearance } from '../../../src/theme/tabBar';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -37,6 +39,7 @@ const fmtD = (iso?: string | null) => { if (!iso) return null; const d = new Dat
 const daysSince = (iso?: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : Infinity);
 
 export default function DashboardScreen() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -77,7 +80,7 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
       >
         {/* Header */}
@@ -171,7 +174,7 @@ export default function DashboardScreen() {
             <Pressable onPress={() => router.push('/profile')}><Text style={styles.link}>Open</Text></Pressable>
           </View>
           <View style={styles.cardBody}>
-            <KV label="Total time" value={`${(prof.totalHours || 0).toLocaleString()} h`} styles={styles} />
+            <KV label="Total time" value={hours(prof.totalHours || 0)} styles={styles} />
             <KV label="Flights logged" value={String(prof.flights || 0)} styles={styles} />
             {prof.medicalDaysLeft != null && <KV label="Medical" value={`${prof.medicalDaysLeft} days left`} valueColor={prof.medicalDaysLeft < 60 ? SEM.amber : pilot.ink} styles={styles} />}
             {prof.strength && (

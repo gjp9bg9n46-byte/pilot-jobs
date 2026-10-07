@@ -2,10 +2,11 @@
 // Only populated fields returned. Mirror of frontend/src/lib/jobRequirements.js.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+import { num as fmtNum } from './format';
 type Job = Record<string, any>;
 export type ReqItem = { label: string; value: string };
 
-const num = (n: number) => Number(n).toLocaleString();
+const num = (n: number) => fmtNum(n);
 const cap = (s: string) => String(s || '').replace(/^\w/, (c) => c.toUpperCase());
 
 export function jobRequirements(job: Job | null | undefined): ReqItem[] {

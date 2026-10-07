@@ -19,6 +19,7 @@ import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Log = Record<string, any>;
@@ -106,6 +107,7 @@ function FlightCard({ log, onEdit, onClone, onDelete }: {
 }
 
 export default function LogbookList() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -260,7 +262,7 @@ export default function LogbookList() {
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}

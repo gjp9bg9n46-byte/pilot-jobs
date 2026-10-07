@@ -17,17 +17,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { PlaneMark } from './ui';
 import { useAuth } from '../context/AuthContext';
-import { useUnread } from '../context/UnreadContext';
 import { fontFamilies, fontSizes, pilot } from '../theme/tokens';
 
 const PANEL_W = Math.min(320, Math.round(Dimensions.get('window').width * 0.84));
 
 type Item = { label: string; icon: keyof typeof Ionicons.glyphMap; route: string; badge?: number };
 
-const MAIN = (unread: number): Item[] => [
+const MAIN: Item[] = [
   { label: 'Jobs', icon: 'briefcase-outline', route: '/jobs' },
   { label: 'Airlines', icon: 'airplane-outline', route: '/airlines' },
-  { label: 'Alerts', icon: 'notifications-outline', route: '/alerts', badge: unread },
+  // A#1 — no badge here either; Home owns the count.
+  { label: 'Alerts', icon: 'notifications-outline', route: '/alerts' },
   { label: 'Logbook', icon: 'book-outline', route: '/logbook' },
   { label: 'CV Builder', icon: 'document-text-outline', route: '/cv-builder' },
   { label: 'Profile', icon: 'person-outline', route: '/profile' },
@@ -45,7 +45,6 @@ const BOTTOM: Item[] = [
 export default function AppDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
   const { user, accountType, logout } = useAuth();
-  const { unread } = useUnread();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isAdmin = accountType === 'pilot' && (user as any)?.isAdmin === true;
 
@@ -100,7 +99,7 @@ export default function AppDrawer({ open, onClose }: { open: boolean; onClose: (
 
           {/* Body */}
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: 8 }} showsVerticalScrollIndicator={false}>
-            {MAIN(unread).map((item) => <Row key={item.route} item={item} />)}
+            {MAIN.map((item) => <Row key={item.route} item={item} />)}
 
             {isAdmin ? ADMIN.map((item) => <Row key={item.route} item={item} />) : null}
 

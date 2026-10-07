@@ -23,6 +23,7 @@ import { useAuth } from '../../../../src/context/AuthContext';
 import { buildCompleteness, completenessSubtitle, CompletenessItem } from '../../../../src/lib/completeness';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useTheme, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -104,6 +105,7 @@ function TagInput({ value, onChangeText, tags, onAdd, onRemove, placeholder }: {
 }
 
 export default function SettingsScreen() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const { mode, setMode } = useTheme();
@@ -231,7 +233,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}>
         <Text style={styles.h1}>Settings</Text>
         <Text style={styles.subtitle}>Manage your account, preferences, notifications, and data.</Text>

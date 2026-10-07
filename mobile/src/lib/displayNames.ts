@@ -42,3 +42,28 @@ export function locationName(raw: string | null | undefined): string {
     .filter((p) => { const k = p.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
   return parts.join(', ');
 }
+
+// Title case for SHOUTED / lowercased job titles (A#8). Display only — the
+// stored title is never touched. This is a line-for-line twin of
+// frontend/src/lib/jobDisplay.js displayTitle(); if you change one, change both,
+// or the same job reads differently on web and app.
+const KEEP_UPPER = /^(FAA|EASA|ATP|ATPL|CPL|MPL|PPL|IR|ME|SE|ELP|ICAO|GCAA|GACA|QCAA|BCAA|CARC|CAA|DGCA|CASA|TCCA|CAAC|JAA|AOC|ATO|FTO|OSS|ANG|USAF|RAF|EU|UK|US|USA|UAE|KSA|II|III|IV|VI|VII|VIII|IX|XI|XII|PIC|SIC|FO|SO|DEC|NTR|LST|IFR|VFR|TRI|TRE|SFI|SFE|LPC|OPC|CRM|MCC|JOC|AQP|RHS|LHS|HEMS|EMS|SAR|VIP|VVIP|PF|PM|QRH|SOP|GA|MPA|SEP|MEP)$/;
+const tcPart = (p: string): string => (p ? p.toLowerCase().replace(/^([^a-z]*)([a-z])/, (_m, pre, ch) => pre + ch.toUpperCase()) : p);
+function titleCaseWords(str: string): string {
+  return String(str).split(/(\s+)/).map((tok) => {
+    if (/^\s+$/.test(tok) || tok === '') return tok;
+    if (/\d/.test(tok)) return /^[a-z]+\d/.test(tok) ? tok.replace(/^[a-z]+/, (m) => m.toUpperCase()) : tok;
+    const letters = tok.replace(/[^A-Za-z]/g, '');
+    if (tok === tok.toUpperCase() && (KEEP_UPPER.test(letters) || letters.length <= 2)) return tok;
+    return tok.split('-').map(tcPart).join('-');
+  }).join('');
+}
+export function displayTitle(title: string | null | undefined): string {
+  const t = String(title || '').replace(/[\s–—-]+$/, '').trim();
+  const upper = (t.match(/[A-Z]/g) || []).length;
+  const lower = (t.match(/[a-z]/g) || []).length;
+  if (!upper) return lower ? titleCaseWords(t) : t;
+  const shouty = lower <= Math.max(2, upper * 0.15);
+  if (!shouty) return t;
+  return titleCaseWords(t);
+}

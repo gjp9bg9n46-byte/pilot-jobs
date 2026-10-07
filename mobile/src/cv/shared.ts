@@ -8,6 +8,7 @@
 // `fontFamily: 'Helvetica'` (NOT the serif the brief suggested — parity wins).
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+import { num } from '../lib/format';
 export type CvData = Record<string, any>;
 
 // Palette base colours — copied from frontend/src/components/cv/Template*.jsx `C`.
@@ -41,7 +42,7 @@ export function esc(v: unknown): string {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-export const fmt = (n?: number) => (n ? Math.round(n).toLocaleString() : '0');
+export const fmt = (n?: number) => (n ? num(Math.round(n)) : '0');
 export const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '';
 export const fullName = (p: CvData) => `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim();

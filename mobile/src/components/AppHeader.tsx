@@ -23,13 +23,11 @@ export default function AppHeader() {
       </View>
 
       <View style={styles.right}>
-        <Pressable onPress={() => router.navigate('/dashboard')} hitSlop={8} style={styles.iconBtn} accessibilityLabel={`Dashboard${unread > 0 ? `, ${unread} unread` : ''}`}>
+        {/* A#1 — ONE badge in the app, on the Home tab. The bell still carries
+            the count to assistive tech (and still routes to the dashboard), but
+            the visual badge was the third copy of the same number on screen. */}
+        <Pressable onPress={() => router.navigate('/dashboard')} hitSlop={8} style={styles.iconBtn} accessibilityLabel={`Home${unread > 0 ? `, ${unread} new matches` : ''}`}>
           <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
-          {unread > 0 ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
-            </View>
-          ) : null}
         </Pressable>
         <Pressable onPress={() => router.navigate('/settings')} hitSlop={8} style={styles.iconBtn} accessibilityLabel="Settings">
           <Ionicons name="settings-outline" size={22} color="#FFFFFF" />

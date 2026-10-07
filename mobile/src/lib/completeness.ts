@@ -8,6 +8,7 @@
 // Logbook, cv → the CV Builder.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+import { hours } from './format';
 type Any = Record<string, any>;
 
 export type CompletenessItem = { key: string; label: string; hint: string; done: boolean; to: string };
@@ -49,7 +50,7 @@ export function buildCompleteness(profile: Any | null, cv: Any | null, totals: A
       hint: rtw.length > 0 ? `${rtw.length} ${rtw.length === 1 ? 'entry' : 'entries'}` : 'No entries yet' },
     { key: 'logbook', label: 'Logbook', to: '/logbook',
       done: totalTime > 0,
-      hint: totalTime > 0 ? `${Math.round(totalTime).toLocaleString()} h logged` : 'No hours logged yet' },
+      hint: totalTime > 0 ? `${hours(Math.round(totalTime))} logged` : 'No hours logged yet' },
     { key: 'cv', label: 'CV', to: '/cv-builder',
       done: cvBuilt,
       hint: cvBuilt ? 'Built' : 'Not built yet' },

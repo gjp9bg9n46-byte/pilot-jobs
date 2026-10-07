@@ -8,7 +8,8 @@ import { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AirlineLogo from './AirlineLogo';
-import { locationName } from '../lib/displayNames';
+import { displayTitle, locationName } from '../lib/displayNames';
+import { hours } from '../lib/format';
 import { fontFamilies, fontSizes } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
@@ -50,8 +51,8 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
   const locText = locationName(job?.location || job?.country); // deduped, no HQ flag (C#1)
 
   const specRows: [string, string][] = [];
-  if (job?.reqMinTotalHours) specRows.push(['Total time', `${Number(job.reqMinTotalHours).toLocaleString()} hrs`]);
-  if (job?.reqMinPicHours) specRows.push(['PIC time', `${Number(job.reqMinPicHours).toLocaleString()} hrs`]);
+  if (job?.reqMinTotalHours) specRows.push(['Total time', hours(job.reqMinTotalHours)]);
+  if (job?.reqMinPicHours) specRows.push(['PIC time', hours(job.reqMinPicHours)]);
   if (job?.reqCertificates?.length) specRows.push(['Licence', job.reqCertificates.slice(0, 2).join(' / ')]);
   if (job?.reqAuthorities?.length) specRows.push(['Authority', job.reqAuthorities.slice(0, 2).join(' / ')]);
   const showSpec = specRows.length >= 2;
@@ -60,7 +61,7 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
     <>
       <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company} box={40} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.jcTitle} numberOfLines={2}>{job?.title ?? '—'}</Text>
+        <Text style={styles.jcTitle} numberOfLines={2}>{displayTitle(job?.titleEn || job?.title) || '—'}</Text>
         <Text style={styles.jcCompany}>{job?.company ?? '—'}{ago && !ongoing ? `  ·  ${ago}` : ''}</Text>
         {ongoing ? <Text style={styles.jcOngoing}>{ongoing}</Text> : null}
 

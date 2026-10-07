@@ -15,20 +15,27 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import JobCardContent from '../../../../src/components/JobCardShared';
-import AlertsScreen from '../alerts';
-import { useUnread } from '../../../../src/context/UnreadContext';
 import { SelectField, TextField } from '../../../../src/components/ui';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
 import { postedAgo, statusMeta } from '../../../../src/lib/jobMatch';
-import { TAB_BAR_CLEARANCE } from '../../../../src/theme/tabBar';
+import { useTabBarClearance } from '../../../../src/theme/tabBar';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
+// A#4 — signed-in pilots open on Best match. The server already groups by fit
+// (jobController "best"); the client then orders within that by % and recency,
+// and drops rows the pilot is barred from by nationality to the bottom.
 const SORT_OPTIONS: [string, string][] = [
+  ['best', 'Best match'],
   ['newest', 'Newest'],
-  ['relevant', 'Most Relevant'],
   ['deadline', 'Deadline'],
 ];
+const DEFAULT_SORT = 'best';
+
+// Fit order for the client-side pass, mirroring the server's fitGroup ranking.
+const STATUS_RANK: Record<string, number> = {
+  QUALIFY: 0, CHECK: 1, SHORT: 2, NO_REQUIREMENTS: 3, NOT_MET: 4, WRONG_CATEGORY: 5,
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Job = Record<string, any>;
@@ -41,13 +48,14 @@ function slugFor(job: Job) {
 }
 
 function JobsBrowse() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; sort?: string; qualified?: string }>();
 
   const [search, setSearch] = useState(typeof params.q === 'string' ? params.q : '');
-  const [sort, setSort] = useState(typeof params.sort === 'string' ? params.sort : 'newest');
+  const [sort, setSort] = useState(typeof params.sort === 'string' ? params.sort : DEFAULT_SORT);
   const [qualifiedOnly, setQualifiedOnly] = useState(params.qualified === '1');
 
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -94,7 +102,7 @@ function JobsBrowse() {
   useEffect(() => {
     const next: Record<string, string> = {};
     if (search) next.q = search;
-    if (sort !== 'newest') next.sort = sort;
+    if (sort !== DEFAULT_SORT) next.sort = sort;
     if (qualifiedOnly) next.qualified = '1';
     router.setParams(next);
   }, [search, sort, qualifiedOnly, router]);
@@ -112,13 +120,39 @@ function JobsBrowse() {
     );
   }, [jobs, search]);
 
-  // Evergreen rows (old posting date but still listed — rolling recruitment) are
-  // demoted below fresh listings and reframed on the card. Server sets evergreen.
+  // Ordering (A#4). Two demotions always apply, in this order:
+  //   1. a job whose nationality requirement the pilot cannot meet — they cannot
+  //      be hired for it, so it never sits above a job they can take;
+  //   2. evergreen rows (old posting date but still listed — rolling
+  //      recruitment), which are reframed on the card rather than dated.
+  // Within that, "Best match" sorts by fit, then % desc, then newest. The other
+  // sorts keep the server's order (the fetch already asked for it).
   const { orderedJobs, freshCount, evergreenCount } = useMemo(() => {
-    const fresh = filtered.filter((j) => !(j as any).evergreen);
-    const ever = filtered.filter((j) => (j as any).evergreen);
-    return { orderedJobs: [...fresh, ...ever], freshCount: fresh.length, evergreenCount: ever.length };
-  }, [filtered]);
+    const barred = (j: Job) => ((j.match?.unmetKeys || []) as string[]).includes('nationality');
+    const ever = (j: Job) => !!(j as any).evergreen;
+    const decorated = filtered.map((j, i) => ({ j, i }));
+    decorated.sort((a, b) => {
+      const byBar = Number(barred(a.j)) - Number(barred(b.j));
+      if (byBar) return byBar;
+      const byEver = Number(ever(a.j)) - Number(ever(b.j));
+      if (byEver) return byEver;
+      if (sort === 'best') {
+        const rank = (x: Job) => STATUS_RANK[x.match?.status as string] ?? 9;
+        const byFit = rank(a.j) - rank(b.j);
+        if (byFit) return byFit;
+        const pct = (x: Job) => (typeof x.match?.pct === 'number' ? x.match.pct : -1);
+        const byPct = pct(b.j) - pct(a.j);
+        if (byPct) return byPct;
+        const posted = (x: Job) => new Date(x.postedAt || 0).getTime();
+        const byNew = posted(b.j) - posted(a.j);
+        if (byNew) return byNew;
+      }
+      return a.i - b.i; // stable: keep the server's order otherwise
+    });
+    const ordered = decorated.map((d) => d.j);
+    const everCount = ordered.filter(ever).length;
+    return { orderedJobs: ordered, freshCount: ordered.length - everCount, evergreenCount: everCount };
+  }, [filtered, sort]);
 
   const renderRow = ({ item: job, index }: { item: Job; index: number }) => {
     const eg = (job as any).evergreen as boolean | undefined;
@@ -133,7 +167,7 @@ function JobsBrowse() {
     return (
       <>
         {showDivider ? (
-          <Text style={styles.ongoingDivider}>ONGOING RECRUITMENT — OPEN VACANCIES, NOT NEW POSTINGS</Text>
+          <Text style={styles.ongoingDivider}>Ongoing recruitment — open vacancies, not new postings</Text>
         ) : null}
         <Pressable
           style={({ pressed }) => [styles.row, pressed && styles.rowPressed, pressed && { transform: [{ scale: 0.985 }] }]}
@@ -161,7 +195,7 @@ function JobsBrowse() {
   const ListHeader = (
     <View style={styles.header}>
       <Text style={styles.h1}>Jobs</Text>
-      <Text style={styles.subtitle}>Cockpit roles, filtered to your profile.</Text>
+      <Text style={styles.subtitle}>All cockpit roles, with your match on each.</Text>
 
       <View style={styles.statusRow}>
         <Text style={styles.count}>{filtered.length} of {total} jobs</Text>
@@ -207,7 +241,7 @@ function JobsBrowse() {
         keyExtractor={(j) => j.id}
         renderItem={renderRow}
         ListHeaderComponent={ListHeader}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarClearance }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
         ListEmptyComponent={
           loading ? (
@@ -223,36 +257,15 @@ function JobsBrowse() {
   );
 }
 
-// ─── Merged Jobs screen: Browse (job board) + Matches (former Alerts page) ────
+// ─── Jobs screen ─────────────────────────────────────────────────────────────
+// A#6 — the Browse/Matches segmented control is gone: matches live on the Home
+// (dashboard) tab, which also owns the single unread badge (A#1). Alerts are
+// still reachable from the drawer (/alerts).
 export default function JobsScreen() {
   const pilotColors = useThemeColors();
-  const styles = useThemedStyles(createStyles);
-  const { unread } = useUnread();
-  const params = useLocalSearchParams<{ view?: string }>();
-  const [view, setView] = useState<'browse' | 'matches'>(params.view === 'matches' ? 'matches' : 'browse');
-
-  useEffect(() => {
-    if (params.view === 'matches') setView('matches');
-  }, [params.view]);
-
   return (
     <View style={{ flex: 1, backgroundColor: pilotColors.cream }}>
-      <View style={styles.segmentWrap}>
-        {([['browse', 'Browse'], ['matches', 'Matches']] as const).map(([key, label]) => {
-          const active = view === key;
-          return (
-            <Pressable key={key} onPress={() => setView(key)} style={[styles.segment, active && styles.segmentActive]}>
-              <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
-              {key === 'matches' && unread > 0 ? (
-                <View style={[styles.segBadge, active && styles.segBadgeActive]}>
-                  <Text style={[styles.segBadgeText, active && styles.segBadgeTextActive]}>{unread > 99 ? '99+' : unread}</Text>
-                </View>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </View>
-      {view === 'browse' ? <JobsBrowse /> : <AlertsScreen />}
+      <JobsBrowse />
     </View>
   );
 }
@@ -260,16 +273,7 @@ export default function JobsScreen() {
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
   // Rows run edge-to-edge; only the header block is inset.
-  listContent: { paddingBottom: TAB_BAR_CLEARANCE },
-  segmentWrap: { flexDirection: 'row', marginHorizontal: spacing.xl, marginTop: 10, marginBottom: 6, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 3, gap: 3 },
-  segment: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 9 },
-  segmentActive: { backgroundColor: pilot.navy },
-  segmentText: { fontSize: 13, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted },
-  segmentTextActive: { color: '#FFFFFF' },
-  segBadge: { backgroundColor: pilot.navy, borderRadius: 9, minWidth: 18, paddingHorizontal: 5, paddingVertical: 1, alignItems: 'center' },
-  segBadgeActive: { backgroundColor: '#FFFFFF' },
-  segBadgeText: { color: '#FFFFFF', fontSize: 10, fontFamily: fontFamilies.bodyBold },
-  segBadgeTextActive: { color: pilot.navy },
+  listContent: {}, // bottom padding comes from useTabBarClearance()
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: 4 },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 20 },
@@ -283,13 +287,16 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   controlsRow: { flexDirection: 'row', gap: 12, alignItems: 'stretch', marginBottom: 8 },
   chipRail: { marginBottom: 8, flexGrow: 0 },
   chipRailRow: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingRight: 12 },
+  // A#8 — a filter CHIP (pill, like the region/segment chips elsewhere), not the
+  // old square button that read as a form control.
   toggle: {
-    borderWidth: 1, borderColor: pilot.line, borderRadius: 6, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: pilot.line, borderRadius: 999,
+    paddingHorizontal: 14, paddingVertical: 7,
     justifyContent: 'center', backgroundColor: pilot.surface,
   },
-  toggleActive: { borderColor: pilot.navy, backgroundColor: 'rgba(0,63,136,0.06)' },
+  toggleActive: { borderColor: pilot.navy, backgroundColor: pilot.navy },
   toggleText: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.bodyMedium },
-  toggleTextActive: { color: pilot.navy },
+  toggleTextActive: { color: '#FFFFFF' },
 
   // Card rows — identical treatment to the Matches (alerts) cards.
   row: {

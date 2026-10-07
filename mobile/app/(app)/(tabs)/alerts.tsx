@@ -27,6 +27,8 @@ import { matchStyle, postedAgo } from '../../../src/lib/jobMatch';
 import { useUnread } from '../../../src/context/UnreadContext';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import { useTabBarClearance } from '../../../src/theme/tabBar';
+import { hours, num } from '../../../src/lib/format';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -59,18 +61,18 @@ function buildPills(job: Any, pilot: ThemePalette, structured?: Any): { key: str
   const info: { key: string; text: string; color: string; bg: string }[] = [];
   if (job.role) info.push({ key: 'role', text: ROLE_LABELS[job.role] || job.role, color: pilot.navy, bg: 'rgba(0,63,136,0.08)' });
   if (job.contractType) info.push({ key: 'ct', text: CT_LABELS[job.contractType] || job.contractType, color: pilot.muted, bg: pilot.cream });
-  if (job.salaryMin && job.salaryMax) info.push({ key: 'sal', text: `${job.salaryCurrency || 'USD'} ${job.salaryMin.toLocaleString()}–${job.salaryMax.toLocaleString()}`, color: SEM.green, bg: '#DCFCE7' });
-  else if (job.salaryMin) info.push({ key: 'sal', text: `${job.salaryCurrency || 'USD'} ${job.salaryMin.toLocaleString()}+`, color: SEM.green, bg: '#DCFCE7' });
+  if (job.salaryMin && job.salaryMax) info.push({ key: 'sal', text: `${job.salaryCurrency || 'USD'} ${num(job.salaryMin)}–${num(job.salaryMax)}`, color: SEM.green, bg: '#DCFCE7' });
+  else if (job.salaryMin) info.push({ key: 'sal', text: `${job.salaryCurrency || 'USD'} ${num(job.salaryMin)}+`, color: SEM.green, bg: '#DCFCE7' });
 
   const STATUS_RANK: Record<string, number> = { matched: 0, marginal: 1, missing: 2 };
   const rankOf = (key: string) => STATUS_RANK[structured?.[key] as string] ?? 3;
   const reqs: { key: string; text: string; color: string; bg: string; rank: number }[] = [];
   (job.reqAircraftTypes || []).forEach((a: string) => reqs.push({ key: `ac-${a}`, text: a, rank: rankOf('aircraftType'), ...pillColor('aircraftType', pilot, structured) }));
   (job.reqCertificates || []).forEach((c: string) => reqs.push({ key: `cert-${c}`, text: c, rank: rankOf('certificate'), ...pillColor('certificate', pilot, structured) }));
-  if (job.reqMinTotalHours) reqs.push({ key: 'th', text: `${job.reqMinTotalHours.toLocaleString()} hrs total`, rank: rankOf('totalHours'), ...pillColor('totalHours', pilot, structured) });
-  if (job.reqMinPicHours) reqs.push({ key: 'pic', text: `${job.reqMinPicHours.toLocaleString()} PIC`, rank: rankOf('picHours'), ...pillColor('picHours', pilot, structured) });
-  if (job.reqMinMultiEngineHours) reqs.push({ key: 'me', text: `${job.reqMinMultiEngineHours.toLocaleString()} multi-eng`, rank: rankOf('multiEngineHours'), ...pillColor('multiEngineHours', pilot, structured) });
-  if (job.reqMinTurbineHours) reqs.push({ key: 'turb', text: `${job.reqMinTurbineHours.toLocaleString()} turbine`, rank: rankOf('turbineHours'), ...pillColor('turbineHours', pilot, structured) });
+  if (job.reqMinTotalHours) reqs.push({ key: 'th', text: `${hours(job.reqMinTotalHours)} total`, rank: rankOf('totalHours'), ...pillColor('totalHours', pilot, structured) });
+  if (job.reqMinPicHours) reqs.push({ key: 'pic', text: `${hours(job.reqMinPicHours)} PIC`, rank: rankOf('picHours'), ...pillColor('picHours', pilot, structured) });
+  if (job.reqMinMultiEngineHours) reqs.push({ key: 'me', text: `${hours(job.reqMinMultiEngineHours)} multi-eng`, rank: rankOf('multiEngineHours'), ...pillColor('multiEngineHours', pilot, structured) });
+  if (job.reqMinTurbineHours) reqs.push({ key: 'turb', text: `${hours(job.reqMinTurbineHours)} turbine`, rank: rankOf('turbineHours'), ...pillColor('turbineHours', pilot, structured) });
   if (job.reqMedicalClass) reqs.push({ key: 'med', text: String(job.reqMedicalClass).replace('CLASS_', 'Class '), rank: rankOf('medical'), ...pillColor('medical', pilot, structured) });
   reqs.sort((a, b) => a.rank - b.rank); // stable → category order preserved within each status group
 
@@ -181,6 +183,7 @@ const CHIPS: [string, string][] = [['all', 'All'], ['unread', 'Unread'], ['parti
 const SORTS: [string, string][] = [['newest', 'Newest'], ['score', 'Best Match'], ['deadline', 'Deadline']];
 
 function MatchesTab({ header }: { header?: ReactNode }) {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -313,7 +316,7 @@ function MatchesTab({ header }: { header?: ReactNode }) {
     <FlatList
       data={loading ? [] : alerts}
       keyExtractor={(a) => a.id}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={[styles.listContent, { paddingBottom: tabBarClearance }]}
       ListHeaderComponent={Header}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
       renderItem={({ item: alert }) => {
@@ -350,6 +353,7 @@ function MatchesTab({ header }: { header?: ReactNode }) {
 // Tap → job detail; the filled bookmark unsaves (optimistic, reloads on failure).
 
 function SavedJobsTab({ header }: { header?: ReactNode }) {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -379,7 +383,7 @@ function SavedJobsTab({ header }: { header?: ReactNode }) {
     <FlatList
       data={loading ? [] : (jobs ?? [])}
       keyExtractor={(j) => j.id}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={[styles.listContent, { paddingBottom: tabBarClearance }]}
       ListHeaderComponent={header ? <View>{header}</View> : null}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
       renderItem={({ item: j }) => {
@@ -418,6 +422,7 @@ function SavedJobsTab({ header }: { header?: ReactNode }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function AlertsScreen() {
+  const tabBarClearance = useTabBarClearance();
   const styles = useThemedStyles(createStyles);
   const { unread } = useUnread();
   const [tab, setTab] = useState<'matches' | 'saved'>('matches');
@@ -478,7 +483,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   tabBadgeText: { fontSize: 10, fontFamily: fontFamilies.bodyBold, color: '#fff' },
   tabBadgeTextActive: { color: pilot.navy },
 
-  listContent: { padding: spacing.xl, paddingTop: spacing.lg, paddingBottom: 116 /* clears floating tab bar */ },
+  listContent: { padding: spacing.xl, paddingTop: spacing.lg }, // bottom padding comes from useTabBarClearance()
   controls: { marginBottom: 12 },
   chipRail: { marginBottom: 10, flexGrow: 0 },
   chipRow: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingRight: 12 },

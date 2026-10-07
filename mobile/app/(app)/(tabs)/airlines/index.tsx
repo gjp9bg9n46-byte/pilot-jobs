@@ -11,12 +11,14 @@ import { SelectField, TextField } from '../../../../src/components/ui';
 import { HIRING_STATUSES, REGIONS, SORT_OPTIONS, hiringMeta } from '../../../../src/lib/airlineFormat';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Airline = Record<string, any>;
 const REGION_OPTS: [string, string][] = [['', 'All Regions'], ...REGIONS.map((r) => [r, r] as [string, string])];
 
 export default function Airlines() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -74,7 +76,7 @@ export default function Airlines() {
         data={loading ? [] : data.items}
         keyExtractor={(a) => a.id}
         renderItem={renderCard}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: tabBarClearance }]}
         ListHeaderComponent={
           <View>
             <Text style={styles.h1}>Airlines</Text>

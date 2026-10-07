@@ -22,6 +22,7 @@ import { PrimaryButton } from '../../../../src/components/ui';
 import { getPushPermissionStatus, registerForPush, type PushStatus } from '../../../../src/lib/push';
 import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
 const NOTIF_ROWS: [string, string, string?][] = [
   ['newJobMatch', 'New Job Match'],
@@ -59,6 +60,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
 }
 
 export default function NotificationsSettings() {
+  const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -141,7 +143,7 @@ export default function NotificationsSettings() {
         <View style={{ width: 56 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
         <Text style={styles.sub}>Choose what emails you receive from CockpitHire.</Text>
 
         {/* Master toggle */}
