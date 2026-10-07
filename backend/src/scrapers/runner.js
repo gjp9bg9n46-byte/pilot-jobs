@@ -49,6 +49,7 @@ const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
 const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates, collapseAggregatorPriority, collapseByIdentity } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
+const { identityForInsert } = require('../services/jobIdentityStore');
 
 // ─── Upsert a single normalized job ──────────────────────────────────────────
 
@@ -111,9 +112,26 @@ async function upsertJob(job, { preserveMerge = false, keepInactive = false } = 
     requirementsText: extractRequirementsBlock(description) || null,
   };
 
+  // Identity at INSERT (not only on the next recompute pass): a brand-new row
+  // gets its cluster key immediately, and a re-post inherits the cluster's
+  // original first-seen so it never re-registers as "new" on the dashboard.
+  // Only paid for on a real insert — the existence probe is a unique-index hit,
+  // and a failure here must never lose the job, so it degrades to the old
+  // behaviour (recompute fills it in).
+  let identity = null;
+  try {
+    const exists = await prisma.job.findUnique({
+      where: { sourcePlatform_externalId: { sourcePlatform, externalId } },
+      select: { id: true },
+    });
+    if (!exists) identity = await identityForInsert({ title, titleEn: job.titleEn, company, location, country });
+  } catch (err) {
+    logger.warn?.({ msg: 'identity-at-insert failed; recompute will fill it', err: err.message });
+  }
+
   return prisma.job.upsert({
     where: { sourcePlatform_externalId: { sourcePlatform, externalId } },
-    create: data,
+    create: identity ? { ...data, ...identity } : data,
     update: {
       // On re-run: refresh all mutable fields; keep postedAt stable
       title, company, location, country: country || null,

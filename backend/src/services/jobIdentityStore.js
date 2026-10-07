@@ -13,6 +13,45 @@ const logger = require('../config/logger');
 // identityOf needs only these columns; keep the scan light.
 const SELECT = { id: true, title: true, titleEn: true, company: true, location: true, country: true, createdAt: true, identityKey: true, identityFirstSeenAt: true };
 
+// ─── Ingest-time identity ────────────────────────────────────────────────────
+// A job inserted by the scraper used to get identityKey/identityFirstSeenAt only
+// from the next recompute pass, so for up to a cron cycle a brand-new row had
+// neither — and a RE-POST of an older ad looked "new" on the dashboard, because
+// the new-since-last-visit test falls back to createdAt when identityFirstSeenAt
+// is null. We now stamp both at insert.
+//
+// The resolver is airline-list-derived and rebuilt at most every RESOLVER_TTL_MS;
+// building it per job would be O(airlines) on every upsert.
+const RESOLVER_TTL_MS = Number(process.env.IDENTITY_RESOLVER_TTL_MS || 10 * 60 * 1000);
+let _resolver = null;
+let _resolverExp = 0;
+
+async function getResolver() {
+  if (_resolver && _resolverExp > Date.now()) return _resolver;
+  const airlines = await prisma.airline.findMany({ select: { name: true, country: true, headquarters: true, bases: true } });
+  _resolver = makeResolver(airlines);
+  _resolverExp = Date.now() + RESOLVER_TTL_MS;
+  return _resolver;
+}
+function clearResolverCache() { _resolver = null; _resolverExp = 0; }
+
+// The identity columns for a job about to be INSERTED. `identityFirstSeenAt` is
+// the cluster's earliest first-seen: a re-post inherits the original's date (so
+// it is not "new"), and a genuinely new cluster starts at now.
+// `now` is injectable for tests.
+async function identityForInsert(job, { now = new Date() } = {}) {
+  const resolver = await getResolver();
+  const key = identityOf({ ...job, description: job.titleEn || job.title || '' }, resolver).key;
+  // Oldest row already in this cluster, if any. identityKey is indexed.
+  const prior = await prisma.job.findFirst({
+    where: { identityKey: key },
+    orderBy: [{ identityFirstSeenAt: 'asc' }, { createdAt: 'asc' }],
+    select: { identityFirstSeenAt: true, createdAt: true },
+  });
+  const inherited = prior ? (prior.identityFirstSeenAt || prior.createdAt) : null;
+  return { identityKey: key, identityFirstSeenAt: inherited || now };
+}
+
 async function recomputeJobIdentity() {
   const [airlines, jobs] = await Promise.all([
     prisma.airline.findMany({ select: { name: true, country: true, headquarters: true, bases: true } }),
@@ -52,4 +91,4 @@ async function recomputeJobIdentity() {
   return { jobs: jobs.length, updated, clusters: firstSeen.size };
 }
 
-module.exports = { recomputeJobIdentity };
+module.exports = { recomputeJobIdentity, identityForInsert, getResolver, clearResolverCache };
