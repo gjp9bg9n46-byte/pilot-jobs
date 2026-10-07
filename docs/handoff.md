@@ -1,4 +1,4 @@
-# Handoff — Batch C round 3 (display polish + #7 nationality) → **push plan on the table, awaiting OK**
+# Handoff — Batch C round 3 → **PUSHED 2026-10-07 (origin/main 40bb928)**, post-deploy watch
 
 Living doc. Keep updated as items land. Everything is on local `main`, **unpushed**.
 Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
@@ -32,6 +32,23 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 
 ### #7b final nationality list (11 ACTIVE) — re-run `scratchpad/C-reports.js`
 UAE National ×3 (Air Arabia + 2 Unknown, title); Sealift Command (US citizen); Aerotime + Fly Fofa ×2 + Airlink (South African citizenship); CAE ×2 C-130J (Australian Citizenship); Air Canada AC Express (Canadian citizenship). SAAB/Canadian Inclusion + Air Transat correctly EXCLUDED ("or permanent resident").
+
+## POST-DEPLOY (push 40bb928, Railway redeploy ~23:51Z / 02:51 local)
+- **Backup**: `~/pilot-jobs-backups/predeploy-2026-10-07.dump` — 11 MB, `pg_restore --list` 184 TOC entries, 30 TABLE DATA (Pilot/Job/Application/PilotCertificate/Airline present).
+- **Migration applied**: `prisma migrate status` → "Database schema is up to date" (26/26). Prod `GET /profile` now returns `nationalities: []` and legacy `nationality: null`.
+- **Key-set diff**: `/api/jobs` 61 keys → 61, **no removals, no additions**, no identity-field leaks. `/api/jobs/:id` 200, 65 keys, no leaks.
+- **Readiness on prod**: english item is `label="English (ICAO)" level=expired date=2026-09-30` ✅ (wording + single-source fix live). Blockers: `ATPL licence (expired)` only.
+- **CronRun**: `totals-backfill OK 1479ms` + `startup-cleanup OK 300704ms`, both `commit=40bb928` ✅.
+- **5xx**: one 502 at 23:51:56Z — the Railway restart itself. Clean afterwards (monitor running to ~00:22Z).
+- **identityFirstSeenAt**: ACTIVE 365/368. The 3 gaps are rows the startup ADZUNA scrape inserted at 23:55 (Pacific Seafood, National Airlines, ABX Air) — i.e. **new rows are inserted without `identityFirstSeenAt`** and only get it from the backfill pass. Worth fixing at insert before the dedup rollout.
+- **Dedup is still shadow-only for the identity engine** (`collapseByIdentity({ dryRun: !IDENTITY_DEDUP_APPLY })`, env unset). The 505 merged-away + 1347 plain-expiry rows touched since the deploy come from the **legacy, ungated** `src/scrapers/dedup.js` passes + the `expireUnseen` backstop, which run on every scrape — the same run pre-push (18:25, commit 822d6e4) touched 10408 + 13512, an order of magnitude more. ACTIVE feed: 368.
+- **Timings (from my laptop, so network-inclusive; `/stats/landing` ≈ 250 ms is the RTT floor)**: `/jobs?limit=20` 3691 / 898 / 717 ms; `/dashboard` 3953 / 1314 / 2327 ms. Server-side `?_perf=1` on `/jobs`: `fetch` 858–1142 ms, `matchJS` 10–19 ms — i.e. the 45 s job-data cache was **not** hitting, which is expected while the startup scrape was still inserting rows and busting it. **No pre-push baseline was captured from this vantage** — re-measure once the feed is quiet before calling it a regression.
+
+### ⚠️ One prod write I caused (not profile data)
+`postdeploy.js` calls `GET /api/dashboard` **as the pilot**, and that endpoint advances the visit window:
+- `dashboardSeenAt` 2026-10-06T22:13:51.229Z → **23:55:46.222Z**
+- `previousDashboardSeenAt` 2026-10-06T19:50:11.406Z → **22:13:51.229Z**
+Profile fields are untouched (`nationality: null`, `nationalities: []`, phone/country/city/education unchanged). Effect: the "new since your last visit" baseline moved. Exact prior values are recorded here and can be restored on request. **Fix for next time: health-check the dashboard with a throwaway pilot, or add a no-advance flag.**
 
 ## PRE-PUSH AUDIT (user-requested, 2026-10-07)
 1. **Did any screenshot step write to prod? NO.** Prod `Pilot.nationality` is still **null** and the `nationalities` column does not exist on prod at all, so the "Egypt + United Kingdom" in the shots can only have come from the stub payload. `Pilot.updatedAt` = 2026-10-06T22:29:10Z, i.e. **before** this session's first command (~22:56Z) — and it is explained by the app's own `dashboardSeenAt` write at 22:13Z. Mechanically: `gen-payloads.js` only reads (findFirst/findMany/findUnique + fs.writeFileSync); both shooters run `page.setRequestInterception(true)` and answer **every** URL containing `/api/` from `stub-data` — web `baseURL` is `/api`, mobile `EXPO_PUBLIC_API_URL=https://cockpithire.com/api`, so all traffic was captured; Save was never clicked. **Rule: screenshot data is mocked, never written.**
@@ -103,6 +120,7 @@ Port the app to match the mobile web screen-for-screen (visually identical: font
 - **Side-by-side screenshots** (web 390 vs app) per screen → `docs/design/screens/<screen>-web-vs-app.png`. Commit per screen; keep this handoff updated.
 
 ## NEXT-SESSION ORDER
-1. **Push** — user's OK → `pg_dump` backup → `git push origin main` → post-deploy checks (PUSH CHECKLIST). After healthy → user sets `IDENTITY_DEDUP_APPLY=1` → report first nightly merges.
-2. **A** — real-device findings above (items 1–8).
+1. **`IDENTITY_DEDUP_APPLY=1`** — user sets it on Railway once the watch is green; then report the first nightly merges.
+2. **A** — real-device findings (items 1–8 below).
 3. **B** — mobile-web-as-reference port, starting with Jobs (inventory + side-by-side first).
+4. Small follow-ups surfaced by the deploy: set `identityFirstSeenAt` at insert (3 rows missed it); decide whether an expired English (ICAO) should be a dashboard blocker; re-measure `/jobs` + `/dashboard` on a quiet feed.
