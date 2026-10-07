@@ -41,14 +41,18 @@ function calendarDaysUntil(date, now = new Date()) {
 //   null date        → 'missing' (grey)
 //   past             → 'expired'  (red)
 //   ≤7 days          → 'expiring' (red)
-//   ≤90 days         → 'due'      (amber)
+//   ≤dueDays         → 'due'      (amber), default 90
 //   else             → 'ok'
-function statusFor(date) {
+// `dueDays` narrows the amber window for items that need earlier warning — the
+// ELP uses 60 (renewal needs booking a test).
+const DEFAULT_DUE_DAYS = 90;
+const ELP_DUE_DAYS = 60;
+function statusFor(date, { dueDays = DEFAULT_DUE_DAYS, now = new Date() } = {}) {
   if (!date) return { level: 'missing', days: null };
-  const days = calendarDaysUntil(date);
+  const days = calendarDaysUntil(date, now);
   if (days < 0) return { level: 'expired', days };
   if (days <= 7) return { level: 'expiring', days };
-  if (days <= 90) return { level: 'due', days };
+  if (days <= dueDays) return { level: 'due', days };
   return { level: 'ok', days };
 }
 
@@ -63,8 +67,8 @@ async function computeReadiness(pilotId) {
   if (!pilot) return { items: [], blockers: 0 };
 
   const items = [];
-  const push = (type, label, date, { fix = '/profile', blockerEligible = false, extra = {} } = {}) => {
-    const s = statusFor(date);
+  const push = (type, label, date, { fix = '/profile', blockerEligible = false, dueDays, extra = {} } = {}) => {
+    const s = statusFor(date, dueDays ? { dueDays } : undefined);
     if (s.level === 'ok') return;
     const blocker = blockerEligible && (s.level === 'expired' || s.level === 'expiring');
     items.push({ type, label, date: date ? new Date(date).toISOString() : null, level: s.level, days: s.days, fix, blocker, ...extra });
@@ -103,7 +107,11 @@ async function computeReadiness(pilotId) {
   const elp = pilot.certificates.find((c) => c.type === 'ELP');
   // Label carries no "expiry" of its own — the dashboard blocker line appends
   // "expires"/"expired" after it ("English (ICAO) expires 15 Nov 2026").
-  if (elp && elp.expiryDate) push('english', 'English (ICAO)', elp.expiryDate);
+  // An ICAO English endorsement is as hard a bar as a licence or medical: without
+  // a current one the pilot cannot legally operate internationally, so it is
+  // blocker-eligible (red) and its amber window starts 60 days out, not 90 —
+  // renewal means booking a test.
+  if (elp && elp.expiryDate) push('english', 'English (ICAO)', elp.expiryDate, { blockerEligible: true, dueDays: ELP_DUE_DAYS });
 
   // Type-rating proficiency checks (LPC/OPC) + line checks.
   for (const r of pilot.ratings) {
@@ -183,4 +191,4 @@ async function computeStrengthAndNudge(pilotId) {
   return { strength, nudge, qualifyCount, incompleteCount: incomplete.length };
 }
 
-module.exports = { computeReadiness, computeStrengthAndNudge, trainingDue, TRAINING_VALIDITY_MONTHS, calendarDaysUntil };
+module.exports = { computeReadiness, computeStrengthAndNudge, trainingDue, TRAINING_VALIDITY_MONTHS, calendarDaysUntil, statusFor, ELP_DUE_DAYS, DEFAULT_DUE_DAYS };

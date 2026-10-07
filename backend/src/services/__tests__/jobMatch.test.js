@@ -351,3 +351,31 @@ test('C#2 fix — clearance: subject-to / medical / airport do NOT count; held/o
   assert.ok(!byKey(matchJob({ title: 'FO', description: 'Able to obtain and maintain a FAA Class II Medical Clearance.', reqMinTotalHours: 1000 }, PILOT()), 'clearance'));
   assert.ok(byKey(matchJob({ title: 'FO', description: 'Must be eligible to hold an Australian Defence Security Clearance.', reqMinTotalHours: 1000 }, PILOT()), 'clearance'));
 });
+
+// ── English (ICAO): an EXPIRED endorsement is not met, and says why ───────────
+// The dashboard now treats an expired ELP as a blocker, so a job that states an
+// English level must never read it as met (or as "unknown") while it has lapsed.
+test('expired ELP is unmet on a job stating an English level, with the expiry as the reason', () => {
+  const job = { title: 'First Officer', aircraftTypes: ['A320'], reqEnglishLevel: 4 };
+  const expired = PILOT({ certs: [
+    { type: 'ATPL', issuingAuthority: 'EASA', category: 'aeroplane' },
+    { type: 'ELP', issuingAuthority: 'EASA', englishLevel: '5', expiryDate: '2026-09-30T00:00:00Z' },
+  ] });
+  const r = byKey(matchJob(job, expired), 'english');
+  assert.strictEqual(r.status, 'unmet');
+  assert.match(r.reason, /^expired 30 Sep 2026$/);
+  // a current endorsement at or above the stated level still passes
+  assert.strictEqual(byKey(matchJob(job, PILOT()), 'english').status, 'met');
+  // and no endorsement at all is "unknown" (add it), never a failure
+  assert.strictEqual(byKey(matchJob(job, PILOT({ certs: [{ type: 'ATPL', issuingAuthority: 'EASA', category: 'aeroplane' }] })), 'english').status, 'unknown');
+});
+
+test('expired ELP below the stated level is still reported as expired, not as a level shortfall', () => {
+  const job = { title: 'First Officer', aircraftTypes: ['A320'], reqEnglishLevel: 6 };
+  const r = byKey(matchJob(job, PILOT({ certs: [
+    { type: 'ATPL', issuingAuthority: 'EASA', category: 'aeroplane' },
+    { type: 'ELP', issuingAuthority: 'EASA', englishLevel: '4', expiryDate: '2026-09-30T00:00:00Z' },
+  ] })), 'english');
+  assert.strictEqual(r.status, 'unmet');
+  assert.match(r.reason, /expired/);
+});

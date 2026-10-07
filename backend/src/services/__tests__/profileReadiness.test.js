@@ -32,3 +32,32 @@ test('calendarDaysUntil: null / invalid → null', () => {
   assert.strictEqual(calendarDaysUntil(''), null);
   assert.strictEqual(calendarDaysUntil('not-a-date'), null);
 });
+
+// ── English (ICAO) is a hard bar, like a licence or a medical ─────────────────
+// Expired → red + dashboard blocker; expiring within 60 days → amber; beyond
+// that → no item at all. The 60-day window is narrower than the 90-day default
+// because renewing an ELP means booking a test. `now` is injected so these
+// thresholds stay deterministic — a clock-relative test would rot overnight.
+const { statusFor, ELP_DUE_DAYS, DEFAULT_DUE_DAYS } = require('../profileReadiness');
+
+const NOW = new Date('2026-10-07T09:00:00.000Z');
+const inDays = (d) => new Date(Date.UTC(2026, 9, 7 + d)).toISOString();
+const elpStatus = (d) => statusFor(d, { dueDays: ELP_DUE_DAYS, now: NOW });
+
+test('ELP thresholds: expired → red, ≤7d → red, ≤60d → amber, >60d → ok', () => {
+  assert.strictEqual(ELP_DUE_DAYS, 60);
+  assert.strictEqual(DEFAULT_DUE_DAYS, 90);
+  assert.strictEqual(elpStatus(null).level, 'missing');
+  assert.strictEqual(elpStatus(inDays(-1)).level, 'expired');
+  assert.strictEqual(elpStatus(inDays(-329)).level, 'expired');
+  assert.strictEqual(elpStatus(inDays(0)).level, 'expiring');  // expires today
+  assert.strictEqual(elpStatus(inDays(7)).level, 'expiring');  // ≤7 days is red for every blocker
+  assert.strictEqual(elpStatus(inDays(8)).level, 'due');       // amber starts here
+  assert.strictEqual(elpStatus(inDays(60)).level, 'due');      // boundary: still amber
+  assert.strictEqual(elpStatus(inDays(61)).level, 'ok');       // outside the window → no item
+});
+
+test('the ELP window is narrower than the default: day 75 is amber by default, ok for an ELP', () => {
+  assert.strictEqual(statusFor(inDays(75), { now: NOW }).level, 'due');
+  assert.strictEqual(elpStatus(inDays(75)).level, 'ok');
+});
