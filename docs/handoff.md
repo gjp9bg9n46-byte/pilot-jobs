@@ -17,6 +17,8 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
 ## DONE (committed on main, unpushed)
+- `d0eb894` **B — Jobs ported to the mobile-web reference.** Region tabs + counts, Hours/Filters/Visa/Qualified-only rail, Salary sort, applied-filter chips + Clear all, empty-profile banner, subtitle gains "N you qualify for"; card rebuilt as web's (verdict checklist, Apply-direct/salary footer, no % pill, no chevron); detail gains web's verdict sentence, grouped Must-haves/Hours/Ratings rows, role chip and green "Apply on the source ↗" (Save + safety note kept). Side-by-side re-shot.
+- `5a2d79b` **ELP implicit baseline + one shared Jobs ordering** (web fit groups, nationality-barred last, on both platforms). Verified on prod: 374 live jobs → 112 QUALIFY with a current ELP, **0** with a lapsed one.
 - `bd70f6d` **A (real-device items 1–8) SHIPPED** — one badge (Home tab only), Dashboard→**Home** + tab-bar geometry fixed (labels were clipped vertically; active highlight squared the pill's curve), `useTabBarClearance()` on EVERY scrollable tab screen (4 had none at all), Jobs defaults to **Best match** with nationality-barred rows last, new subtitle, Browse/Matches toggle gone, `1,500 h` everywhere via `src/lib/format.ts` (device-locale bug), and `displayTitle()` shared web↔app with a fixed acronym rule. Shots: `mobile-A-*.png`.
 - `6580952` **B step 1 — Jobs inventory** (`docs/design/jobs-web-vs-app-inventory.md`) + side-by-side `jobs-web-vs-app.png` / `job-detail-web-vs-app.png`. **Nothing ported yet — awaiting decisions.**
 - `8dab906` **English (ICAO) expiry — one source + blocker wording.** Stored value is **30 Sep 2026 (EXPIRED)**; the "15 Nov 2026" on the old dashboard shot was never in the DB (hand-written stub blockers). Profile's English row now reads the SAME readiness item as the dashboard, and its no-item fallback checks the date instead of assuming "valid" (it used to render an expired ELP green). Label `English (ICAO)` (was `English (ICAO) expiry` → "expiry expires"); web blocker's leading "·" before Update removed.
@@ -55,6 +57,14 @@ UAE National ×3 (Air Arabia + 2 Unknown, title); Sealift Command (US citizen); 
 Profile fields were untouched (`nationality: null`, `nationalities: []`, phone/country/city/education unchanged). A second pair of calls (the timing re-run, 00:56Z) moved it again.
 **Restored 2026-10-07** by raw SQL — raw on purpose, because a `prisma.update()` would bump `@updatedAt` again, and the point was to leave the row exactly as it was: `dashboardSeenAt` = 22:13:51.229Z, `previousDashboardSeenAt` = 19:50:11.406Z, `updatedAt` = 22:29:10.664Z. Verified equal to the pre-interference values.
 **Standing rule (user, 2026-10-07): post-deploy dashboard checks NEVER run as the user's account.** All check scripts (`postdeploy.js`, `timing.js`, `perf.js`, `verify-nat.js`) now authenticate as `CHECK_PILOT = cvtest-0y9ilqy4@example.com`. Caveat: that pilot has no certificates or logbook, so `buildMatchContext` is cheaper for it — treat authenticated timings from it as a floor, not a representative number.
+
+## IDENTITY_DEDUP_APPLY — status 2026-10-08
+- **Flag set by the user; the service restarted at 00:35:23Z** (fresh `startup-cleanup` + `totals-backfill` pair on commit a962142, then again at ~00:53Z for 5a2d79b).
+- **No gated run had fired yet at the time of writing.** The flag is read at call time inside the cron callbacks, so the first run to see it is `nightly-rescreen` at **03:30 UTC**; the per-scrape pass follows at 06:00 UTC. The last recorded run, 2026-10-07T03:30Z, has `identityDedupApplied: false` in its CronRun counts.
+- **Authoritative proof is persisted**: `CronRun.counts.identityDedupApplied` for `nightly-rescreen`. A watcher (`scratchpad/merge-report.js`) polls for the first completed post-flag run and writes `scratchpad/merge-report.txt` + `merge-revert-ids.json`.
+- **Dry-run preview of what that run will do** (read-only, taken 00:44Z): **11 clusters / 12 rows hidden** — WHATJOBS 9, CAREERJET 2, ADZUNA 1 — and **27 clusters held for review** (recruiter-only / soft-base, never auto-merged). Every pair is one operator, one type, one base, differently-worded titles; two are byte-identical titles from the same source.
+- **One to watch**: `qantas|FO|?|victoria` pairs *"First Officer: Regional Pilot — Home Bases in Australia"* with *"QantasLink Direct Entry First Officer"* — no type in either title, so the key rests on employer + base. Plausibly two campaigns. Flagged, not blocked.
+- **Reversible**: the engine only ever sets `mergedInto` + `status='EXPIRED'` (dedup.js:643); nothing is deleted, and the runner's sticky-merge keeps a merged row from flapping back on re-scrape. Revert = `UPDATE "Job" SET "mergedInto"=NULL, status='ACTIVE' WHERE id IN (…)`, ids captured in `merge-revert-ids.json`.
 
 ## DECISIONS 2026-10-08 (user)
 1. **ELP implicit baseline — YES.** An expired English (ICAO) now injects a not-met row into EVERY job, exactly like an expired licence/medical, so nothing reads QUALIFY while the dashboard shows the ELP blocker. Only an EXPIRED endorsement adds a row (a current one, or none on file, adds nothing), so the % denominator is unchanged for everyone else. 4 tests.
@@ -138,6 +148,7 @@ Port the app to match the mobile web screen-for-screen (visually identical: font
 - **Side-by-side screenshots** (web 390 vs app) per screen → `docs/design/screens/<screen>-web-vs-app.png`. Commit per screen; keep this handoff updated.
 
 ## NEXT-SESSION ORDER
-1. **B — Jobs port.** Read `docs/design/jobs-web-vs-app-inventory.md` and answer the **?** rows (ordering rule, card model, CTA, chevron, subtitle). Then port in the order listed there: region tabs → filters → fit groups → card → detail. Commit + re-shoot the pair per step.
-2. Then the same inventory-first treatment for **Dashboard, Profile, Logbook, CV**.
-3. **Backlog** (match-context cache, requirements-coverage drop, ELP implicit baseline, upsert test fixtures).
+1. **Read `scratchpad/merge-report.txt`** — the first apply-run's real numbers (per source, 20 samples, suspicious, reversibility). Compare against the 11/12 preview above.
+2. **Port back to web** what the app gained and web lacks: the Qualified-only chip, the fraud-safety note on the apply bar, and the airline logo tile on the detail header.
+3. **Dashboard, Profile, Logbook, CV** — same inventory-first treatment as Jobs.
+4. **Backlog** (match-context cache, requirements-coverage drop, upsert test fixtures).
