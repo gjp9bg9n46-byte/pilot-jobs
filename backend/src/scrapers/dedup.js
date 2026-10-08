@@ -18,7 +18,7 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
-const { identityOf, makeResolver, shouldAutoMerge, rankOf, typesOf, subBrandOf } = require('./jobIdentity');
+const { identityOf, makeResolver, shouldAutoMerge, rankOf, typesOf, subBrandOf, diceSimilarity } = require('./jobIdentity');
 const { classifyJob } = require('./aviationFilter');
 const { normalizeCompany, coreCompanyKey } = require('../services/airlineEnrichmentService');
 const { sourceTypeRank } = require('./sourceType');
@@ -177,6 +177,45 @@ function mergeBlocked(titleA, titleB, companyA, companyB) {
     if (!shared) return `model ${[...ma].join('+')} vs ${[...mb].join('+')}`;
   }
   return null;
+}
+
+
+// ── Extra test for the FINGERPRINT pass only ────────────────────────────────
+// collapseSameAdAcrossLocations drops the TITLE from its key when the ad body
+// is long, so one boilerplate body groups unrelated vacancies that
+// mergeBlocked() cannot separate (same rank, no aircraft named): "Safety Pilot"
+// ← "Pilot Transport", "Rotor Wing Pilot in Command" ← "Pilot Transport".
+// Rule (owner, 2026-10-08): no aircraft type on EITHER side AND titles that
+// share nothing (Dice < 0.5) ⇒ block.
+//
+// Place words are stripped from both titles first, using BOTH rows' own
+// location/country plus the usual campaign phrasing, so per-city variants of
+// one ad ("… – Sydney" vs "… – Melbourne") still read as identical and still
+// merge. That is the whole point of this pass.
+const PLACE_NOISE = /\b(multiple\s+locations?|home\s*bases?|based|location|various|nationwide|remote|region|regional)\b/g;
+function stripPlaces(title, rowA, rowB) {
+  let t = ` ${fold(String(title || '')).toLowerCase()} `;
+  for (const r of [rowA, rowB]) {
+    for (const src of [r && r.location, r && r.country]) {
+      for (const w of String(src || '').toLowerCase().split(/[^a-z]+/)) {
+        if (w.length > 2) t = t.replace(new RegExp(`\\b${esc(w)}\\b`, 'g'), ' ');
+      }
+    }
+  }
+  t = t.replace(PLACE_NOISE, ' ');
+  return t.replace(/[^a-z0-9]+/g, ' ').trim();
+}
+const TITLES_UNRELATED = 0.5;
+function unrelatedTitles(rowA, rowB) {
+  const ta = rowA.titleEn || rowA.title; const tb = rowB.titleEn || rowB.title;
+  // only when NEITHER side names an aircraft — a named type is identity enough
+  if (typesOf(ta, '').length || typesOf(tb, '').length) return null;
+  if (modelTokens(ta).size || modelTokens(tb).size) return null;
+  const sa = stripPlaces(ta, rowA, rowB); const sb = stripPlaces(tb, rowA, rowB);
+  if (!sa || !sb) return null;
+  const sim = diceSimilarity(sa, sb);
+  if (sim >= TITLES_UNRELATED) return null;
+  return `unrelated titles (no type, dice ${sim.toFixed(2)}: "${sa}" vs "${sb}")`;
 }
 
 /**
@@ -509,8 +548,9 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
     // group several RANKS. Filter them out here rather than loosening the key.
     const mergeable = [];
     for (const dup of duplicates) {
-      const blocked = mergeBlocked(dup.title, canonical.title, dup.company, canonical.company);
-      if (blocked) { skippedByGuard += 1; logger.info({ msg: 'same-ad-across-locations: merge BLOCKED by the rank/type guard', reason: blocked, loser: dup.title, canonical: canonical.title }); continue; }
+      const blocked = mergeBlocked(dup.title, canonical.title, dup.company, canonical.company)
+        || unrelatedTitles(dup, canonical);
+      if (blocked) { skippedByGuard += 1; logger.info({ msg: 'same-ad-across-locations: merge BLOCKED', reason: blocked, loser: dup.title, canonical: canonical.title }); continue; }
       mergeable.push(dup);
     }
     for (const dup of mergeable) {
@@ -739,4 +779,4 @@ async function reScreenNonAviation({ dryRun = true } = {}) {
   return { hidden, perSource };
 }
 
-module.exports = { mergeBlocked, modelTokens, collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };
+module.exports = { mergeBlocked, modelTokens, unrelatedTitles, stripPlaces, collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };

@@ -78,3 +78,33 @@ test('a named sub-brand is a different employer — QantasLink is not Qantas', (
   // neither naming one is fine
   assert.strictEqual(mergeBlocked('First Officer - Sydney', 'First Officer - Melbourne', 'Qantas', 'Qantas'), null);
 });
+
+// ── The extra test, FINGERPRINT pass only (owner, 2026-10-08) ───────────────
+// collapseSameAdAcrossLocations drops the title from its key when the body is
+// long, so one boilerplate groups unrelated vacancies that rank/type cannot
+// separate. No aircraft named on either side AND titles sharing nothing
+// (Dice < 0.5) ⇒ block. Place words come out of both titles first, so per-city
+// variants of one ad still merge — that is what the pass is for.
+const { unrelatedTitles, stripPlaces } = require('../dedup');
+const row = (title, location, country) => ({ title, location, country });
+
+test('blocks unrelated titles when neither names an aircraft', () => {
+  assert.ok(unrelatedTitles(row('Safety Pilot', 'US', 'US'), row('Pilot Transport', 'US', 'US')));
+  assert.ok(unrelatedTitles(row('Rotor Wing Pilot in Command', 'Elko', 'US'), row('Pilot Transport', 'Elko', 'US')));
+  assert.ok(unrelatedTitles(row('Fixed Wing Pilot in Command', 'Cortez', 'US'), row('Crew - pilot', 'Heber City', 'US')));
+});
+
+test('per-city variants of ONE ad still merge — places are stripped first', () => {
+  assert.strictEqual(unrelatedTitles(row('First Officer - Sydney', 'Sydney', 'Australia'), row('First Officer - Melbourne', 'Melbourne', 'Australia')), null);
+  assert.strictEqual(unrelatedTitles(row('Pilot - Multiple locations', 'Multiple locations', 'UK'), row('Pilot - London', 'London', 'UK')), null);
+  assert.strictEqual(stripPlaces('First Officer - Sydney', row('', 'Sydney', 'Australia'), row('', 'Melbourne', 'Australia')), 'first officer');
+});
+
+test('a named aircraft on either side switches the extra test off', () => {
+  // the type is identity enough; rank/type rules already cover contradictions
+  assert.strictEqual(unrelatedTitles(row('A320 Captain', 'X', 'Y'), row('Totally Different Role', 'X', 'Y')), null);
+});
+
+test('CADET is its own rank, so a cadet scheme never merges with a direct-entry FO vacancy', () => {
+  assert.ok(mergeBlocked('Ab Initio Cadet Pilot: Path to First Officer in Singapore', 'Direct Entry First Officers (Contract)', 'SIA', 'SIA'));
+});
