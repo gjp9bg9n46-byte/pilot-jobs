@@ -18,7 +18,7 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
-const { identityOf, makeResolver, shouldAutoMerge } = require('./jobIdentity');
+const { identityOf, makeResolver, shouldAutoMerge, rankOf, typesOf, subBrandOf } = require('./jobIdentity');
 const { classifyJob } = require('./aviationFilter');
 const { normalizeCompany, coreCompanyKey } = require('../services/airlineEnrichmentService');
 const { sourceTypeRank } = require('./sourceType');
@@ -129,6 +129,56 @@ function titleCore(title, company, location) {
   return tokens.sort().join(' ');
 }
 
+
+// ── Cross-rank / cross-type guard for the LEGACY passes ─────────────────────
+// The identity engine keys on rank+type+base, so it can never merge a Captain
+// ad into a First Officer one. The legacy passes have no such protection:
+// collapseSameAdAcrossLocations deliberately drops the TITLE from its key when
+// the ad body is long, which is how one Emirates campaign body merged a
+// "Direct Entry Captain" posting with three "First Officer/Senior First
+// Officer" ones, and how "First Officer" swallowed "Flight Qualified Leader
+// (Assistant Chief Pilot, Check Airman)".
+//
+// Rule (owner, 2026-10-08): never merge across a different RANK or a different
+// AIRCRAFT TYPE. A location difference on its own is still fine to merge — that
+// is what these passes are for. Governing principle: showing a duplicate is
+// better than hiding a real job, so anything ambiguous is left alone.
+//
+// Returns a reason string when the merge must be BLOCKED, else null.
+//
+// Model tokens generalise "different aircraft" beyond the curated typesOf()
+// vocabulary: KC-10 vs KC-135 are different aircraft but neither is in it. Only
+// a token that looks like an airframe designation counts (letters+digits, or a
+// bare 3–4 digit number), and only when BOTH titles carry one — "First Officer"
+// vs "First Officer A321" is still allowed to merge.
+const MODEL_TOKEN = /^(?:[a-z]{1,3}\d{2,4}[a-z]?|\d{3,4})$/;
+function modelTokens(title) {
+  const t = String(title || '').toLowerCase().normalize('NFKD')
+    // join a hyphenated designation first — "kc-135" is one airframe, not
+    // "kc" and "135", and splitting it loses the whole signal
+    .replace(/\b([a-z]{1,3})[-\s]?(\d{2,4})\b/g, '$1$2')
+    .replace(/[^a-z0-9]+/g, ' ');
+  return new Set((t.match(/[a-z0-9]+/g) || []).filter((x) => MODEL_TOKEN.test(x)));
+}
+function mergeBlocked(titleA, titleB, companyA, companyB) {
+  // A named sub-brand is a positive claim about the employer: QantasLink is not
+  // Qantas (owner, 2026-10-08). Differing claims — including one side naming a
+  // brand the other does not — are not the same vacancy.
+  const sa = subBrandOf(companyA, titleA); const sb = subBrandOf(companyB, titleB);
+  if ((sa && sa.key) !== (sb && sb.key)) return `sub-brand ${sa ? sa.key : '—'} vs ${sb ? sb.key : '—'}`;
+  const ra = rankOf(titleA); const rb = rankOf(titleB);
+  if (ra && rb && ra !== rb) return `rank ${ra} vs ${rb}`;
+  const ta = typesOf(titleA, ''); const tb = typesOf(titleB, '');
+  if (ta.length && tb.length && !ta.some((x) => tb.includes(x))) return `type ${ta.join('+')} vs ${tb.join('+')}`;
+  const ma = modelTokens(titleA); const mb = modelTokens(titleB);
+  if (ma.size && mb.size) {
+    let shared = false;
+    for (const x of ma) if (mb.has(x)) shared = true;
+    if (!shared) return `model ${[...ma].join('+')} vs ${[...mb].join('+')}`;
+  }
+  return null;
+}
+
 /**
  * Displace aggregator rows that have a clean (direct_ats/operator_direct) twin.
  *
@@ -170,7 +220,7 @@ async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } =
   }
 
   const pairs = [];
-  let merged = 0;
+  let merged = 0; let skippedByGuard = 0;
   for (const group of groups.values()) {
     if (group.length < 2) continue;
     // FRESHNESS PRECONDITION: a stale clean row cannot win canonical — otherwise
@@ -266,6 +316,8 @@ async function collapseAggregatorPriority({ dryRun = true } = {}) {
     const losers = group.filter((j) => j.id !== canonical.id);
     if (!losers.length) continue;
     for (const loser of losers) {
+      const blocked = mergeBlocked(loser.title, canonical.title, loser.company, canonical.company);
+      if (blocked) { skippedByGuard += 1; logger.info({ msg: 'aggregator-priority: merge BLOCKED by the rank/type guard', reason: blocked, loser: loser.title, canonical: canonical.title }); continue; }
       pairs.push({
         loserId: loser.id, loserPlatform: loser.sourcePlatform, loserTitle: loser.title, loserApplyUrl: loser.applyUrl,
         canonId: canonical.id, canonPlatform: canonical.sourcePlatform, canonApplyUrl: canonical.applyUrl,
@@ -288,8 +340,8 @@ async function collapseAggregatorPriority({ dryRun = true } = {}) {
       }
     }
   }
-  logger.info({ msg: dryRun ? 'aggregator-priority SHADOW (no writes)' : 'aggregator-priority applied', candidatePairs: pairs.length, merged });
-  return { pairs, merged };
+  logger.info({ msg: dryRun ? 'aggregator-priority SHADOW (no writes)' : 'aggregator-priority applied', candidatePairs: pairs.length, merged, skippedByGuard });
+  return { pairs, merged, skippedByGuard };
 }
 
 /**
@@ -331,7 +383,7 @@ async function collapseXSourceDuplicates(sourcePlatforms) {
     groups.get(key).push(job);
   }
 
-  let merged = 0;
+  let merged = 0; let skippedByGuard = 0;
   for (const [, group] of groups) {
     if (group.length < 2) continue;
 
@@ -345,6 +397,8 @@ async function collapseXSourceDuplicates(sourcePlatforms) {
 
     for (const dup of duplicates) {
       if (dup.sourcePlatform === canonical.sourcePlatform) continue; // same source = not our job
+      const blocked = mergeBlocked(dup.title, canonical.title, dup.company, canonical.company);
+      if (blocked) { skippedByGuard += 1; logger.info({ msg: 'x-source: merge BLOCKED by the rank/type guard', reason: blocked, loser: dup.title, canonical: canonical.title }); continue; }
       await prisma.job.update({
         where: { id: dup.id },
         data: { mergedInto: canonical.id, status: 'EXPIRED' },
@@ -430,7 +484,7 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
     groups.get(key).push(job);
   }
 
-  let collapsed = 0;
+  let collapsed = 0; let skippedByGuard = 0;
   for (const [, group] of groups) {
     if (group.length < 2) continue;
     const locations = new Set(group.map((j) => j.location));
@@ -451,7 +505,15 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
       where: { id: canonical.id },
       data: { location: newLocation, ...(home?.country ? { country: home.country } : {}) },
     });
+    // The TITLE is deliberately not in this pass's key, so one campaign body can
+    // group several RANKS. Filter them out here rather than loosening the key.
+    const mergeable = [];
     for (const dup of duplicates) {
+      const blocked = mergeBlocked(dup.title, canonical.title, dup.company, canonical.company);
+      if (blocked) { skippedByGuard += 1; logger.info({ msg: 'same-ad-across-locations: merge BLOCKED by the rank/type guard', reason: blocked, loser: dup.title, canonical: canonical.title }); continue; }
+      mergeable.push(dup);
+    }
+    for (const dup of mergeable) {
       await prisma.job.update({
         where: { id: dup.id },
         data: { mergedInto: canonical.id, status: 'EXPIRED' },
@@ -460,7 +522,7 @@ async function collapseSameAdAcrossLocations(sourcePlatforms = ['ADZUNA', 'JOOBL
     }
     // One campaign = one notification: drop unread alerts for the clones.
     await prisma.jobAlert.deleteMany({
-      where: { jobId: { in: duplicates.map((d) => d.id) }, readAt: null },
+      where: { jobId: { in: mergeable.map((d) => d.id) }, readAt: null },
     });
   }
 
@@ -677,4 +739,4 @@ async function reScreenNonAviation({ dryRun = true } = {}) {
   return { hidden, perSource };
 }
 
-module.exports = { collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };
+module.exports = { mergeBlocked, modelTokens, collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };
