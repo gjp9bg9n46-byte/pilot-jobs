@@ -17,6 +17,7 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
 ## DONE (committed on main, unpushed)
+- `c4e32e8` **Variant / category / instructor-kind rules on the legacy passes + airport-code stripping.** `mergeBlocked()` now also refuses: an explicit **rotor-wing / helicopter / HEMS vs fixed-wing** claim (one-sided included; NOT `jobAircraftCategory()`, which infers from types and generic words and wrongly refused "Flight Crew - Captain F406/C425" ← "Captain, F406/C425 – Airline Pilot"), **instructor vs examiner** (matcher's `jobInstructorKind`), and the identity engine's own **`variantOf()`** axes — cadet/ab-initio, "for X pilots only", accelerated command, regional posting. The **rated axis is two-sided by design**: unstated is not "non-rated", and splitting on it refused "A320 Type-rated First Officer" ← "Airbus A320 Family First Officer". `stripPlaces()` also drops ICAO/IATA codes (upper-case only, with an exclusion list for ATPL/CPL/ICAO/HEMS/PIC…), so "(Toronto) YYZ" and "(Montreal) YUL" compare equal. Deployed 14:13Z. 18 mergeGuard tests.
 - `39d691c` **Fingerprint pass also blocks unrelated titles; CADET is its own rank.** Closes the gap left by `313d245`. (1) In `collapseSameAdAcrossLocations` only — the pass that drops the title from its key — **no aircraft named on either side AND titles sharing nothing (Dice < 0.5) blocks**; place words are stripped from both titles first (both rows' location + country, plus "multiple locations" / "home base" / "regional"), so per-city variants of one ad still merge. (2) `rankOf` checks **CADET before the officer grades** — "Ab Initio Cadet Pilot: Path to First Officer" used to key as FO. NOTE: rank is part of identityKey, so cadet rows re-key on the next recompute. Deployed 13:44Z. 12 mergeGuard tests.
 - `313d245` **Legacy dedup passes now refuse cross-rank / cross-type / cross-sub-brand merges.** `mergeBlocked()` gates every merge in `collapseAggregatorPriority`, `collapseXSourceDuplicates` and `collapseSameAdAcrossLocations`; each logs what it refused (`skippedByGuard`). Blocks on different rank (rankOf), different aircraft type (typesOf, when both name one), different airframe designation outside the curated vocabulary (KC-10 vs KC-135 — hyphens joined so "kc-135" survives as one token; only when both titles carry one), and different sub-brand (QantasLink ≠ Qantas). **A location difference alone never blocks** — collapsing one ad across cities is what these passes are for. Deployed 13:24Z, 4.5 h before the 18:00Z scrape. 8 tests, every BLOCK case taken from a real merge made today.
 - `0439c24` **B — Dashboard / Profile / Logbook / CV inventory** (`docs/design/screens-web-vs-app-inventory.md`) + four side-by-side images. **Nothing ported — decisions needed.** Profile is at parity bar one link; Dashboard differs only in where the % sits; **Logbook is the big one** (web's compact one-line rows vs the app's boarding-pass cards with per-row actions); CV is layout-only.
@@ -112,10 +113,11 @@ risk is blocking legitimate per-city title variants, which is precisely what
 that pass exists to collapse. **Shipped with place-stripping to remove that
 risk**, after the replay below.
 
-### Replay gate before deploying the full guard (208 standing merges)
-- blocked: **13** — 3x Emirates SFO/FO, 3x Flight Qualified Leader, 1x Direct Entry Captain, 6 unrelated-title pairs
-- still allowed: 195
-- **genuine per-city duplicates (identical titles) blocked: 0**
+### Replay gate, FINAL (258 standing merges + the 23 reverted)
+- standing merges refused: **25** of 258 — by rule: variant 11, rank 9, unrelated-titles 3, category 2
+- still allowed: 233
+- **legitimate duplicates refused (identical titles): 0**
+- of the 23 reverted this morning: **22 now blocked**; the one still allowed is `First Officer - Pilot` ← `First Officer - Pilot`, a real duplicate that only reached the revert list through the earlier blunt rule
 
 All 23 reverted ids are listed in the post-18:00Z report
 (`scratchpad/post-scrape-report.txt`, watcher running).
