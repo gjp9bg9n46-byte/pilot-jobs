@@ -58,13 +58,55 @@ Profile fields were untouched (`nationality: null`, `nationalities: []`, phone/c
 **Restored 2026-10-07** by raw SQL — raw on purpose, because a `prisma.update()` would bump `@updatedAt` again, and the point was to leave the row exactly as it was: `dashboardSeenAt` = 22:13:51.229Z, `previousDashboardSeenAt` = 19:50:11.406Z, `updatedAt` = 22:29:10.664Z. Verified equal to the pre-interference values.
 **Standing rule (user, 2026-10-07): post-deploy dashboard checks NEVER run as the user's account.** All check scripts (`postdeploy.js`, `timing.js`, `perf.js`, `verify-nat.js`) now authenticate as `CHECK_PILOT = cvtest-0y9ilqy4@example.com`. Caveat: that pilot has no certificates or logbook, so `buildMatchContext` is cheaper for it — treat authenticated timings from it as a floor, not a representative number.
 
-## IDENTITY_DEDUP_APPLY — status 2026-10-08
-- **Flag set by the user; the service restarted at 00:35:23Z** (fresh `startup-cleanup` + `totals-backfill` pair on commit a962142, then again at ~00:53Z for 5a2d79b).
-- **No gated run had fired yet at the time of writing.** The flag is read at call time inside the cron callbacks, so the first run to see it is `nightly-rescreen` at **03:30 UTC**; the per-scrape pass follows at 06:00 UTC. The last recorded run, 2026-10-07T03:30Z, has `identityDedupApplied: false` in its CronRun counts.
-- **Authoritative proof is persisted**: `CronRun.counts.identityDedupApplied` for `nightly-rescreen`. A watcher (`scratchpad/merge-report.js`) polls for the first completed post-flag run and writes `scratchpad/merge-report.txt` + `merge-revert-ids.json`.
-- **Dry-run preview of what that run will do** (read-only, taken 00:44Z): **11 clusters / 12 rows hidden** — WHATJOBS 9, CAREERJET 2, ADZUNA 1 — and **27 clusters held for review** (recruiter-only / soft-base, never auto-merged). Every pair is one operator, one type, one base, differently-worded titles; two are byte-identical titles from the same source.
-- **One to watch**: `qantas|FO|?|victoria` pairs *"First Officer: Regional Pilot — Home Bases in Australia"* with *"QantasLink Direct Entry First Officer"* — no type in either title, so the key rests on employer + base. Plausibly two campaigns. Flagged, not blocked.
-- **Reversible**: the engine only ever sets `mergedInto` + `status='EXPIRED'` (dedup.js:643); nothing is deleted, and the runner's sticky-merge keeps a merged row from flapping back on re-scrape. Revert = `UPDATE "Job" SET "mergedInto"=NULL, status='ACTIVE' WHERE id IN (…)`, ids captured in `merge-revert-ids.json`.
+## IDENTITY_DEDUP_APPLY — FIRST APPLY RUN, REPORT (2026-10-08)
+
+**The flag is live and confirmed by the service itself.** `CronRun` for
+`nightly-rescreen` at **2026-10-08T03:30:00Z** records
+`{"identityDedupApplied": true, "clustersMerged": 0, "rowsHidden": 0, "leftForReview": 24}`.
+
+**The gated identity engine merged NOTHING on its first run.** Zero rows carry a
+`mergedInto` touched in that window. 24 clusters were held for review.
+
+### But 170 rows were hidden since the flag — almost all by the LEGACY passes
+`src/scrapers/dedup.js` runs several **ungated** passes on every scrape
+(`collapseAggregatorDuplicates`, `collapseAggregatorPriority`,
+`collapseXSourceDuplicates`, `collapseSameAdAcrossLocations`). They have always
+run; `IDENTITY_DEDUP_APPLY` does not gate them. Of 170 rows hidden since 00:35Z,
+only 57 even share an identityKey with their canonical, and the worst of them
+are shapes the identity engine *cannot* produce (it keys on rank+type+base, so
+it can never merge a Captain ad into a First Officer one).
+
+### 23 demonstrably-wrong merges found and REVERTED
+Criteria: the two rows name **different aircraft**, or neither names a type and
+the titles **share nothing** (Dice < 0.5). Raw location strings were deliberately
+NOT used as evidence — aggregators record one vacancy at wildly different
+granularity ("Germany" vs "Rheinmünster, Baden-Württemberg", "Multiple locations"
+vs "Richmond, BC"), and collapsing those is what the same-ad-across-locations
+pass is for. Examples reverted:
+- `Direct Entry Captain - Pilot` had absorbed three `Emirates First Officer/Senior First Officer` rows — **a Captain posting swallowing First Officer postings**;
+- `First Officer` had absorbed `Flight Qualified Leader (Assistant Chief Pilot, Check Airman)` ×3;
+- `First Officer, Gulfstream 200` ← `First Officer, Falcon 2000 LX` (different aircraft, different city);
+- `KC-10 First Officer` ← `KC-135 Stratotanker First Officer` ×2;
+- `QantasLink Direct Entry First Officer` ← `First Officer: Regional Pilot` ×2 (the pair flagged in the preview);
+- `Rotor Wing Pilot in Command` ← `Pilot Transport`; `Safety Pilot` ← `Pilot Transport` ×2.
+
+Revert = `mergedInto → NULL, status → ACTIVE` (nothing is ever deleted). All 23
+are live again; ACTIVE went 431 → 454. Ids: `scratchpad/revert-ids.json`.
+
+### ⚠️ These will come back on the next scrape
+The merges were made by the **ungated legacy passes**, which my new guards do not
+touch. The 18:00Z scrape will very likely re-merge them. **Recommended next
+action:** extend the same evidence test (no cross-rank, no cross-type, no
+unrelated-title merges) to `collapseAggregatorPriority` /
+`collapseXSourceDuplicates` / `collapseSameAdAcrossLocations`, or gate those
+behind their own flag. Until then this revert is cosmetic.
+
+### Guards shipped before any further gated run (`1b43914`)
+No-type → hold unless titles near-identical; unknown base → hold unless titles
+near-identical or descriptions ≥90% similar; QantasLink (and other sub-brands)
+key separately; any location/qualifier contradiction voids the proof. Shadow
+preview with the guards: **12 clusters / 13 rows**, every one either carrying a
+parsed aircraft type or byte-identical titles. 39 jobIdentity tests.
 
 ## DECISIONS 2026-10-08 (user)
 1. **ELP implicit baseline — YES.** An expired English (ICAO) now injects a not-met row into EVERY job, exactly like an expired licence/medical, so nothing reads QUALIFY while the dashboard shows the ELP blocker. Only an EXPIRED endorsement adds a row (a current one, or none on file, adds nothing), so the % denominator is unchanged for everyone else. 4 tests.
