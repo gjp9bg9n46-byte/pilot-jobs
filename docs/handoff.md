@@ -17,6 +17,7 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
 ## DONE (committed on main, unpushed)
+- `313d245` **Legacy dedup passes now refuse cross-rank / cross-type / cross-sub-brand merges.** `mergeBlocked()` gates every merge in `collapseAggregatorPriority`, `collapseXSourceDuplicates` and `collapseSameAdAcrossLocations`; each logs what it refused (`skippedByGuard`). Blocks on different rank (rankOf), different aircraft type (typesOf, when both name one), different airframe designation outside the curated vocabulary (KC-10 vs KC-135 — hyphens joined so "kc-135" survives as one token; only when both titles carry one), and different sub-brand (QantasLink ≠ Qantas). **A location difference alone never blocks** — collapsing one ad across cities is what these passes are for. Deployed 13:24Z, 4.5 h before the 18:00Z scrape. 8 tests, every BLOCK case taken from a real merge made today.
 - `0439c24` **B — Dashboard / Profile / Logbook / CV inventory** (`docs/design/screens-web-vs-app-inventory.md`) + four side-by-side images. **Nothing ported — decisions needed.** Profile is at parity bar one link; Dashboard differs only in where the % sits; **Logbook is the big one** (web's compact one-line rows vs the app's boarding-pass cards with per-row actions); CV is layout-only.
 - `d0eb894` **B — Jobs ported to the mobile-web reference.** Region tabs + counts, Hours/Filters/Visa/Qualified-only rail, Salary sort, applied-filter chips + Clear all, empty-profile banner, subtitle gains "N you qualify for"; card rebuilt as web's (verdict checklist, Apply-direct/salary footer, no % pill, no chevron); detail gains web's verdict sentence, grouped Must-haves/Hours/Ratings rows, role chip and green "Apply on the source ↗" (Save + safety note kept). Side-by-side re-shot.
 - `5a2d79b` **ELP implicit baseline + one shared Jobs ordering** (web fit groups, nationality-barred last, on both platforms). Verified on prod: 374 live jobs → 112 QUALIFY with a current ELP, **0** with a lapsed one.
@@ -94,13 +95,20 @@ pass is for. Examples reverted:
 Revert = `mergedInto → NULL, status → ACTIVE` (nothing is ever deleted). All 23
 are live again; ACTIVE went 431 → 454. Ids: `scratchpad/revert-ids.json`.
 
-### ⚠️ These will come back on the next scrape
-The merges were made by the **ungated legacy passes**, which my new guards do not
-touch. The 18:00Z scrape will very likely re-merge them. **Recommended next
-action:** extend the same evidence test (no cross-rank, no cross-type, no
-unrelated-title merges) to `collapseAggregatorPriority` /
-`collapseXSourceDuplicates` / `collapseSameAdAcrossLocations`, or gate those
-behind their own flag. Until then this revert is cosmetic.
+### ✅ FIXED — the legacy passes are now guarded (`313d245`, live 13:24Z)
+Replayed against all 208 merges still standing from today: the guard refuses 7,
+and all 7 are the Emirates / Flight-Qualified-Leader errors — **no legitimate
+dedup is lost**. Of the 23 reverted this morning it would have stopped **16**.
+
+**KNOWN GAP — 7 of the 23 are still mergeable.** They are same-rank, no-type,
+unrelated-title pairs: `Safety Pilot` ← `Pilot Transport`, `Rotor Wing Pilot in
+Command` ← `Pilot Transport`, `Fixed Wing Pilot in Command` ← `Crew - pilot`,
+`Ab Initio Cadet Pilot` ← `Direct Entry First Officers`. "Different rank or
+different type" cannot separate them. Catching them needs the identity gate's
+extra test (no type AND titles share nothing, Dice < 0.5), applied to the
+FINGERPRINT pass only — that is the one that drops the title from its key. The
+risk is blocking legitimate per-city title variants, which is precisely what
+that pass exists to collapse. **Not applied without a decision.**
 
 ### Guards shipped before any further gated run (`1b43914`)
 No-type → hold unless titles near-identical; unknown base → hold unless titles
