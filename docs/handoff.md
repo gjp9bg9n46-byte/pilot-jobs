@@ -17,6 +17,8 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
 ## DONE (committed on main, unpushed)
+- `bd70f6d` **A (real-device items 1–8) SHIPPED** — one badge (Home tab only), Dashboard→**Home** + tab-bar geometry fixed (labels were clipped vertically; active highlight squared the pill's curve), `useTabBarClearance()` on EVERY scrollable tab screen (4 had none at all), Jobs defaults to **Best match** with nationality-barred rows last, new subtitle, Browse/Matches toggle gone, `1,500 h` everywhere via `src/lib/format.ts` (device-locale bug), and `displayTitle()` shared web↔app with a fixed acronym rule. Shots: `mobile-A-*.png`.
+- `6580952` **B step 1 — Jobs inventory** (`docs/design/jobs-web-vs-app-inventory.md`) + side-by-side `jobs-web-vs-app.png` / `job-detail-web-vs-app.png`. **Nothing ported yet — awaiting decisions.**
 - `8dab906` **English (ICAO) expiry — one source + blocker wording.** Stored value is **30 Sep 2026 (EXPIRED)**; the "15 Nov 2026" on the old dashboard shot was never in the DB (hand-written stub blockers). Profile's English row now reads the SAME readiness item as the dashboard, and its no-item fallback checks the date instead of assuming "valid" (it used to render an expired ELP green). Label `English (ICAO)` (was `English (ICAO) expiry` → "expiry expires"); web blocker's leading "·" before Update removed.
 - `5ddd8c8` **v3 screenshots, PII-free.** gen-payloads.js redacts phone + email in every stub payload, and blockers/readiness now come from the real `profileReadiness` service (no invented dates). OCR sweep over every PNG in `docs/design/screens` AND every image blob reachable from `main` (114): zero real phone/email.
 - `eb02de4` **#7a nationality UI (web + mobile)** — chip multi-select over the existing country list; "+ Add nationality" opens the same searchable combo; × removes a chip. Legacy `Pilot.nationality` kept in sync with the FIRST entry (CV templates, completeness widget, older reads). `pilotNationalities(profile)` exported from both edit sheets (array, falling back to the legacy column). Read views show the full list ("Nationalities" when >1); web marks it "matching only". Web `ADD_LINK` gains `nationality` + `clearance` → `/profile`; mobile job-detail "add" rows are now TAPPABLE and route through the same map (`/profile` or `/logbook`).
@@ -130,7 +132,6 @@ Port the app to match the mobile web screen-for-screen (visually identical: font
 - **Side-by-side screenshots** (web 390 vs app) per screen → `docs/design/screens/<screen>-web-vs-app.png`. Commit per screen; keep this handoff updated.
 
 ## NEXT-SESSION ORDER
-1. **`IDENTITY_DEDUP_APPLY=1`** — user sets it on Railway once this second push is confirmed healthy; then report the first nightly merges.
-2. **A** — real-device findings (items 1–8 below). ← in progress
-3. **B** — mobile-web-as-reference port, starting with Jobs (inventory + side-by-side BEFORE porting).
-4. **Backlog** above.
+1. **B — Jobs port.** Read `docs/design/jobs-web-vs-app-inventory.md` and answer the **?** rows (ordering rule, card model, CTA, chevron, subtitle). Then port in the order listed there: region tabs → filters → fit groups → card → detail. Commit + re-shoot the pair per step.
+2. Then the same inventory-first treatment for **Dashboard, Profile, Logbook, CV**.
+3. **Backlog** (match-context cache, requirements-coverage drop, ELP implicit baseline, upsert test fixtures).
