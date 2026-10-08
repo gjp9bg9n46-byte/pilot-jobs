@@ -32,6 +32,26 @@ const ROLE_LABEL: Record<string, string> = { CAPTAIN: 'Captain', FIRST_OFFICER: 
 
 const AGGREGATOR_SOURCES = ['ADZUNA', 'CAREERJET', 'JOOBLE', 'REED'];
 
+// Requirement grouping — same labels and order as web's JobDetailPanel.
+const GROUP_LABEL: Record<string, string> = { must: 'Must-haves', hours: 'Hours', ratings: 'Ratings & medical' };
+const GROUP_ORDER = ['must', 'hours', 'ratings'];
+
+// Web's verdict sentence (JobDetailPanel). Shown under the %, so the two
+// platforms say the same thing about the same match.
+function verdictText(m: Job): string | null {
+  if (!m) return null;
+  const known = (m.counts?.met ?? 0) + (m.counts?.unmet ?? 0);
+  if (m.blocker) {
+    const b = (m.requirements || []).find((r: Job) => r.key === m.blocker);
+    return `Blocker: ${b?.label}. This is a must-have and your profile doesn't meet it.`;
+  }
+  if ((m.counts?.unmet ?? 0) > 0) {
+    return `${m.counts.met} of ${known} known requirements met. ${m.counts.unmet} still short${m.counts.unknown ? `, ${m.counts.unknown} not on your profile yet` : ''}.`;
+  }
+  const knownPhrase = known === 1 ? 'the known requirement' : known === 2 ? 'both known requirements' : `all ${known} known requirements`;
+  return `You meet ${knownPhrase}.${m.counts?.unknown ? ` ${m.counts.unknown} item${m.counts.unknown > 1 ? "s aren't" : " isn't"} on your profile yet — add ${m.counts.unknown > 1 ? 'them' : 'it'} to confirm your match.` : ''}`;
+}
+
 // Short whole-sentence excerpt (≤ ~320 chars) for aggregator postings where we
 // don't reproduce the full third-party text.
 function toExcerpt(text: string, maxChars = 320): string {
@@ -186,6 +206,7 @@ export default function JobDetail() {
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.company}>{job.company}</Text>
             <Text style={styles.jobTitle}>{displayTitle(job.titleEn || job.title)}</Text>
+            {roleLabel ? <Text style={styles.roleChip}>{roleLabel}</Text> : null}
             <View style={styles.metaRow}>
               {(job.location || job.country) ? <Text style={styles.meta}><Ionicons name="location-outline" size={12} color={pilot.muted} /> {locationName(job.location || job.country)}</Text> : null}
               {job.reqAircraftTypes?.[0] ? <Text style={styles.meta}>{job.reqAircraftTypes.join(', ')}</Text> : null}
@@ -237,15 +258,27 @@ export default function JobDetail() {
                   </View>
                 ) : null}
               </View>
+              {verdictText(m) ? <Text style={styles.verdict}>{verdictText(m)}</Text> : null}
               {reqs.length ? (
                 <View style={{ marginTop: 8 }}>
                   <View style={styles.reqRow}>
                     <View style={{ width: 16 }} />
-                    <Text style={[styles.reqLabel, { fontFamily: fontFamilies.bodySemiBold, color: pilot.muted }]} />
-                    <Text style={[styles.reqValue, { color: pilot.muted, fontSize: fontSizes.xs }]}>Required</Text>
+                    <Text style={[styles.reqLabel, { fontFamily: fontFamilies.bodySemiBold, color: pilot.muted }]}>Requirement</Text>
+                    <Text style={[styles.reqValue, { color: pilot.muted, fontSize: fontSizes.xs }]}>Needed</Text>
                     <Text style={[styles.reqPilot, { color: pilot.muted }]}>You</Text>
                   </View>
-                  {reqs.map((r) => <ReqRow key={r.key} req={r} />)}
+                  {GROUP_ORDER.map((g) => {
+                    const rows = reqs.filter((r: Job) => r.group === g);
+                    if (!rows.length) return null;
+                    return (
+                      <View key={g}>
+                        <Text style={styles.reqGroup}>{GROUP_LABEL[g]}</Text>
+                        {rows.map((r: Job) => <ReqRow key={r.key} req={r} />)}
+                      </View>
+                    );
+                  })}
+                  {/* any row the server groups differently still shows */}
+                  {reqs.filter((r: Job) => !GROUP_ORDER.includes(r.group)).map((r: Job) => <ReqRow key={r.key} req={r} />)}
                 </View>
               ) : null}
               {m.category?.advisory ? <Text style={[styles.mutedBody, { marginTop: 8 }]}>{m.category.advisory}</Text> : null}
@@ -350,7 +383,7 @@ export default function JobDetail() {
           {expired ? (
             <View style={[styles.applyBtn, styles.applyBtnDisabled]}><Text style={styles.applyBtnText}>Applications closed</Text></View>
           ) : (
-            <Pressable style={styles.applyBtn} onPress={handleApply}><Text style={styles.applyBtnText}>View Full Posting &amp; Apply →</Text></Pressable>
+            <Pressable style={styles.applyBtn} onPress={handleApply}><Text style={styles.applyBtnText}>Apply on the source ↗</Text></Pressable>
           )}
           <Pressable style={styles.saveBtn} onPress={toggleSave}><Text style={styles.saveBtnText}>{saved ? '✓ Saved' : 'Save'}</Text></Pressable>
         </View>
@@ -403,6 +436,9 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   reqLabel: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, minWidth: 80 },
   reqValue: { flex: 1, minWidth: 80, fontSize: fontSizes.sm, fontFamily: fontFamilies.bodySemiBold },
   reqPilot: { fontSize: fontSizes.xs, fontFamily: fontFamilies.body, textAlign: 'right' },
+  reqGroup: { fontSize: 10.5, letterSpacing: 0.6, textTransform: 'uppercase', color: pilot.muted, fontFamily: fontFamilies.bodyBold, marginTop: 10, marginBottom: 2, paddingHorizontal: 8 },
+  verdict: { fontSize: fontSizes.sm, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 19, marginTop: 8 },
+  roleChip: { alignSelf: 'flex-start', marginTop: 8, fontSize: 11, color: pilot.muted, fontFamily: fontFamilies.bodySemiBold, backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 6, paddingHorizontal: 9, paddingVertical: 3, overflow: 'hidden' },
   reqPilotAdd: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, textDecorationLine: 'underline' },
 
   bodyText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24 },
@@ -420,7 +456,9 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
 
   bottomBar: { borderTopWidth: 1, borderTopColor: pilot.line, backgroundColor: pilot.cream, paddingHorizontal: spacing.xl, paddingTop: 12, paddingBottom: 8, gap: 6 },
   ctaRow: { flexDirection: 'row', gap: 12 },
-  applyBtn: { flex: 1, backgroundColor: pilot.navy, borderRadius: 4, paddingVertical: 13, alignItems: 'center' },
+  // Inventory 5.5 — web's apply CTA is green and says "Apply on the source";
+  // the app keeps its Save button and the fraud-safety note (ported to web).
+  applyBtn: { flex: 1, backgroundColor: '#14301C', borderRadius: 4, paddingVertical: 13, alignItems: 'center' },
   applyBtnDisabled: { opacity: 0.5 },
   applyBtnText: { color: '#fff', fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.base },
   saveBtn: { borderWidth: 1, borderColor: pilot.navy, borderRadius: 4, paddingVertical: 13, paddingHorizontal: 18, alignItems: 'center' },

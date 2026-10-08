@@ -3,6 +3,9 @@
 // Kept in sync with the web logic (which itself mirrors the server qualifiedOnly
 // filter in jobController.getJobs).
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Any = any;
+
 export const EDU_RANK: Record<string, number> = { high_school: 1, technical: 2, bachelor: 3, masters: 4, doctorate: 5 };
 export const EDU_LABEL: Record<string, string> = { high_school: 'High School', technical: 'Technical / Vocational', bachelor: "Bachelor's Degree", masters: "Master's Degree", doctorate: 'Doctorate' };
 export const WA_LABEL: Record<string, string> = { EU: 'EU Work Authorization', US: 'US Work Authorization', UK: 'UK Work Authorization', required: 'Work Authorization Required' };
@@ -208,4 +211,43 @@ export function formatSalary(job: AnyRec, compact = false): string | null {
 // Extract the trailing UUID from a slug id (job ids are UUIDs w/ hyphens).
 export function extractUuid(slugId: string | undefined): string | null {
   return slugId?.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)?.[0] ?? null;
+}
+
+// ── Card helpers — twins of frontend/src/lib/jobDisplay.js (jobChips, checklist,
+//    sourceInfo). Web is the reference design; these must stay in step.
+export function roleLabel(role?: string | null): string {
+  const R: Record<string, string> = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor', FLIGHT_ENGINEER: 'Flight Engineer' };
+  return (role && R[role]) || String(role || '');
+}
+export function jobChips(job: Any): { text: string; visa?: boolean }[] {
+  const chips: { text: string; visa?: boolean }[] = [];
+  (job?.reqAircraftTypes || []).slice(0, 2).forEach((t: string) => chips.push({ text: t }));
+  if (job?.role) chips.push({ text: roleLabel(job.role) });
+  (job?.reqAuthorities || []).slice(0, 1).forEach((a: string) => chips.push({ text: a }));
+  if (job?.contractType) chips.push({ text: String(job.contractType).replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase()) });
+  if (job?.isVisaSponsored || job?.visaSponsored || job?.visaSponsorship) chips.push({ text: 'Visa sponsored', visa: true });
+  return chips;
+}
+const HOURS_SUFFIX: Record<string, string> = { totalHours: '', picHours: ' PIC', multiHours: ' multi', turbineHours: ' turbine', instrumentHours: ' IFR', ccHours: ' XC' };
+function reqShort(r: Any): string {
+  if (r.key === 'typeRating') return `${r.reqText} type rating`;
+  if (r.key === 'english') return `English ${r.reqText}`;
+  if (r.key in HOURS_SUFFIX) return `${r.reqText}${HOURS_SUFFIX[r.key]}`;
+  return r.reqText;
+}
+export function checklist(match: Any, max = 4): { status: string; text: string }[] {
+  if (!match || !match.requirements) return [];
+  const order: Record<string, number> = { unmet: 0, met: 1, unknown: 2 };
+  const sorted = [...match.requirements].sort((a: Any, b: Any) => order[a.status] - order[b.status]);
+  return sorted.slice(0, max).map((r: Any) => ({
+    status: r.status,
+    text: r.status === 'unmet' ? `${reqShort(r)} (you: ${r.pilotText || '0'})` : reqShort(r),
+  }));
+}
+const VIA_NAMES: Record<string, string> = { WHATJOBS: 'WhatJobs', ADZUNA: 'Adzuna', CAREERJET: 'Careerjet', JOOBLE: 'Jooble', REED: 'Reed', AVIATIONJOBSEARCH: 'AviationJobSearch' };
+export function sourceInfo(job: Any): { direct: boolean; name: string; isAdzuna: boolean; label: string } {
+  const direct = !!(job?.sourceType && job.sourceType !== 'aggregator');
+  const name = VIA_NAMES[job?.sourcePlatform] || (job?.sourcePlatform ? String(job.sourcePlatform).toLowerCase().replace(/^./, (c: string) => c.toUpperCase()) : 'the source');
+  if (direct) return { direct: true, name, isAdzuna: false, label: `Apply directly with ${job.company}` };
+  return { direct: false, name, isAdzuna: job?.sourcePlatform === 'ADZUNA', label: `via ${name}` };
 }

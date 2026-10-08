@@ -9,34 +9,16 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AirlineLogo from './AirlineLogo';
 import { displayTitle, locationName } from '../lib/displayNames';
-import { hours } from '../lib/format';
+import { num } from '../lib/format';
+import { checklist, jobChips, sourceInfo } from '../lib/jobMatch';
 import { fontFamilies, fontSizes } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
 
-// Country → flag emoji (mirror of the web map). Unknown → no flag, never a wrong one.
-const COUNTRY_ISO: Record<string, string> = {
-  'united states': 'US', usa: 'US', 'united kingdom': 'GB', uk: 'GB', france: 'FR',
-  germany: 'DE', italy: 'IT', spain: 'ES', netherlands: 'NL', poland: 'PL',
-  austria: 'AT', switzerland: 'CH', schweiz: 'CH', canada: 'CA', australia: 'AU',
-  'new zealand': 'NZ', 'south africa': 'ZA', uae: 'AE', 'united arab emirates': 'AE',
-  qatar: 'QA', 'saudi arabia': 'SA', kuwait: 'KW', oman: 'OM', bahrain: 'BH',
-  egypt: 'EG', morocco: 'MA', tunisia: 'TN', algeria: 'DZ', libya: 'LY',
-  ireland: 'IE', belgium: 'BE', portugal: 'PT', greece: 'GR', turkey: 'TR',
-  norway: 'NO', sweden: 'SE', denmark: 'DK', finland: 'FI', iceland: 'IS',
-  singapore: 'SG', 'hong kong': 'HK', malaysia: 'MY', india: 'IN', japan: 'JP',
-  china: 'CN', mexico: 'MX', brazil: 'BR', iraq: 'IQ', yemen: 'YE', jordan: 'JO',
-  lebanon: 'LB', israel: 'IL', hungary: 'HU', 'czech republic': 'CZ', latvia: 'LV',
-  lithuania: 'LT', estonia: 'EE', bulgaria: 'BG', romania: 'RO', croatia: 'HR',
-  luxembourg: 'LU', malta: 'MT', mauritania: 'MR',
-};
-export function countryFlag(country?: string | null): string | null {
-  const iso = COUNTRY_ISO[String(country || '').trim().toLowerCase()];
-  if (!iso) return null;
-  return String.fromCodePoint(...[...iso].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
-}
+// (The country-flag map lived here for C#1; flags were dropped from the card —
+// location is keyed on the posting, not the airline's HQ — so it is gone.)
 
 export default function JobCardContent({ job, air, ago, right, footer, ongoing }: {
   job: Any;
@@ -50,54 +32,63 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
   const styles = useThemedStyles(createStyles);
   const locText = locationName(job?.location || job?.country); // deduped, no HQ flag (C#1)
 
-  const specRows: [string, string][] = [];
-  if (job?.reqMinTotalHours) specRows.push(['Total time', hours(job.reqMinTotalHours)]);
-  if (job?.reqMinPicHours) specRows.push(['PIC time', hours(job.reqMinPicHours)]);
-  if (job?.reqCertificates?.length) specRows.push(['Licence', job.reqCertificates.slice(0, 2).join(' / ')]);
-  if (job?.reqAuthorities?.length) specRows.push(['Authority', job.reqAuthorities.slice(0, 2).join(' / ')]);
-  const showSpec = specRows.length >= 2;
+  // Mirror of web's JobCard: title · meta line (company · location · time) ·
+  // chips · requirement checklist · source/salary footer. Web is the reference
+  // design (handoff rule B) — the helpers are shared twins in src/lib/jobMatch.
+  const chips = jobChips(job);
+  const checks = checklist(job?.match, 4);
+  const src = sourceInfo(job);
+  const checked = job?.lastSeenAt ? new Date(job.lastSeenAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null;
+  const timeLine = job?.evergreen
+    ? `Ongoing${checked ? ` · link checked ${checked}` : ''}`
+    : (ongoing || ago || '');
+  const metaLine = [locText, timeLine].filter(Boolean).join('  ·  ');
+  const sal = salaryText(job);
 
   return (
     <>
-      <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company} box={40} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.jcTitle} numberOfLines={2}>{displayTitle(job?.titleEn || job?.title) || '—'}</Text>
-        <Text style={styles.jcCompany}>{job?.company ?? '—'}{ago && !ongoing ? `  ·  ${ago}` : ''}</Text>
-        {ongoing ? <Text style={styles.jcOngoing}>{ongoing}</Text> : null}
+        <View style={styles.jcTop}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.jcTitle} numberOfLines={2}>{displayTitle(job?.titleEn || job?.title) || '—'}</Text>
+            <Text style={styles.jcMeta} numberOfLines={2}>
+              <Text style={styles.jcCompany}>{job?.company ?? '—'}</Text>{metaLine ? `  ·  ${metaLine}` : ''}
+            </Text>
+          </View>
+          <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job?.company} box={42} />
+        </View>
 
-        {(job?.applyIsDirect || job?.applyVia || job?.visaSponsorship || job?.typeRatingStatus === 'NTR') ? (
-          <View style={styles.jcBadgeRow}>
-            {job.sourcePlatform !== 'EMPLOYER_DIRECT' && job.applyIsDirect ? <Text style={[styles.jcBadge, styles.jcBadgeDirect]}>✓ APPLY DIRECT</Text> : null}
-            {job.applyVia ? <Text style={[styles.jcBadge, styles.jcBadgeVia]}>via {job.applyVia}</Text> : null}
-            {job.visaSponsorship ? <Text style={[styles.jcBadge, styles.jcBadgeVisa]}>VISA SPONSORSHIP</Text> : null}
-            {job.typeRatingStatus === 'NTR' ? <Text style={[styles.jcBadge, styles.jcBadgeNtr]}>NO TYPE RATING REQUIRED</Text> : null}
+        {chips.length > 0 ? (
+          <View style={styles.jcChipRow}>
+            {chips.map((c, i) => (
+              <Text key={`${c.text}-${i}`} style={[styles.jcChip, c.visa && styles.jcChipVisa]}>{c.text}</Text>
+            ))}
           </View>
         ) : null}
 
-        <View style={styles.jcMetaRow}>
-          {locText ? (
-            <Text style={styles.jcMeta} numberOfLines={1}>
-              <Ionicons name="location-outline" size={11} color={pilot.muted} /> {locText}
-            </Text>
-          ) : null}
-        </View>
-
-        {showSpec ? (
-          <View style={styles.jcSpec}>
-            {specRows.map(([label, value]) => (
-              <View key={label} style={styles.jcSpecItem}>
-                <Text style={styles.jcSpecLabel}>{label}</Text>
-                <Text style={styles.jcSpecVal} numberOfLines={1}>{value}</Text>
+        {checks.length > 0 ? (
+          <View style={styles.jcCheckRow}>
+            {checks.map((c, i) => (
+              <View key={`${c.text}-${i}`} style={styles.jcCheckItem}>
+                <Ionicons
+                  name={c.status === 'met' ? 'checkmark' : c.status === 'unmet' ? 'close' : 'help-circle-outline'}
+                  size={13}
+                  color={c.status === 'met' ? SEM_OK : c.status === 'unmet' ? SEM_NO : pilot.muted}
+                />
+                <Text style={[styles.jcCheckText, { color: c.status === 'met' ? SEM_OK : c.status === 'unmet' ? SEM_NO : pilot.muted }]} numberOfLines={1}>{c.text}</Text>
               </View>
             ))}
           </View>
         ) : null}
 
-        {job?.reqAircraftTypes?.length ? (
-          <View style={styles.jcChipRow}>
-            {job.reqAircraftTypes.slice(0, 3).map((a: string) => (
-              <Text key={a} style={styles.jcChip}>{a}</Text>
-            ))}
+        {(src.direct || sal) ? (
+          <View style={styles.jcSrcRow}>
+            {src.direct ? (
+              <Text style={styles.jcDirect}>
+                <Ionicons name="checkmark" size={12} color={SEM_OK} /> Apply direct
+              </Text>
+            ) : <View />}
+            {sal ? <Text style={styles.jcSal}>{sal}</Text> : null}
           </View>
         ) : null}
 
@@ -108,30 +99,36 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
   );
 }
 
+// Light-AA semantic shades, same values web uses for met/unmet on a card.
+const SEM_OK = '#166534';
+const SEM_NO = '#991B1B';
+
+// "USD 90,000–120,000 / yr" — mirrors web's formatSalary(job, true).
+function salaryText(job: Any): string | null {
+  const cur = job?.salaryCurrency || 'USD';
+  const per = job?.salaryPeriod === 'MONTHLY' ? '/mo' : job?.salaryPeriod === 'HOURLY' ? '/hr' : '/yr';
+  if (job?.salaryMin && job?.salaryMax) return `${cur} ${num(job.salaryMin)}–${num(job.salaryMax)} ${per}`;
+  if (job?.salaryMin) return `${cur} ${num(job.salaryMin)}+ ${per}`;
+  if (job?.salaryMax) return `${cur} up to ${num(job.salaryMax)} ${per}`;
+  return null;
+}
+
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
+  jcTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   jcTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 21 },
-  jcCompany: { fontSize: fontSizes.sm, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, marginTop: 3 },
-  jcOngoing: { fontSize: fontSizes.xs, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, marginTop: 2 },
-  jcBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
-  jcBadge: { fontSize: 9.5, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.4, borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden', borderWidth: 1 },
-  jcBadgeVisa: { color: '#166534', backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' },
-  jcBadgeNtr: { color: '#92400E', backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
-  jcBadgeDirect: { color: pilot.navy, backgroundColor: 'rgba(0,63,136,0.08)', borderColor: 'rgba(0,63,136,0.25)' },
-  jcBadgeVia: { color: pilot.muted, backgroundColor: pilot.cream, borderColor: pilot.line, fontFamily: fontFamilies.bodySemiBold, letterSpacing: 0.2 },
-  jcMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 6 },
-  jcMeta: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body },
-  jcSpec: {
-    flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 4,
-    backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line,
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginTop: 8,
-  },
-  jcSpecItem: { flexDirection: 'row', alignItems: 'baseline', gap: 6, minWidth: '44%', flexGrow: 1, justifyContent: 'space-between' },
-  jcSpecLabel: { fontSize: 10, color: pilot.muted, fontFamily: fontFamilies.body },
-  jcSpecVal: { fontSize: 11, color: pilot.ink, fontFamily: fontFamilies.bodyBold, flexShrink: 1, textAlign: 'right' },
+  jcMeta: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 3, lineHeight: 18 },
+  jcCompany: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
   jcChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   jcChip: {
     fontSize: 11, color: pilot.muted, fontFamily: fontFamilies.bodySemiBold,
     backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line,
     borderRadius: 6, paddingHorizontal: 9, paddingVertical: 3, overflow: 'hidden',
   },
+  jcChipVisa: { color: '#166534', backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' },
+  jcCheckRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 4, marginTop: 8 },
+  jcCheckItem: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '100%' },
+  jcCheckText: { fontSize: fontSizes.xs, fontFamily: fontFamilies.body, flexShrink: 1 },
+  jcSrcRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 9, paddingTop: 8, borderTopWidth: 1, borderTopColor: pilot.line },
+  jcDirect: { fontSize: fontSizes.xs, color: '#166534', fontFamily: fontFamilies.bodySemiBold },
+  jcSal: { fontSize: fontSizes.xs, color: pilot.ink, fontFamily: fontFamilies.bodySemiBold },
 });
