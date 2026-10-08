@@ -379,3 +379,44 @@ test('expired ELP below the stated level is still reported as expired, not as a 
   assert.strictEqual(r.status, 'unmet');
   assert.match(r.reason, /expired/);
 });
+
+// ── Implicit baseline: an expired ELP blocks every job ───────────────────────
+// profileReadiness makes an expired English (ICAO) a dashboard blocker, so a job
+// may not read QUALIFY while it is lapsed — even one whose ad never mentions
+// English. Mirrors the existing licence/medical baseline rows.
+const EXPIRED_ELP = [
+  { type: 'ATPL', issuingAuthority: 'EASA', category: 'aeroplane' },
+  { type: 'ELP', issuingAuthority: 'EASA', englishLevel: '5', expiryDate: '2026-09-30T00:00:00Z' },
+];
+
+test('baseline: an expired ELP adds a not-met row to a job that never mentions English', () => {
+  const job = { title: 'First Officer', aircraftTypes: ['A320'], reqMinTotalHours: 500 };
+  const m = matchJob(job, PILOT({ certs: EXPIRED_ELP }));
+  const r = byKey(m, 'english');
+  assert.ok(r, 'the row is injected even though the ad is silent on English');
+  assert.strictEqual(r.status, 'unmet');
+  assert.match(r.reason, /^expired 30 Sep 2026$/);
+  assert.notStrictEqual(m.status, 'QUALIFY', 'cannot qualify while the ELP is lapsed');
+});
+
+test('baseline: a CURRENT ELP adds nothing — the % denominator is unchanged', () => {
+  const job = { title: 'First Officer', aircraftTypes: ['A320'], reqMinTotalHours: 500 };
+  const current = matchJob(job, PILOT());
+  assert.ok(!byKey(current, 'english'), 'no injected row for a valid endorsement');
+  assert.strictEqual(current.status, 'QUALIFY');
+  // and the expired pilot sees exactly ONE extra stated requirement, not two
+  const expired = matchJob(job, PILOT({ certs: EXPIRED_ELP }));
+  assert.strictEqual(expired.stated, current.stated + 1);
+});
+
+test('baseline: no ELP on file adds nothing (that is an "Add", not a failure)', () => {
+  const job = { title: 'First Officer', aircraftTypes: ['A320'], reqMinTotalHours: 500 };
+  const none = matchJob(job, PILOT({ certs: [{ type: 'ATPL', issuingAuthority: 'EASA', category: 'aeroplane' }] }));
+  assert.ok(!byKey(none, 'english'));
+});
+
+test('baseline: a job that DOES state English is not double-counted', () => {
+  const job = { title: 'First Officer', aircraftTypes: ['A320'], reqEnglishLevel: 4 };
+  const m = matchJob(job, PILOT({ certs: EXPIRED_ELP }));
+  assert.strictEqual(m.requirements.filter((r) => r.key === 'english').length, 1);
+});

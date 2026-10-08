@@ -32,10 +32,16 @@ const SORT_OPTIONS: [string, string][] = [
 ];
 const DEFAULT_SORT = 'best';
 
-// Fit order for the client-side pass, mirroring the server's fitGroup ranking.
-const STATUS_RANK: Record<string, number> = {
-  QUALIFY: 0, CHECK: 1, SHORT: 2, NO_REQUIREMENTS: 3, NOT_MET: 4, WRONG_CATEGORY: 5,
-};
+// Fit groups — the SAME list, order and labels as web (frontend/src/pages/Jobs.jsx
+// FIT_GROUPS). Web is the reference design: the app groups identically so the
+// two read the same way.
+const FIT_GROUPS: { key: string; label: string; hint: string }[] = [
+  { key: 'qualify', label: 'You qualify', hint: 'best match first' },
+  { key: 'incomplete', label: 'Complete your profile to check', hint: '' },
+  { key: 'oneShort', label: 'One requirement short', hint: "shows what's missing" },
+  { key: 'few', label: 'Few requirements stated', hint: '' },
+  { key: 'other', label: 'Everything else', hint: '' },
+];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Job = Record<string, any>;
@@ -120,75 +126,78 @@ function JobsBrowse() {
     );
   }, [jobs, search]);
 
-  // Ordering (A#4). Two demotions always apply, in this order:
-  //   1. a job whose nationality requirement the pilot cannot meet — they cannot
-  //      be hired for it, so it never sits above a job they can take;
-  //   2. evergreen rows (old posting date but still listed — rolling
-  //      recruitment), which are reframed on the card rather than dated.
-  // Within that, "Best match" sorts by fit, then % desc, then newest. The other
-  // sorts keep the server's order (the fetch already asked for it).
-  const { orderedJobs, freshCount, evergreenCount } = useMemo(() => {
-    const barred = (j: Job) => ((j.match?.unmetKeys || []) as string[]).includes('nationality');
-    const ever = (j: Job) => !!(j as any).evergreen;
-    const decorated = filtered.map((j, i) => ({ j, i }));
-    decorated.sort((a, b) => {
-      const byBar = Number(barred(a.j)) - Number(barred(b.j));
-      if (byBar) return byBar;
-      const byEver = Number(ever(a.j)) - Number(ever(b.j));
-      if (byEver) return byEver;
-      if (sort === 'best') {
-        const rank = (x: Job) => STATUS_RANK[x.match?.status as string] ?? 9;
-        const byFit = rank(a.j) - rank(b.j);
-        if (byFit) return byFit;
-        const pct = (x: Job) => (typeof x.match?.pct === 'number' ? x.match.pct : -1);
-        const byPct = pct(b.j) - pct(a.j);
-        if (byPct) return byPct;
-        const posted = (x: Job) => new Date(x.postedAt || 0).getTime();
-        const byNew = posted(b.j) - posted(a.j);
-        if (byNew) return byNew;
-      }
-      return a.i - b.i; // stable: keep the server's order otherwise
-    });
-    const ordered = decorated.map((d) => d.j);
-    const everCount = ordered.filter(ever).length;
-    return { orderedJobs: ordered, freshCount: ordered.length - everCount, evergreenCount: everCount };
+  // Ordering — identical to web's orderRank (frontend/src/pages/Jobs.jsx):
+  // barred → fresh → direct → newest, applied WITHIN each fit group. The
+  // nationality demotion came from the real-device pass (A#4) and now runs on
+  // both platforms.
+  const THIRTY_DAYS = 30 * 86400000;
+  const rows = useMemo(() => {
+    const isFresh = (j: Job) => !j.evergreen && j.postedAt && (Date.now() - new Date(j.postedAt).getTime()) <= THIRTY_DAYS;
+    const isBarred = (j: Job) => ((j.match?.unmetKeys || []) as string[]).includes('nationality');
+    const rank = (j: Job) => [
+      isBarred(j) ? 1 : 0,
+      isFresh(j) ? 0 : 1,
+      (j.sourceType && j.sourceType !== 'aggregator') ? 0 : 1,
+      -(new Date(j.postedAt || 0).getTime()),
+    ];
+    const byRank = (a: Job, b: Job) => {
+      const ra = rank(a); const rb = rank(b);
+      for (let i = 0; i < ra.length; i += 1) if (ra[i] !== rb[i]) return ra[i] - rb[i];
+      return 0;
+    };
+    const ordered = [...filtered].sort(byRank);
+    const showGroups = sort === 'best' && ordered.some((j) => j.match);
+    if (!showGroups) return ordered.map((job) => ({ type: 'job' as const, job, key: job.id }));
+    // Flatten groups into one list so a single FlatList renders headers + rows.
+    const out: ({ type: 'head'; label: string; hint: string; count: number; key: string } | { type: 'job'; job: Job; key: string })[] = [];
+    for (const g of FIT_GROUPS) {
+      const inGroup = ordered.filter((j) => j.match?.fitGroup === g.key);
+      if (!inGroup.length) continue;
+      out.push({ type: 'head', label: g.label, hint: g.hint, count: inGroup.length, key: `h-${g.key}` });
+      for (const job of inGroup) out.push({ type: 'job', job, key: job.id });
+    }
+    // Jobs with no match object at all (logged-out shape) still get listed.
+    for (const job of ordered.filter((j) => !j.match)) out.push({ type: 'job', job, key: job.id });
+    return out;
   }, [filtered, sort]);
 
-  const renderRow = ({ item: job, index }: { item: Job; index: number }) => {
+  const renderRow = ({ item }: { item: any }) => {
+    if (item.type === 'head') {
+      return (
+        <View style={styles.groupHead}>
+          <Text style={styles.groupLabel}>{item.label} · {item.count}</Text>
+          {item.hint ? <Text style={styles.groupHint}>{item.hint}</Text> : null}
+        </View>
+      );
+    }
+    const job = item.job as Job;
     const eg = (job as any).evergreen as boolean | undefined;
     const seen = (job as any).lastSeenAt as string | null | undefined;
     const ago = eg ? null : postedAgo(job.postedAt);
     const ongoing = eg ? `↻ Ongoing · ${seen ? `confirmed listed ${postedAgo(seen)}` : 'still listed'}` : null;
-    const showDivider = index === freshCount && evergreenCount > 0;
     // Server-computed match (services/jobMatch.js) — the SAME number web + Dashboard
     // show. statusMeta maps it to a label + tone colour; no client recompute.
     const meta = statusMeta((job as any).match);
     const toneBg = meta?.tone === 'green' ? '#DCFCE7' : meta?.tone === 'amber' ? '#FEF3C7' : pilot.cream;
     return (
-      <>
-        {showDivider ? (
-          <Text style={styles.ongoingDivider}>Ongoing recruitment — open vacancies, not new postings</Text>
-        ) : null}
-        <Pressable
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed, pressed && { transform: [{ scale: 0.985 }] }]}
-          onPress={() => router.push(`/jobs/${slugFor(job)}`)}
-        >
-          <JobCardContent
-            job={job}
-            air={resolveAirline(airlineMap, job.company)}
-            ago={ago}
-            ongoing={ongoing}
-            right={<Ionicons name="chevron-forward" size={18} color={pilot.line} />}
-            footer={meta && meta.pct != null ? (
-              <View style={[styles.matchPill, { backgroundColor: toneBg }]}>
-                <Text style={[styles.matchPillText, { color: meta.color }]}>
-                  {meta.pct}% match{meta.label ? ` · ${meta.label}` : ''}
-                </Text>
-              </View>
-            ) : null}
-          />
-        </Pressable>
-      </>
+      <Pressable
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed, pressed && { transform: [{ scale: 0.985 }] }]}
+        onPress={() => router.push(`/jobs/${slugFor(job)}`)}
+      >
+        <JobCardContent
+          job={job}
+          air={resolveAirline(airlineMap, job.company)}
+          ago={ago}
+          ongoing={ongoing}
+          footer={meta && meta.pct != null ? (
+            <View style={[styles.matchPill, { backgroundColor: toneBg }]}>
+              <Text style={[styles.matchPillText, { color: meta.color }]}>
+                {meta.pct}% match{meta.label ? ` · ${meta.label}` : ''}
+              </Text>
+            </View>
+          ) : null}
+        />
+      </Pressable>
     );
   };
 
@@ -237,8 +246,8 @@ function JobsBrowse() {
   return (
     <View style={styles.safe}>
       <FlatList
-        data={loading ? [] : orderedJobs}
-        keyExtractor={(j) => j.id}
+        data={loading ? [] : rows}
+        keyExtractor={(r: any) => r.key}
         renderItem={renderRow}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={[styles.listContent, { paddingBottom: tabBarClearance }]}
@@ -274,6 +283,9 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
   // Rows run edge-to-edge; only the header block is inset.
   listContent: {}, // bottom padding comes from useTabBarClearance()
+  groupHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: 18, paddingBottom: 6 },
+  groupLabel: { fontSize: 11.5, letterSpacing: 0.6, color: pilot.ink, fontFamily: fontFamilies.bodyBold, textTransform: 'uppercase' },
+  groupHint: { fontSize: 11, color: pilot.muted, fontFamily: fontFamilies.body },
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: 4 },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 20 },
@@ -306,11 +318,6 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
     padding: 14, marginHorizontal: spacing.xl, marginBottom: 12,
   },
   rowPressed: { backgroundColor: 'rgba(0,63,136,0.04)' },
-  ongoingDivider: {
-    fontSize: fontSizes.xs, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.4,
-    color: pilot.muted, marginHorizontal: spacing.xl, marginTop: 6, marginBottom: 10,
-    paddingTop: 12, borderTopWidth: 1, borderTopColor: pilot.line,
-  },
   rowTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 21 },
   rowSub: { fontSize: fontSizes.sm, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, marginTop: 3 },
   matchPill: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },

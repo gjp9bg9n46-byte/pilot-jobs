@@ -615,7 +615,12 @@ export default function Jobs() {
   // by an ongoing/evergreen one — even a direct one.
   const THIRTY_DAYS = 30 * 86400000;
   const isFresh = (j) => !j.evergreen && j.postedAt && (Date.now() - new Date(j.postedAt).getTime()) <= THIRTY_DAYS;
+  // A job whose nationality requirement the pilot cannot meet goes to the bottom
+  // of its group: they cannot be hired for it, so it never sits above one they
+  // can take. (Came from the real-device pass, A#4; web and app share the rule.)
+  const isBarred = (j) => (j.match?.unmetKeys || []).includes('nationality');
   const orderRank = (j) => [
+    isBarred(j) ? 1 : 0,                                      // can't be hired → last
     isFresh(j) ? 0 : 1,                                       // fresh first
     (j.sourceType && j.sourceType !== 'aggregator') ? 0 : 1, // direct first within tier
     -(new Date(j.postedAt || 0).getTime()),                  // newest first

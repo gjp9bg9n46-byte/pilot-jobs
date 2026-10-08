@@ -473,12 +473,12 @@ function matchJob(job, ctx) {
     push(mk('clearance', 'Security clearance', 'must', 'unknown', 'Security/defence clearance', null, true));
   }
 
-  // ── Implicit baseline — every pilot job needs a valid licence + valid medical ─
+  // ── Implicit baseline — every pilot job needs a valid licence, medical + ELP ─
   //   A valid licence (highest held in the job's category) and a valid medical are
   //   required whether or not the ad states them. We add a row ONLY when the pilot's
   //   own item is EXPIRED, and only if the ad didn't already state that requirement
   //   (so we never double-count). The expired row is `not_met`, so a job can never
-  //   read QUALIFY while the blocker bar shows an expired licence/medical. A valid
+  //   read QUALIFY while the blocker bar shows an expired licence/medical/ELP. A valid
   //   item — or one simply absent from the profile — adds nothing here, so the % stays
   //   met ÷ (stated) for everyone whose licence/medical is current. ───────────────
   if (!reqs.some((r) => r.key === 'licence')) {
@@ -494,6 +494,14 @@ function matchJob(job, ctx) {
   if (!reqs.some((r) => r.key === 'medical') && ctx.medicalAllExpired) {
     push(mk('medical', 'Medical', 'ratings', 'unmet', 'Valid medical', null, false,
       ctx.medicalLatestExpiry ? `expired ${fmtDate(ctx.medicalLatestExpiry)}` : null));
+  }
+  // English (ICAO) joins the baseline: an expired ELP is a dashboard blocker
+  // (profileReadiness), so no job may read QUALIFY while it is lapsed. Only an
+  // EXPIRED endorsement adds a row — a current one, or none on file at all,
+  // adds nothing, so the % denominator is unchanged for everyone else.
+  if (!reqs.some((r) => r.key === 'english') && ctx.elpPresent && !ctx.elpValid) {
+    push(mk('english', 'English (ICAO)', 'ratings', 'unmet', 'Valid ICAO English', ctx.elpLevel != null ? `Level ${ctx.elpLevel}` : null, false,
+      ctx.elpExpiry ? `expired ${fmtDate(ctx.elpExpiry)}` : null));
   }
 
   // ── Aircraft category is a GATE, not a scored requirement (change #1/#2). It
