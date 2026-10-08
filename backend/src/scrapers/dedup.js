@@ -18,7 +18,10 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
-const { identityOf, makeResolver, shouldAutoMerge, rankOf, typesOf, subBrandOf, diceSimilarity } = require('./jobIdentity');
+const { identityOf, makeResolver, shouldAutoMerge, rankOf, typesOf, subBrandOf, diceSimilarity, variantOf } = require('./jobIdentity');
+// Category + instructor/examiner come from the MATCHER, not a second copy of
+// the rules — these are the same classifiers the pilot-facing match uses.
+const { jobAircraftCategory, jobInstructorKind } = require('../services/jobMatch');
 const { classifyJob } = require('./aviationFilter');
 const { normalizeCompany, coreCompanyKey } = require('../services/airlineEnrichmentService');
 const { sourceTypeRank } = require('./sourceType');
@@ -160,6 +163,58 @@ function modelTokens(title) {
     .replace(/[^a-z0-9]+/g, ' ');
   return new Set((t.match(/[a-z0-9]+/g) || []).filter((x) => MODEL_TOKEN.test(x)));
 }
+// The variant axes the identity engine already keys on, reused verbatim rather
+// than re-implemented: cadet / ab-initio, type-rated vs non-type-rated,
+// "for X pilots only" restricted eligibility, accelerated-command and regional
+// postings. variantOf() reads the TITLE only, so a passing mention in a body
+// never retags a straight line job.
+function variantClash(titleA, titleB) {
+  const pa = new Set(variantOf(titleA, '').split('|').filter(Boolean));
+  const pb = new Set(variantOf(titleB, '').split('|').filter(Boolean));
+  // The RATED axis is two-sided by design (owner: "type-rated vs
+  // non-type-rated"): a title that simply does not mention rating is UNSTATED,
+  // not "non-rated", and splitting on that would refuse real duplicates such as
+  // "A320 Type-rated First Officer" ← "Airbus A320 Family First Officer".
+  const ratedOf = (p) => (p.has('rated') ? 'rated' : p.has('non-rated') ? 'non-rated' : null);
+  const ra = ratedOf(pa); const rb = ratedOf(pb);
+  if (ra && rb && ra !== rb) return `variant ${ra} vs ${rb}`;
+  // Every other axis — cadet / ab-initio, "for X pilots only", accelerated
+  // command, regional posting — is a positive claim about the role, so a
+  // one-sided claim is still a difference.
+  const rest = (p) => [...p].filter((x) => x !== 'rated' && x !== 'non-rated').sort().join('|');
+  const xa = rest(pa); const xb = rest(pb);
+  return xa === xb ? null : `variant "${xa || 'none'}" vs "${xb || 'none'}"`;
+}
+
+// Rotor vs fixed wing is not a wording difference — it is a different licence.
+// Deliberately NOT jobAircraftCategory(): that infers a category from aircraft
+// types and generic words ("airline pilot"), which is right for matching a
+// pilot to a job but far too loose as a merge veto — it would refuse
+// "Flight Crew - Captain F406/C425" ← "Captain, F406/C425 – Airline Pilot",
+// which is plainly one job. Only an EXPLICIT category claim counts here, and
+// then any disagreement blocks, including one-sided: "Rotor Wing Pilot" states
+// helicopter and "Pilot - Full Time" states nothing, and merging the first into
+// the second silently drops the category.
+const ROTOR_CLAIM = /\b(rotor[- ]?wing|rotary[- ]?wing|helicopters?|heli|hems)\b/;
+const FIXED_CLAIM = /\bfixed[- ]?wing\b/;
+function statedCategory(title) {
+  const t = fold(String(title || '')).toLowerCase();
+  if (ROTOR_CLAIM.test(t)) return 'helicopter';
+  if (FIXED_CLAIM.test(t)) return 'aeroplane';
+  return null;
+}
+function categoryClash(titleA, titleB) {
+  const ca = statedCategory(titleA); const cb = statedCategory(titleB);
+  return ca === cb ? null : `category ${ca || 'unstated'} vs ${cb || 'unstated'}`;
+}
+
+// An examiner post is not an instructor post.
+function instructorKindClash(titleA, titleB) {
+  const ka = jobInstructorKind({ title: titleA });
+  const kb = jobInstructorKind({ title: titleB });
+  return ka && kb && ka !== kb ? `kind ${ka} vs ${kb}` : null;
+}
+
 function mergeBlocked(titleA, titleB, companyA, companyB) {
   // A named sub-brand is a positive claim about the employer: QantasLink is not
   // Qantas (owner, 2026-10-08). Differing claims — including one side naming a
@@ -176,7 +231,9 @@ function mergeBlocked(titleA, titleB, companyA, companyB) {
     for (const x of ma) if (mb.has(x)) shared = true;
     if (!shared) return `model ${[...ma].join('+')} vs ${[...mb].join('+')}`;
   }
-  return null;
+  return categoryClash(titleA, titleB)
+    || instructorKindClash(titleA, titleB)
+    || variantClash(titleA, titleB);
 }
 
 
@@ -193,8 +250,17 @@ function mergeBlocked(titleA, titleB, companyA, companyB) {
 // one ad ("… – Sydney" vs "… – Melbourne") still read as identical and still
 // merge. That is the whole point of this pass.
 const PLACE_NOISE = /\b(multiple\s+locations?|home\s*bases?|based|location|various|nationwide|remote|region|regional)\b/g;
+// Aviation words that LOOK like an airport code (3–4 letters, upper-case in the
+// original title) but are not one. Everything else of that shape is treated as
+// an ICAO/IATA code and stripped — "First Officer - Embraer E195-E2 (Toronto)
+// YYZ" and its Montréal twin must compare equal once places are gone.
+const NOT_A_CODE = /^(ATPL|CPL|MPL|PPL|ICAO|EASA|FAA|CASA|TCCA|CAAC|DGCA|NTR|IFR|VFR|PIC|SIC|HEMS|VIP|TRI|TRE|SFI|SFE|LPC|OPC|CRM|AOC|SAR|EMS|MCC|JOC|FTO|ATO|RHS|LHS|SOP|QRH|USA|UAE|UK|EU)$/;
 function stripPlaces(title, rowA, rowB) {
-  let t = ` ${fold(String(title || '')).toLowerCase()} `;
+  const raw = String(title || '');
+  // Airport codes first, off the ORIGINAL casing — a bare "yyz" in a lower-case
+  // title is indistinguishable from a word, so only upper-case tokens qualify.
+  let t = ` ${fold(raw)} `.replace(/\b[A-Z]{3,4}\b/g, (m) => (NOT_A_CODE.test(m) ? m : ' '));
+  t = ` ${t.toLowerCase()} `;
   for (const r of [rowA, rowB]) {
     for (const src of [r && r.location, r && r.country]) {
       for (const w of String(src || '').toLowerCase().split(/[^a-z]+/)) {
@@ -779,4 +845,4 @@ async function reScreenNonAviation({ dryRun = true } = {}) {
   return { hidden, perSource };
 }
 
-module.exports = { mergeBlocked, modelTokens, unrelatedTitles, stripPlaces, collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };
+module.exports = { mergeBlocked, modelTokens, unrelatedTitles, stripPlaces, variantClash, categoryClash, instructorKindClash, statedCategory, collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };

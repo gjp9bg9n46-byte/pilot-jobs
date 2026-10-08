@@ -23,14 +23,16 @@ test('blocks a merge across different ranks — the Emirates campaign', () => {
   blocks('First Officer', 'Flight Qualified Leader (Assistant Chief Pilot, Check Airman)');
 });
 
-// Honest limit of the rule as specified. Both of these are rank PILOT with no
-// aircraft named, so "different rank or different type" cannot separate them —
-// yet they are different jobs, and the legacy fingerprint pass merged them on
-// 2026-10-08. Catching this needs the identity gate's extra test (no type AND
-// titles share nothing), which would also block legitimate per-city title
-// variants, so it is NOT applied here. Flagged for a decision.
-test('KNOWN GAP: same rank, no type, unrelated titles still merge', () => {
-  allows('Rotor Wing Pilot in Command', 'Pilot Transport');
+// The gap this file used to record is CLOSED: the category rule now catches
+// the rotor/fixed-wing pairs, and the fingerprint pass's unrelatedTitles()
+// catches the rest. What mergeBlocked() alone still allows is deliberate —
+// "Safety Pilot" vs "Pilot Transport" names no category, rank or type, so only
+// the pass that drops the title from its key applies the extra test.
+test('the former known gap is closed by the category rule', () => {
+  blocks('Rotor Wing Pilot in Command', 'Pilot Transport');
+  blocks('Fixed Wing Pilot in Command', 'Crew - pilot');
+  // no category/rank/type signal at all → mergeBlocked allows, and the
+  // fingerprint pass refuses it via unrelatedTitles (covered below)
   allows('Safety Pilot', 'Pilot Transport');
 });
 
@@ -107,4 +109,44 @@ test('a named aircraft on either side switches the extra test off', () => {
 
 test('CADET is its own rank, so a cadet scheme never merges with a direct-entry FO vacancy', () => {
   assert.ok(mergeBlocked('Ab Initio Cadet Pilot: Path to First Officer in Singapore', 'Direct Entry First Officers (Contract)', 'SIA', 'SIA'));
+});
+
+// ── Variant axes the identity engine already keys on (owner, 2026-10-08) ────
+test('category: an explicit rotor/fixed-wing claim never merges into one without it', () => {
+  blocks('Rotor Wing Pilot', 'Pilot - Full Time');
+  blocks('Fixed Wing Pilot in Command', 'Crew - pilot');
+  blocks('HEMS Pilot', 'Fixed Wing Pilot');
+  // An INFERRED category must not veto: "Airline Pilot" is not a category claim,
+  // and this pair is plainly one job (it was refused by the first cut).
+  allows('Flight Crew - Captain F406/C425', 'Captain, F406/C425 – Airline Pilot');
+  allows('Rotor Wing Pilot - Dallas', 'Rotor Wing Pilot - Houston');
+});
+
+test('instructor is not examiner', () => {
+  blocks('Synthetic Flight Instructor – Boeing', 'Type Rating Examiner – Boeing');
+  allows('Synthetic Flight Instructor – Boeing', 'Flight Instructor (Boeing)');
+});
+
+test('cadet / ab-initio is not direct entry', () => {
+  blocks('Ab Initio Cadet Pilot: Path to First Officer in Singapore', 'Direct Entry First Officers (Contract)');
+  blocks('MPL Cadet Programme', 'First Officer');
+});
+
+test('type-rated vs NON-type-rated blocks; merely unstated does not', () => {
+  blocks('B737 Type Rated Pilot - UK Bases', 'B737 Non-Type Rated Pilot - UK Bases');
+  // unstated is not a claim of "non-rated" — splitting on it refuses real dups
+  allows('A320 Type-rated First Officer', 'Airbus A320 Family First Officer');
+});
+
+test('restricted eligibility ("for X pilots only") is a different vacancy', () => {
+  blocks('First Officer for Emirati pilots only', 'First Officer');
+  allows('First Officer for Emirati pilots only', 'First Officer for Emirati pilots only');
+});
+
+test('ICAO/IATA codes are stripped before the title comparison', () => {
+  const a = row('First Officer - Embraer E195-E2 (Toronto) YYZ', 'Toronto', 'CA');
+  const b = row('First Officer - Embraer E195-E2 (Montreal) YUL', 'Montreal', 'CA');
+  assert.strictEqual(stripPlaces(a.title, a, b), stripPlaces(b.title, a, b));
+  // but an aviation word of the same shape is not a code
+  assert.ok(stripPlaces('First Officer ATPL required', row('', 'Dubai', 'UAE'), row('', 'Doha', 'Qatar')).includes('atpl'));
 });
