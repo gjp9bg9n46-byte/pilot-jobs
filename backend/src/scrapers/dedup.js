@@ -633,7 +633,13 @@ async function collapseByIdentity({ dryRun = true } = {}) {
     if (g.length < 2) continue;
     // Safety gate: certain cluster, and NOT a recruiter-only group on a soft base
     // (those could be different client airlines — leave live, logged).
-    if (!shouldAutoMerge(g.map((x) => ({ company: x.company, ident: x._ident })))) { reviewGroups++; continue; }
+    // title + description go in so the gate can tell "same ad, worded twice"
+    // from "two different vacancies" when there's no type or no base.
+    if (!shouldAutoMerge(g.map((x) => ({
+      company: x.company, ident: x._ident,
+      title: x.titleEn || x.title, description: x.descriptionEn || x.description,
+      location: x.location, country: x.country,
+    })))) { reviewGroups++; continue; }
     const canon = canonicalByIdentity(g);
     clustersMerged++;
     for (const d of g) {

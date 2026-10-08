@@ -259,6 +259,52 @@ function makeResolver(airlines) {
   return { resolve, audit };
 }
 
+// ── Sub-brands ───────────────────────────────────────────────────────────────
+// A regional/subsidiary brand hires on its own terms and is NOT the parent:
+// "QantasLink Direct Entry First Officer" must never key to plain `qantas`, or
+// two unrelated campaigns collapse into one. Keyed off the TITLE as well as the
+// company, because aggregators file these under the parent's name.
+// Longest pattern first so "qantaslink" wins over "qantas".
+const SUB_BRANDS = [
+  { re: /\bqantas\s*link\b/i, key: 'qantaslink', name: 'QantasLink' },
+  { re: /\bjetstar\b/i, key: 'jetstar', name: 'Jetstar' },
+  { re: /\beurowings\b/i, key: 'eurowings', name: 'Eurowings' },
+  { re: /\btransavia\b/i, key: 'transavia', name: 'Transavia' },
+  { re: /\bcityjet\b/i, key: 'cityjet', name: 'CityJet' },
+  { re: /\bcityflyer\b/i, key: 'bacityflyer', name: 'BA CityFlyer' },
+  { re: /\bcityline\b/i, key: 'lufthansacityline', name: 'Lufthansa CityLine' },
+  { re: /\bexpress\s*freighters\b/i, key: 'expressfreightersaustralia', name: 'Express Freighters Australia' },
+];
+// Returns the sub-brand named in the company or title, if any.
+function subBrandOf(company, title) {
+  const hay = `${company || ''} ${title || ''}`;
+  return SUB_BRANDS.find((b) => b.re.test(fold(hay))) || null;
+}
+
+// ── Text similarity (Dice coefficient over word bigrams) ────────────────────
+// Used only as an escape hatch from the no-type / unknown-base hold: two ads can
+// still merge if they are demonstrably the SAME ad — near-identical titles, or
+// descriptions that are ≥90% similar. Deterministic and cheap; no fuzzy magic.
+function normTitle(t) {
+  return fold(String(t || '')).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function bigrams(str) {
+  const words = normTitle(str).split(' ').filter(Boolean);
+  if (words.length < 2) return new Set(words);
+  const out = new Set();
+  for (let i = 0; i < words.length - 1; i += 1) out.add(`${words[i]} ${words[i + 1]}`);
+  return out;
+}
+function diceSimilarity(a, b) {
+  const A = bigrams(a); const B = bigrams(b);
+  if (!A.size || !B.size) return 0;
+  let shared = 0;
+  for (const g of A) if (B.has(g)) shared += 1;
+  return (2 * shared) / (A.size + B.size);
+}
+const TITLE_NEAR_IDENTICAL = 0.95;
+const DESC_SIMILAR = 0.90;
+
 // ── Recruiters / auto-merge safety gate ─────────────────────────────────────
 // Agencies that post for MANY client airlines — two of their ads with the same
 // type + country are NOT necessarily the same job (could be different clients).
@@ -269,15 +315,79 @@ function isRecruiter(company) { return RECRUITER_RX.test(fold(String(company || 
 // auto-merge. Certain = a member states an aircraft type OR resolved to an
 // airline. NEVER auto-merge when every listing is a recruiter AND they do not
 // share a hard airport (ICAO) base — different client airlines are possible.
+// Two rows contradict each other on WHERE the job is: both name a place and the
+// places differ. Missing data never counts as a conflict (absence isn't a
+// difference). Used only to veto the same-ad escape hatch.
+function locationsConflict(a, b) {
+  const norm = (x) => fold(String(x || '')).toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const ca = norm(a.country); const cb = norm(b.country);
+  if (ca && cb && ca !== cb) return true;
+  const la = norm(a.location); const lb = norm(b.location);
+  if (la && lb && la !== lb && !la.includes(lb) && !lb.includes(la)) return true;
+  // the parsed base is the normalised place — if both resolved one and they
+  // differ, that is a contradiction too
+  const ba = norm(a.ident && a.ident.base && a.ident.base.base);
+  const bb = norm(b.ident && b.ident.base && b.ident.base.base);
+  if (ba && bb && ba !== bb) return true;
+  // Finally the TITLE's own trailing qualifier. Cirrus posted "Sales Support
+  // Pilot - Germany" and "- Pontiac, Michigan" with byte-identical bodies and
+  // both rows stamped location "US": the only thing separating two real jobs
+  // was that suffix.
+  const qa = norm(titleQualifier(a.title)); const qb = norm(titleQualifier(b.title));
+  if (qa && qb && qa !== qb) return true;
+  return false;
+}
+
+// The trailing " - X" / " – X" / " — X" or final "(X)" of a title — usually a
+// place or a fleet. Returns '' when the title has no such suffix.
+function titleQualifier(title) {
+  const t = String(title || '').trim();
+  const paren = t.match(/\(([^()]{2,40})\)\s*$/);
+  if (paren) return paren[1];
+  const dash = t.match(/[\s][-–—]\s*([^-–—]{2,40})$/);
+  return dash ? dash[1].trim() : '';
+}
+
+// `members`: [{ company, ident, title, description, location, country }]. title/description are
+// optional — without them the same-ad escape hatch simply never fires, so an
+// uncertain cluster is held, which is the safe direction.
 function shouldAutoMerge(members) {
   const resolvedOp = members.some((m) => m.ident.employer.via && m.ident.employer.via !== 'company-asis');
   const anyType = members.some((m) => m.ident.types.length);
-  if (!anyType && !resolvedOp) return false; // uncertain → leave live
-  // Without BOTH a pinned (named) base AND a type, same company+role is too weak to
-  // merge — e.g. NetJets "First Officer" postings across regions with no type in the
-  // title all key to company|FO|?|?. Hold for review (C#8).
+
+  // Is every pair demonstrably the SAME ad? Two independent proofs, because they
+  // are not equally strong:
+  //   byTitle — near-identical titles once normalised. Strong.
+  //   byDesc  — bodies ≥90% similar. WEAKER: operators post one boilerplate for
+  //             several vacancies, so an identical body proves a shared template,
+  //             not a shared job (Perimeter ran "Dash First Officer" and "Metro
+  //             First Officer" off the same text — two fleets, two jobs).
+  // Either proof is void if the rows contradict each other on location.
+  const pairs = [];
+  for (let i = 0; i < members.length; i += 1) {
+    for (let j = i + 1; j < members.length; j += 1) pairs.push([members[i], members[j]]);
+  }
+  const noConflict = pairs.every(([a, b]) => !locationsConflict(a, b));
+  const sameAdByTitle = noConflict && pairs.every(([a, b]) => {
+    const ta = normTitle(a.title); const tb = normTitle(b.title);
+    return !!ta && !!tb && (ta === tb || diceSimilarity(ta, tb) >= TITLE_NEAR_IDENTICAL);
+  });
+  const sameAdByDesc = noConflict && pairs.every(([a, b]) => {
+    const da = String(a.description || ''); const db = String(b.description || '');
+    return da.length >= 200 && db.length >= 200 && diceSimilarity(da, db) >= DESC_SIMILAR;
+  });
+
+  // No aircraft type on EITHER side — "First Officer" could be any fleet, so the
+  // TITLES must match. A shared body is not enough here, for the reason above.
+  // (This also subsumes the older "no type and the employer never resolved"
+  // hold: that is exactly the uncertain case, and only proof releases it.)
+  if (!anyType && !sameAdByTitle) return false;
+  // Unknown base ("?") — company + rank + type with no place. Here a shared body
+  // IS acceptable proof: the fleet is already pinned by the type.
   const anyNamedBase = members.some((m) => m.ident.base.named);
-  if (!anyType && !anyNamedBase) return false;
+  const allBaseUnknown = members.every((m) => !m.ident.base.base);
+  if ((allBaseUnknown || !anyNamedBase) && !(sameAdByTitle || sameAdByDesc)) return false;
+
   const allRecruiter = !resolvedOp && members.every((m) => isRecruiter(m.company));
   const hardBase = members.every((m) => m.ident.base.kind === 'icao');
   if (allRecruiter && !hardBase) return false; // recruiter-only + soft base → hold
@@ -296,8 +406,11 @@ function identityOf(job, resolver) {
   const types = typesOf(title, '');
   const base = baseOf(title, desc, job.location, job.country);
   const variant = variantOf(title, desc);
-  const key = [companyKey(emp.name), rank, types.join('+') || '?', base.base || '?', variant].join('|');
-  return { employer: emp, rank, types, base, variant, key };
+  // A named sub-brand keys to itself, not to the parent airline.
+  const sub = subBrandOf(job.company, title);
+  const ck = sub ? sub.key : companyKey(emp.name);
+  const key = [ck, rank, types.join('+') || '?', base.base || '?', variant].join('|');
+  return { employer: sub ? { ...emp, name: sub.name } : emp, rank, types, base, variant, key };
 }
 
-module.exports = { rankOf, typesOf, baseOf, variantOf, makeResolver, identityOf, normKey, companyKey, isRecruiter, shouldAutoMerge };
+module.exports = { titleQualifier, rankOf, typesOf, baseOf, variantOf, makeResolver, identityOf, normKey, companyKey, isRecruiter, shouldAutoMerge, subBrandOf, diceSimilarity, normTitle };

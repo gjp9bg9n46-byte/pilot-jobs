@@ -328,3 +328,118 @@ test('C#8 region variant + no-type/no-base guard keep regional postings apart', 
   assert.strictEqual(a.key, b.key); // same weak key…
   assert.strictEqual(shouldAutoMerge([{ company: 'NetJets', ident: a }, { company: 'NetJets', ident: b }]), false); // …but HELD, never merged
 });
+
+// ── Guards added before the dedup rollout (2026-10-08) ──────────────────────
+// Holding is the safe direction: an uncertain cluster stays live and visible.
+// The ONLY way past a no-type or unknown-base hold is proof the two rows are the
+// same ad — near-identical titles, or ≥90%-similar descriptions.
+const { subBrandOf, diceSimilarity } = require('../jobIdentity');
+
+test('no aircraft type on either side → HELD, unless the ads are provably the same', () => {
+  const r = resolver();
+  const m = (jobs) => jobs.map((j) => ({ company: j.company, ident: identityOf(j, r), title: j.title, description: j.description }));
+  // the live Qantas pair: no type in either title, two different campaigns
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Qantas Group', title: 'First Officer: Regional Pilot — Home Bases in Australia', country: 'Australia', location: 'Victoria' },
+    { company: 'Qantas Group', title: 'Direct Entry First Officer', country: 'Australia', location: 'Victoria' },
+  ])), false);
+  // same company, no type, but the SAME ad worded identically → still merges
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Porter Airlines', title: 'First Officer', country: 'Canada', location: 'Toronto' },
+    { company: 'Porter Airlines', title: 'First Officer', country: 'Canada', location: 'Toronto' },
+  ])), true);
+});
+
+test('unknown base ("?") → HELD, unless the ads are provably the same', () => {
+  const r = resolver();
+  const m = (jobs) => jobs.map((j) => ({ company: j.company, ident: identityOf(j, r), title: j.title, description: j.description }));
+  // the live AirX pair: type is certain (CL604) but neither row names a base
+  const held = m([
+    { company: 'airx', title: 'Challenger CL604/605 First Officer – Growth & Training' },
+    { company: 'airx', title: 'First Officer - Challenger CL604/605' },
+  ]);
+  assert.ok(!held[0].ident.base.base, 'precondition: base is unknown');
+  assert.strictEqual(shouldAutoMerge(held), false);
+  // identical titles with no base still merge — same ad, twice
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'airx', title: 'Challenger CL604/605 First Officer' },
+    { company: 'airx', title: 'Challenger CL604/605 First Officer' },
+  ])), true);
+});
+
+test('a shared body releases an unknown-BASE hold, but never a no-TYPE hold', () => {
+  const r = resolver();
+  const body = 'We are recruiting a first officer for our corporate fleet. '
+    + 'The successful candidate holds an ATPL, a valid Class 1 medical and ICAO English Level 4 or above. '
+    + 'Minimum 1500 hours total time and 500 hours multi-engine. Roster is 15 days on, 15 days off, with travel provided.';
+  const m = (jobs) => jobs.map((j) => ({ company: j.company, ident: identityOf(j, r), title: j.title, description: j.description, location: j.location, country: j.country }));
+  // TYPE is pinned (CL604), base unknown, bodies match → the body is enough
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Acme Air', title: 'CL604 First Officer Wanted', description: body },
+    { company: 'Acme Air', title: 'Join Us As A CL604 First Officer', description: `${body} Apply today.` },
+  ])), true);
+  // NO type: an identical body only proves a shared template. Perimeter ran the
+  // same text for "Dash First Officer" and "Metro First Officer" — two fleets.
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Perimeter Aviation LP', title: 'Dash First Officer', description: body, location: 'Winnipeg' },
+    { company: 'Perimeter Aviation LP', title: 'Metro First Officer', description: body, location: 'Winnipeg' },
+  ])), false);
+  // genuinely different bodies stay held even with a type
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Acme Air', title: 'CL604 First Officer Wanted', description: body },
+    { company: 'Acme Air', title: 'CL604 First Officer Opening', description: 'Cabin crew opportunity in our Dubai office, no flying duties, shift work, customer service focus and a competitive salary package for the right person.' },
+  ])), false);
+});
+
+test('QantasLink is a separate employer from Qantas', () => {
+  const r = resolver();
+  const parent = identityOf({ company: 'Qantas Group', title: 'First Officer: Regional Pilot — Home Bases in Australia', location: 'Victoria', country: 'Australia' }, r);
+  const sub = identityOf({ company: 'Qantas Group', title: 'QantasLink Direct Entry First Officer', location: 'Victoria', country: 'Australia' }, r);
+  assert.notStrictEqual(parent.key, sub.key, 'a QantasLink ad must not key to plain qantas');
+  assert.match(sub.key, /^qantaslink\|/);
+  assert.strictEqual(subBrandOf('Qantas Group', 'QantasLink Direct Entry First Officer').name, 'QantasLink');
+  assert.strictEqual(subBrandOf('Qantas Group', 'Direct Entry First Officer'), null);
+});
+
+test('diceSimilarity: identical = 1, unrelated ≈ 0', () => {
+  assert.strictEqual(diceSimilarity('first officer a320 dubai', 'first officer a320 dubai'), 1);
+  assert.ok(diceSimilarity('first officer a320 dubai', 'cabin crew recruitment london') < 0.2);
+});
+
+test('a stated location difference vetoes the same-ad escape hatch', () => {
+  const r = resolver();
+  const body = 'Demonstration and sales support flying on the SR-series. '
+    + 'Requires a commercial licence, instrument rating and 1000 hours total time. '
+    + 'You will support customers, deliver aircraft and fly demo missions across the territory.';
+  const m = (jobs) => jobs.map((j) => ({ company: j.company, ident: identityOf(j, r), title: j.title, description: j.description, location: j.location, country: j.country }));
+  // the live Cirrus pair: one template, two countries — two jobs, not one
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Cirrus Aircraft', title: 'Sales Support Pilot - Germany', description: body, country: 'Germany' },
+    { company: 'Cirrus Aircraft', title: 'Sales Support Pilot - Pontiac, Michigan', description: body, country: 'United States', location: 'Pontiac, Michigan' },
+  ])), false);
+  // same title, same place → one ad (titles carry the proof; no type needed)
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Cirrus Aircraft', title: 'Sales Support Pilot', description: body, country: 'Germany' },
+    { company: 'Cirrus Aircraft', title: 'Sales Support Pilot', description: body, country: 'Germany' },
+  ])), true);
+  // a missing location is not a difference
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Cirrus Aircraft', title: 'Sales Support Pilot', description: body, country: 'Germany' },
+    { company: 'Cirrus Aircraft', title: 'Sales Support Pilot', description: body },
+  ])), true);
+});
+
+test('titleQualifier reads the trailing place/fleet suffix, and differing suffixes veto a merge', () => {
+  const { titleQualifier } = require('../jobIdentity');
+  assert.strictEqual(titleQualifier('Sales Support Pilot - Germany'), 'Germany');
+  assert.strictEqual(titleQualifier('Sales Support Pilot - Pontiac, Michigan'), 'Pontiac, Michigan');
+  assert.strictEqual(titleQualifier('Pilot In Command'), '');
+  const r = resolver();
+  const body = 'x'.repeat(260);
+  const m = (jobs) => jobs.map((j) => ({ company: j.company, ident: identityOf(j, r), title: j.title, description: j.description, location: j.location, country: j.country }));
+  // identical bodies, identical location column, different suffix → two jobs
+  assert.strictEqual(shouldAutoMerge(m([
+    { company: 'Cirrus Aircraft', title: 'Sales Support Pilot - Germany', description: body, location: 'US', country: 'US' },
+    { company: 'Cirrus Aircraft', title: 'Sales Support Pilot - Pontiac, Michigan', description: body, location: 'US', country: 'US' },
+  ])), false);
+});
