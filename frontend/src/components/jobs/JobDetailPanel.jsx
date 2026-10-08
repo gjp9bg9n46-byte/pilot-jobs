@@ -130,6 +130,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
         {job.lastSeenAt && <span>Link checked <b>{ago(job.lastSeenAt)}</b></span>}
         {job.expiresAt && <span>Closes <b>{dateStr(job.expiresAt)}</b></span>}
       </div>
+      <div className="safety">Never share bank or credit card details when applying.</div>
       <button className="report" onClick={() => setReporting(true)}><Flag size={12} style={{ verticalAlign: -1 }} /> Report incorrect info</button>
     </div>
   );
@@ -138,7 +139,9 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
     <div className={`detail${mobile ? ' m' : ''}`}>
       {mobile && <button className="rd-back" onClick={onBack}><ArrowLeft size={15} style={{ verticalAlign: -2 }} /> Back to jobs</button>}
       <div className="dtop">
-        <div className="jc-logo" style={{ flexShrink: 0 }}><AirlineLogo logoUrl={logoUrl} name={job.company} box={48} maxW={72} hideIfMissing /></div>
+        {/* Initials fallback (no hideIfMissing) so the header always has a tile —
+            the app has always shown one, and an empty slot read as broken. */}
+        <div className="jc-logo" style={{ flexShrink: 0 }}><AirlineLogo logoUrl={logoUrl} name={job.company} box={48} maxW={72} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2>{displayTitle(job.title)}</h2>
           <div className="dmeta"><b>{companyName(job.company)}</b>{locationName(job.location || job.country) ? ` · ${locationName(job.location || job.country)}` : ''}{job.postedAt ? ` · ${postedAgo(job.postedAt)}` : ''}</div>
@@ -252,6 +255,7 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
             <span className="lbl">{src.direct ? `Apply on ${job.company} careers` : `Apply on ${src.name}`}</span>
             <ExternalLink size={14} style={{ flexShrink: 0 }} />
           </button>
+          <div className="safety">Never share bank or credit card details when applying.</div>
         </div>
       )}
 

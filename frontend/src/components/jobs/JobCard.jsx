@@ -2,7 +2,7 @@ import React from 'react';
 import { Check, X, HelpCircle } from 'lucide-react';
 import AirlineLogo from '../AirlineLogo';
 import AdzunaAttribution from './AdzunaAttribution';
-import { postedAgo, formatSalary } from '../../lib/jobMatch';
+import { postedAgo, formatSalary, matchPill } from '../../lib/jobMatch';
 import { displayTitle, jobChips, checklist, sourceInfo } from '../../lib/jobDisplay';
 import { locationName } from '../../lib/displayNames';
 
@@ -13,6 +13,7 @@ export default function JobCard({ job, selected, onClick, compact = false, logoU
   const checks = checklist(job.match, 4);
   const src = sourceInfo(job);
   const sal = formatSalary(job, true);
+  const pill = matchPill(job.match);
   const loc = locationName(job.location || job.country); // deduped; no HQ flag (C#1)
   // Evergreen/ongoing rows keep an honest "Ongoing · link checked {date}" label
   // (their posted date is stale but the vacancy is live — the liveness checker
@@ -49,6 +50,10 @@ export default function JobCard({ job, selected, onClick, compact = false, logoU
         <div className="chips">
           {chips.map((c, i) => <span key={i} className={`chip${c.visa ? ' visa' : ''}`}>{c.text}</span>)}
         </div>
+      )}
+
+      {pill && (
+        <div className={`mpill ${pill.tone}`}>{pill.text}</div>
       )}
 
       {checks.length > 0 && (

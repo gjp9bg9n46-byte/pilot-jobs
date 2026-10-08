@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AirlineLogo from './AirlineLogo';
 import { displayTitle, locationName } from '../lib/displayNames';
 import { num } from '../lib/format';
-import { checklist, jobChips, sourceInfo } from '../lib/jobMatch';
+import { checklist, jobChips, matchPill, sourceInfo } from '../lib/jobMatch';
 import { fontFamilies, fontSizes } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
@@ -44,6 +44,7 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
     : (ongoing || ago || '');
   const metaLine = [locText, timeLine].filter(Boolean).join('  ·  ');
   const sal = salaryText(job);
+  const pill = matchPill(job?.match);
 
   return (
     <>
@@ -63,6 +64,12 @@ export default function JobCardContent({ job, air, ago, right, footer, ongoing }
             {chips.map((c, i) => (
               <Text key={`${c.text}-${i}`} style={[styles.jcChip, c.visa && styles.jcChipVisa]}>{c.text}</Text>
             ))}
+          </View>
+        ) : null}
+
+        {pill ? (
+          <View style={[styles.mpill, pill.tone === 'green' ? styles.mpillGreen : pill.tone === 'amber' ? styles.mpillAmber : styles.mpillGrey]}>
+            <Text style={[styles.mpillText, { color: pill.color }]}>{pill.text}</Text>
           </View>
         ) : null}
 
@@ -118,6 +125,11 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   jcTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 21 },
   jcMeta: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 3, lineHeight: 18 },
   jcCompany: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
+  mpill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, marginTop: 8 },
+  mpillGreen: { backgroundColor: '#DCFCE7' },
+  mpillAmber: { backgroundColor: '#FEF3C7' },
+  mpillGrey: { backgroundColor: pilot.cream },
+  mpillText: { fontSize: 12, fontFamily: fontFamilies.bodyBold },
   jcChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   jcChip: {
     fontSize: 11, color: pilot.muted, fontFamily: fontFamilies.bodySemiBold,

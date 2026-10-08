@@ -456,9 +456,9 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
 
   bottomBar: { borderTopWidth: 1, borderTopColor: pilot.line, backgroundColor: pilot.cream, paddingHorizontal: spacing.xl, paddingTop: 12, paddingBottom: 8, gap: 6 },
   ctaRow: { flexDirection: 'row', gap: 12 },
-  // Inventory 5.5 — web's apply CTA is green and says "Apply on the source";
-  // the app keeps its Save button and the fraud-safety note (ported to web).
-  applyBtn: { flex: 1, backgroundColor: '#14301C', borderRadius: 4, paddingVertical: 13, alignItems: 'center' },
+  // Inventory 5.5 — one CTA on both platforms: brand navy, "Apply on the
+  // source ↗". Green stays a STATUS colour (met / qualify), never a button.
+  applyBtn: { flex: 1, backgroundColor: pilot.navy, borderRadius: 4, paddingVertical: 13, alignItems: 'center' },
   applyBtnDisabled: { opacity: 0.5 },
   applyBtnText: { color: '#fff', fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.base },
   saveBtn: { borderWidth: 1, borderColor: pilot.navy, borderRadius: 4, paddingVertical: 13, paddingHorizontal: 18, alignItems: 'center' },

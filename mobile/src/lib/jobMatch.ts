@@ -167,6 +167,29 @@ export function statusMeta(match: ServerMatch | null | undefined):
   return { ...base, color: TONE_COLOR[base.tone], pct: match.pct ?? null, shortfall: match.shortfall || null };
 }
 
+
+// ── The match pill shown on a job CARD (Jobs list + Dashboard, web + app) ────
+// One format everywhere, by owner spec:
+//   "75% · 1 short"          normal case: number, then the status label
+//   "100% · You qualify"     a full match still shows its number
+//   "Not a match"            0% drops the number — "0%" reads as broken, not as
+//                            an answer
+//   "Event"                  a recruitment event is not a vacancy to score
+//   (nothing)                NO_REQUIREMENTS / WRONG_CATEGORY — no % to show
+// Tone drives the colour: green = qualify, amber = short/check, grey = neither.
+export function matchPill(match: ServerMatch | null | undefined):
+  { text: string; tone: 'green' | 'amber' | 'grey'; color: string } | null {
+  if (!match) return null;
+  const status = match.status;
+  if (status === 'EVENT') return { text: 'Event', tone: 'grey', color: TONE_COLOR.grey };
+  if (status === 'NO_REQUIREMENTS' || status === 'WRONG_CATEGORY') return null;
+  const base = MATCH_STATUS_META[status ?? ''] || { label: '', tone: 'grey' as const };
+  const pct = typeof match.pct === 'number' ? match.pct : null;
+  if (pct == null) return null;
+  const text = pct === 0 ? 'Not a match' : `${pct}%${base.label ? ` · ${base.label}` : ''}`;
+  return { text, tone: base.tone, color: TONE_COLOR[base.tone] };
+}
+
 export const MATCH_TIERS = { excellent: 90, great: 75, good: 60 };
 
 export function matchLabel(score: number | null | undefined): { text: string; variant: 'success' | 'info' | 'warning' } | null {

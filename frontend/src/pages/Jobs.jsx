@@ -703,6 +703,7 @@ export default function Jobs() {
               <button type="button" className={`fbtn${maxReqHours ? ' act' : ''}`} onClick={() => setHoursOpen(true)}>{hoursLabel} <ChevronDown size={13} style={{ marginLeft: 2 }} /></button>
               <button type="button" className={`fbtn${(aircraftType || role || authority || contractType || postedWithin || minSalary || ntrOnly) ? ' act' : ''}`} onClick={() => setFiltersSheetOpen(true)}><SlidersHorizontal size={14} /> Filters</button>
               <button type="button" className={`fbtn tog${visaOnly ? ' on act' : ''}`} onClick={() => setVisaOnly((v) => !v)} aria-pressed={visaOnly}><span className="sw" />Visa</button>
+              <button type="button" className={`fbtn tog${qualifiedOnly ? ' on act' : ''}`} onClick={() => setQualifiedOnly((v) => !v)} aria-pressed={qualifiedOnly}><span className="sw" />Qualified only</button>
               <div className="fsort" style={{ marginLeft: 'auto' }}>Sort:
                 <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">{SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
               </div>
@@ -734,6 +735,9 @@ export default function Jobs() {
             <button type="button" className={`fbtn tog${visaOnly ? ' on act' : ''}`} onClick={() => setVisaOnly((v) => !v)} aria-pressed={visaOnly}>
               <span className="sw" />Visa sponsored
             </button>
+            <button type="button" className={`fbtn tog${qualifiedOnly ? ' on act' : ''}`} onClick={() => setQualifiedOnly((v) => !v)} aria-pressed={qualifiedOnly}>
+              <span className="sw" />Qualified only
+            </button>
             <div className="fsort">Sort:
               <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
                 {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -742,7 +746,7 @@ export default function Jobs() {
           </div>
         )}
 
-        {(region || aircraftType || role || authority || visaOnly || search || maxReqHours) && (
+        {(region || aircraftType || role || authority || visaOnly || qualifiedOnly || search || maxReqHours) && (
           <div className="applied">
             {region && <button className="ach" onClick={() => setRegion('')}>{region} <X size={12} style={{ marginLeft: 2 }} /></button>}
             {maxReqHours && <button className="ach" onClick={() => setMaxReqHours('')}>Up to {Number(maxReqHours).toLocaleString()} h <X size={12} style={{ marginLeft: 2 }} /></button>}
@@ -750,6 +754,7 @@ export default function Jobs() {
             {role && <button className="ach" onClick={() => setRole('')}>{roleLabel(role)} <X size={12} style={{ marginLeft: 2 }} /></button>}
             {authority && <button className="ach" onClick={() => setAuthority('')}>{authority} <X size={12} style={{ marginLeft: 2 }} /></button>}
             {visaOnly && <button className="ach" onClick={() => setVisaOnly(false)}>Visa sponsored <X size={12} style={{ marginLeft: 2 }} /></button>}
+            {qualifiedOnly && <button className="ach" onClick={() => setQualifiedOnly(false)}>Qualified only <X size={12} style={{ marginLeft: 2 }} /></button>}
             {/* Right group: Clear all + alert, same height/size, pinned right so the
                 chips flow on the left. On phone the alert shrinks to a bell + "Alert". */}
             <div className="rgroup">
