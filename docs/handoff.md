@@ -17,6 +17,7 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
 ## DONE (committed on main, unpushed)
+- `0439c24` **B — Dashboard / Profile / Logbook / CV inventory** (`docs/design/screens-web-vs-app-inventory.md`) + four side-by-side images. **Nothing ported — decisions needed.** Profile is at parity bar one link; Dashboard differs only in where the % sits; **Logbook is the big one** (web's compact one-line rows vs the app's boarding-pass cards with per-row actions); CV is layout-only.
 - `d0eb894` **B — Jobs ported to the mobile-web reference.** Region tabs + counts, Hours/Filters/Visa/Qualified-only rail, Salary sort, applied-filter chips + Clear all, empty-profile banner, subtitle gains "N you qualify for"; card rebuilt as web's (verdict checklist, Apply-direct/salary footer, no % pill, no chevron); detail gains web's verdict sentence, grouped Must-haves/Hours/Ratings rows, role chip and green "Apply on the source ↗" (Save + safety note kept). Side-by-side re-shot.
 - `5a2d79b` **ELP implicit baseline + one shared Jobs ordering** (web fit groups, nationality-barred last, on both platforms). Verified on prod: 374 live jobs → 112 QUALIFY with a current ELP, **0** with a lapsed one.
 - `bd70f6d` **A (real-device items 1–8) SHIPPED** — one badge (Home tab only), Dashboard→**Home** + tab-bar geometry fixed (labels were clipped vertically; active highlight squared the pill's curve), `useTabBarClearance()` on EVERY scrollable tab screen (4 had none at all), Jobs defaults to **Best match** with nationality-barred rows last, new subtitle, Browse/Matches toggle gone, `1,500 h` everywhere via `src/lib/format.ts` (device-locale bug), and `displayTitle()` shared web↔app with a fixed acronym rule. Shots: `mobile-A-*.png`.
@@ -190,7 +191,7 @@ Port the app to match the mobile web screen-for-screen (visually identical: font
 - **Side-by-side screenshots** (web 390 vs app) per screen → `docs/design/screens/<screen>-web-vs-app.png`. Commit per screen; keep this handoff updated.
 
 ## NEXT-SESSION ORDER
-1. **Read `scratchpad/merge-report.txt`** — the first apply-run's real numbers (per source, 20 samples, suspicious, reversibility). Compare against the 11/12 preview above.
-2. **Port back to web** what the app gained and web lacks: the Qualified-only chip, the fraud-safety note on the apply bar, and the airline logo tile on the detail header.
-3. **Dashboard, Profile, Logbook, CV** — same inventory-first treatment as Jobs.
-4. **Backlog** (match-context cache, requirements-coverage drop, upsert test fixtures).
+1. **⚠️ Legacy dedup passes** — 23 demonstrably-wrong merges were reverted today, but the ungated legacy passes that made them run again at 18:00Z and will re-merge. Extend the evidence test (no cross-rank, no cross-type, no unrelated-title merges) to `collapseAggregatorPriority` / `collapseXSourceDuplicates` / `collapseSameAdAcrossLocations`, or gate them.
+2. **Answer the four-screen inventory** (`docs/design/screens-web-vs-app-inventory.md`) — especially Logbook 3.1 (row design) and Dashboard 1.1 — then port in the order listed there.
+3. **Watch the next gated identity run** (`nightly-rescreen`, 03:30Z) now that the guards are live: expect ~12 clusters / 13 rows, all with a parsed type or identical titles.
+4. **Backlog** (match-context cache, requirements-coverage drop at 77.8%, upsert test fixtures).
