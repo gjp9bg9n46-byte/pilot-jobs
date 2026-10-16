@@ -21,8 +21,8 @@ payload before rendering):
 
 | # | Web (reference) | App | Decision |
 |---|---|---|---|
-| 1.1 | Match % sits **under** the meta line, full-width row | % in a **right-hand column** beside the title | **[?]** The app's two-column is tighter, but it squeezes the title and truncates the meta ("33 day…"). Leaning **default-to-web** (stack it) to stop the truncation — but it costs vertical space on every row. |
-| 1.2 | Meta line shows `· Direct apply` | truncated away by the right column | Falls out of 1.1. |
+| 1.1 | Match % sits **under** the meta line, full-width row | % in a **right-hand column** beside the title | **[default-to-web] DONE.** The app row is now one column, mirroring web's `.dash-job` at ≤820px: title, meta and the pill row full width, then a row with the **% left and View right** (`.dash-jobside { justify-content: space-between }`). |
+| 1.2 | Meta line shows `· Direct apply` | truncated away by the right column | **DONE** — the 1-line clamp is gone with the squeeze, so the full meta line including `· Direct apply` now shows. |
 | 1.3 | — | email-verification banner above the content | App-wide chrome. Leave. |
 | 1.4 | "Match % = stated requirements you meet ÷ stated requirements…" explainer | same explainer | Already in parity. |
 
@@ -30,10 +30,10 @@ payload before rendering):
 
 | # | Web | App | Decision |
 |---|---|---|---|
-| 2.1 | **"Preview as airline"** link under the header buttons | absent | **[default-to-web]** Port to the app. |
+| 2.1 | **"Preview as airline"** link under the header buttons | absent | **NOT PORTED — it is a dead link on web.** `/profile/preview` has no route in `App.jsx`; the catch-all `path="*"` redirects to `/dashboard`, so the button silently bounces the user to the Dashboard. Porting it would copy the bug. **Web fix needed:** build the preview page or remove the button. |
 | 2.2 | everything else — readiness strip, stat grid, strength bar, licences, medical, training | identical | No action. |
 
-## 3. Logbook — the biggest gap of the four
+## 3. Logbook — NOT PORTED (being redesigned; new mockups coming)
 
 | # | Web | App | Decision |
 |---|---|---|---|
@@ -45,7 +45,7 @@ payload before rendering):
 | 3.6 | Milestone card ends with **"See them →"** linking to the +24 jobs | the same card, no link | **[default-to-web]** Port the link — a dead-end stat is a wasted hook. |
 | 3.7 | `Import` as a header link | `Import` as a button | Falls out of 3.3. |
 
-## 4. CV Builder — close, mostly layout
+## 4. CV Builder — NOT PORTED (being redesigned; new mockups coming)
 
 | # | Web | App | Decision |
 |---|---|---|---|
@@ -58,11 +58,11 @@ payload before rendering):
 
 ---
 
-## Suggested order (after your decisions)
-1. **Profile 2.1** — one link, five minutes.
-2. **CV 4.1 / 4.4 / 4.5** — layout + the Download button.
-3. **Dashboard 1.1** — decide the row layout, then it is a single change.
-4. **Logbook** — the real work: 3.1 (row design) gates 3.2–3.7.
-5. **Back-ports to web**: 3.4, 3.5 (and the Jobs ones already noted).
+## Status 2026-10-16
+- **Dashboard — PORTED** (1.1, 1.2). Side-by-side re-shot.
+- **Profile — nothing to port.** The only difference was 2.1, which is a dead link on web; everything else was already at parity.
+- **Logbook, CV — not ported, by decision.** Both are being redesigned; the rows below are kept as a record of where they diverge today, not as a work list.
 
-Each step: commit, re-shoot the pair, update this file.
+### Open for web
+- `/profile/preview` route missing (2.1) — build it or drop the button.
+- Back-ports already noted on Jobs: the Logbook header subtitle and the carry-forward `active` badge (3.4, 3.5) remain unported in either direction while Logbook is being redesigned.

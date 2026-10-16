@@ -237,25 +237,17 @@ function JobRow({ job, onView, styles, pilot }: { job: Any; onView: () => void; 
   const isQualify = m?.status === 'QUALIFY';
   return (
     <View style={styles.jobRow}>
-      <View style={styles.jobTop}>
-        <View style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
-          <Text style={styles.jobTitle}>
-            {job.isNew && <Text style={{ color: pilot.navy }}>● </Text>}{job.title}
-          </Text>
-          <Text style={styles.jobSub} numberOfLines={1}>{sub}</Text>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          {meta && m.pct != null ? (
-            <>
-              <Text style={[styles.pct, { color: meta.color }]}>{m.pct}%<Text style={styles.pctSuffix}> match</Text></Text>
-              {m.stated > 0 ? <Text style={styles.metLine}>{m.met} of {m.stated} met</Text> : null}
-            </>
-          ) : <Text style={styles.notStated}>{m?.status === 'NO_REQUIREMENTS' ? 'No requirements stated' : 'Not stated'}</Text>}
-          <Pressable onPress={onView} style={[styles.viewBtn, isQualify && styles.viewBtnPrimary]}>
-            <Text style={[styles.viewBtnText, isQualify && { color: '#fff' }]}>View</Text>
-          </Pressable>
-        </View>
-      </View>
+      {/* Mirrors web's .dash-job at ≤820px: ONE column. Title, meta and the
+          pill row run full width; the % and View sit on their own row below,
+          % left and View right (web: .dash-jobside { justify-content:
+          space-between }). The old two-column layout squeezed the title and
+          clipped the meta line, which is where "· Direct apply" was being
+          lost. */}
+      <Text style={styles.jobTitle}>
+        {job.isNew && <Text style={{ color: pilot.navy }}>● </Text>}{job.title}
+      </Text>
+      <Text style={styles.jobSub}>{sub}</Text>
+
       {(pill || meta?.shortfall || m?.category?.advisory) && (
         <View style={styles.jobMetaRow}>
           {pill && <Text style={[styles.jobPill, { backgroundColor: pill.bg, color: pill.c }]}>{pill.t}</Text>}
@@ -263,6 +255,18 @@ function JobRow({ job, onView, styles, pilot }: { job: Any; onView: () => void; 
           {m?.category?.advisory && <Text style={styles.jobAdvisory}>· {m.category.advisory}</Text>}
         </View>
       )}
+
+      <View style={styles.jobSide}>
+        {meta && m.pct != null ? (
+          <View style={styles.pctWrap}>
+            <Text style={[styles.pct, { color: meta.color }]}>{m.pct}%<Text style={styles.pctSuffix}> match</Text></Text>
+            {m.stated > 0 ? <Text style={styles.metLine}>{m.met} of {m.stated} met</Text> : null}
+          </View>
+        ) : <Text style={styles.notStated}>{m?.status === 'NO_REQUIREMENTS' ? 'No requirements stated' : 'Not stated'}</Text>}
+        <Pressable onPress={onView} style={[styles.viewBtn, isQualify && styles.viewBtnPrimary]}>
+          <Text style={[styles.viewBtnText, isQualify && { color: '#fff' }]}>View</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -317,14 +321,16 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   footNote: { padding: 14, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: pilot.line, fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, lineHeight: 18 },
 
   jobRow: { borderTopWidth: 1, borderTopColor: pilot.line, paddingHorizontal: 16, paddingVertical: 10 },
-  jobTop: { flexDirection: 'row', alignItems: 'flex-start' },
   jobTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 20 },
-  jobSub: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
+  jobSub: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2, lineHeight: 18 },
+  // the %/View row: full width, % left, View right — web's phone layout
+  jobSide: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  pctWrap: { alignItems: 'flex-start' },
   pct: { fontFamily: fontFamilies.display, fontSize: 22, lineHeight: 24 },
   pctSuffix: { fontFamily: fontFamilies.body, fontSize: 11, color: pilot.muted },
-  metLine: { fontFamily: fontFamilies.body, fontSize: 11, color: pilot.muted, marginTop: 2, textAlign: 'right' },
+  metLine: { fontFamily: fontFamilies.body, fontSize: 11, color: pilot.muted, marginTop: 2 },
   notStated: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body },
-  viewBtn: { marginTop: 6, height: 34, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface, alignItems: 'center', justifyContent: 'center' },
+  viewBtn: { height: 34, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface, alignItems: 'center', justifyContent: 'center' },
   viewBtnPrimary: { borderColor: pilot.navy, backgroundColor: pilot.navy },
   viewBtnText: { fontSize: fontSizes.sm, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
   jobMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 10 },
