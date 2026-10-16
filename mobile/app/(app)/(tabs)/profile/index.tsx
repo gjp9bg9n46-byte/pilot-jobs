@@ -5,13 +5,13 @@
 // sheet. Mobile-only chrome (My Applications, Settings link, Log out) sits last.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View,
+  ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../../../src/lib/api';
+import api, { WEB_URL } from '../../../../src/lib/api';
 import { SecondaryButton } from '../../../../src/components/ui';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 import ProfileEditSheet, { EditSpec, pilotNationalities } from '../../../../src/components/ProfileEditSheet';
@@ -71,15 +71,20 @@ export default function ProfileView() {
   const [toast, setToast] = useState<string | null>(null);
   const [photoOk, setPhotoOk] = useState(true);
   const [otwSaving, setOtwSaving] = useState(false);
+  const [cvShareToken, setCvShareToken] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [p, rd, s, a] = await Promise.allSettled([
+    const [p, rd, s, a, cv] = await Promise.allSettled([
       api.get('/profile'), api.get('/profile/readiness'), api.get('/logbook/summary'), api.get('/jobs/applications'),
+      api.get('/cv/document'),
     ]);
     if (p.status === 'fulfilled') setProfile(p.value.data);
     if (rd.status === 'fulfilled') setReadiness(rd.value.data);
     if (s.status === 'fulfilled') setSummary(s.value.data);
     if (a.status === 'fulfilled') setApps(a.value.data || []);
+    // Only a live share link can be previewed, so the button hides until the
+    // pilot turns sharing on in the CV Builder.
+    if (cv.status === 'fulfilled') setCvShareToken(cv.value.data?.share?.enabled ? cv.value.data.share.token : null);
   }, []);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
@@ -220,6 +225,12 @@ export default function ProfileView() {
           <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => router.push('/cv-builder')}><Ionicons name="download-outline" size={16} color={pilot.navy} /><Text style={styles.btnGhostText}>Download CV</Text></Pressable>
           <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => setEditing({ kind: 'personal' })}><Ionicons name="pencil-outline" size={16} color="#fff" /><Text style={styles.btnPrimaryText}>Edit profile</Text></Pressable>
         </View>
+        {cvShareToken ? (
+          <Pressable style={styles.previewLink} onPress={() => Linking.openURL(`${WEB_URL}/cv/s/${cvShareToken}`)}>
+            <Ionicons name="eye-outline" size={15} color={pilot.navy} />
+            <Text style={styles.previewLinkText}>Preview as airline</Text>
+          </Pressable>
+        ) : null}
 
         {/* ── APPLICATION READINESS ───────────────────────────────────────── */}
         {items.length > 0 && (
@@ -443,6 +454,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   otwTitle: { fontSize: 13.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
   otwSub: { fontSize: 12.5, color: pilot.muted, fontFamily: fontFamilies.body },
 
+  previewLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 10 },
+  previewLinkText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: 13.5 },
   actions: { flexDirection: 'row', gap: 8 },
   btn: { flex: 1, height: 44, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   btnGhost: { borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface },

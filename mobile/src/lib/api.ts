@@ -16,6 +16,11 @@ import { deleteItem, getItem, setItem } from './secureStore';
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL || 'https://cockpithire.com/api';
 
+// The public web origin, derived from the API base so a staging build points at
+// staging. Used for links that only exist on the web (the read-only CV share
+// page), never for API calls.
+export const WEB_URL = API_URL.replace(/\/api\/?$/, '');
+
 export const TOKEN_KEY = 'cockpithire.auth.token';
 
 // ---- Token storage (secure-store on native, localStorage on web) -----------
