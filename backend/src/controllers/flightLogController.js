@@ -3,6 +3,7 @@ const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
 const { parseCSV, detectMapping, coerceRow, extractKeyFields, enrichColumns } = require('../services/importService');
 const { buildLogbookSummary, displayTypeFor } = require('../services/logbookSummary');
+const { buildFlightRow } = require('../services/logbookEntry');
 
 const IMPORT_ROW_LIMIT = 5000;
 
@@ -52,36 +53,54 @@ exports.getLogs = async (req, res, next) => {
 
 exports.createLog = async (req, res, next) => {
   try {
-    const {
-      date, aircraftType, registration, departure, arrival,
-      offBlocksTime, takeoffTime, landingTime, onBlocksTime,
-      flightNumber, picName, sicName,
-      totalTime, picTime, sicTime,
-      multiEngineTime, turbineTime, jetTime,
-      instrumentTime, instrumentActualTime, instrumentSimTime,
-      crossCountryTime, nightTime,
-      landingsDay, landingsNight, remarks,
-    } = req.body;
+    // Block, airborne and night are DERIVED from out/off/on/in (see
+    // services/logbookEntry) — the new forms never send a typed duration, and a
+    // legacy client that still does is honoured only where nothing can be derived.
+    const pilot = await prisma.pilot.findUnique({
+      where: { id: req.pilot.id },
+      select: { id: true, role: true, logbookPrefs: true },
+    });
+    const built = await buildFlightRow(req.body || {}, pilot);
+    const { _derived, ...row } = built;
+    if (!row.date) return res.status(422).json({ error: 'A date is required.' });
+
     const log = await prisma.flightLog.create({
       data: {
-        date, aircraftType, registration, departure, arrival,
-        offBlocksTime, takeoffTime, landingTime, onBlocksTime,
-        flightNumber, picName, sicName,
-        totalTime, picTime, sicTime,
-        multiEngineTime, turbineTime, jetTime,
-        instrumentTime, instrumentActualTime, instrumentSimTime,
-        crossCountryTime, nightTime,
-        landingsDay, landingsNight, remarks,
+        ...row,
+        // Columns the new form does not collect but an older client may send.
+        multiEngineTime: num(req.body.multiEngineTime), turbineTime: num(req.body.turbineTime),
+        jetTime: num(req.body.jetTime), instrumentTime: num(req.body.instrumentTime),
+        instrumentActualTime: num(req.body.instrumentActualTime), instrumentSimTime: num(req.body.instrumentSimTime),
+        crossCountryTime: num(req.body.crossCountryTime),
         pilotId: req.pilot.id,
         source: 'MANUAL',
       },
     });
+    await rememberLast(pilot, row);
     await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
-    res.status(201).json(log);
+    res.status(201).json({ ...log, derived: _derived });
   } catch (err) {
     next(err);
   }
 };
+
+// The manual form offers the last aircraft, registration and commander next time.
+async function rememberLast(pilot, row) {
+  const prefs = (pilot && pilot.logbookPrefs) || {};
+  await prisma.pilot.update({
+    where: { id: pilot.id },
+    data: {
+      logbookPrefs: {
+        ...prefs,
+        lastAircraftType: row.aircraftType || prefs.lastAircraftType || null,
+        lastRegistration: row.registration || prefs.lastRegistration || null,
+        lastCommander: row.picName || prefs.lastCommander || null,
+      },
+    },
+  });
+}
+
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 // Creates multiple legs in one request, all sharing a dutyId so they group as one operating day.
 exports.bulkCreate = async (req, res, next) => {
@@ -165,31 +184,29 @@ exports.updateLog = async (req, res, next) => {
     });
     if (!existing) return res.status(404).json({ error: 'Log not found' });
 
-    const {
-      date, aircraftType, registration, departure, arrival,
-      offBlocksTime, takeoffTime, landingTime, onBlocksTime,
-      flightNumber, picName, sicName,
-      totalTime, picTime, sicTime,
-      multiEngineTime, turbineTime, jetTime,
-      instrumentTime, instrumentActualTime, instrumentSimTime,
-      crossCountryTime, nightTime,
-      landingsDay, landingsNight, remarks,
-    } = req.body;
-    const log = await prisma.flightLog.update({
-      where: { id: req.params.id },
-      data: {
-        date, aircraftType, registration, departure, arrival,
-        offBlocksTime, takeoffTime, landingTime, onBlocksTime,
-        flightNumber, picName, sicName,
-        totalTime, picTime, sicTime,
-        multiEngineTime, turbineTime, jetTime,
-        instrumentTime, instrumentActualTime, instrumentSimTime,
-        crossCountryTime, nightTime,
-        landingsDay, landingsNight, remarks,
-      },
+    const pilot = await prisma.pilot.findUnique({
+      where: { id: req.pilot.id },
+      select: { id: true, role: true, logbookPrefs: true },
     });
+    // Edit on top of the stored row, then re-derive: changing ON by a minute
+    // must move block and night with it.
+    const merged = {
+      date: existing.date, flightNumber: existing.flightNumber, aircraftType: existing.aircraftType,
+      registration: existing.registration, departure: existing.departure, arrival: existing.arrival,
+      offBlocksTime: existing.offBlocksTime, takeoffTime: existing.takeoffTime,
+      landingTime: existing.landingTime, onBlocksTime: existing.onBlocksTime,
+      picName: existing.picName, sicName: existing.sicName,
+      pilotFlying: existing.pilotFlying, approach: existing.approach, remarks: existing.remarks,
+      landings: (existing.landingsDay || 0) + (existing.landingsNight || 0),
+      role: existing.picTime > 0 ? 'PIC' : 'SIC',
+      ...req.body,
+    };
+    const built = await buildFlightRow(merged, pilot);
+    const { _derived, ...row } = built;
+
+    const log = await prisma.flightLog.update({ where: { id: req.params.id }, data: row });
     await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
-    res.json(log);
+    res.json({ ...log, derived: _derived });
   } catch (err) {
     next(err);
   }

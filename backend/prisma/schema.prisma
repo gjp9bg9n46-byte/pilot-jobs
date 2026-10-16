@@ -36,6 +36,7 @@ enum JobStatus {
 
 enum LogSource {
   MANUAL
+  SCAN
   FOREFLIGHT
   LOGBOOK_PRO
   OTHER
@@ -147,6 +148,10 @@ model Pilot {
   // import, carry-forward edit) + nightly. Read by matching (getMatchTotals) and the
   // logbook summary — one source, so /jobs never re-loads every flight to match.
   derivedTotals   Json?
+  logbookPrefs    Json?
+  // Airline staff/crew number. Matches the PF/PM columns on a voyage report, so
+  // a scan knows which sectors this pilot flew. Optional, never shown to employers.
+  staffNumber     String?
   // Dashboard visit tracking. dashboardSeenAt = this visit's start; previousDashboardSeenAt
   // = the prior visit's start. A new "visit" begins only when dashboardSeenAt is >30 min
   // stale, so refreshing within a visit keeps the same "new since last visit" set + dots.
@@ -164,6 +169,7 @@ model Pilot {
   trainingRecords PilotTrainingRecord[]
   rightToWork     PilotRightToWork[]
   flightLogs      FlightLog[]
+  logbookScans    LogbookScan[]
   jobAlerts       JobAlert[]
   preferences     PilotPreference?
   sessions        PilotSession[]
@@ -404,12 +410,41 @@ model FlightLog {
   landingsDay     Int        @default(0)
   landingsNight   Int        @default(0)
   remarks         String?
+  // Voyage-report scan + the new manual entry: who was flying the sector, the
+  // approach flown, and the scan the row came from (null for typed/imported rows).
+  pilotFlying     Boolean?
+  approach        String?
+  scanId          String?
   source          LogSource  @default(MANUAL)
   importBatchId   String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
   pilot           Pilot      @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+}
+
+// One voyage-report scan: the upload, what the model read, and what the server
+// made of it. The image lives here only until the pilot saves (or opts to keep
+// it); sectors/header hold the reviewed payload, never raw model text.
+model LogbookScan {
+  id         String   @id @default(uuid())
+  pilotId    String
+  status     String   @default("REVIEW") // REVIEW | SAVED | DISCARDED | FAILED
+  model      String?
+  mimeType   String?
+  imageData  Bytes?
+  imageKept  Boolean  @default(false)
+  sectors    Json?
+  header     Json?
+  usage      Json?
+  error      String?
+  savedCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  pilot      Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+
+  @@index([pilotId, createdAt])
 }
 
 model Job {

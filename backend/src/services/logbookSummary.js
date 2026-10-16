@@ -65,7 +65,10 @@ function classForType(typeKey) {
 // Air Cairo (flight numbers "SM …") flies SU-B** A320-family; the import stored
 // the reg truncated to its 3 trailing letters (e.g. "BPX" = SU-BPX).
 const REG_TYPE_RULES = [
-  { test: (reg) => /^B[A-Z]{2}$/.test(reg), type: 'A320', note: 'type inferred from registration' },
+  // Egyptian A320-family registrations. Imported logbooks hold the bare suffix
+  // ("BVM"); a scanned voyage report writes the full mark ("SU-BVM"), and the
+  // form prints the SU prefix so only the letters are handwritten.
+  { test: (reg) => /^(SU-?)?B[A-Z]{2}$/.test(reg), type: 'A320', note: 'type inferred from registration' },
 ];
 function typeFromRegistration(reg) {
   const r = String(reg || '').toUpperCase().trim();

@@ -28,7 +28,9 @@ test('classForType: multi/turbine vs single-piston, unknown → null', () => {
 test('typeFromRegistration: Air Cairo SU-B** truncated reg → A320', () => {
   assert.strictEqual(typeFromRegistration('BPX').type, 'A320');
   assert.strictEqual(typeFromRegistration('BUU').type, 'A320');
-  assert.strictEqual(typeFromRegistration('SU-BPX'), null); // full reg not matched by the truncated rule
+  // Scanned voyage reports write the full mark, imports hold the bare suffix.
+  assert.strictEqual(typeFromRegistration('SU-BPX').type, 'A320');
+  assert.strictEqual(typeFromRegistration('SUBPX').type, 'A320');
   assert.strictEqual(typeFromRegistration('N123'), null);
 });
 
