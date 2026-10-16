@@ -67,6 +67,15 @@ export default function CvSheet({ doc, scale }) {
   const photo = doc.order.find((o) => o.key === 'photo' && o.visible) && doc.sections.photo?.url;
   const modern = doc.template === 'modern';
   const contact = [doc.header.base, doc.header.phone, doc.header.email].filter(Boolean);
+  // The public share link carries no phone or e-mail at all; it offers a way
+  // back through CockpitHire instead.
+  const via = doc.header.contactVia;
+  const contactLines = (cls) => (
+    <>
+      {contact.map((c, i) => <div key={i}>{c}</div>)}
+      {via && <div><a className={`cv-via${cls ? ` ${cls}` : ''}`} href={via.href}>{via.label}</a></div>}
+    </>
+  );
 
   const head = (
     <div className={`cv-h${modern ? ' m' : ''}`} style={modern ? undefined : { borderBottomColor: accent }}>
@@ -74,7 +83,7 @@ export default function CvSheet({ doc, scale }) {
         <h1>{doc.header.name}</h1>
         {doc.header.headline && <div className="hl">{doc.header.headline}</div>}
       </div>
-      <div className="ct">{contact.map((c, i) => <div key={i}>{c}</div>)}</div>
+      <div className="ct">{contactLines()}</div>
     </div>
   );
 
@@ -88,7 +97,7 @@ export default function CvSheet({ doc, scale }) {
             {photo && <img className="cv-photo" src={doc.sections.photo.url} alt="" />}
             <div className="mname">{doc.header.name}</div>
             {doc.header.headline && <div className="mhl">{doc.header.headline}</div>}
-            <div className="mct">{contact.map((c, i) => <div key={i}>{c}</div>)}</div>
+            <div className="mct">{contactLines('on-dark')}</div>
           </aside>
           <div className="cv-main">
             {doc.summary && <div className="cv-s"><h2 style={{ color: accent }}>Summary</h2><p>{doc.summary}</p></div>}

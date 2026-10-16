@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const {
   buildCvDocument, normaliseSections, validateCv, generateSummary,
-  visibleLicences, titleCase, maskPhone, maskEmail, DEFAULT_SECTIONS, SECTION_KEYS,
+  visibleLicences, titleCase, maskPhone, maskEmail, DEFAULT_SECTIONS, SECTION_KEYS, CONTACT_VIA,
 } = require('../cvDocument');
 
 const future = (days) => new Date(Date.now() + days * 86400000).toISOString();
@@ -47,16 +47,17 @@ test('names and cities are capitalised even when stored lowercase', () => {
   assert.strictEqual(titleCase('a320 captain'), 'A320 Captain');
 });
 
-test('contact details are masked everywhere except the PDF', () => {
+test('contact details are masked in the preview and absent from the share link; only the PDF has them', () => {
   const preview = buildCvDocument(RAW(), { audience: 'preview' });
   const share = buildCvDocument(RAW(), { audience: 'share' });
   const pdf = buildCvDocument(RAW(), { audience: 'pdf' });
-  for (const d of [preview, share]) {
-    assert.ok(d.header.contactMasked);
-    assert.match(d.header.phone, /•/);
-    assert.match(d.header.email, /•/);
-    assert.doesNotMatch(d.header.phone, /1117898332/);
-  }
+  assert.ok(preview.header.contactMasked);
+  assert.match(preview.header.phone, /•/);
+  assert.match(preview.header.email, /•/);
+  assert.doesNotMatch(preview.header.phone, /1117898332/);
+  assert.ok(share.header.contactMasked);
+  assert.equal(share.header.phone, null);
+  assert.equal(share.header.email, null);
   assert.strictEqual(pdf.header.phone, '+201117898332');
   assert.strictEqual(pdf.header.email, 'a.pilot@gmail.com');
   assert.strictEqual(maskPhone('+201117898332'), '+20 ••• ••• 8332');
@@ -183,4 +184,19 @@ test('a rating is labelled "{Type} rating" — never asserted as type vs class',
 test('generateSummary returns nothing when the profile has no facts to write from', () => {
   const empty = { pilot: { role: 'PILOT' }, totals: {}, certificates: [], medicals: [], training: [], rtw: [] };
   assert.equal(generateSummary(empty), '');
+});
+
+test("the public share document carries no phone or e-mail at all, only a route back", () => {
+  const share = buildCvDocument(RAW(), { audience: 'share' });
+  assert.equal(share.header.phone, null);
+  assert.equal(share.header.email, null);
+  assert.deepEqual(share.header.contactVia, CONTACT_VIA);
+  // and nothing anywhere in the payload resembles the real values
+  const json = JSON.stringify(share);
+  assert.ok(!json.includes('555'), 'no digits from the phone number');
+  assert.ok(!json.includes('@'), 'no e-mail address');
+  // the PDF still gets them
+  const pdf = buildCvDocument(RAW(), { audience: 'pdf' });
+  assert.ok(pdf.header.phone && pdf.header.email);
+  assert.equal(pdf.header.contactVia, null);
 });

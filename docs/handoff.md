@@ -45,8 +45,11 @@ are inferred from registration, and the sheet says so). Superseded licences are 
   Preview/Edit tabs, action bar floating above the pill, Share + Download PDF.
 
 **Decisions taken while building** (none needed approval):
-- The PDF is the ONLY surface with real contact details. Preview and the share page always
-  get `audience=preview` (phone `+20 ••• ••• 8332`, email `m•••@gmail.com`).
+- The PDF is the ONLY surface with real contact details. The builder preview masks them
+  (`+20 ••• ••• 8332`, `m•••@gmail.com`); the **public share link omits them entirely** —
+  they never leave the backend — and shows **"Contact via CockpitHire"** instead
+  (`CONTACT_VIA` in cvDocument.js). It points at `/employer/register`, the only route by
+  which an airline can reach a pilot today; **repoint it when public pilot profiles ship.**
 - Section CONTENT is never editable here — each section links into Profile. Only the
   summary is CV-only text (600 chars, saved per pilot).
 - "Rewrite from my profile" composes from stored facts only; it invents nothing. The

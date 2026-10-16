@@ -34,6 +34,11 @@ export function cvSheetHtml(doc: Any, { forPrint = false, fitWidth = 0 } = {}): 
   const accent = doc.accentHex || '#0B1F3A';
   const modern = doc.template === 'modern';
   const contact = [doc.header.base, doc.header.phone, doc.header.email].filter(Boolean).map(esc);
+  // Share-audience documents carry no phone or e-mail, only a way back through
+  // CockpitHire. Preview and PDF documents have no contactVia.
+  if (doc.header.contactVia) {
+    contact.push(`<a class="via" href="${esc(doc.header.contactVia.href)}">${esc(doc.header.contactVia.label)}</a>`);
+  }
   const photo = doc.order.find((o: Any) => o.key === 'photo' && o.visible) && doc.sections.photo?.url;
   const body = doc.order.filter((o: Any) => o.visible && o.key !== 'photo').map((o: Any) => section(o.key, doc, accent)).join('');
   const summary = doc.summary ? `<div class="s"><h2 style="color:${accent}">Summary</h2><p>${esc(doc.summary)}</p></div>` : '';
@@ -101,6 +106,7 @@ export function cvSheetHtml(doc: Any, { forPrint = false, fitWidth = 0 } = {}): 
   .mct{font-size:11.5px;opacity:.8;margin-top:18px;line-height:1.8;word-break:break-word}
   .modern .main{padding:48px 44px}
   .src{font-size:10px;color:#8592A3;margin-top:24px;border-top:1px solid #EEF1F5;padding-top:8px}
+  .ct .via,.mct .via{color:inherit;text-decoration:underline}
   .modern .src{margin:24px 44px 44px}
   ${fit}
 </style></head><body><div class="sheet">${inner}</div></body></html>`;

@@ -107,12 +107,15 @@ function flightFacts(raw) {
 
 // ── Build the document ──────────────────────────────────────────────────────
 // `raw` is exactly what GET /cv returns (profile + logbook + CvData).
-// `audience`: 'pdf' shows contact details; 'preview' and 'share' mask them.
+// `audience`: 'pdf' shows contact details; 'preview' masks them; 'share' — the
+// public link an airline opens — leaves them out of the payload entirely and
+// offers a route back through CockpitHire instead.
 function buildCvDocument(raw, { audience = 'preview' } = {}) {
   const p = raw.pilot || {};
   const cv = raw.cv || {};
   const totals = raw.totals || {};
   const showContact = audience === 'pdf';
+  const publicLink = audience === 'share';
 
   const licences = visibleLicences(raw.certificates);
   const elp = (raw.certificates || []).find((c) => c.type === 'ELP') || null;
@@ -130,8 +133,12 @@ function buildCvDocument(raw, { audience = 'preview' } = {}) {
     name,
     headline: headline || null,
     base,
-    phone: showContact ? (p.phone || null) : maskPhone(p.phone),
-    email: showContact ? (p.email || null) : maskEmail(p.email),
+    // On the public link there is nothing to mask: the values never leave the
+    // backend. CONTACT_VIA points at the employer entry — the only way an
+    // airline can reach a pilot today. Repoint it when public pilot profiles ship.
+    phone: showContact ? (p.phone || null) : (publicLink ? null : maskPhone(p.phone)),
+    email: showContact ? (p.email || null) : (publicLink ? null : maskEmail(p.email)),
+    contactVia: publicLink ? CONTACT_VIA : null,
     contactMasked: !showContact,
     photoUrl: cv.photoUrl || null,
   };
@@ -227,6 +234,8 @@ function normaliseSections(stored) {
 //   red   = expired (a factual error on the CV)
 //   amber = missing or expiring (incomplete, not wrong)
 //   green = a passed check worth stating; NOT counted in "things to fix"
+const CONTACT_VIA = { label: 'Contact via CockpitHire', href: '/employer/register' };
+
 const EXPIRING_DAYS = 90;
 
 function validateCv(raw) {
@@ -351,6 +360,7 @@ function generateSummary(raw) {
 }
 
 module.exports = {
+  CONTACT_VIA,
   buildCvDocument, normaliseSections, validateCv, summaryContradictions, generateSummary, EXPIRING_DAYS,
   SECTION_KEYS, SECTION_LABEL, SECTION_SOURCE, DEFAULT_SECTIONS, TEMPLATES, ACCENTS,
   titleCase, num, fmtDate, fmtMonth, daysUntil, maskPhone, maskEmail, visibleLicences, rankOf,

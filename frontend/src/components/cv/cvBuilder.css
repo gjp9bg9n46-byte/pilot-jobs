@@ -126,3 +126,7 @@
 /* Action errors (a rewrite with nothing to write from, a failed save) sit under
    the control they came from, not in a toast that can be missed. */
 .cvb .cvb-err { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--danger, #B42318); }
+
+/* "Contact via CockpitHire" — the only contact route on the public share link. */
+.cv-sheet .cv-via { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.cv-sheet .cv-via.on-dark { color: #fff; }
