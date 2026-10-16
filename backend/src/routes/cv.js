@@ -27,10 +27,20 @@ const photoRateLimit = rateLimit({
   message: { error: 'Too many photo uploads — try again in an hour' },
 });
 
+// PUBLIC — the read-only share page. Declared BEFORE the auth gate so an
+// airline can open it without an account. It never returns contact details.
+router.get('/share/:token', cvController.getSharedCv);
+
 router.use(authMiddleware);
 
 router.get('/',  cvController.getCvData);
 router.put('/',  cvController.updateCvData);
+
+// CV Builder
+router.get('/document',        cvController.getCvDocument);
+router.put('/settings',        cvController.updateCvSettings);
+router.post('/summary/rewrite', cvController.rewriteSummary);
+router.post('/share',          cvController.setCvShare);
 
 router.post('/photo',   photoRateLimit, uploadPhotoMw, cvController.uploadPhoto);
 router.delete('/photo', cvController.deletePhoto);

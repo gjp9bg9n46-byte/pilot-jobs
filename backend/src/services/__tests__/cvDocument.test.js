@@ -12,7 +12,11 @@ const {
 
 const future = (days) => new Date(Date.now() + days * 86400000).toISOString();
 const RAW = (over = {}) => ({
-  pilot: { firstName: 'mohamed', lastName: 'alaaeldin', city: 'cairo', country: 'egypt', role: 'FIRST_OFFICER', phone: '+201117898332', email: 'a.pilot@gmail.com', ...(over.pilot || {}) },
+  // derivedTotals is the canonical per-type/flight-count source (the Profile
+  // reads the same field) — real logbooks often carry a blank aircraftType and
+  // infer the type from the registration, as this pilot's does.
+  pilot: { firstName: 'mohamed', lastName: 'alaaeldin', city: 'cairo', country: 'egypt', role: 'FIRST_OFFICER', phone: '+201117898332', email: 'a.pilot@gmail.com',
+    derivedTotals: { flightCount: 501, byType: [{ type: 'A320', hours: 1515, note: 'type inferred from registration' }], ...(over.derivedTotals || {}) }, ...(over.pilot || {}) },
   certificates: over.certificates || [
     { type: 'ATPL', issuingAuthority: 'ECAA', expiryDate: future(400) },
     { type: 'CPL', issuingAuthority: 'ECAA', expiryDate: future(300) },
@@ -24,7 +28,7 @@ const RAW = (over = {}) => ({
   rtw: over.rtw || [{ country: 'united arab emirates', documentType: 'Residence Permit' }],
   totals: { totalTime: 1515, landingsDay: 300, landingsNight: 201, ...(over.totals || {}) },
   recency: { sectors90: 20 },
-  aircraftTypes: over.aircraftTypes || [{ type: 'a320', hours: 1515 }],
+
   cv: { summary: null, education: [], languages: [], ...(over.cv || {}) },
 });
 
@@ -64,7 +68,7 @@ test('everything on the CV comes from the profile/logbook — hours, type, secto
   const stats = doc.sections.experience.stats;
   assert.strictEqual(stats[0].value, '1,515');
   assert.strictEqual(stats[1].label, 'A320 (h)');
-  assert.strictEqual(stats[2].value, '501', 'sectors = day + night landings');
+  assert.strictEqual(stats[2].value, '501', 'sectors = landings when logged');
   assert.strictEqual(doc.header.headline, 'First Officer · A320 · ATPL');
 });
 
@@ -130,7 +134,7 @@ test('the generated summary states only facts that are on file', () => {
 });
 
 test('the generated summary drops sentences whose facts are missing', () => {
-  const s = generateSummary(RAW({ medicals: [], rtw: [], training: [], certificates: [{ type: 'ELP', englishLevel: 'Level 4' }], aircraftTypes: [], totals: { totalTime: 0 } }));
+  const s = generateSummary(RAW({ medicals: [], rtw: [], training: [], certificates: [{ type: 'ELP', englishLevel: 'Level 4' }], derivedTotals: { flightCount: 0, byType: [] }, totals: { totalTime: 0 } }));
   assert.doesNotMatch(s, /medical/i);
   assert.doesNotMatch(s, /Right to work/i);
   assert.doesNotMatch(s, /hours/i);
@@ -151,4 +155,23 @@ test('with no stored order, employment and photo start hidden', () => {
   assert.deepStrictEqual(out, DEFAULT_SECTIONS);
   assert.strictEqual(out.find((o) => o.key === 'employment').visible, false);
   assert.strictEqual(out.find((o) => o.key === 'photo').visible, false);
+});
+
+test('sectors fall back to the flight count when no landings are logged', () => {
+  // real case: 501 flights, zero landings recorded — printing "0 sectors" would
+  // read as "has never flown"
+  const doc = buildCvDocument(RAW({ totals: { totalTime: 1515, landingsDay: 0, landingsNight: 0 } }));
+  assert.strictEqual(doc.sections.experience.stats[2].value, '501');
+});
+
+test('a type inferred from the registration says so, rather than implying it was logged', () => {
+  const doc = buildCvDocument(RAW());
+  assert.match(doc.sections.experience.note, /inferred from aircraft registration/);
+});
+
+test('a rating is labelled "{Type} rating" — never asserted as type vs class', () => {
+  // this pilot's C172 is stored as Multi-Engine; calling it a class rating on
+  // the strength of that field would put a wrong qualification on the CV
+  const doc = buildCvDocument(RAW({ ratings: [{ aircraftType: 'CESSNA-172', category: 'Multi-Engine' }] }));
+  assert.strictEqual(doc.sections.licences.items.find((i) => /Cessna/i.test(i.k)).k, 'Cessna-172 rating');
 });

@@ -78,6 +78,27 @@ function visibleLicences(certificates) {
 }
 
 
+
+// Per-type hours and sector count come from computeDerivedTotals — the ONE
+// canonical derivation, stored on Pilot.derivedTotals and read by the Profile
+// and the matcher. The CV must not derive its own: this pilot's 501 flights
+// carry a blank aircraftType and their A320 hours are inferred from the
+// registration, so a naive groupBy on aircraftType returns nothing and the CV
+// would silently disagree with the Profile.
+function flightFacts(raw) {
+  const d = (raw.pilot && raw.pilot.derivedTotals) || {};
+  const byType = (Array.isArray(d.byType) ? d.byType : [])
+    .filter((t) => t && t.type && Number(t.hours) > 0)
+    .map((t) => ({ type: t.type, hours: Number(t.hours), inferred: /inferred/i.test(t.note || '') }))
+    .sort((a, b) => b.hours - a.hours);
+  const totals = raw.totals || {};
+  const landings = (totals.landingsDay || 0) + (totals.landingsNight || 0);
+  // "Sectors" means flights flown. Landings are only logged by some pilots, so
+  // fall back to the flight count rather than printing a misleading 0.
+  const sectors = landings > 0 ? landings : (Number(d.flightCount) || 0);
+  return { byType, main: byType[0] || null, sectors };
+}
+
 // ── Build the document ──────────────────────────────────────────────────────
 // `raw` is exactly what GET /cv returns (profile + logbook + CvData).
 // `audience`: 'pdf' shows contact details; 'preview' and 'share' mask them.
@@ -91,9 +112,7 @@ function buildCvDocument(raw, { audience = 'preview' } = {}) {
   const elp = (raw.certificates || []).find((c) => c.type === 'ELP') || null;
   const medical = (raw.medicals || [])[0] || null;
   const typeRatings = (raw.ratings || []);
-  const byType = (raw.aircraftTypes || []).filter((t) => t.hours > 0);
-  const mainType = byType[0] || null;
-  const sectors = (totals.landingsDay || 0) + (totals.landingsNight || 0);
+  const { byType, main: mainType, sectors } = flightFacts(raw);
 
   const name = titleCase(`${p.firstName || ''} ${p.lastName || ''}`.trim()) || 'Your name';
   const roleLabel = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor' }[p.role] || null;
@@ -116,10 +135,10 @@ function buildCvDocument(raw, { audience = 'preview' } = {}) {
       stats: [
         { value: num(totals.totalTime), label: 'Total time (h)' },
         mainType ? { value: num(mainType.hours), label: `${titleCase(mainType.type)} (h)` } : null,
-        { value: num(sectors || raw.recency?.sectors90 || 0), label: 'Sectors' },
+        { value: num(sectors), label: 'Sectors' },
       ].filter(Boolean),
       byType: byType.slice(0, 6).map((t) => ({ type: titleCase(t.type), hours: num(t.hours) })),
-      note: 'From CockpitHire logbook.',
+      note: mainType && mainType.inferred ? 'From CockpitHire logbook; type inferred from aircraft registration.' : 'From CockpitHire logbook.',
     },
     licences: {
       items: [
@@ -129,10 +148,13 @@ function buildCvDocument(raw, { audience = 'preview' } = {}) {
             v: c.expiryDate ? (d < 0 ? `Expired ${fmtDate(c.expiryDate)}` : `Valid to ${fmtMonth(c.expiryDate)}`) : 'No expiry',
             flag: c.expiryDate ? (d < 0 ? 'red' : (d <= 90 ? 'amber' : null)) : null };
         }),
+        // "{Type} rating" is the Profile's own wording. Asserting "type" vs
+        // "class" from PilotRating.category gets it wrong on real data (this
+        // pilot's C172 is stored as Multi-Engine), and a CV must not state a
+        // qualification the profile does not actually evidence.
         ...typeRatings.map((r) => {
           const hrs = byType.find((t) => String(t.type).toLowerCase() === String(r.aircraftType).toLowerCase());
-          return { k: `${titleCase(r.aircraftType)} ${/single|multi/i.test(r.category || '') ? 'class rating' : 'type rating'}`,
-            v: hrs ? `${num(hrs.hours)} h` : (r.category || '') };
+          return { k: `${titleCase(r.aircraftType)} rating`, v: hrs ? `${num(hrs.hours)} h` : '' };
         }),
       ],
     },
@@ -293,8 +315,7 @@ function generateSummary(raw) {
   const licences = visibleLicences(raw.certificates);
   const elp = (raw.certificates || []).find((c) => c.type === 'ELP') || null;
   const medical = (raw.medicals || [])[0] || null;
-  const byType = (raw.aircraftTypes || []).filter((t) => t.hours > 0);
-  const main = byType[0] || null;
+  const { main } = flightFacts(raw);
   const role = { CAPTAIN: 'Captain', FIRST_OFFICER: 'First Officer', INSTRUCTOR: 'Instructor' }[p.role] || 'Pilot';
   const city = titleCase(p.city);
 

@@ -290,3 +290,100 @@ exports.deletePhoto = async (req, res, next) => {
     next(err);
   }
 };
+
+// ── CV Builder (2026-10) ────────────────────────────────────────────────────
+const crypto = require('crypto');
+const cvDoc = require('../services/cvDocument');
+
+// Re-use getCvData's assembly without duplicating the queries: it is the one
+// place that knows how profile + logbook roll up.
+function rawFor(pilotId) {
+  return new Promise((resolve, reject) => {
+    exports.getCvData({ pilot: { id: pilotId } }, { json: resolve }, reject).catch?.(reject);
+  });
+}
+
+// GET /cv/document — the rendered CV + "Before you send".
+exports.getCvDocument = async (req, res, next) => {
+  try {
+    const raw = await rawFor(req.pilot.id);
+    const audience = req.query.audience === 'pdf' ? 'pdf' : 'preview';
+    const document = cvDoc.buildCvDocument(raw, { audience });
+    const issues = cvDoc.validateCv(raw);
+    const share = await prisma.cvData.findUnique({ where: { pilotId: req.pilot.id }, select: { shareEnabled: true, shareToken: true } });
+    res.json({
+      document,
+      issues,
+      // The title must agree with the list: only things to FIX are counted.
+      issueCount: issues.filter((i) => i.level !== 'green').length,
+      share: { enabled: !!share?.shareEnabled, token: share?.shareEnabled ? share.shareToken : null },
+    });
+  } catch (err) { next(err); }
+};
+
+// PUT /cv/settings — template, accent, section order/visibility, summary.
+exports.updateCvSettings = async (req, res, next) => {
+  try {
+    const { template, accent, sections, summary } = req.body || {};
+    const data = {};
+    if (template !== undefined) {
+      if (!cvDoc.TEMPLATES.includes(template)) return res.status(422).json({ error: `template must be one of: ${cvDoc.TEMPLATES.join(', ')}` });
+      data.template = template;
+    }
+    if (accent !== undefined) {
+      if (!cvDoc.ACCENTS[accent]) return res.status(422).json({ error: `accent must be one of: ${Object.keys(cvDoc.ACCENTS).join(', ')}` });
+      data.accent = accent;
+    }
+    if (sections !== undefined) {
+      if (!Array.isArray(sections)) return res.status(422).json({ error: 'sections must be an array' });
+      data.sections = cvDoc.normaliseSections(sections);
+    }
+    if (summary !== undefined) {
+      const text = String(summary ?? '');
+      if (text.length > 600) return res.status(422).json({ error: 'Summary must be 600 characters or fewer.' });
+      data.summary = text.trim() || null;
+    }
+    const saved = await prisma.cvData.upsert({ where: { pilotId: req.pilot.id }, create: { pilotId: req.pilot.id, ...data }, update: data,
+      select: { template: true, accent: true, sections: true, summary: true } });
+    res.json({ ...saved, sections: cvDoc.normaliseSections(saved.sections) });
+  } catch (err) { next(err); }
+};
+
+// POST /cv/summary/rewrite — regenerate from profile + logbook only.
+exports.rewriteSummary = async (req, res, next) => {
+  try {
+    const raw = await rawFor(req.pilot.id);
+    const summary = cvDoc.generateSummary(raw);
+    await prisma.cvData.upsert({ where: { pilotId: req.pilot.id }, create: { pilotId: req.pilot.id, summary }, update: { summary } });
+    res.json({ summary });
+  } catch (err) { next(err); }
+};
+
+// POST /cv/share — turn the read-only link on or off. Turning it off clears the
+// token, so an old URL stops working immediately.
+exports.setCvShare = async (req, res, next) => {
+  try {
+    const enabled = !!(req.body || {}).enabled;
+    const token = enabled ? crypto.randomBytes(16).toString('base64url') : null;
+    const existing = await prisma.cvData.findUnique({ where: { pilotId: req.pilot.id }, select: { shareToken: true, shareEnabled: true } });
+    // keep the same URL if it is already on, so a shared link does not rot
+    const finalToken = enabled ? (existing?.shareEnabled && existing.shareToken ? existing.shareToken : token) : null;
+    await prisma.cvData.upsert({
+      where: { pilotId: req.pilot.id },
+      create: { pilotId: req.pilot.id, shareEnabled: enabled, shareToken: finalToken },
+      update: { shareEnabled: enabled, shareToken: finalToken },
+    });
+    res.json({ enabled, token: finalToken });
+  } catch (err) { next(err); }
+};
+
+// GET /cv/share/:token — PUBLIC, read-only, no contact details, ever.
+exports.getSharedCv = async (req, res, next) => {
+  try {
+    const row = await prisma.cvData.findUnique({ where: { shareToken: String(req.params.token || '') }, select: { pilotId: true, shareEnabled: true } });
+    if (!row || !row.shareEnabled) return res.status(404).json({ error: 'This CV link is not available.' });
+    const raw = await rawFor(row.pilotId);
+    // 'share' masks phone and email — the audience can never be widened here.
+    res.json({ document: cvDoc.buildCvDocument(raw, { audience: 'share' }) });
+  } catch (err) { next(err); }
+};
