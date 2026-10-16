@@ -72,14 +72,32 @@ async function validateScan(raw, { pilot = {}, now = new Date() } = {}) {
 
   const date = parseDate(raw.date);
   const headerFlags = {};
+  const suggestYear = (d) => {
+    for (const y of [now.getUTCFullYear(), now.getUTCFullYear() - 1]) {
+      const candidate = new Date(Date.UTC(y, d.getUTCMonth(), d.getUTCDate()));
+      const age = daysBetween(now, candidate);
+      if (age >= 0 && age <= MAX_AGE_DAYS) return candidate;
+    }
+    return null;
+  };
+  let dateSuggestion = null;
   if (!date) headerFlags.date = flag('amber', 'No date could be read.');
-  else if (daysBetween(date, now) > 0) headerFlags.date = flag('red', 'That date is in the future.');
-  else if (daysBetween(now, date) > MAX_AGE_DAYS) headerFlags.date = flag('amber', `That date is ${daysBetween(now, date)} days ago — check the year.`);
+  else if (daysBetween(date, now) > 0) {
+    dateSuggestion = suggestYear(date);
+    headerFlags.date = flag('red', dateSuggestion
+      ? `That date is in the future — did you mean ${dateSuggestion.toISOString().slice(0, 10)}?`
+      : 'That date is in the future.');
+  } else if (daysBetween(now, date) > MAX_AGE_DAYS) {
+    dateSuggestion = suggestYear(date);
+    headerFlags.date = flag('amber', dateSuggestion
+      ? `Read as ${date.toISOString().slice(0, 10)} — did you mean ${dateSuggestion.toISOString().slice(0, 10)}?`
+      : `That date is ${daysBetween(now, date)} days ago — check the year.`);
+  }
   else if ((conf.date ?? 1) < LOW_CONFIDENCE) headerFlags.date = flag('amber', 'The date was hard to read.');
 
-  const registration = String(raw.registration || '').toUpperCase().trim() || null;
+  const registration = String(raw.registration || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').trim() || null;
   const regRule = registration ? _internals.typeFromRegistration(registration) : null;
-  let aircraftType = String(raw.aircraftType || '').toUpperCase().trim() || null;
+  let aircraftType = String(raw.aircraftType || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').trim() || null;
   let typeInferred = false;
   if (!aircraftType && regRule) { aircraftType = regRule.type; typeInferred = true; }
   if (aircraftType && regRule && regRule.type !== aircraftType) {
@@ -140,8 +158,10 @@ async function validateScan(raw, { pilot = {}, now = new Date() } = {}) {
     }
 
     // Night: calculated along the route, cross-checked against the form's N.
-    const night = (date && sect.off && sect.on && a && b)
-      ? await nightMinutes({ date, departure: sect.from, arrival: sect.to, off: sect.off, on: sect.on })
+    // The window is OUT→IN, not OFF→ON: night counts over flight (block) time,
+    // which is what the crew's own N column records and what a logbook credits.
+    const night = (date && sect.out && sect.in && a && b)
+      ? await nightMinutes({ date, departure: sect.from, arrival: sect.to, off: sect.out, on: sect.in })
       : null;
     const formNight = parseFormDuration(sect.formNight);
     let nightUsed = night ? night.minutes : null;
@@ -195,6 +215,7 @@ async function validateScan(raw, { pilot = {}, now = new Date() } = {}) {
   return {
     header: {
       date: date ? date.toISOString().slice(0, 10) : null,
+      dateSuggestion: dateSuggestion ? dateSuggestion.toISOString().slice(0, 10) : null,
       aircraftType, registration, typeInferred,
       commander: String(raw.commander || '').trim() || null,
       firstOfficer: String(raw.firstOfficer || '').trim() || null,
