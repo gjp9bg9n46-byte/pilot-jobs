@@ -16,6 +16,53 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Profile (edit): web `frontend/src/pages/ProfileRedesign.jsx`; mobile `mobile/app/(app)/(tabs)/profile/index.tsx`. API: `backend/src/controllers/profileController.js` (already accepts `nationality` scalar; schema `Pilot.nationality String?`).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
+## CV BUILDER — BUILT END TO END (web + app, 2026-10-16) — **unpushed**
+Built from `docs/design/cv-mockup.html`, with the two updates the user gave: nav is
+Dashboard · Jobs · Airlines · Logbook · **CV Builder** · Profile, and "Before you send"
+also flags an **expired English (ICAO)**.
+
+**One source of truth.** `backend/src/services/cvDocument.js` turns the existing
+`getCvData` assembly into the finished document — sections, flags, masking, checks —
+and web preview, app preview, the PDF and the share page all render THAT. Nothing is
+retyped by the pilot and nothing can drift between surfaces. Flight numbers come from
+`Pilot.derivedTotals` (the logbook's own 501 flights carry no `aircraftType`; A320 hours
+are inferred from registration, and the sheet says so). Superseded licences are hidden
+(ATPL hides CPL/PPL), exactly as the readiness strip does.
+
+- `81469ff` document model + **additive migration** `20261016120000_cv_builder_settings`
+  (`CvData.template/accent/sections/shareEnabled/shareToken`, unique index on the token).
+  **Already applied to prod** after a verified 12 MB `pg_dump`; all five columns present.
+  16 tests in `src/services/__tests__/cvDocument.test.js`.
+- `ed37287` API: `GET /cv/document[?audience=pdf]`, `PUT /cv/settings`, `POST /cv/summary/rewrite`,
+  `POST /cv/share`, and the **public** `GET /cv/share/:token` (declared before `authMiddleware`).
+- `82dcec7` + `b3ed69d` web builder (`frontend/src/pages/CVBuilder.jsx`, `components/cv/`)
+  and the public share page `/cv/s/:token`.
+- `778f54d` one-page A4 PDF; `titleCase` stops down-casing acronyms (IGCSE stays IGCSE,
+  CESSNA-172 → Cessna-172, easyJet/McGill survive).
+- `e8a8b74` the app: `mobile/src/cv/sheetHtml.ts` renders the A4 sheet once for both the
+  WebView preview and expo-print, replacing the old per-template HTML renderer
+  (`src/cv/index.ts` + `templates/`, deleted — it built its own view of the pilot's data).
+  Preview/Edit tabs, action bar floating above the pill, Share + Download PDF.
+
+**Decisions taken while building** (none needed approval):
+- The PDF is the ONLY surface with real contact details. Preview and the share page always
+  get `audience=preview` (phone `+20 ••• ••• 8332`, email `m•••@gmail.com`).
+- Section CONTENT is never editable here — each section links into Profile. Only the
+  summary is CV-only text (600 chars, saved per pilot).
+- "Rewrite from my profile" composes from stored facts only; it invents nothing. The
+  checker then compares the saved summary against the profile and flags contradictions
+  (it currently catches "CPL" vs ATPL and "200 hours" vs 1,515 — 6 issues on the owner's CV).
+- Sections reorder by drag on web, by ▲▼ in the app (RN has no drag primitive in use here).
+- App icons stay **Ionicons** — lucide has no React Native build; the no-emoji rule holds.
+- "Preview as airline" (web + app) opens `/cv/s/:token` and is **hidden until sharing is on**,
+  so it can no longer bounce to `/dashboard`.
+
+**Verified:** 258/258 backend tests; `tsc --noEmit` clean (mobile); frontend build clean;
+sample PDF `docs/design/cv-sample.pdf` = 1 page, A4 (595×842 pt), text-selectable (PDFKit
+extracts the full sheet), masked contact only. Screenshots: `cv-web-1280.png`,
+`cv-web-390.png`, `cv-app-preview.png`, `cv-app-edit.png`.
+**Not yet pushed** — the migration is already live, the code is not.
+
 ## DONE (committed on main, unpushed)
 - `f253573` **Guard the FOURTH pass + fix the counter it threw on.** Two bugs that made the guard much weaker than the replay implied, both found by dry-running the passes against live data after the 08 Oct 18:00Z scrape re-merged ten reverted rows. (1) `collapseAggregatorDuplicates` — the fourth legacy pass, runs every scrape — **was never wired to `mergeBlocked()`**; its key is `company|titleCore|city` and titleCore strips the employer and sorts tokens, which is how "Direct Entry Captain - Pilot" and "Emirates First Officer/Senior First Officer" share a group. (2) `collapseAggregatorPriority` **incremented `skippedByGuard` without declaring it**, so it threw a ReferenceError on the first refused pair — swallowed by runner.js's try/catch, failing silently on every scrape. Both now covered by STRUCTURAL tests (every pass must call the guard; every pass must declare its counters), not by example. Deployed 00:52Z 16 Oct.
 
