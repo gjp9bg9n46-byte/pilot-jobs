@@ -65,7 +65,7 @@ export default function CVBuilder() {
   };
 
   const rewrite = async () => {
-    setBusy('rewrite');
+    setErr(null); setBusy('rewrite');
     try {
       const { data: r } = await cvApi.rewrite();
       setSummary(r.summary || '');
@@ -170,6 +170,7 @@ export default function CVBuilder() {
                 </button>
                 <span className={over600 ? 'over' : undefined}>{summary.length} / {SUMMARY_MAX}</span>
               </div>
+              {err && <p className="cvb-err">{err}</p>}
             </div>
 
             <div className="sec">

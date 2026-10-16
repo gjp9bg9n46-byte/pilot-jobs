@@ -122,3 +122,7 @@
   .cvb .mbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 12px 16px 26px; gap: 10px; z-index: 4; }
   .cvb .mbar .btn { flex: 1; justify-content: center; height: 46px; }
 }
+
+/* Action errors (a rewrite with nothing to write from, a failed save) sit under
+   the control they came from, not in a toast that can be missed. */
+.cvb .cvb-err { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--danger, #B42318); }

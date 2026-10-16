@@ -77,7 +77,7 @@ export default function CvBuilderScreen() {
   };
 
   const rewrite = async () => {
-    setBusy('rewrite');
+    setErr(null); setBusy('rewrite');
     try { const { data: r } = await api.post('/cv/summary/rewrite'); setSummary(r.summary || ''); await load(); }
     catch (e: Any) { setErr(e?.response?.data?.error || 'Could not rewrite.'); }
     finally { setBusy(null); }
@@ -173,6 +173,7 @@ export default function CvBuilderScreen() {
           <TextInput style={styles.textarea} multiline value={summary} onChangeText={onSummary}
             placeholder="A short paragraph for recruiters. The only text not taken from your profile."
             placeholderTextColor={pilot.faint} />
+          {err ? <Text style={styles.errLine}>{err}</Text> : null}
           <View style={styles.metaRow}>
             <Pressable onPress={rewrite} disabled={busy === 'rewrite'} hitSlop={6}>
               <Text style={styles.link}>{busy === 'rewrite' ? 'Rewriting…' : 'Rewrite from my profile'}</Text>
@@ -260,6 +261,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
 
   secTitle: { fontSize: 11.5, letterSpacing: 0.9, textTransform: 'uppercase', color: pilot.faint, fontFamily: fontFamilies.bodyBold, marginTop: 22, marginBottom: 10 },
   textarea: { minHeight: 152, borderWidth: 1, borderColor: pilot.line, borderRadius: 8, padding: 10, fontSize: 13, lineHeight: 20, color: pilot.ink, backgroundColor: pilot.surface, fontFamily: fontFamilies.body, textAlignVertical: 'top' },
+  errLine: { color: '#B42318', fontSize: 12.5, lineHeight: 18, fontFamily: fontFamilies.body, marginTop: 8 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   link: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: 12.5 },
   count: { color: pilot.faint, fontSize: 11.5, fontFamily: fontFamilies.body },

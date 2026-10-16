@@ -343,6 +343,10 @@ function generateSummary(raw) {
   const rtw = (raw.rtw || []).map((w) => titleCase(w.country)).filter(Boolean);
   const s3 = rtw.length ? `Right to work in ${rtw.join(', ')}.` : '';
 
+  // A profile with nothing on it would yield "Pilot." — a sentence that says
+  // less than no summary at all. Return empty and let the caller say so.
+  const facts = totals.totalTime > 0 || main || city || creds.length || rtw.length;
+  if (!facts) return '';
   return [s1, s2, s3].filter(Boolean).join(' ').slice(0, 600);
 }
 

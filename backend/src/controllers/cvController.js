@@ -354,6 +354,9 @@ exports.rewriteSummary = async (req, res, next) => {
   try {
     const raw = await rawFor(req.pilot.id);
     const summary = cvDoc.generateSummary(raw);
+    // Nothing on the profile to write from: say so rather than saving a stub
+    // sentence the pilot would have to delete.
+    if (!summary) return res.status(422).json({ error: "There's nothing on your profile to write from yet. Add your licence, medical and logbook hours first." });
     await prisma.cvData.upsert({ where: { pilotId: req.pilot.id }, create: { pilotId: req.pilot.id, summary }, update: { summary } });
     res.json({ summary });
   } catch (err) { next(err); }

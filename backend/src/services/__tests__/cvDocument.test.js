@@ -179,3 +179,8 @@ test('a rating is labelled "{Type} rating" — never asserted as type vs class',
   assert.strictEqual(titleCase('CESSNA-172'), 'Cessna-172');
   assert.strictEqual(titleCase('EGYPTIAN AVIATION ACADEMY'), 'Egyptian Aviation Academy');
 });
+
+test('generateSummary returns nothing when the profile has no facts to write from', () => {
+  const empty = { pilot: { role: 'PILOT' }, totals: {}, certificates: [], medicals: [], training: [], rtw: [] };
+  assert.equal(generateSummary(empty), '');
+});
