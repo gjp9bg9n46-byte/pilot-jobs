@@ -150,3 +150,43 @@ test('ICAO/IATA codes are stripped before the title comparison', () => {
   // but an aviation word of the same shape is not a code
   assert.ok(stripPlaces('First Officer ATPL required', row('', 'Dubai', 'UAE'), row('', 'Doha', 'Qatar')).includes('atpl'));
 });
+
+// Regression: every write path must consult the guard. collapseAggregatorDuplicates
+// was missed when the guard first went in, and it is the pass that re-merged ten
+// of the rows reverted on 2026-10-08 — the counter existed but nothing called
+// mergeBlocked(). collapseByIdentity is exempt: shouldAutoMerge() already keys on
+// rank + type + base, which is strictly stronger.
+test('every legacy merge pass consults the guard', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'dedup.js'), 'utf8').split('\n');
+  const fns = [];
+  src.forEach((l, i) => { const m = l.match(/^async function (collapse\w+)/); if (m) fns.push({ name: m[1], start: i }); });
+  fns.forEach((f, k) => { f.end = k + 1 < fns.length ? fns[k + 1].start : src.length; });
+  const exempt = new Set(['collapseByIdentity']);
+  for (const f of fns) {
+    if (exempt.has(f.name)) continue;
+    const body = src.slice(f.start, f.end).join('\n');
+    assert.ok(body.includes('mergeBlocked('), `${f.name} writes merges without calling mergeBlocked()`);
+  }
+});
+
+// Regression: collapseAggregatorPriority used skippedByGuard without declaring
+// it, so the moment the guard refused a pair the whole pass threw a
+// ReferenceError — swallowed by the caller's try/catch, so it failed silently
+// on every scrape. Any counter a pass increments must be declared in the same
+// function.
+test('each pass declares every counter it increments', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'dedup.js'), 'utf8').split('\n');
+  const fns = [];
+  src.forEach((l, i) => { const m = l.match(/^async function (collapse\w+)/); if (m) fns.push({ name: m[1], start: i }); });
+  fns.forEach((f, k) => { f.end = k + 1 < fns.length ? fns[k + 1].start : src.length; });
+  for (const f of fns) {
+    const body = src.slice(f.start, f.end).join('\n');
+    if (!/skippedByGuard\s*\+=/.test(body)) continue;
+    assert.ok(/let\s+[\w\s=0,;]*skippedByGuard\s*=\s*0/.test(body),
+      `${f.name} increments skippedByGuard without declaring it — the pass throws on the first blocked merge`);
+  }
+});

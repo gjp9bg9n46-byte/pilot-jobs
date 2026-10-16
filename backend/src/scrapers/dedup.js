@@ -342,6 +342,18 @@ async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } =
       continue;
     }
     for (const agg of aggs) {
+      // Same rank/type/category/variant guard as the other passes. This one was
+      // missed when the guard went in, and it is the pass that re-merged ten of
+      // the rows reverted on 2026-10-08 — its group key is
+      // company|titleCore|city, and titleCore strips the employer name and
+      // sorts the remaining tokens, so "Direct Entry Captain - Pilot" and
+      // "Emirates First Officer/Senior First Officer" land in one group.
+      const blocked = mergeBlocked(agg.title, canonical.title, agg.company, canonical.company);
+      if (blocked) {
+        skippedByGuard += 1;
+        logger.info({ msg: 'aggregator-dedup: merge BLOCKED by the rank/type guard', reason: blocked, loser: agg.title, canonical: canonical.title });
+        continue;
+      }
       pairs.push({
         aggId: agg.id, aggTitle: agg.title, aggLocation: agg.location, aggType: agg.sourceType, aggApplyUrl: agg.applyUrl,
         canonId: canonical.id, canonTitle: canonical.title, canonLocation: canonical.location, canonType: canonical.sourceType, canonApplyUrl: canonical.applyUrl,
@@ -366,8 +378,8 @@ async function collapseAggregatorDuplicates(sourcePlatforms, { dryRun = true } =
       }
     }
   }
-  logger.info({ msg: dryRun ? 'aggregator-dedup SHADOW (no writes)' : 'aggregator-dedup applied', candidatePairs: pairs.length, merged });
-  return { pairs, merged };
+  logger.info({ msg: dryRun ? 'aggregator-dedup SHADOW (no writes)' : 'aggregator-dedup applied', candidatePairs: pairs.length, merged, skippedByGuard });
+  return { pairs, merged, skippedByGuard };
 }
 
 /**
@@ -410,7 +422,7 @@ async function collapseAggregatorPriority({ dryRun = true } = {}) {
   }
 
   const pairs = [];
-  let merged = 0;
+  let merged = 0; let skippedByGuard = 0;
   for (const group of groups.values()) {
     if (group.length < 2) continue;
     const fresh = group.filter(isFresh);
