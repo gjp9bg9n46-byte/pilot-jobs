@@ -17,6 +17,8 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
 ## DONE (committed on main, unpushed)
+- `f253573` **Guard the FOURTH pass + fix the counter it threw on.** Two bugs that made the guard much weaker than the replay implied, both found by dry-running the passes against live data after the 08 Oct 18:00Z scrape re-merged ten reverted rows. (1) `collapseAggregatorDuplicates` — the fourth legacy pass, runs every scrape — **was never wired to `mergeBlocked()`**; its key is `company|titleCore|city` and titleCore strips the employer and sorts tokens, which is how "Direct Entry Captain - Pilot" and "Emirates First Officer/Senior First Officer" share a group. (2) `collapseAggregatorPriority` **incremented `skippedByGuard` without declaring it**, so it threw a ReferenceError on the first refused pair — swallowed by runner.js's try/catch, failing silently on every scrape. Both now covered by STRUCTURAL tests (every pass must call the guard; every pass must declare its counters), not by example. Deployed 00:52Z 16 Oct.
+
 - `c4e32e8` **Variant / category / instructor-kind rules on the legacy passes + airport-code stripping.** `mergeBlocked()` now also refuses: an explicit **rotor-wing / helicopter / HEMS vs fixed-wing** claim (one-sided included; NOT `jobAircraftCategory()`, which infers from types and generic words and wrongly refused "Flight Crew - Captain F406/C425" ← "Captain, F406/C425 – Airline Pilot"), **instructor vs examiner** (matcher's `jobInstructorKind`), and the identity engine's own **`variantOf()`** axes — cadet/ab-initio, "for X pilots only", accelerated command, regional posting. The **rated axis is two-sided by design**: unstated is not "non-rated", and splitting on it refused "A320 Type-rated First Officer" ← "Airbus A320 Family First Officer". `stripPlaces()` also drops ICAO/IATA codes (upper-case only, with an exclusion list for ATPL/CPL/ICAO/HEMS/PIC…), so "(Toronto) YYZ" and "(Montreal) YUL" compare equal. Deployed 14:13Z. 18 mergeGuard tests.
 - `39d691c` **Fingerprint pass also blocks unrelated titles; CADET is its own rank.** Closes the gap left by `313d245`. (1) In `collapseSameAdAcrossLocations` only — the pass that drops the title from its key — **no aircraft named on either side AND titles sharing nothing (Dice < 0.5) blocks**; place words are stripped from both titles first (both rows' location + country, plus "multiple locations" / "home base" / "regional"), so per-city variants of one ad still merge. (2) `rankOf` checks **CADET before the officer grades** — "Ab Initio Cadet Pilot: Path to First Officer" used to key as FO. NOTE: rank is part of identityKey, so cadet rows re-key on the next recompute. Deployed 13:44Z. 12 mergeGuard tests.
 - `313d245` **Legacy dedup passes now refuse cross-rank / cross-type / cross-sub-brand merges.** `mergeBlocked()` gates every merge in `collapseAggregatorPriority`, `collapseXSourceDuplicates` and `collapseSameAdAcrossLocations`; each logs what it refused (`skippedByGuard`). Blocks on different rank (rankOf), different aircraft type (typesOf, when both name one), different airframe designation outside the curated vocabulary (KC-10 vs KC-135 — hyphens joined so "kc-135" survives as one token; only when both titles carry one), and different sub-brand (QantasLink ≠ Qantas). **A location difference alone never blocks** — collapsing one ad across cities is what these passes are for. Deployed 13:24Z, 4.5 h before the 18:00Z scrape. 8 tests, every BLOCK case taken from a real merge made today.
@@ -128,6 +130,32 @@ near-identical or descriptions ≥90% similar; QantasLink (and other sub-brands)
 key separately; any location/qualifier contradiction voids the proof. Shadow
 preview with the guards: **12 clusters / 13 rows**, every one either carrying a
 parsed aircraft type or byte-identical titles. 39 jobIdentity tests.
+
+## DEDUP REVERTS — status 2026-10-16
+
+| set | reverted | live now | re-merged | aged out |
+|---|---|---|---|---|
+| A — 08 Oct | 23 | 2 | 10 (7 into a DIFFERENT title) | 11 |
+| B — 13 Oct | 37 | 0 | 7 (3 into a DIFFERENT title) | 30 |
+| C — 16 Oct | 25 | 25 | — | — |
+
+Sets A and B decayed because the two bugs above were still live: the unguarded
+fourth pass and the silently-throwing priority pass kept re-making the same
+errors. "Aged out" = the aggregator dropped the posting from its feed and the
+14-day unseen backstop expired it — not a merge.
+
+**Set C (today)**: 699 standing merges across all history are refused by the
+guard; **25 were still live at the source** (seen in the feed within 4 days) and
+were reverted — manifest `~/pilot-jobs-backups/revert-guard-2026-10-16.json`,
+batched, no deletions. The other **674 are held**: the source no longer lists
+them, so reviving them would resurrect dead postings. Those are overwhelmingly
+historical merges from long before the flag — worth a separate review, not a
+mass revert.
+
+**Post-fix dry run**: of the 25 just reverted, 17 would be re-merged on the next
+scrape and **all 17 go into an identical-title twin** — i.e. into their true
+cross-source duplicate rather than the wrong-variant row they had been hidden
+behind. **0 different-title re-merges.** That is the correct steady state.
 
 ## DECISIONS 2026-10-08 (user)
 1. **ELP implicit baseline — YES.** An expired English (ICAO) now injects a not-met row into EVERY job, exactly like an expired licence/medical, so nothing reads QUALIFY while the dashboard shows the ELP blocker. Only an EXPIRED endorsement adds a row (a current one, or none on file, adds nothing), so the % denominator is unchanged for everyone else. 4 tests.
