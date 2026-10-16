@@ -20,7 +20,6 @@ enum CertificateType {
   ELP
 }
 
-
 enum MedicalClass {
   CLASS_1
   CLASS_2
@@ -108,69 +107,69 @@ enum EmployerStatus {
 }
 
 model Pilot {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  passwordHash    String
-  firstName       String
-  lastName        String    @default("")
-  phone           String?
-  country         String?
-  city            String?
-  nationality     String?
-  nationalities   String[]  @default([]) // C#7: country pick-list, multi (dual citizens); matching only
-  dateOfBirth     DateTime?
-  passportNumber  String?
-  passportExpiry  DateTime?
-  emergencyContactName  String?
-  emergencyContactPhone String?
-  profilePhoto    String?
-  fcmToken        String?
-  education       EducationLevel?
-  role            PilotRole?
-  willingToRelocate Boolean @default(true)
+  id                      String          @id @default(uuid())
+  email                   String          @unique
+  passwordHash            String
+  firstName               String
+  lastName                String          @default("")
+  phone                   String?
+  country                 String?
+  city                    String?
+  nationality             String?
+  nationalities           String[]        @default([]) // C#7: country pick-list, multi (dual citizens); matching only
+  dateOfBirth             DateTime?
+  passportNumber          String?
+  passportExpiry          DateTime?
+  emergencyContactName    String?
+  emergencyContactPhone   String?
+  profilePhoto            String?
+  fcmToken                String?
+  education               EducationLevel?
+  role                    PilotRole?
+  willingToRelocate       Boolean         @default(true)
   // Open-to-work — airlines filter on this; availableFrom optional.
-  openToWork      Boolean   @default(false)
-  availableFrom   DateTime?
-  isInstructor    Boolean   @default(false)
-  isExaminer      Boolean   @default(false)
-  isAdmin         Boolean   @default(false)
-  emailVerified   Boolean   @default(false)
-  notificationPreferences Json @default("{}")
+  openToWork              Boolean         @default(false)
+  availableFrom           DateTime?
+  isInstructor            Boolean         @default(false)
+  isExaminer              Boolean         @default(false)
+  isAdmin                 Boolean         @default(false)
+  emailVerified           Boolean         @default(false)
+  notificationPreferences Json            @default("{}")
   // Privacy flags
-  profileVisible     Boolean  @default(true)
-  anonymousBrowsing  Boolean  @default(false)
-  showSeniority      Boolean  @default(true)
+  profileVisible          Boolean         @default(true)
+  anonymousBrowsing       Boolean         @default(false)
+  showSeniority           Boolean         @default(true)
   // Hours flown before using this app. null = never set (used as migration sentinel).
-  carryForward    Json?
+  carryForward            Json?
   // Denormalised derived flight totals + byType (the SAME derivation /logbook/summary
   // uses). Recomputed on every change that affects totals (flight add/edit/delete,
   // import, carry-forward edit) + nightly. Read by matching (getMatchTotals) and the
   // logbook summary — one source, so /jobs never re-loads every flight to match.
-  derivedTotals   Json?
+  derivedTotals           Json?
   // Dashboard visit tracking. dashboardSeenAt = this visit's start; previousDashboardSeenAt
   // = the prior visit's start. A new "visit" begins only when dashboardSeenAt is >30 min
   // stale, so refreshing within a visit keeps the same "new since last visit" set + dots.
-  dashboardSeenAt DateTime?
+  dashboardSeenAt         DateTime?
   previousDashboardSeenAt DateTime?
   // Soft-delete
-  deletedAt          DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  deletedAt               DateTime?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
 
-  certificates    PilotCertificate[]
-  ratings         PilotRating[]
-  instructorRatings PilotInstructorRating[]
-  medicals        PilotMedical[]
-  trainingRecords PilotTrainingRecord[]
-  rightToWork     PilotRightToWork[]
-  flightLogs      FlightLog[]
-  jobAlerts       JobAlert[]
-  preferences     PilotPreference?
-  sessions        PilotSession[]
-  twoFactor       TwoFactorSecret?
-  savedJobs       SavedJob[]
-  applications    Application[]
-  jobReports      JobReport[]
+  certificates          PilotCertificate[]
+  ratings               PilotRating[]
+  instructorRatings     PilotInstructorRating[]
+  medicals              PilotMedical[]
+  trainingRecords       PilotTrainingRecord[]
+  rightToWork           PilotRightToWork[]
+  flightLogs            FlightLog[]
+  jobAlerts             JobAlert[]
+  preferences           PilotPreference?
+  sessions              PilotSession[]
+  twoFactor             TwoFactorSecret?
+  savedJobs             SavedJob[]
+  applications          Application[]
+  jobReports            JobReport[]
   savedSearches         SavedSearch[]
   educationRecords      PilotEducation[]
   languages             PilotLanguage[]
@@ -181,22 +180,22 @@ model Pilot {
 }
 
 model PilotCertificate {
-  id               String          @id @default(uuid())
-  pilotId          String
-  type             CertificateType
-  issuingAuthority String
+  id                String          @id @default(uuid())
+  pilotId           String
+  type              CertificateType
+  issuingAuthority  String
   certificateNumber String?
-  issueDate        DateTime?
-  expiryDate       DateTime?
-  englishLevel     String?
+  issueDate         DateTime?
+  expiryDate        DateTime?
+  englishLevel      String?
   // 'aeroplane' | 'helicopter' — aircraft category of the licence. Backfilled ONLY
   // from the pilot's own ratings; null = unknown (matching never assumes aeroplane).
-  category         String?
-  endorsements     String[]
-  createdAt        DateTime        @default(now())
+  category          String?
+  endorsements      String[]
+  createdAt         DateTime        @default(now())
 
-  pilot            Pilot           @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-  ratings          PilotRating[]   // type ratings that link to this licence (optional)
+  pilot   Pilot         @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  ratings PilotRating[] // type ratings that link to this licence (optional)
 }
 
 model PilotRating {
@@ -215,8 +214,8 @@ model PilotRating {
   licenceId            String?
   createdAt            DateTime  @default(now())
 
-  pilot                Pilot             @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-  licence              PilotCertificate? @relation(fields: [licenceId], references: [id], onDelete: SetNull)
+  pilot   Pilot             @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  licence PilotCertificate? @relation(fields: [licenceId], references: [id], onDelete: SetNull)
 }
 
 // Instructor / examiner privileges the pilot holds — set by the pilot in Profile →
@@ -241,7 +240,7 @@ model PilotInstructorRating {
   expiry    DateTime?
   createdAt DateTime       @default(now())
 
-  pilot     Pilot          @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 
   @@unique([pilotId, kind])
 }
@@ -258,7 +257,7 @@ model PilotEducation {
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
 
-  pilot        Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 
   @@index([pilotId])
 }
@@ -272,7 +271,7 @@ model PilotLanguage {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
-  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 
   @@index([pilotId])
 }
@@ -287,7 +286,7 @@ model PilotTrainingRecord {
   remarks     String?
   createdAt   DateTime  @default(now())
 
-  pilot       Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model PilotRightToWork {
@@ -299,7 +298,7 @@ model PilotRightToWork {
   expiresAt      DateTime?
   createdAt      DateTime  @default(now())
 
-  pilot          Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model PilotMedical {
@@ -311,15 +310,15 @@ model PilotMedical {
   expiryDate       DateTime
   createdAt        DateTime     @default(now())
 
-  pilot            Pilot        @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model PilotPreference {
-  id                  String   @id @default(uuid())
-  pilotId             String   @unique
-  preferredCountries  String[]
-  preferredAircraft   String[]
-  minSalary           Float?
+  id                        String   @id @default(uuid())
+  pilotId                   String   @unique
+  preferredCountries        String[]
+  preferredAircraft         String[]
+  minSalary                 Float?
   // Extended job prefs
   minSalaryCurrency         String   @default("USD")
   minSalaryPeriod           String   @default("year")
@@ -327,8 +326,8 @@ model PilotPreference {
   preferredContractTypes    String[]
   routePreferences          String[]
   // Master notification toggles (backend-ready)
-  notifyEmail         Boolean  @default(true)
-  notifyPush          Boolean  @default(true)
+  notifyEmail               Boolean  @default(true)
+  notifyPush                Boolean  @default(true)
   // Granular notification categories (push + email per category)
   notifyMatchesPush         Boolean  @default(true)
   notifyMatchesEmail        Boolean  @default(true)
@@ -340,14 +339,14 @@ model PilotPreference {
   notifyDigestEmail         Boolean  @default(true)
   notifyProductUpdatesEmail Boolean  @default(true)
   // Quiet hours
-  quietHoursEnabled   Boolean  @default(false)
-  quietHoursStart     String?
-  quietHoursEnd       String?
-  quietHoursTz        String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  quietHoursEnabled         Boolean  @default(false)
+  quietHoursStart           String?
+  quietHoursEnd             String?
+  quietHoursTz              String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
-  pilot               Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model PilotSession {
@@ -360,7 +359,7 @@ model PilotSession {
   lastUsedAt  DateTime @default(now())
   createdAt   DateTime @default(now())
 
-  pilot       Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model TwoFactorSecret {
@@ -371,135 +370,135 @@ model TwoFactorSecret {
   backupCodes String[]
   createdAt   DateTime  @default(now())
 
-  pilot       Pilot     @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model FlightLog {
-  id              String     @id @default(uuid())
-  pilotId         String
-  dutyId          String?
-  date            DateTime
-  flightNumber    String?
-  aircraftType    String
-  registration    String?
-  departure       String?
-  arrival         String?
-  offBlocksTime   String?
-  takeoffTime     String?
-  landingTime     String?
-  onBlocksTime    String?
-  picName         String?
-  sicName         String?
-  totalTime       Float      @default(0)
-  picTime         Float      @default(0)
-  sicTime         Float      @default(0)
-  multiEngineTime      Float  @default(0)
-  turbineTime          Float  @default(0)
-  jetTime              Float  @default(0)
-  instrumentTime       Float  @default(0)
-  instrumentActualTime Float  @default(0)
-  instrumentSimTime    Float  @default(0)
-  crossCountryTime     Float  @default(0)
-  nightTime            Float  @default(0)
-  landingsDay     Int        @default(0)
-  landingsNight   Int        @default(0)
-  remarks         String?
-  source          LogSource  @default(MANUAL)
-  importBatchId   String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id                   String    @id @default(uuid())
+  pilotId              String
+  dutyId               String?
+  date                 DateTime
+  flightNumber         String?
+  aircraftType         String
+  registration         String?
+  departure            String?
+  arrival              String?
+  offBlocksTime        String?
+  takeoffTime          String?
+  landingTime          String?
+  onBlocksTime         String?
+  picName              String?
+  sicName              String?
+  totalTime            Float     @default(0)
+  picTime              Float     @default(0)
+  sicTime              Float     @default(0)
+  multiEngineTime      Float     @default(0)
+  turbineTime          Float     @default(0)
+  jetTime              Float     @default(0)
+  instrumentTime       Float     @default(0)
+  instrumentActualTime Float     @default(0)
+  instrumentSimTime    Float     @default(0)
+  crossCountryTime     Float     @default(0)
+  nightTime            Float     @default(0)
+  landingsDay          Int       @default(0)
+  landingsNight        Int       @default(0)
+  remarks              String?
+  source               LogSource @default(MANUAL)
+  importBatchId        String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  pilot           Pilot      @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model Job {
-  id                   String     @id @default(uuid())
-  title                String
-  company              String
-  location             String
-  country              String?
-  description          String
-  titleEn              String?    // machine translation (DeepL) when source isn't English
-  descriptionEn        String?
-  sourceLanguage       String?    // detected language; 'EN' = no translation needed
-  notes                String?
-  applyUrl             String
-  sourceUrl            String?
-  status               JobStatus  @default(ACTIVE)
-  postedAt             DateTime   @default(now())   // source's posting date; stable across re-scrapes (never answers "seen today")
-  expiresAt            DateTime?
-  lastSeenAt           DateTime?  // set to now() on every scrape that returns this row. NULL = not seen since the field was added. Drives the staleness backstop (expireUnseen).
+  id             String    @id @default(uuid())
+  title          String
+  company        String
+  location       String
+  country        String?
+  description    String
+  titleEn        String? // machine translation (DeepL) when source isn't English
+  descriptionEn  String?
+  sourceLanguage String? // detected language; 'EN' = no translation needed
+  notes          String?
+  applyUrl       String
+  sourceUrl      String?
+  status         JobStatus @default(ACTIVE)
+  postedAt       DateTime  @default(now()) // source's posting date; stable across re-scrapes (never answers "seen today")
+  expiresAt      DateTime?
+  lastSeenAt     DateTime? // set to now() on every scrape that returns this row. NULL = not seen since the field was added. Drives the staleness backstop (expireUnseen).
 
   // Classification
-  role                 String?
-  contractType         String?
-  region               String?
+  role         String?
+  contractType String?
+  region       String?
 
   // Salary
-  salaryMin            Float?
-  salaryMax            Float?
-  salaryCurrency       String?
-  salaryPeriod         String?
+  salaryMin      Float?
+  salaryMax      Float?
+  salaryCurrency String?
+  salaryPeriod   String?
 
-  reqCertificates      String[]
-  reqAuthorities       String[]
-  reqAircraftTypes     String[]  // LEGACY: fleet-inclusive, read by deployed search/facets/airline pages. Retired in a later step.
-  aircraftTypes        String[]  // what the job FLIES (title + legacy rated types) — search/display
-  reqTypeRatings       String[]  // type rating REQUIRED (trigger-gated) — matching only (new matcher reads this)
-  reqMedicalClass      String?
-  reqMinTotalHours     Float?
-  reqMinPicHours       Float?
-  reqMinMultiEngineHours   Float?
-  reqMinTurbineHours       Float?
-  reqMinInstrumentHours    Float?
-  reqMinCrossCountryHours  Float?
-  reqEducation             String?   // 'bachelor' | 'high_school' | 'technical'
-  reqWorkAuthorization     String?   // 'EU' | 'US' | 'UK' | 'required'
-  reqEnglishLevel          Int?      // ICAO level 1–6
-  reqWillingToRelocate Boolean    @default(false)
+  reqCertificates         String[]
+  reqAuthorities          String[]
+  reqAircraftTypes        String[] // LEGACY: fleet-inclusive, read by deployed search/facets/airline pages. Retired in a later step.
+  aircraftTypes           String[] // what the job FLIES (title + legacy rated types) — search/display
+  reqTypeRatings          String[] // type rating REQUIRED (trigger-gated) — matching only (new matcher reads this)
+  reqMedicalClass         String?
+  reqMinTotalHours        Float?
+  reqMinPicHours          Float?
+  reqMinMultiEngineHours  Float?
+  reqMinTurbineHours      Float?
+  reqMinInstrumentHours   Float?
+  reqMinCrossCountryHours Float?
+  reqEducation            String? // 'bachelor' | 'high_school' | 'technical'
+  reqWorkAuthorization    String? // 'EU' | 'US' | 'UK' | 'required'
+  reqEnglishLevel         Int? // ICAO level 1–6
+  reqWillingToRelocate    Boolean  @default(false)
 
   // Ingestion provenance
-  sourcePlatform       String?    // 'LEVER' | 'GREENHOUSE' | 'WORKDAY' | 'EMPLOYER_DIRECT' | null (manual / legacy)
-  sourceType           String?    // apply-destination class: 'direct_ats' | 'operator_direct' | 'aggregator' | null. Classified at ingest from applyUrl; drives dedup canonical ranking. Does NOT gate ingestion.
-  externalId           String?    // stable posting ID from source — used for upsert dedup
-  mergedInto           String?    // self-ref to canonical Job.id when cross-source dedup collapses this row
+  sourcePlatform String? // 'LEVER' | 'GREENHOUSE' | 'WORKDAY' | 'EMPLOYER_DIRECT' | null (manual / legacy)
+  sourceType     String? // apply-destination class: 'direct_ats' | 'operator_direct' | 'aggregator' | null. Classified at ingest from applyUrl; drives dedup canonical ranking. Does NOT gate ingestion.
+  externalId     String? // stable posting ID from source — used for upsert dedup
+  mergedInto     String? // self-ref to canonical Job.id when cross-source dedup collapses this row
 
   // Employer-posted jobs (first-party). Null for scraped jobs.
-  postedByEmployerId   String?
-  postedByEmployer     Employer?  @relation("EmployerPostedJobs", fields: [postedByEmployerId], references: [id])
-  moderationStatus     String?    @default("APPROVED")  // 'APPROVED' | 'PENDING' — visibility gated by `status`, this is descriptive metadata
+  postedByEmployerId String?
+  postedByEmployer   Employer? @relation("EmployerPostedJobs", fields: [postedByEmployerId], references: [id])
+  moderationStatus   String?   @default("APPROVED") // 'APPROVED' | 'PENDING' — visibility gated by `status`, this is descriptive metadata
 
   lastEnrichedFromWorkdayAt DateTime?
-  livenessFailures          Int        @default(0)  // consecutive transient failures from the nightly apply-link checker; 3 → expire. Reset to 0 on any live check.
-  lastLivenessCheckAt       DateTime?  // last time the nightly liveness checker probed this row's applyUrl
-  liveness403Since          DateTime?  // start of an unbroken run of 403 responses from the apply-link checker. 403 is "skip" (never expires on its own), so this drives a weekly stuck-403 report. Cleared when the link next resolves or is judged dead.
-  descriptionEnrichedAt     DateTime?  // set once an aggregator job's truncated snippet has been enriched (or the attempt was made) — so we never re-fetch its listing page
-  requirementsText          String?    // the posting's OWN requirements/qualifications section, verbatim (bullets), when present — rendered in preference to synthesised req fields
-  requirementsExtractedAt   DateTime?  // marker: structured req fields were filled by the LLM extractor (once per job)
+  livenessFailures          Int       @default(0) // consecutive transient failures from the nightly apply-link checker; 3 → expire. Reset to 0 on any live check.
+  lastLivenessCheckAt       DateTime? // last time the nightly liveness checker probed this row's applyUrl
+  liveness403Since          DateTime? // start of an unbroken run of 403 responses from the apply-link checker. 403 is "skip" (never expires on its own), so this drives a weekly stuck-403 report. Cleared when the link next resolves or is judged dead.
+  descriptionEnrichedAt     DateTime? // set once an aggregator job's truncated snippet has been enriched (or the attempt was made) — so we never re-fetch its listing page
+  requirementsText          String? // the posting's OWN requirements/qualifications section, verbatim (bullets), when present — rendered in preference to synthesised req fields
+  requirementsExtractedAt   DateTime? // marker: structured req fields were filled by the LLM extractor (once per job)
 
   // Identity dedup, PRECOMPUTED (not per request). identityKey is the cluster key
   // from jobIdentity.identityOf; identityFirstSeenAt is the earliest createdAt
   // across the whole cluster (any status). Recomputed at ingest + after each
   // scrape/dedup run (services/jobIdentityStore.recomputeJobIdentity), so
   // /api/dashboard reads them directly and never clusters in-request.
-  identityKey          String?
-  identityFirstSeenAt  DateTime?
+  identityKey         String?
+  identityFirstSeenAt DateTime?
 
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  alerts               JobAlert[]
-  savedBy              SavedJob[]
-  applications         Application[]
-  reports              JobReport[]
+  alerts       JobAlert[]
+  savedBy      SavedJob[]
+  applications Application[]
+  reports      JobReport[]
 
   @@unique([sourcePlatform, externalId])
-  @@index([mergedInto])  // dedup chain-flatten / canonical lookups scan by this
+  @@index([mergedInto]) // dedup chain-flatten / canonical lookups scan by this
   @@index([identityKey]) // replacement-follow: find a live job sharing an identity
 }
 
 model JobAlert {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   pilotId     String
   jobId       String
   matchScore  Float
@@ -507,10 +506,10 @@ model JobAlert {
   notifiedAt  DateTime?
   readAt      DateTime?
   dismissedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
-  pilot       Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([pilotId, jobId])
 }
@@ -527,7 +526,7 @@ model SavedSearch {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  pilot           Pilot          @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 model SavedJob {
@@ -536,8 +535,8 @@ model SavedJob {
   jobId     String
   createdAt DateTime @default(now())
 
-  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([pilotId, jobId])
 }
@@ -568,8 +567,8 @@ model Application {
   matchScore      Float?
   matchBreakdown  Json?
 
-  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([pilotId, jobId])
   @@index([jobId])
@@ -581,31 +580,39 @@ model JobReport {
   pilotId   String
   jobId     String
   reason    String
-  field     String?  // optional: which requirement/field the report is about
+  field     String? // optional: which requirement/field the report is about
   createdAt DateTime @default(now())
 
-  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
 
 model CvData {
-  id        String   @id @default(uuid())
-  pilotId   String   @unique
-  photoUrl    String?
-  education   Json    @default("[]")
-  languages   Json    @default("[]")
-  skills      Json    @default("[]")
-  other       Json    @default("[]")
-  typeRatings Json    @default("[]")
-  licenses    Json    @default("[]")
-  medical     Json?
-  icaoEnglish Json?
-  accentColor String  @default("#0D1E35")
-  summary     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  pilotId      String   @unique
+  photoUrl     String?
+  education    Json     @default("[]")
+  languages    Json     @default("[]")
+  skills       Json     @default("[]")
+  other        Json     @default("[]")
+  typeRatings  Json     @default("[]")
+  licenses     Json     @default("[]")
+  medical      Json?
+  icaoEnglish  Json?
+  accentColor  String   @default("#0D1E35")
+  summary      String?
+  // CV Builder presentation settings (one source of truth for web, app, the PDF
+  // and the public share page). `sections` is null until the pilot reorders or
+  // hides something — null means "the default order, everything visible".
+  template     String   @default("classic") // classic | modern
+  accent       String   @default("navy") // navy | charcoal | slate | forest
+  sections     Json?
+  shareEnabled Boolean  @default(false)
+  shareToken   String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  pilot     Pilot    @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 }
 
 // ─── Airline Factfile ─────────────────────────────────────────────────────────
@@ -616,15 +623,15 @@ model Airline {
   iataCode             String?              @unique
   icaoCode             String?              @unique
   country              String
-  region               String               // validated: 'Europe' | 'Americas' | 'Asia-Pacific' | 'Middle East' | 'Africa'
+  region               String // validated: 'Europe' | 'Americas' | 'Asia-Pacific' | 'Middle East' | 'Africa'
   headquarters         String?
   description          String?
   bases                String[]
   fleet                String[]
-  fleetDetail          Json?                // [{ type, inService:int|null, ordered:int|null, retired:int|null }] — enriched; `fleet` kept for fallback/community
-  logoUrl              String?              // self-hosted logo URL (Session 3 populates)
-  domain               String?              // official website domain (Session 3)
-  logoSource           String?              // WIKIDATA | WIKIPEDIA | null — audit trail (Session 3)
+  fleetDetail          Json? // [{ type, inService:int|null, ordered:int|null, retired:int|null }] — enriched; `fleet` kept for fallback/community
+  logoUrl              String? // self-hosted logo URL (Session 3 populates)
+  domain               String? // official website domain (Session 3)
+  logoSource           String? // WIKIDATA | WIKIPEDIA | null — audit trail (Session 3)
   hiringStatus         HiringStatus         @default(UNKNOWN)
   hiringFrequency      HiringFrequency      @default(UNKNOWN)
   payRanges            Json?
@@ -641,9 +648,9 @@ model Airline {
   lastUpdatedAt        DateTime             @default(now()) @updatedAt
   createdAt            DateTime             @default(now())
 
-  contributions        AirlineFactContribution[]
-  fieldDates           AirlineFieldDate[]
-  employers            Employer[]
+  contributions AirlineFactContribution[]
+  fieldDates    AirlineFieldDate[]
+  employers     Employer[]
 }
 
 // Per-field (and per-item) "recorded/verified" dates for an airline fact file.
@@ -655,12 +662,12 @@ model Airline {
 model AirlineFieldDate {
   id         String   @id @default(uuid())
   airlineId  String
-  field      String   // logical factfile field key (see fieldDateKeys.js)
+  field      String // logical factfile field key (see fieldDateKeys.js)
   recordedAt DateTime // when THIS field/item was last recorded or re-affirmed
-  source     String?  // 'contribution' | 'reaffirm' | 'backfill' — provenance
+  source     String? // 'contribution' | 'reaffirm' | 'backfill' — provenance
   updatedAt  DateTime @updatedAt
 
-  airline    Airline  @relation(fields: [airlineId], references: [id], onDelete: Cascade)
+  airline Airline @relation(fields: [airlineId], references: [id], onDelete: Cascade)
 
   @@unique([airlineId, field])
   @@index([airlineId])
@@ -670,22 +677,22 @@ model AirlineFactContribution {
   id              String             @id @default(uuid())
   airlineId       String
   contributorId   String
-  proposedChanges Json               // flat { fieldName: newValue } — null = explicit clear
+  proposedChanges Json // flat { fieldName: newValue } — null = explicit clear
   status          ContributionStatus @default(PENDING)
   reviewerId      String?
   reviewedAt      DateTime?
   reviewNote      String?
   createdAt       DateTime           @default(now())
 
-  airline      Airline @relation(fields: [airlineId], references: [id], onDelete: Cascade)
-  contributor  Pilot   @relation("ContributorContributions", fields: [contributorId], references: [id])
-  reviewer     Pilot?  @relation("ReviewerReviews",          fields: [reviewerId],    references: [id])
+  airline     Airline @relation(fields: [airlineId], references: [id], onDelete: Cascade)
+  contributor Pilot   @relation("ContributorContributions", fields: [contributorId], references: [id])
+  reviewer    Pilot?  @relation("ReviewerReviews", fields: [reviewerId], references: [id])
 }
 
 // ─── Employer Portal ─────────────────────────────────────────────────────────
 
 model Employer {
-  id               String         @id @default(uuid())
+  id               String       @id @default(uuid())
   companyName      String
   companyType      EmployerType
   country          String
@@ -697,27 +704,27 @@ model Employer {
   icaoCode         String?
 
   // Auth
-  contactEmail     String         @unique
-  passwordHash     String
-  contactName      String
-  contactPhone     String?
+  contactEmail String  @unique
+  passwordHash String
+  contactName  String
+  contactPhone String?
 
   // Lifecycle
-  status           EmployerStatus @default(PENDING)
-  emailVerified    Boolean        @default(false)
-  approvedAt       DateTime?
-  approvedBy       String?        // admin Pilot.id (loose ref — no FK, keeps Pilot model untouched)
-  rejectionReason  String?        // set on REJECT or SUSPEND (mutually exclusive states)
-  lastActiveAt     DateTime?
+  status          EmployerStatus @default(PENDING)
+  emailVerified   Boolean        @default(false)
+  approvedAt      DateTime?
+  approvedBy      String? // admin Pilot.id (loose ref — no FK, keeps Pilot model untouched)
+  rejectionReason String? // set on REJECT or SUSPEND (mutually exclusive states)
+  lastActiveAt    DateTime?
 
   // Optional factfile link — internal admin metadata only (Jobs-page link is by company name)
-  airlineId        String?
-  airline          Airline?       @relation(fields: [airlineId], references: [id])
+  airlineId String?
+  airline   Airline? @relation(fields: [airlineId], references: [id])
 
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  postedJobs       Job[]          @relation("EmployerPostedJobs")
+  postedJobs Job[] @relation("EmployerPostedJobs")
 }
 
 // ─── Document Expiry Notifications ───────────────────────────────────────────
@@ -747,21 +754,22 @@ model NotificationLog {
   sentAt           DateTime            @default(now())
   channel          NotificationChannel @default(EMAIL)
 
-  pilot            Pilot               @relation(fields: [pilotId], references: [id], onDelete: Cascade)
+  pilot Pilot @relation(fields: [pilotId], references: [id], onDelete: Cascade)
 
   @@unique([pilotId, kind, documentId, daysBeforeExpiry, channel])
 }
+
 // Password reset tokens — shared by pilots and employers (userType discriminates).
 // Rows are single-use and short-lived; created by /auth/forgot-password, consumed
 // by /auth/reset-password.
 model PasswordResetToken {
-  id         String    @id @default(cuid())
-  token      String    @unique
-  email      String
-  userType   String    // 'pilot' or 'employer'
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime  @default(now())
+  id        String    @id @default(cuid())
+  token     String    @unique
+  email     String
+  userType  String // 'pilot' or 'employer'
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([email])
@@ -770,13 +778,13 @@ model PasswordResetToken {
 // Email verification tokens — shared by pilots and employers (userType). Created
 // on registration (bundled in the welcome email) and by /auth/resend-verification.
 model EmailVerificationToken {
-  id         String    @id @default(cuid())
-  token      String    @unique
-  email      String
-  userType   String    // 'pilot' or 'employer'
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime  @default(now())
+  id        String    @id @default(cuid())
+  token     String    @unique
+  email     String
+  userType  String // 'pilot' or 'employer'
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([email])
@@ -798,16 +806,16 @@ model AppVersionStat {
 // Written at start (status RUNNING) and finalised at end (OK / ERROR) so a crashed
 // run still leaves a dangling RUNNING row. `counts` holds task-specific tallies.
 model CronRun {
-  id        String    @id @default(uuid())
-  jobName   String // the scheduler's name, e.g. 'scrape', 'match', 'liveness'
-  host      String? // os.hostname() of the process that ran it
-  commit    String? // RAILWAY_GIT_COMMIT_SHA (short) of the running build
-  status    String    @default("RUNNING") // RUNNING | OK | ERROR
-  startedAt DateTime  @default(now())
-  endedAt   DateTime?
+  id         String    @id @default(uuid())
+  jobName    String // the scheduler's name, e.g. 'scrape', 'match', 'liveness'
+  host       String? // os.hostname() of the process that ran it
+  commit     String? // RAILWAY_GIT_COMMIT_SHA (short) of the running build
+  status     String    @default("RUNNING") // RUNNING | OK | ERROR
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
   durationMs Int?
-  counts    Json? // task-specific result counts (e.g. { scraped, upserted, expired })
-  error     String? // message (truncated) when status = ERROR
+  counts     Json? // task-specific result counts (e.g. { scraped, upserted, expired })
+  error      String? // message (truncated) when status = ERROR
 
   @@index([jobName, startedAt])
 }
