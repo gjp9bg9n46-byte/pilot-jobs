@@ -174,4 +174,8 @@ test('a rating is labelled "{Type} rating" — never asserted as type vs class',
   // the strength of that field would put a wrong qualification on the CV
   const doc = buildCvDocument(RAW({ ratings: [{ aircraftType: 'CESSNA-172', category: 'Multi-Engine' }] }));
   assert.strictEqual(doc.sections.licences.items.find((i) => /Cessna/i.test(i.k)).k, 'Cessna-172 rating');
+  // a short all-caps run is an acronym and must survive; a long one is shouting
+  assert.strictEqual(titleCase('IGCSE'), 'IGCSE');
+  assert.strictEqual(titleCase('CESSNA-172'), 'Cessna-172');
+  assert.strictEqual(titleCase('EGYPTIAN AVIATION ACADEMY'), 'Egyptian Aviation Academy');
 });

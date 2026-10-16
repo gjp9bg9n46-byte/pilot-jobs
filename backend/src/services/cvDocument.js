@@ -43,8 +43,14 @@ const ACCENTS = {
 function titleCase(s) {
   return String(s || '').split(/\s+/).filter(Boolean).map((w) => w.split('-').map((p) => {
     if (!p) return p;
-    if (/\d/.test(p)) return p.toUpperCase();
-    if (p.length <= 4 && p === p.toUpperCase()) return p;
+    if (/\d/.test(p)) return p.toUpperCase();          // a320 → A320
+    const hasLower = /[a-z]/.test(p);
+    // Mixed case is the pilot's own ("McGill", "easyJet") — leave it alone.
+    if (hasLower && /[A-Z]/.test(p)) return p;
+    // A short ALL-CAPS run is an acronym worth keeping: ATPL, ICAO, IGCSE.
+    // A long one is shouting — "CESSNA-172" should read "Cessna-172", which is
+    // also how the Profile renders it.
+    if (!hasLower && p.length <= 5) return p;
     return p[0].toUpperCase() + p.slice(1).toLowerCase();
   }).join('-')).join(' ');
 }
