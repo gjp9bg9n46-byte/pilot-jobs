@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   User, Pencil, ExternalLink, Download, ChevronRight, Check,
 } from 'lucide-react';
-import { profileApi, logbookApi } from '../services/api';
+import { profileApi, logbookApi, cvApi } from '../services/api';
 import { LightPage } from '../components/primitives';
 import ProfileEditSheet, { pilotNationalities } from './ProfileEditSheets';
 import './profileRedesign.css';
@@ -67,7 +67,9 @@ export default function ProfileRedesign() {
   const [loading, setLoading] = useState(true);
   const [otwSaving, setOtwSaving] = useState(false);
   const [photoOk, setPhotoOk] = useState(true);
-  const [editing, setEditing] = useState(null); // { kind, id? }
+  const [editing, setEditing] = useState(null);
+  // CV share link — drives the 'Preview as airline' button.
+  const [cvShare, setCvShare] = useState(null);
   const [toast, setToast] = useState(null);
 
   const load = () => Promise.all([
@@ -75,6 +77,10 @@ export default function ProfileRedesign() {
     profileApi.readiness().then((r) => r.data).catch(() => null),
     logbookApi.summary().then((r) => r.data).catch(() => null),
   ]).then(([p, rd, s]) => { if (p) setProfile(p); if (rd) setReadiness(rd); if (s) setSummary(s); });
+
+  useEffect(() => {
+    cvApi.document().then(({ data }) => setCvShare(data?.share?.enabled ? data.share.token : null)).catch(() => {});
+  }, []);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, []);
 
@@ -301,6 +307,7 @@ export default function ProfileRedesign() {
   );
 
   const nationalities = pilotNationalities(profile);
+  const shareToken = cvShare;
   const cardPersonal = (
     <div className="card" key="per">
       <div className="card-h"><h4>Personal details</h4><EditBtn kind="personal" /></div>
@@ -339,7 +346,15 @@ export default function ProfileRedesign() {
               <div className="txt"><b>Open to work</b><span>{profile.openToWork ? (otwSummary || 'Visible to airlines') : 'Not visible to airlines'}</span></div>
             </div>
             <div className="hero-actions">
-              <button type="button" className="btn link" onClick={() => navigate('/profile/preview')}><ExternalLink size={15} /> Preview as airline</button>
+              {/* Opens the real read-only share page — what an airline actually
+                  sees, with no phone or email. Hidden until the pilot turns the
+                  link on in CV Builder: it used to navigate to /profile/preview,
+                  which has no route, so it silently bounced to /dashboard. */}
+              {shareToken && (
+                <button type="button" className="btn link" onClick={() => window.open(`/cv/s/${shareToken}`, '_blank', 'noopener')}>
+                  <ExternalLink size={15} /> Preview as airline
+                </button>
+              )}
               <button type="button" className="btn" onClick={() => navigate('/cv-builder')}><Download size={15} /> Download CV</button>
               <button type="button" className="btn primary" onClick={() => setEditing({ kind: 'personal' })}><Pencil size={15} /> Edit profile</button>
             </div>

@@ -135,6 +135,12 @@ export const cvApi = {
   update:       (data)     => api.put('/cv', data),
   uploadPhoto:  (formData) => api.post('/cv/photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deletePhoto:  ()         => api.delete('/cv/photo'),
+  // CV Builder
+  document:     (audience) => api.get('/cv/document', audience ? { params: { audience } } : undefined),
+  settings:     (patch)    => api.put('/cv/settings', patch),
+  rewrite:      ()         => api.post('/cv/summary/rewrite'),
+  setShare:     (enabled)  => api.post('/cv/share', { enabled }),
+  shared:       (token)    => api.get(`/cv/share/${token}`),
 };
 
 export const adminApi = {

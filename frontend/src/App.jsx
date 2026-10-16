@@ -34,6 +34,7 @@ const AdminEmployers = lazy(() => import('./pages/AdminEmployers'));
 const Alerts = lazy(() => import('./pages/Alerts'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Logbook = lazy(() => import('./pages/Logbook'));
+const CvShare = lazy(() => import('./pages/CvShare'));
 const ProfileRedesign = lazy(() => import('./pages/ProfileRedesign'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Support = lazy(() => import('./pages/Support'));
@@ -93,6 +94,9 @@ export default function App() {
           <Route path="/dev/primitives" element={<Primitives />} />
 
           {/* Public info + legal pages */}
+          {/* Public, read-only CV. No auth: an airline opens it from a link the
+              pilot shared, and it never carries contact details. */}
+          <Route path="/cv/s/:token" element={<CvShare />} />
           <Route path="/about" element={<About />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
