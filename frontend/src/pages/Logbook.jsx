@@ -830,15 +830,25 @@ export default function Logbook() {
                 </div>
               );
             }
+            // "2 of 3 landings … · 1 more needed" says both how far along and
+            // how far to go. Current reads "3 of 3 · current until 2 Dec" —
+            // the date the third-oldest landing rolls out of the window, so
+            // the separate drop-off chip would only repeat it.
+            const have = Math.min(c.day.landings, c.day.required);
+            const short = Math.max(0, c.day.required - c.day.landings);
+            const until = dropOffLabel(c.day.currentUntil);
             return (
               <div className="lb-rec">
                 <span className={`dot${current ? '' : ' warn'}`} />
                 <span>
-                  <b>{c.day.landings} {c.day.landings === 1 ? 'landing' : 'landings'}</b> in the last 90 days
-                  {current ? ' · current' : ` · ${c.day.required} needed`}
+                  <b>{have} of {c.day.required}{current ? '' : ' landings'}</b>
+                  {current ? '' : ' in the last 90 days'}
+                  {current
+                    ? ` · current${until ? ` until ${until}` : ''}`
+                    : ` · ${short} more needed`}
                   {c.incomplete ? ` · ${c.flightsWithoutLandings} flights have none recorded` : ''}
                 </span>
-                {dropOffLabel(c.day.currentUntil) && <span className="drop">Oldest drops {dropOffLabel(c.day.currentUntil)}</span>}
+                {!current && until && <span className="drop">Oldest drops {until}</span>}
               </div>
             );
           })()}

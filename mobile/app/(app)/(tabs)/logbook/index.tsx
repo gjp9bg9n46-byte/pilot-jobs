@@ -290,11 +290,20 @@ export default function LogbookList() {
               <View style={styles.rec}>
                 <View style={[styles.dot, cur.landings < cur.required && styles.dotWarn]} />
                 <Text style={styles.recText}>
-                  <Text style={styles.recStrong}>{cur.landings} {cur.landings === 1 ? 'landing' : 'landings'}</Text>
-                  {' '}in the last 90 days{cur.landings >= cur.required ? ' · current' : ` · ${cur.required} needed`}
+                  {/* "2 of 3 landings … · 1 more needed"; current reads
+                      "3 of 3 · current until 2 Dec", which is the same date the
+                      drop-off chip would show, so it is not repeated. */}
+                  <Text style={styles.recStrong}>
+                    {Math.min(cur.landings, cur.required)} of {cur.required}{cur.landings >= cur.required ? '' : ' landings'}
+                  </Text>
+                  {cur.landings >= cur.required
+                    ? ` · current${dropOffLabel(cur.currentUntil) ? ` until ${dropOffLabel(cur.currentUntil)}` : ''}`
+                    : ` in the last 90 days · ${Math.max(0, cur.required - cur.landings)} more needed`}
                   {summary.currency.incomplete ? ` · ${summary.currency.flightsWithoutLandings} with none recorded` : ''}
                 </Text>
-                {dropOffLabel(cur.currentUntil) ? <Text style={styles.recDrop}>Oldest drops {dropOffLabel(cur.currentUntil)}</Text> : null}
+                {cur.landings < cur.required && dropOffLabel(cur.currentUntil)
+                  ? <Text style={styles.recDrop}>Oldest drops {dropOffLabel(cur.currentUntil)}</Text>
+                  : null}
               </View>
             )
           ) : null}
