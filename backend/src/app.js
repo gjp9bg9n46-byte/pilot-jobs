@@ -255,9 +255,17 @@ app.get('/health/egress-ip', async (req, res) => {
 app.use(errorHandler);
 
 // Background schedulers (scrape / expire / dedup / liveness / match / maintenance).
-// Disabled with SCHEDULERS_OFF=1 so a LOCAL boot against the prod DB (e.g. a
-// screenshot/timing run) never fires a scrape, expiry or match. Prod leaves it unset.
-const RUN_SCHEDULERS = process.env.SCHEDULERS_OFF !== '1';
+// Disabled with SCHEDULERS_OFF so a LOCAL boot against the prod DB (a screenshot
+// run, a timing check, an afternoon of debugging) never fires a scrape, an
+// expiry, a match or an e-mail. Prod leaves it unset.
+// "true" is accepted as well as "1": the setting read as off-looking but was
+// only honoured for the literal 1, which is the kind of difference nobody
+// notices until a local process has been running for a fortnight.
+const SCHEDULERS_OFF = ['1', 'true', 'yes', 'on'].includes(String(process.env.SCHEDULERS_OFF || '').toLowerCase());
+const RUN_SCHEDULERS = !SCHEDULERS_OFF;
+logger.info(RUN_SCHEDULERS
+  ? 'Background schedulers: ON'
+  : 'Background schedulers: OFF (SCHEDULERS_OFF) — no scrape, match, liveness, prune or e-mail from this process');
 if (RUN_SCHEDULERS) {
 // Every scheduled task is wrapped in withCronRun(name, fn): it writes a CronRun
 // trace (name, host/commit, start, end, counts, error) and absorbs any throw so a
