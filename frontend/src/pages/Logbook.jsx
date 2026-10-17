@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ChevronDown, ChevronRight, ChevronUp,
   Pencil, Copy, Trash2, Upload, CheckCircle2,
@@ -13,6 +13,10 @@ import ImportModal from '../components/ImportModal';
 import AircraftCombobox from '../components/AircraftCombobox';
 import LogbookDashboard from '../components/logbook/LogbookDashboard';
 import FlightList from '../components/logbook/FlightList';
+import DayList from '../components/logbook/DayList';
+import FlightDetail from '../components/logbook/FlightDetail';
+import { duration, dropOffLabel } from '../lib/logbookFormat';
+import '../components/logbook/logbook.css';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -576,12 +580,42 @@ export default function Logbook() {
   const [search, setSearch] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null); // { label, fn }
+  const navigate = useNavigate();
+  const [prefs, setPrefs] = useState(null);                 // hh:mm vs decimal, remembered values
+  const [openFlight, setOpenFlight] = useState(null);       // the detail drawer
+  const [grouped, setGrouped] = useState(true);             // day groups (mockup) vs the full table
 
   const [showCarryForward, setShowCarryForward] = useState(false); // CF editor modal
   const [carryForward, setCarryForward] = useState({});
   const [carryForwardForm, setCarryForwardForm] = useState({});
   const [carryForwardSaved, setCarryForwardSaved] = useState(false);
   const [migrationToast, setMigrationToast] = useState(false);
+
+  // Preferences decide how every duration on this page is written.
+  useEffect(() => { logbookApi.prefs().then(({ data }) => setPrefs(data)).catch(() => {}); }, []);
+  const timeFormat = prefs?.timeFormat || 'hhmm';
+  const setTimeFormat = async (fmt) => {
+    setPrefs((p) => ({ ...(p || {}), timeFormat: fmt }));
+    try { const { data } = await logbookApi.updatePrefs({ timeFormat: fmt }); setPrefs(data); } catch { /* keep the optimistic choice */ }
+  };
+
+  // Return trip / Next leg / Duplicate all open the short manual form, filled in.
+  const relog = (flight, kind) => {
+    const base = {
+      date: String(flight.date).slice(0, 10),
+      aircraftType: flight.aircraftType || flight.displayType || '',
+      registration: flight.registration || '',
+      commander: flight.picName || '',
+      flightNumber: '', out: '', off: '', on: '', in: '',
+      pilotFlying: null, landings: '', approach: '', remarks: '',
+    };
+    const prefill = kind === 'return'
+      ? { ...base, from: flight.arrival, to: flight.departure }
+      : kind === 'next'
+        ? { ...base, from: flight.arrival, to: '' }
+        : { ...base, from: flight.departure, to: flight.arrival, flightNumber: flight.flightNumber || '' };
+    navigate('/logbook/add', { state: { manual: prefill, title: kind === 'return' ? 'Return trip' : kind === 'next' ? 'Next leg' : 'Duplicate flight' } });
+  };
 
   // The hours dashboard reads exclusively from /logbook/summary (real data).
   const loadSummary = useCallback(async () => {
@@ -755,26 +789,47 @@ export default function Logbook() {
     : null;
 
   return (
-    <LightPage style={{ fontFamily: 'var(--font-body)' }}>
-      {/* Header: title + subtitle + actions (buttons ≥768; Import link on phone) */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
+    <LightPage style={{ fontFamily: 'var(--font-body)' }} className="lb">
+      {/* Header: title, how many flights, and how durations are written */}
+      <div className="lb-head">
         <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? 30 : 38, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>Logbook</h1>
-          {!isMobile && (
-            <p style={{ fontSize: 15, color: 'var(--text-secondary)', margin: '8px 0 0' }}>
-              {(summary?.totals?.flightCount ?? total)} flights logged{lastFlightStr ? ` · last flight ${lastFlightStr}` : ''}
-            </p>
-          )}
+          <h1>Logbook</h1>
+          <p className="sub">
+            {(summary?.totals?.flightCount ?? total)} flights{lastFlightStr ? ` · last ${lastFlightStr}` : ''}
+          </p>
         </div>
-        {isMobile ? (
-          <button onClick={() => setShowImport(true)} style={{ background: 'none', border: 0, color: 'var(--accent)', fontWeight: 600, fontSize: 14, cursor: 'pointer', padding: 4 }}>Import</button>
-        ) : (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import</Button>
-            <Button onClick={() => setShowModal(true)}>+ Log a flight</Button>
+        <div className="lb-actions">
+          <div className="lb-seg" role="group" aria-label="Time format">
+            <button type="button" className={timeFormat === 'hhmm' ? 'on' : ''} onClick={() => setTimeFormat('hhmm')} aria-pressed={timeFormat === 'hhmm'}>hh:mm</button>
+            <button type="button" className={timeFormat === 'decimal' ? 'on' : ''} onClick={() => setTimeFormat('decimal')} aria-pressed={timeFormat === 'decimal'}>decimal</button>
           </div>
-        )}
+          {!isMobile && <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import</Button>}
+          <Button onClick={() => navigate('/logbook/add')}>+ Add flight</Button>
+        </div>
       </div>
+
+      {/* Totals, then the 90-day landing recency and the day it lapses */}
+      {summary && (
+        <>
+          <div className="lb-tot">
+            <div><b>{duration(summary.totals.totalTime, timeFormat)}</b><span>Total</span></div>
+            <div><b>{duration(summary.totals.picTime > summary.totals.sicTime ? summary.totals.picTime : summary.totals.sicTime, timeFormat)}</b><span>{summary.totals.picTime > summary.totals.sicTime ? 'PIC' : 'SIC'}</span></div>
+            <div><b>{duration(summary.totals.nightTime, timeFormat)}</b><span>Night</span></div>
+          </div>
+          {summary.currency?.landingsLogged && (
+            <div className="lb-rec">
+              <span className={`dot${summary.currency.day.landings >= summary.currency.day.required ? '' : ' warn'}`} />
+              <span>
+                <b>{summary.currency.day.landings} {summary.currency.day.landings === 1 ? 'landing' : 'landings'}</b> in the last 90 days
+                {summary.currency.day.landings >= summary.currency.day.required ? ' · current' : ` · ${summary.currency.day.required} needed`}
+              </span>
+              {dropOffLabel(summary.currency.day.currentUntil) && (
+                <span className="drop">Oldest drops {dropOffLabel(summary.currency.day.currentUntil)}</span>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
       {summary && summary.totals.flightCount === 0 ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '48px 24px', textAlign: 'center', marginBottom: 20 }}>
@@ -800,7 +855,16 @@ export default function Logbook() {
       />
 
       {(!searching && loading) ? (
-        <div style={{ textAlign: "center", padding: 60, color: "var(--text-secondary)" }}>Loading your logbook...</div>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>Loading your logbook...</div>
+      ) : grouped ? (
+        <>
+          <DayList logs={dataset} timeFormat={timeFormat} onOpen={setOpenFlight} />
+          {!dataset.length && (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
+              {searching ? 'No flights match that search.' : 'No flights yet.'}
+            </div>
+          )}
+        </>
       ) : (
         <FlightList
           dataset={dataset}
@@ -814,6 +878,16 @@ export default function Logbook() {
           onDelete={handleDelete}
         />
       )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+        <button
+          type="button"
+          onClick={() => setGrouped((g) => !g)}
+          style={{ background: 'none', border: 0, color: 'var(--accent)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+        >
+          {grouped ? 'Show the full table' : 'Group by day'}
+        </button>
+      </div>
 
       {/* Pagination — only when not searching (search fetches all matches) */}
       {!searching && (
@@ -865,10 +939,22 @@ export default function Logbook() {
         </div>
       </Modal>
 
-      {/* Mobile floating "+ Log flight" button (<768) */}
+      {openFlight && (
+        <FlightDetail
+          flight={openFlight}
+          onClose={() => setOpenFlight(null)}
+          onEdit={() => { setEditFlight(openFlight); setOpenFlight(null); }}
+          onReturnTrip={() => relog(openFlight, 'return')}
+          onNextLeg={() => relog(openFlight, 'next')}
+          onDuplicate={() => relog(openFlight, 'duplicate')}
+          onDelete={() => { const f = openFlight; setOpenFlight(null); handleDelete(f.id); }}
+        />
+      )}
+
+      {/* Mobile floating "+ Add flight" button (<768) */}
       {isMobile && (
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => navigate('/logbook/add')}
           style={{
             position: 'fixed', right: 16, bottom: 20, zIndex: 6,
             background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 15,
@@ -876,7 +962,7 @@ export default function Logbook() {
             boxShadow: '0 6px 18px rgba(0,63,136,0.35)', cursor: 'pointer',
           }}
         >
-          + Log flight
+          + Add flight
         </button>
       )}
 

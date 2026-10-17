@@ -17,6 +17,9 @@ import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
 import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
+import { duration, dropOffLabel, groupByDay, TimeFormat } from '../../../../src/lib/logbookFormat';
+import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
+import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
@@ -120,6 +123,19 @@ export default function LogbookList() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cfOpenSignal, setCfOpenSignal] = useState(0);
+  const [timeFormat, setTimeFormatState] = useState<TimeFormat>('hhmm');
+  const [scansLeft, setScansLeft] = useState<number | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+
+  // How durations are written is a profile preference, shared with the web.
+  useEffect(() => {
+    api.get('/logbook/prefs').then(({ data }) => setTimeFormatState(data.timeFormat || 'hhmm')).catch(() => {});
+    api.get('/logbook/scan-quota').then(({ data }) => setScansLeft(data.left)).catch(() => {});
+  }, []);
+  const setTimeFormat = (fmt: TimeFormat) => {
+    setTimeFormatState(fmt);
+    api.put('/logbook/prefs', { timeFormat: fmt }).catch(() => {});
+  };
 
   const loadSummary = useCallback(() => {
     api.get('/logbook/summary').then(({ data }) => setSummary(data)).catch(() => {});
@@ -213,30 +229,65 @@ export default function LogbookList() {
     return out;
   }, [logs, summary]);
 
+  const cur = summary?.currency?.day;
+  const daySections = useMemo(
+    () => groupByDay(logs).map((d) => ({ ym: d.date, title: d.label, hours: d.hours, data: d.flights })),
+    [logs],
+  );
+
   const ListHeader = (
     <View>
-      <Text style={styles.h1}>Logbook</Text>
-      <Text style={styles.subtitle}>
-        {(summary?.totals?.flightCount ?? total)} flights logged{lastFlightStr ? ` · last flight ${lastFlightStr}` : ''}
-      </Text>
+      <View style={styles.headRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.h1}>Logbook</Text>
+          <Text style={styles.subtitle}>
+            {(summary?.totals?.flightCount ?? total)} flights{lastFlightStr ? ` · last ${lastFlightStr}` : ''}
+          </Text>
+        </View>
+        <View style={styles.seg}>
+          {(['hhmm', 'decimal'] as TimeFormat[]).map((f) => (
+            <Pressable key={f} onPress={() => setTimeFormat(f)} style={[styles.segBtn, timeFormat === f && styles.segOn]}>
+              <Text style={[styles.segText, timeFormat === f && styles.segTextOn]}>{f === 'hhmm' ? 'hh:mm' : 'decimal'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* Totals, then landings in the last 90 days and the day currency lapses */}
+      {summary ? (
+        <>
+          <View style={styles.tot}>
+            <View style={styles.totCard}>
+              <Text style={styles.totNum}>{duration(summary.totals.totalTime, timeFormat)}</Text>
+              <Text style={styles.totLabel}>Total</Text>
+            </View>
+            <View style={styles.totCard}>
+              <Text style={styles.totNum}>{duration(Math.max(summary.totals.picTime, summary.totals.sicTime), timeFormat)}</Text>
+              <Text style={styles.totLabel}>{summary.totals.picTime > summary.totals.sicTime ? 'PIC' : 'SIC'}</Text>
+            </View>
+            <View style={styles.totCard}>
+              <Text style={styles.totNum}>{duration(summary.totals.nightTime, timeFormat)}</Text>
+              <Text style={styles.totLabel}>Night</Text>
+            </View>
+          </View>
+          {summary.currency?.landingsLogged ? (
+            <View style={styles.rec}>
+              <View style={[styles.dot, cur.landings < cur.required && styles.dotWarn]} />
+              <Text style={styles.recText}>
+                <Text style={styles.recStrong}>{cur.landings} {cur.landings === 1 ? 'landing' : 'landings'}</Text>
+                {' '}in the last 90 days{cur.landings >= cur.required ? ' · current' : ` · ${cur.required} needed`}
+              </Text>
+              {dropOffLabel(cur.currentUntil) ? <Text style={styles.recDrop}>Oldest drops {dropOffLabel(cur.currentUntil)}</Text> : null}
+            </View>
+          ) : null}
+        </>
+      ) : null}
 
       {/* Hours dashboard (real data from /logbook/summary) */}
       <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} />
 
       {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
       <CarryForwardPanel openSignal={cfOpenSignal} onSaved={loadSummary} />
-
-      {/* Toolbar (existing add-flight entry point, kept in place) */}
-      <View style={styles.toolbar}>
-        <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 }]} onPress={() => router.push('/logbook/add')}>
-          <Text style={styles.primaryBtnText}>+ Log a Flight</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryBtn} onPress={() => router.push('/logbook/import')}>
-          <Ionicons name="cloud-upload-outline" size={15} color={pilot.navy} />
-          <Text style={styles.secondaryBtnText}> Import</Text>
-        </Pressable>
-        <Text style={styles.count}>{total} {total === 1 ? 'flight' : 'flights'}</Text>
-      </View>
     </View>
   );
 
@@ -260,7 +311,7 @@ export default function LogbookList() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <SectionList
-        sections={sections}
+        sections={daySections}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
         showsVerticalScrollIndicator={false}
@@ -270,21 +321,41 @@ export default function LogbookList() {
         ListFooterComponent={ListFooter}
         ListEmptyComponent={ListEmpty}
         renderSectionHeader={({ section }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionMonth}>{section.title}</Text>
-            {section.hours != null ? (
-              <Text style={styles.sectionMeta}>{section.hours.toFixed(1)} h · {section.flights} {section.flights === 1 ? 'flight' : 'flights'}</Text>
-            ) : null}
+          <View style={styles.dayHeader}>
+            <Text style={styles.dayLabel}>{section.title}</Text>
+            <Text style={styles.dayHours}>{duration(section.hours, timeFormat)}</Text>
           </View>
         )}
-        renderItem={({ item }) => (
-          <FlightCard
-            log={item}
-            onEdit={() => editFlight(item)}
-            onClone={() => cloneFlight(item)}
-            onDelete={() => deleteFlight(item.id)}
-          />
+        renderItem={({ item, index, section }) => (
+          <Pressable
+            onPress={() => { stashFlight(item); router.push(`/logbook/flight/${item.id}`); }}
+            style={[styles.dayLeg, index === 0 && styles.legFirst, index === section.data.length - 1 && styles.legLast]}
+          >
+            <View style={{ flex: 1 }}>
+              <View style={styles.legTop}>
+                <Text style={styles.legRoute}>{item.departure || '—'} → {item.arrival || '—'}</Text>
+                {item.pilotFlying === true ? <Text style={styles.pf}>PF</Text> : null}
+                {item.source === 'SCAN' ? <Text style={styles.scanned}>scanned</Text> : null}
+              </View>
+              <Text style={styles.legSub}>
+                {[item.flightNumber, item.displayType || item.aircraftType, item.registration].filter(Boolean).join(' · ') || 'No details'}
+              </Text>
+            </View>
+            <Text style={styles.legHours}>{duration(item.totalTime, timeFormat)}</Text>
+          </Pressable>
         )}
+      />
+      <Pressable style={styles.fab} onPress={() => setAddOpen(true)} accessibilityLabel="Add a flight">
+        <Ionicons name="add" size={26} color="#fff" />
+      </Pressable>
+
+      <AddFlightSheet
+        visible={addOpen}
+        scansLeft={scansLeft}
+        onClose={() => setAddOpen(false)}
+        onScan={() => router.push('/logbook/scan')}
+        onManual={() => router.push('/logbook/add')}
+        onImport={() => router.push('/logbook/import')}
       />
     </SafeAreaView>
   );
@@ -300,6 +371,37 @@ function PageBtn({ label, active, disabled, onPress }: { label: string; active?:
 }
 
 const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); return StyleSheet.create({
+  // ── The rebuilt list (mockup): header, totals, recency, day groups, FAB ──
+  headRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
+  seg: { flexDirection: 'row', borderWidth: 1, borderColor: pilot.line, borderRadius: 8, overflow: 'hidden', backgroundColor: pilot.surface },
+  segBtn: { paddingHorizontal: 9, paddingVertical: 5 },
+  segOn: { backgroundColor: '#0B1F3A' },
+  segText: { fontSize: 12, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted },
+  segTextOn: { color: '#fff' },
+  tot: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  totCard: { flex: 1, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
+  totNum: { fontFamily: fontFamilies.display, fontSize: 20, color: pilot.ink },
+  totLabel: { fontSize: 11.5, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 2 },
+  rec: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 14, marginTop: 10 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#15803D' },
+  dotWarn: { backgroundColor: '#B45309' },
+  recText: { flex: 1, fontSize: 13, color: pilot.ink, fontFamily: fontFamilies.body },
+  recStrong: { fontFamily: fontFamilies.bodySemiBold },
+  recDrop: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },
+  dayHeader: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18, marginBottom: 6 },
+  dayLabel: { fontSize: 11.5, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.9, textTransform: 'uppercase', color: pilot.faint },
+  dayHours: { fontSize: 12.5, fontFamily: fontFamilies.body, color: pilot.faint, fontVariant: ['tabular-nums'] },
+  dayLeg: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pilot.surface, borderColor: pilot.line, borderWidth: 1, borderTopWidth: 0, paddingVertical: 12, paddingHorizontal: 14 },
+  legFirst: { borderTopWidth: 1, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+  legLast: { borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
+  legTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legRoute: { fontSize: 14, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
+  legSub: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 2 },
+  legHours: { fontSize: 14, fontFamily: fontFamilies.body, color: pilot.ink, fontVariant: ['tabular-nums'] },
+  pf: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#E3ECF8', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
+  scanned: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.faint, borderWidth: 1, borderColor: pilot.line, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1, overflow: 'hidden' },
+  fab: { position: 'absolute', right: 20, bottom: 104, width: 58, height: 58, borderRadius: 29, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center', shadowColor: '#003F88', shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
+
   safe: { flex: 1, backgroundColor: pilot.cream },
   content: { padding: spacing.xl, paddingBottom: 116 /* clears floating tab bar */ },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },

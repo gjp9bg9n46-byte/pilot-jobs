@@ -92,6 +92,16 @@ export const flightLogApi = {
 export const logbookApi = {
   // Single hours-dashboard payload shared by web + app (see backend services/logbookSummary).
   summary: () => api.get('/logbook/summary'),
+  // Logbook preferences: hh:mm vs decimal, role preset, remembered aircraft, staff number.
+  prefs: () => api.get('/logbook/prefs'),
+  updatePrefs: (patch) => api.put('/logbook/prefs', patch),
+  // Voyage-report scanning. The photo goes up once; everything after is JSON.
+  scanQuota: () => api.get('/logbook/scan-quota'),
+  scan: (formData) => api.post('/logbook/scan', formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000 }),
+  getScan: (id) => api.get(`/logbook/scan/${id}`),
+  scanImageUrl: (id) => `${api.defaults.baseURL}/logbook/scan/${id}/image`,
+  saveScan: (id, body) => api.post(`/logbook/scan/${id}/save`, body),
+  discardScan: (id) => api.delete(`/logbook/scan/${id}`),
 };
 
 
