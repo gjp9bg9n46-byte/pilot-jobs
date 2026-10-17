@@ -65,35 +65,56 @@ const flag = (level, message) => ({ level, message });
  * @param {object} ctx        { pilot, now }
  * @returns {{header, sectors, issues}}
  */
-async function validateScan(raw, { pilot = {}, now = new Date() } = {}) {
+async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = null } = {}) {
   const prefs = pilot.logbookPrefs || {};
   const staffNumber = String(pilot.staffNumber || prefs.staffNumber || '').trim();
   const conf = raw.confidence || {};
+  // Fields the two readings of the page disagreed about. The model is not
+  // deterministic on handwriting, so a disagreement is the clearest possible
+  // signal that a human should look — stronger than its own confidence score.
+  const shaky = (uncertain && uncertain.sectors) || {};
+  const shakyHeader = new Set((uncertain && uncertain.header) || []);
 
   const date = parseDate(raw.date);
   const headerFlags = {};
-  const suggestYear = (d) => {
-    for (const y of [now.getUTCFullYear(), now.getUTCFullYear() - 1]) {
-      const candidate = new Date(Date.UTC(y, d.getUTCMonth(), d.getUTCDate()));
-      const age = daysBetween(now, candidate);
-      if (age >= 0 && age <= MAX_AGE_DAYS) return candidate;
+
+  // The form is always dd/mm/yyyy, and the year is handwritten. When a date
+  // cannot be right, the three things that actually happen are: the year was
+  // misread, the day and month were swapped, or both. Offer the most plausible
+  // reading rather than only saying "that looks wrong".
+  const plausible = (d) => d && daysBetween(d, now) <= 0 && daysBetween(now, d) <= MAX_AGE_DAYS;
+  const candidates = [];
+  if (date) {
+    const day = date.getUTCDate();
+    const month = date.getUTCMonth();
+    // The three ways a handwritten dd/mm/yyyy actually goes wrong: the year is
+    // misread, the day's two digits are transposed (12 read as 21), or the day
+    // and month are swapped.
+    const reversed = Number(String(day).padStart(2, '0').split('').reverse().join(''));
+    const days = [day, ...(reversed >= 1 && reversed <= 31 && reversed !== day ? [reversed] : [])];
+    for (const y of [date.getUTCFullYear(), now.getUTCFullYear(), now.getUTCFullYear() - 1]) {
+      for (const d of days) {
+        candidates.push(new Date(Date.UTC(y, month, d)));
+        if (d <= 12) candidates.push(new Date(Date.UTC(y, d - 1, month + 1)));   // day/month swapped
+      }
     }
-    return null;
-  };
+  }
+  const better = candidates.filter((d) => plausible(d) && d.getTime() !== (date ? date.getTime() : 0))
+    .sort((a, b) => daysBetween(now, a) - daysBetween(now, b))[0] || null;
   let dateSuggestion = null;
+
   if (!date) headerFlags.date = flag('amber', 'No date could be read.');
   else if (daysBetween(date, now) > 0) {
-    dateSuggestion = suggestYear(date);
+    dateSuggestion = better ? better.toISOString().slice(0, 10) : null;
     headerFlags.date = flag('red', dateSuggestion
-      ? `That date is in the future — did you mean ${dateSuggestion.toISOString().slice(0, 10)}?`
+      ? `That date is in the future — did you mean ${dateSuggestion}?`
       : 'That date is in the future.');
   } else if (daysBetween(now, date) > MAX_AGE_DAYS) {
-    dateSuggestion = suggestYear(date);
+    dateSuggestion = better ? better.toISOString().slice(0, 10) : null;
     headerFlags.date = flag('amber', dateSuggestion
-      ? `Read as ${date.toISOString().slice(0, 10)} — did you mean ${dateSuggestion.toISOString().slice(0, 10)}?`
+      ? `Read as ${date.toISOString().slice(0, 10)} — did you mean ${dateSuggestion}?`
       : `That date is ${daysBetween(now, date)} days ago — check the year.`);
-  }
-  else if ((conf.date ?? 1) < LOW_CONFIDENCE) headerFlags.date = flag('amber', 'The date was hard to read.');
+  } else if ((conf.date ?? 1) < LOW_CONFIDENCE) headerFlags.date = flag('amber', 'The date was hard to read.');
 
   const registration = String(raw.registration || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').trim() || null;
   const regRule = registration ? _internals.typeFromRegistration(registration) : null;
@@ -106,6 +127,10 @@ async function validateScan(raw, { pilot = {}, now = new Date() } = {}) {
   if (registration && (conf.registration ?? 1) < LOW_CONFIDENCE) {
     headerFlags.registration = flag('amber', 'The registration was hard to read.');
   }
+  for (const f of shakyHeader) {
+    if (f === 'sectorCount') headerFlags.sectors = flag('amber', 'The two readings of this page found a different number of sectors.');
+    else if (!headerFlags[f]) headerFlags[f] = flag('amber', 'The page read differently the second time — check this.');
+  }
 
   // The pilot's own role: their staff number against the PF/PM columns decides
   // the sector; the flight-deck crew block decides the role for the whole page.
@@ -114,7 +139,7 @@ async function validateScan(raw, { pilot = {}, now = new Date() } = {}) {
   if (!pilotRole && pilot.role === 'FIRST_OFFICER') pilotRole = 'SIC';
 
   const sectors = [];
-  for (const s of (raw.sectors || [])) {
+  for (const [sectorIndex, s] of (raw.sectors || []).entries()) {
     const c = s.confidence || {};
     const flags = {};
     const sect = {
@@ -148,6 +173,29 @@ async function validateScan(raw, { pilot = {}, now = new Date() } = {}) {
     if (airborne != null && block != null && airborne > block) flags.off = flag('red', 'Airborne time is longer than block time.');
     if (taxiOut != null && taxiOut > 180) flags.off = flag('amber', 'Over 3 hours between OUT and OFF.');
     if (taxiIn != null && taxiIn < 1) flags.in = flag('amber', 'ON and IN are the same minute.');
+
+    // Anything the two readings differed on.
+    for (const f of (shaky[sectorIndex] || [])) {
+      if (!flags[f]) flags[f] = flag('amber', 'The two readings of this page differ here — check it against the photo.');
+    }
+
+    // The lower table repeats FROM and TO. Read separately, it is an
+    // independent witness to the route; disagreement means one of them is wrong.
+    const lowerFrom = String(s.lowerFrom || '').toUpperCase().trim();
+    const lowerTo = String(s.lowerTo || '').toUpperCase().trim();
+    if (lowerFrom && sect.from && lowerFrom !== sect.from && !flags.from) {
+      flags.from = flag('amber', `The lower table says ${lowerFrom} here.`);
+    }
+    if (lowerTo && sect.to && lowerTo !== sect.to && !flags.to) {
+      flags.to = flag('amber', `The lower table says ${lowerTo} here.`);
+    }
+
+    // A departure long after its scheduled time is possible, but on this form
+    // it is more often a misread hour.
+    const sched = span(sect.std, sect.out);
+    if (sect.std && sect.out && sched != null && sched > 90 && sched < 1200 && !flags.out) {
+      flags.out = flag('amber', `OUT is ${hhmm(sched)} after the scheduled ${sect.std} — check the hour.`);
+    }
 
     // The form's own total is the strongest check we have.
     const formTotal = parseFormDuration(sect.formTotal);
@@ -211,11 +259,23 @@ async function validateScan(raw, { pilot = {}, now = new Date() } = {}) {
     });
   }
 
+  // The TOTAL row at the foot of the upper table is one more independent
+  // number: if the sector totals do not add up to it, one of them was misread.
+  const pageTotal = parseFormDuration(raw.totals && raw.totals.total);
+  const sumOfT = sectors.reduce((n, x) => n + (parseFormDuration(x.formTotal) ?? 0), 0);
+  if (pageTotal != null && sumOfT > 0 && Math.abs(pageTotal - sumOfT) > BLOCK_TOLERANCE_MIN) {
+    headerFlags.totals = flag('amber', `The sector totals come to ${hhmm(sumOfT)}, the page total says ${hhmm(pageTotal)}.`);
+    for (const x of sectors) {
+      if (!x.flags.out) x.flags.out = flag('amber', 'The page total does not match the sectors — check this row.');
+      x.needsCheck = true;
+    }
+  }
+
   const issues = sectors.reduce((n, s) => n + Object.keys(s.flags).length, 0) + Object.keys(headerFlags).length;
   return {
     header: {
       date: date ? date.toISOString().slice(0, 10) : null,
-      dateSuggestion: dateSuggestion ? dateSuggestion.toISOString().slice(0, 10) : null,
+      dateSuggestion,   // already yyyy-mm-dd
       aircraftType, registration, typeInferred,
       commander: String(raw.commander || '').trim() || null,
       firstOfficer: String(raw.firstOfficer || '').trim() || null,

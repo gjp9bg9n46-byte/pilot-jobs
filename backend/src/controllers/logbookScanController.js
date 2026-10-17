@@ -13,11 +13,17 @@ const sharp = require('sharp');
 const prisma = require('../config/database');
 const logger = require('../config/logger');
 const { prepareScanImage } = require('../services/imagePrep');
-const { extractVoyageReport, ScanError, modelName } = require('../services/voyageExtractor');
+const { ScanError, modelName } = require('../services/voyageExtractor');
+const { readPage, uprightCopy } = require('../services/voyageReconcile');
 const { validateScan } = require('../services/voyageValidate');
 const { recomputeDerivedTotals } = require('../services/logbookSummary');
 
 const DAILY_LIMIT = Number(process.env.SCAN_DAILY_LIMIT || 30);
+// Scanning ships dark: the endpoints exist, the UI hides, and nothing calls the
+// provider until SCAN_ENABLED is set. Accuracy has to be signed off first, and
+// the API key needs a paid tier (the free one allows 20 requests a day).
+const SCAN_ENABLED = String(process.env.SCAN_ENABLED || '').toLowerCase() === 'true';
+const OFF = { error: 'Scanning is not available yet. Enter the flight manually for now.', code: 'DISABLED' };
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
 const UNREADABLE = "Couldn't read this photo — try again or enter manually.";
 
@@ -32,6 +38,7 @@ async function scansToday(pilotId) {
 exports.createScan = async (req, res, next) => {
   const file = req.file;
   try {
+    if (!SCAN_ENABLED) return res.status(503).json(OFF);
     if (!file || !file.buffer?.length) return res.status(400).json({ error: 'No file was uploaded.' });
     if (!ACCEPTED.includes(file.mimetype)) {
       return res.status(415).json({ error: 'Upload a photo (JPEG, PNG, HEIC) or a PDF.' });
@@ -49,7 +56,9 @@ exports.createScan = async (req, res, next) => {
     const prep = await prepareScanImage(file.buffer, file.mimetype);
     let extracted;
     try {
-      extracted = await extractVoyageReport({ buffer: prep.buffer, mimeType: prep.mimeType });
+      // Two readings of the page, plus a close re-read of any row whose own
+      // arithmetic fights the crew's T or N column (see services/voyageReconcile).
+      extracted = await readPage({ buffer: prep.buffer, mimeType: prep.mimeType });
     } catch (err) {
       const code = err instanceof ScanError ? err.code : 'PROVIDER';
       await prisma.logbookScan.create({
@@ -59,7 +68,7 @@ exports.createScan = async (req, res, next) => {
       return res.status(code === 'TIMEOUT' ? 504 : 422).json({ error: message, code });
     }
 
-    const checked = await validateScan(extracted.raw, { pilot });
+    const checked = await validateScan(extracted.raw, { pilot, uncertain: extracted.uncertain });
     if (!checked.sectors.length) return res.status(422).json({ error: UNREADABLE, code: 'NO_SECTORS' });
 
     // No type on the form and none inferable from the registration: fall back to
@@ -76,7 +85,9 @@ exports.createScan = async (req, res, next) => {
 
     // Store the straightened image upright, so the review crops read the right
     // way up whichever way the page was photographed.
-    const stored = await uprightCopy(prep, checked.header.pageOrientation);
+    const stored = prep.mimeType === 'application/pdf'
+      ? prep
+      : { ...prep, ...(await uprightCopy(prep.buffer, checked.header.pageOrientation)) };
     const scan = await prisma.logbookScan.create({
       data: {
         id: randomUUID(),
@@ -104,14 +115,6 @@ exports.createScan = async (req, res, next) => {
   }
 };
 
-async function uprightCopy(prep, orientation) {
-  if (prep.mimeType === 'application/pdf') return prep;
-  const turn = { rotated_cw: -90, rotated_ccw: 90, upside_down: 180 }[orientation] || 0;
-  if (!turn) return prep;
-  const buffer = await sharp(prep.buffer).rotate(turn).jpeg({ quality: 88 }).toBuffer();
-  return { ...prep, buffer };
-}
-
 // Same date + flight number + route already logged → skipped, never doubled.
 async function markDuplicates(pilotId, checked) {
   const date = checked.header.date ? new Date(`${checked.header.date}T00:00:00.000Z`) : null;
@@ -133,6 +136,7 @@ async function markDuplicates(pilotId, checked) {
 // GET /logbook/scan/:id — re-open a review (and its image) by id.
 exports.getScan = async (req, res, next) => {
   try {
+    if (!SCAN_ENABLED) return res.status(503).json(OFF);
     const scan = await prisma.logbookScan.findFirst({
       where: { id: req.params.id, pilotId: req.pilot.id },
       select: { id: true, status: true, header: true, sectors: true, createdAt: true, imageData: true, mimeType: true },
@@ -148,6 +152,7 @@ exports.getScan = async (req, res, next) => {
 // GET /logbook/scan/:id/image — the straightened page, for the review crops.
 exports.getScanImage = async (req, res, next) => {
   try {
+    if (!SCAN_ENABLED) return res.status(503).json(OFF);
     const scan = await prisma.logbookScan.findFirst({
       where: { id: req.params.id, pilotId: req.pilot.id },
       select: { imageData: true, mimeType: true },
@@ -164,6 +169,7 @@ exports.getScanImage = async (req, res, next) => {
 // re-checked here, because a field can be edited on the review screen.
 exports.saveScan = async (req, res, next) => {
   try {
+    if (!SCAN_ENABLED) return res.status(503).json(OFF);
     const scan = await prisma.logbookScan.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id } });
     if (!scan) return res.status(404).json({ error: 'That scan is no longer available.' });
     if (scan.status === 'SAVED') return res.status(409).json({ error: 'These flights were already saved.' });
@@ -270,6 +276,7 @@ exports.saveScan = async (req, res, next) => {
 // DELETE /logbook/scan/:id — give up on a review; the photo goes with it.
 exports.discardScan = async (req, res, next) => {
   try {
+    if (!SCAN_ENABLED) return res.status(503).json(OFF);
     const scan = await prisma.logbookScan.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id }, select: { id: true } });
     if (!scan) return res.status(404).json({ error: 'That scan is no longer available.' });
     await prisma.logbookScan.update({
@@ -284,8 +291,16 @@ exports.discardScan = async (req, res, next) => {
 exports.quota = async (req, res, next) => {
   try {
     const used = await scansToday(req.pilot.id);
-    res.json({ used, limit: DAILY_LIMIT, left: Math.max(0, DAILY_LIMIT - used), configured: !!process.env.GEMINI_API_KEY });
+    res.json({
+      used,
+      limit: DAILY_LIMIT,
+      left: Math.max(0, DAILY_LIMIT - used),
+      // `enabled` is what the UI hides behind; `configured` only says a key exists.
+      enabled: SCAN_ENABLED,
+      configured: SCAN_ENABLED && !!process.env.GEMINI_API_KEY,
+    });
   } catch (err) { next(err); }
 };
 
 module.exports.DAILY_LIMIT = DAILY_LIMIT;
+module.exports.SCAN_ENABLED = SCAN_ENABLED;

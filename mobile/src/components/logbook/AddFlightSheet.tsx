@@ -12,9 +12,12 @@ type Props = {
   onManual: () => void;
   onImport: () => void;
   scansLeft?: number | null;
+  // Scanning ships dark; until the server enables it the sheet simply does not
+  // offer it, rather than offering something that answers 503.
+  scanEnabled?: boolean;
 };
 
-export default function AddFlightSheet({ visible, onClose, onScan, onManual, onImport, scansLeft }: Props) {
+export default function AddFlightSheet({ visible, onClose, onScan, onManual, onImport, scansLeft, scanEnabled = false }: Props) {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
 
@@ -43,13 +46,13 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
         <View style={styles.grab} />
         <Text style={styles.h3}>Add a flight</Text>
         <Text style={styles.sub}>Every sector you flew today, in under a minute.</Text>
-        {option('scan', 'scan-outline', 'Scan voyage report',
+        {scanEnabled ? option('scan', 'scan-outline', 'Scan voyage report',
           scansLeft != null && scansLeft <= 0
             ? 'No scans left today — enter the flight manually.'
             : 'Take a photo. We read every sector and you check it.',
-          onScan, true)}
+          onScan, true) : null}
         {option('manual', 'create-outline', 'Enter manually',
-          'Type the times yourself. Route, aircraft and crew are remembered from your last flight.', onManual)}
+          'Type the times yourself. Route, aircraft and crew are remembered from your last flight.', onManual, !scanEnabled)}
         {option('import', 'download-outline', 'Import a file',
           "ForeFlight, LogTen or a CSV from your airline's system.", onImport)}
       </View>

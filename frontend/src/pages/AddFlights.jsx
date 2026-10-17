@@ -22,7 +22,9 @@ export default function AddFlights() {
   const { state } = useLocation();
   const prefill = state?.manual || null;
   const fileRef = useRef(null);
-  const [mode, setMode] = useState(prefill ? 'manual' : 'scan');   // scan | manual
+  // Scanning is behind a server flag until its accuracy is signed off, so the
+  // page opens on manual entry and only offers the scan when it is live.
+  const [mode, setMode] = useState('manual');                     // scan | manual
   const [prefs, setPrefs] = useState(null);
   const [quota, setQuota] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -52,7 +54,9 @@ export default function AddFlights() {
         commander: m.commander || data.last.commander || '',
       }));
     }).catch(() => {});
-    logbookApi.scanQuota().then(({ data }) => setQuota(data)).catch(() => {});
+    logbookApi.scanQuota()
+      .then(({ data }) => { setQuota(data); if (data.enabled && !prefill) setMode('scan'); })
+      .catch(() => {});
   }, []);
 
   const upload = useCallback(async (file) => {
@@ -112,7 +116,11 @@ export default function AddFlights() {
         <div className="lb-head">
           <div>
             <h1>{state?.title || 'Add flights'}</h1>
-            <p className="sub">{state?.title ? 'Times only — the aircraft, crew and date came from the last flight.' : 'From a voyage report photo or PDF, or type them in.'}</p>
+            <p className="sub">
+              {state?.title
+                ? 'Times only — the aircraft, crew and date came from the last flight.'
+                : quota?.enabled ? 'From a voyage report photo or PDF, or type them in.' : 'Type the flight in, or import a file.'}
+            </p>
           </div>
           <div className="lb-actions">
             <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import a file</Button>
@@ -120,10 +128,12 @@ export default function AddFlights() {
           </div>
         </div>
 
-        <div className="lb-tabs" style={{ marginTop: 20 }}>
-          <button type="button" className={mode === 'scan' ? 'on' : ''} onClick={() => setMode('scan')}>Scan a voyage report</button>
-          <button type="button" className={mode === 'manual' ? 'on' : ''} onClick={() => setMode('manual')}>Enter manually</button>
-        </div>
+        {quota?.enabled && (
+          <div className="lb-tabs" style={{ marginTop: 20 }}>
+            <button type="button" className={mode === 'scan' ? 'on' : ''} onClick={() => setMode('scan')}>Scan a voyage report</button>
+            <button type="button" className={mode === 'manual' ? 'on' : ''} onClick={() => setMode('manual')}>Enter manually</button>
+          </div>
+        )}
 
         {error && <div className="lb-warn" role="alert"><AlertTriangle size={16} style={{ color: 'var(--lb-amber)', flex: 'none' }} /><span>{error}</span></div>}
 
@@ -141,7 +151,7 @@ export default function AddFlights() {
           </div>
         )}
 
-        {mode === 'scan' ? (
+        {mode === 'scan' && quota?.enabled ? (
           <div className="lb-wrap" style={{ marginTop: 16 }}>
             <div className="lb-card" style={{ padding: 16 }}>
               <div

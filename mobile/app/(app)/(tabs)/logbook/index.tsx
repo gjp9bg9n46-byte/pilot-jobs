@@ -125,12 +125,15 @@ export default function LogbookList() {
   const [cfOpenSignal, setCfOpenSignal] = useState(0);
   const [timeFormat, setTimeFormatState] = useState<TimeFormat>('hhmm');
   const [scansLeft, setScansLeft] = useState<number | null>(null);
+  const [scanEnabled, setScanEnabled] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
   // How durations are written is a profile preference, shared with the web.
   useEffect(() => {
     api.get('/logbook/prefs').then(({ data }) => setTimeFormatState(data.timeFormat || 'hhmm')).catch(() => {});
-    api.get('/logbook/scan-quota').then(({ data }) => setScansLeft(data.left)).catch(() => {});
+    api.get('/logbook/scan-quota')
+      .then(({ data }) => { setScansLeft(data.left); setScanEnabled(!!data.enabled); })
+      .catch(() => {});
   }, []);
   const setTimeFormat = (fmt: TimeFormat) => {
     setTimeFormatState(fmt);
@@ -351,6 +354,7 @@ export default function LogbookList() {
 
       <AddFlightSheet
         visible={addOpen}
+        scanEnabled={scanEnabled}
         scansLeft={scansLeft}
         onClose={() => setAddOpen(false)}
         onScan={() => router.push('/logbook/scan')}

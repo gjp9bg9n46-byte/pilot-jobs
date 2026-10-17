@@ -38,13 +38,15 @@ Return every flown sector on the page, in the order they appear.
 MANY REPORTS USE THE AIR CAIRO "FL-OPS: 02" LAYOUT. On that form:
 - "AIRCRAFT REGN: SU ____" — the prefix SU is printed and only the last letters are handwritten. Return the whole registration, e.g. "SU-BVM".
 - "FLIGHT No.: MSC 2926/2927" — one flight number per sector, in sector order. Return "MSC 2926" for the first sector, "MSC 2927" for the second.
-- "Date: dd/mm/yyyy".
+- "Date: dd/mm/yyyy" — ALWAYS day first on this form. Return it as yyyy-mm-dd. If the digits are ambiguous, return what is written and lower the confidence; never reorder to make a date look sensible.
 - Each time column holds TWO stacked values per sector row:
     ATD: top = "Chox off" = OUT,  bottom = "A/B" (airborne) = OFF
     ATA: top = "T/Down" (touchdown) = ON,  bottom = "Chox on" = IN
   STD and STA are SCHEDULED times — return them as std/sta, and never as out/off/on/in.
 - "TIME D / N / T" on each sector row is the crew's own day / night / total(block) time in hours and minutes. Return them as formDay / formNight / formTotal ("H:MM"). The "TOTAL" row is the page total — return it as totals, not as a sector.
 - The lower table has, per sector, "INITIALS / STAFF NO." under PF and PM. Return pfStaff and pmStaff exactly as written (digits or initials).
+- The lower table ALSO repeats FROM and TO for each sector. Read those SEPARATELY, from the lower table only, into lowerFrom and lowerTo — do not copy the upper table's values. They are a cross-check, so an honest second reading matters more than agreement.
+- rowBox: where this sector's row sits in the UPPER table, as {y0, y1} in thousandths of the image height (0 at the top, 1000 at the bottom), covering the row's full height including both stacked time values. If the page is rotated, give the box in the image as you see it, not as the page would read upright.
 - Ignore everything else on the page: fuel, S.G., burn-off, delays, pax, ZFW, TOW, remarks, signatures.
 - NEVER return cabin-crew names or their staff numbers. Flight-deck crew: return only the commander's name (CAPT) and, if present, the first officer's name.
 
@@ -88,6 +90,11 @@ const SCHEMA = {
           landings: { type: 'integer' },
           pilotFlying: { type: 'boolean' },
           std: { type: 'string' }, sta: { type: 'string' },
+          lowerFrom: { type: 'string' }, lowerTo: { type: 'string' },
+          rowBox: {
+            type: 'object',
+            properties: { y0: { type: 'integer' }, y1: { type: 'integer' } },
+          },
           formDay: { type: 'string' }, formNight: { type: 'string' }, formTotal: { type: 'string' },
           pfStaff: { type: 'string' }, pmStaff: { type: 'string' },
           confidence: {
@@ -101,7 +108,8 @@ const SCHEMA = {
           },
         },
         required: ['flightNumber', 'from', 'to', 'out', 'off', 'on', 'in', 'landings', 'pilotFlying',
-          'std', 'sta', 'formDay', 'formNight', 'formTotal', 'pfStaff', 'pmStaff', 'confidence'],
+          'std', 'sta', 'formDay', 'formNight', 'formTotal', 'pfStaff', 'pmStaff', 'lowerFrom', 'lowerTo',
+          'rowBox', 'confidence'],
       },
     },
     confidence: {
@@ -114,6 +122,47 @@ const SCHEMA = {
   },
   required: ['date', 'aircraftType', 'registration', 'commander', 'pilotRole', 'pageOrientation', 'sectors'],
 };
+
+
+// ── Talking to the provider ────────────────────────────────────────────────
+// Two reads per page plus row re-reads means several calls in quick succession,
+// and the API answers 429 long before our own daily cap would. Calls are
+// therefore spaced and retried with backoff; only a persistent 429 reaches the
+// pilot, and then as "busy", not as a failed scan.
+const MIN_GAP_MS = Number(process.env.SCAN_MIN_GAP_MS || 1100);
+const RETRIES = Number(process.env.SCAN_RETRIES || 3);
+let nextSlot = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function takeSlot() {
+  const now = Date.now();
+  const wait = Math.max(0, nextSlot - now);
+  nextSlot = Math.max(now, nextSlot) + MIN_GAP_MS;
+  if (wait) await sleep(wait);
+}
+
+async function callGemini(url, body, { label }) {
+  let lastErr;
+  for (let attempt = 0; attempt <= RETRIES; attempt++) {
+    await takeSlot();
+    try {
+      return await axios.post(url, body, {
+        timeout: TIMEOUT_MS,
+        headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'Content-Type': 'application/json' },
+        maxBodyLength: Infinity,
+      });
+    } catch (err) {
+      lastErr = err;
+      const status = err.response?.status;
+      const retryable = status === 429 || status === 503 || status === 500 || err.code === 'ECONNRESET';
+      if (!retryable || attempt === RETRIES) break;
+      const backoff = Math.round((2 ** attempt) * 1500 + Math.random() * 400);
+      logger.warn(`voyage ${label}: ${status || err.code} — retrying in ${backoff}ms (attempt ${attempt + 1}/${RETRIES})`);
+      await sleep(backoff);
+    }
+  }
+  throw lastErr;
+}
 
 function modelName() {
   return String(process.env.GEMINI_MODEL || DEFAULT_MODEL).trim() || DEFAULT_MODEL;
@@ -136,10 +185,10 @@ function parseJson(text) {
   return null;
 }
 
-async function geminiExtract({ buffer, mimeType }) {
+async function geminiExtract({ buffer, mimeType, model: override }) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new ScanError('NO_KEY', 'Scanning is not configured.');
-  const model = modelName();
+  const model = override || modelName();
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const body = {
     contents: [{
@@ -162,11 +211,7 @@ async function geminiExtract({ buffer, mimeType }) {
   const started = Date.now();
   let res;
   try {
-    res = await axios.post(url, body, {
-      timeout: TIMEOUT_MS,
-      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-      maxBodyLength: Infinity,
-    });
+    res = await callGemini(url, body, { label: 'scan' });
   } catch (err) {
     const status = err.response?.status;
     // Never log the request body — it contains the image.
@@ -193,18 +238,85 @@ async function geminiExtract({ buffer, mimeType }) {
   };
 }
 
+
+// ── Reading one row again, closer ───────────────────────────────────────────
+// When a sector's own arithmetic disagrees with the crew's T or N column, the
+// times were misread — and a misreading repeated at full-page scale tends to
+// repeat. Cropping the row and enlarging it changes the evidence, not just the
+// dice roll, so the second answer is worth more than a retry.
+const ROW_INSTRUCTIONS = `This is ONE sector's row, cut out of an Air Cairo voyage report and enlarged.
+Read only the four times in it:
+  ATD column: top value = OUT (chocks off), bottom value = OFF (airborne)
+  ATA column: top value = ON (touchdown), bottom value = IN (chocks on)
+Also read this row's TIME T (total/block) and TIME N (night) if they are visible, and the FROM / TO codes.
+Times as written, 24-hour, "HH:MM". A value you cannot read is null — never guess, never compute.
+Output ONLY JSON.`;
+
+const ROW_SCHEMA = {
+  type: 'object',
+  properties: {
+    from: { type: 'string' }, to: { type: 'string' },
+    out: { type: 'string' }, off: { type: 'string' }, on: { type: 'string' }, in: { type: 'string' },
+    formTotal: { type: 'string' }, formNight: { type: 'string' },
+    confidence: { type: 'number' },
+  },
+  required: ['out', 'off', 'on', 'in'],
+};
+
+async function extractRow({ buffer, mimeType, model: override }) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new ScanError('NO_KEY', 'Scanning is not configured.');
+  const model = override || String(process.env.SCAN_ROW_MODEL || '').trim() || modelName();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const started = Date.now();
+  let res;
+  try {
+    res = await callGemini(url, {
+      contents: [{ role: 'user', parts: [{ text: ROW_INSTRUCTIONS }, { inline_data: { mime_type: mimeType, data: buffer.toString('base64') } }] }],
+      generationConfig: {
+        temperature: 0, responseMimeType: 'application/json', responseSchema: ROW_SCHEMA,
+        // A crop is a small picture but the model still thinks before answering,
+        // and thinking comes out of the same budget: 1024 left ~15 tokens for the
+        // answer, so every row re-read came back truncated and was thrown away.
+        maxOutputTokens: Number(process.env.SCAN_ROW_MAX_TOKENS || 3072),
+        thinkingConfig: { thinkingLevel: String(process.env.SCAN_THINKING || 'low') },
+      },
+    }, { label: 'row re-read' });
+  } catch (err) {
+    logger.warn(`voyage row re-read failed: status=${err.response?.status || err.code || 'ERR'} ms=${Date.now() - started}`);
+    return null;
+  }
+  const cand = res.data?.candidates?.[0];
+  const text = (cand?.content?.parts || []).map((p) => p.text).filter(Boolean).join('');
+  const parsed = parseJson(text);
+  const usage = res.data?.usageMetadata || {};
+  if (!parsed) {
+    logger.warn(`voyage row re-read unusable: finish=${cand?.finishReason || 'none'} outTok=${usage.candidatesTokenCount || 0} thought=${usage.thoughtsTokenCount || 0}`);
+    return null;
+  }
+  return { row: parsed, usage: { promptTokens: usage.promptTokenCount || 0, outputTokens: (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0), costUsd: estimateCostUsd(usage), ms: Date.now() - started } };
+}
+
 const PROVIDERS = { gemini: geminiExtract };
 
 /**
  * Read a voyage report. One call, one provider, one shape.
  * @param {{buffer: Buffer, mimeType: string}} file
  */
-async function extractVoyageReport({ buffer, mimeType }) {
+async function extractVoyageReport({ buffer, mimeType, model }) {
   if (!buffer || !buffer.length) throw new ScanError('EMPTY', 'No file was uploaded.');
   if (buffer.length > MAX_BYTES) throw new ScanError('TOO_BIG', 'That file is too large (12 MB max).');
   const provider = PROVIDERS[String(process.env.SCAN_PROVIDER || 'gemini')];
   if (!provider) throw new ScanError('NO_PROVIDER', 'Scanning is not configured.');
-  return provider({ buffer, mimeType });
+  return provider({ buffer, mimeType, model });
 }
 
-module.exports = { extractVoyageReport, ScanError, modelName, estimateCostUsd, parseJson, SCHEMA, INSTRUCTIONS };
+// The second opinion. A DIFFERENT model is worth more than the same one asked
+// twice: two models rarely misread the same handwriting the same way, so where
+// they agree the reading is solid and where they differ the pilot should look.
+// Defaults to the primary model when SCAN_MODEL_B is unset.
+function secondModelName() {
+  return String(process.env.SCAN_MODEL_B || '').trim() || modelName();
+}
+
+module.exports = { extractVoyageReport, extractRow, ScanError, modelName, secondModelName, estimateCostUsd, parseJson, SCHEMA, INSTRUCTIONS };

@@ -179,3 +179,81 @@ test('extractor helpers: fenced JSON, cost, model from env', () => {
   assert.ok(estimateCostUsd({ promptTokenCount: 1800, candidatesTokenCount: 550 }) < 0.01);
   assert.ok(modelName().includes('flash'));
 });
+
+// ── The checks added after the first accuracy round ────────────────────────
+// Every one of these is a real miss from the nine sample reports.
+
+const { matchesForm, parseDuration: dur } = require('../voyageReconcile');
+
+test('a re-read is judged against the PAGE total, never its own (the 96c1f6fc trap)', () => {
+  // The page was read two hours late AND its T column was read two hours long,
+  // so the two agreed with each other and nothing was flagged.
+  const misread = { out: '15:42', in: '21:55', formTotal: '06:13' };
+  assert.equal(matchesForm(misread), true, 'self-consistent misreading looks fine on its own');
+  assert.equal(matchesForm(misread, dur('05:13')), false, 'against the real T it is caught');
+  const correct = { out: '13:42', in: '18:55', formTotal: '05:13' };
+  assert.equal(matchesForm(correct, dur('05:13')), true);
+});
+
+test('the lower table is an independent witness to the route', async () => {
+  const raw = RAW();
+  raw.sectors[0].lowerFrom = 'CAI';            // upper table said HRG
+  raw.sectors[0].lowerTo = 'JED';              // upper table said MUC
+  const r = await validateScan(raw, { pilot: FO, now: NOW });
+  assert.match(r.sectors[0].flags.from.message, /lower table says CAI/);
+  assert.match(r.sectors[0].flags.to.message, /lower table says JED/);
+});
+
+test('sector totals that do not add up to the page total flag every row', async () => {
+  const raw = RAW();
+  raw.totals = { day: '07:40', night: '01:00', total: '11:04' };   // sectors sum to 8:40
+  const r = await validateScan(raw, { pilot: FO, now: NOW });
+  assert.match(r.header.flags.totals.message, /page total says 11:04/);
+  assert.ok(r.sectors.every((s) => s.needsCheck), 'every sector is put up for checking');
+});
+
+test('a disagreement between the two readings is flagged on that field', async () => {
+  const r = await validateScan(RAW(), {
+    pilot: FO, now: NOW,
+    uncertain: { header: ['registration'], sectors: { 1: ['on', 'in'] } },
+  });
+  assert.match(r.header.flags.registration.message, /read differently the second time/);
+  assert.match(r.sectors[1].flags.on.message, /two readings/);
+  assert.match(r.sectors[1].flags.in.message, /two readings/);
+  assert.equal(r.sectors[0].flags.on, undefined, 'the sector they agreed on stays clean');
+});
+
+test('dates: a swapped day and month is offered back, not just rejected', async () => {
+  const raw = RAW();
+  raw.date = '2026-10-21';                     // 21 Oct is still to come
+  const r = await validateScan(raw, { pilot: FO, now: new Date('2026-10-17T00:00:00Z') });
+  assert.equal(r.header.flags.date.level, 'red');
+  assert.equal(r.header.dateSuggestion, '2026-10-12', 'day and month swapped back');
+});
+
+test('dates: a misread year is offered back as this year', async () => {
+  const raw = RAW();
+  raw.date = '2021-10-16';
+  const r = await validateScan(raw, { pilot: FO, now: new Date('2026-10-17T00:00:00Z') });
+  assert.equal(r.header.flags.date.level, 'amber');
+  assert.equal(r.header.dateSuggestion, '2026-10-16');
+});
+
+test('a departure long after its scheduled time is worth a second look', async () => {
+  const raw = RAW();
+  raw.sectors[0].std = '07:25';
+  raw.sectors[0].out = '09:26';                // two hours after STD
+  raw.sectors[0].in = '13:53';                 // block still matches the form
+  raw.sectors[0].formTotal = '04:27';
+  const r = await validateScan(raw, { pilot: FO, now: NOW });
+  assert.match(r.sectors[0].flags.out.message, /after the scheduled 07:25/);
+});
+
+test('a sector that matches its form total and schedule stays clean', async () => {
+  const raw = RAW();
+  raw.sectors[1].out = '12:59';
+  raw.sectors[1].in = '17:12';                 // 4:13, exactly the form's T
+  raw.sectors[1].std = '13:05';
+  const r = await validateScan(raw, { pilot: FO, now: NOW });
+  assert.deepEqual(r.sectors[1].flags, {});
+});
