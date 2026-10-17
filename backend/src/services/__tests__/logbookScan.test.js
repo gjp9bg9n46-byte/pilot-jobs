@@ -319,3 +319,53 @@ test('a day in another year says so, so a misread year cannot hide', () => {
   assert.ok(!dayLabel('2026-05-22', now).includes('2026'), 'this year needs no year');
   assert.ok(dayLabel('2024-10-16', now).includes('2024'), 'another year is spelled out');
 });
+
+// ── One page, more than one day ────────────────────────────────────────────
+// A voyage report prints one date, but a night rotation crosses midnight: the
+// owner's CGN–HRG pushed back at 03:10, which is the next morning, and it was
+// filed under the previous day.
+
+test('a sector that leaves after midnight takes the next day\'s date', async () => {
+  const raw = {
+    date: '2026-10-15', registration: 'SU-BVM', pilotRole: 'SIC', confidence: {},
+    sectors: [
+      { flightNumber: 'MSC 2918', from: 'HRG', to: 'CGN', out: '20:35', off: '20:54', on: '01:49', in: '02:00', formTotal: '05:25', confidence: {} },
+      { flightNumber: 'MSC 2919', from: 'CGN', to: 'HRG', out: '03:10', off: '03:20', on: '07:35', in: '07:45', formTotal: '04:35', confidence: {} },
+    ],
+  };
+  const r = await validateScan(raw, { pilot: FO, now: new Date('2026-10-17T00:00:00Z') });
+  assert.equal(r.sectors[0].sectorDate, '2026-10-15', 'the evening departure stays on the page date');
+  assert.equal(r.sectors[1].sectorDate, '2026-10-16', 'the leg after midnight moves to the next day');
+  assert.equal(r.sectors[1].dayOffset, 1);
+});
+
+test('an ordinary day rotation stays on one date', async () => {
+  const r = await validateScan(RAW(), { pilot: FO, now: NOW });
+  assert.deepEqual(r.sectors.map((s) => s.sectorDate), ['2026-10-04', '2026-10-04']);
+});
+
+test('three sectors across a midnight all land on the right side of it', async () => {
+  const raw = {
+    date: '2026-10-15', registration: 'SU-BVM', pilotRole: 'SIC', confidence: {},
+    sectors: [
+      { from: 'CAI', to: 'HRG', out: '21:00', off: '21:15', on: '22:00', in: '22:10', confidence: {} },
+      { from: 'HRG', to: 'CAI', out: '23:30', off: '23:40', on: '00:40', in: '00:50', confidence: {} },
+      { from: 'CAI', to: 'JED', out: '02:00', off: '02:15', on: '04:00', in: '04:10', confidence: {} },
+    ],
+  };
+  const r = await validateScan(raw, { pilot: FO, now: new Date('2026-10-17T00:00:00Z') });
+  assert.deepEqual(r.sectors.map((s) => s.sectorDate), ['2026-10-15', '2026-10-15', '2026-10-16']);
+});
+
+test('night is worked out for the sector\'s own date, not the page\'s', async () => {
+  const raw = {
+    date: '2026-10-15', registration: 'SU-BVM', pilotRole: 'SIC', confidence: {},
+    sectors: [
+      { from: 'HRG', to: 'CGN', out: '20:35', off: '20:54', on: '01:49', in: '02:00', confidence: {} },
+      { from: 'CGN', to: 'HRG', out: '03:10', off: '03:20', on: '07:35', in: '07:45', confidence: {} },
+    ],
+  };
+  const r = await validateScan(raw, { pilot: FO, now: new Date('2026-10-17T00:00:00Z') });
+  assert.ok(r.sectors[1].night > 0, 'a pre-dawn leg still has night in it');
+  assert.ok(r.sectors[1].night < r.sectors[1].block, 'and it ends at sunrise, not at the chocks');
+});

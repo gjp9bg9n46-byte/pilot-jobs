@@ -111,3 +111,11 @@
 .lb-beta { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   color: var(--lb-amber); background: #FDF1DD; border-radius: 5px; padding: 2px 5px; margin-left: 6px; vertical-align: 1px; }
 .lb-tabs button.on .lb-beta { color: #FFE2B0; background: rgba(255,255,255,.14); }
+
+/* A flagged date is a question, not a note: it has to be answered. */
+.lb-choice { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.lb-choice button { font: 600 12.5px var(--font-body); padding: 6px 10px; border-radius: 8px;
+  border: 1px solid #E9B872; background: #fff; color: var(--lb-amber); cursor: pointer; }
+.lb-choice button.on { background: var(--lb-amber); border-color: var(--lb-amber); color: #fff; }
+/* A sector that pushed back after midnight carries its own date. */
+.lb-nextday { color: var(--text-faint); font-weight: 500; }

@@ -138,6 +138,33 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
   if (!pilotRole && pilot.role === 'CAPTAIN') pilotRole = 'PIC';
   if (!pilotRole && pilot.role === 'FIRST_OFFICER') pilotRole = 'SIC';
 
+  // A voyage report prints ONE date, but its sectors run across midnight: a
+  // page dated the 15th can hold a leg that pushed back at 03:10 on the 16th.
+  // Walk the page as one clock — each time OUT falls before the previous
+  // sector's IN, the day has turned — and give every sector its own date, the
+  // UTC date it left on.
+  const addDays = (iso, n) => {
+    const d = new Date(`${iso}T00:00:00.000Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  // Walk the page on one absolute clock: each time is the next occurrence of
+  // that clock reading at or after where the previous leg ended, so a 03:10
+  // departure after a 02:00 arrival is 03:10 the NEXT morning, not an hour
+  // before a flight that has already landed.
+  let cursor = 0;                    // minutes since midnight on the page's date
+  const dayOffsets = (raw.sectors || []).map((s) => {
+    const out = toMinutes(s.out);
+    const inn = toMinutes(s.in);
+    if (out == null) return Math.floor(cursor / 1440);
+    let outAbs = out;
+    while (outAbs < cursor) outAbs += 1440;
+    let inAbs = inn == null ? outAbs : inn;
+    while (inAbs < outAbs) inAbs += 1440;
+    cursor = inAbs;
+    return Math.floor(outAbs / 1440);
+  });
+
   const sectors = [];
   for (const [sectorIndex, s] of (raw.sectors || []).entries()) {
     const c = s.confidence || {};
@@ -155,6 +182,10 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
       // Where this row sits on the stored page, so the review screen can show
       // the pilot the strip of paper a flagged value came from.
       rowBox: s.rowBoxUpright || s.rowBox || null,
+      // The date this sector left on, which is the page date plus however many
+      // midnights the day has crossed by the time this leg pushed back.
+      sectorDate: date ? addDays(date.toISOString().slice(0, 10), dayOffsets[sectorIndex] || 0) : null,
+      dayOffset: dayOffsets[sectorIndex] || 0,
     };
 
     // Airports must exist. A code we cannot resolve is a red flag, not a guess.
@@ -211,8 +242,9 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
     // Night: calculated along the route, cross-checked against the form's N.
     // The window is OUT→IN, not OFF→ON: night counts over flight (block) time,
     // which is what the crew's own N column records and what a logbook credits.
-    const night = (date && sect.out && sect.in && a && b)
-      ? await nightMinutes({ date, departure: sect.from, arrival: sect.to, off: sect.out, on: sect.in })
+    const sectorDate = sect.sectorDate ? new Date(`${sect.sectorDate}T00:00:00.000Z`) : date;
+    const night = (sectorDate && sect.out && sect.in && a && b)
+      ? await nightMinutes({ date: sectorDate, departure: sect.from, arrival: sect.to, off: sect.out, on: sect.in })
       : null;
     const formNight = parseFormDuration(sect.formNight);
     let nightUsed = night ? night.minutes : null;
@@ -251,7 +283,7 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
 
     const landings = sect.landings == null ? (pilotFlying ? 1 : 0) : sect.landings;
     const mine = pilotFlying === true ? landings : 0;
-    const nightLanding = (date && sect.on && b) ? await isNightLanding({ date, arrival: sect.to, on: sect.on }) : null;
+    const nightLanding = (sectorDate && sect.on && b) ? await isNightLanding({ date: sectorDate, arrival: sect.to, on: sect.on }) : null;
 
     sectors.push({
       ...sect,

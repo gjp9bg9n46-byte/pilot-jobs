@@ -39,6 +39,8 @@ export default function ScanVoyageReport() {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<Any>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  // 'suggestion' | 'keep' — a flagged date has to be answered before saving.
+  const [dateChoice, setDateChoice] = useState<string | null>(null);
   // The straightened page, fetched with the session token, so an amber field can
   // be checked against what the camera actually saw.
   const [token, setToken] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export default function ScanVoyageReport() {
   const save = async () => {
     setSaving(true); setError(null);
     try {
-      const { data } = await api.post(`/logbook/scan/${scan.id}/save`, { header: scan.header, sectors: scan.sectors });
+      const { data } = await api.post(`/logbook/scan/${scan.id}/save`, { header: scan.header, sectors: scan.sectors, dateChoice });
       setResult(data);
       setStage('done');
     } catch (e: Any) {
@@ -223,15 +225,15 @@ export default function ScanVoyageReport() {
                 />
                 {scan.header.dateSuggestion ? (
                   <Pressable
-                    onPress={() => setScan((x: Any) => ({
-                      ...x,
-                      header: { ...x.header, date: x.header.dateSuggestion, flags: { ...x.header.flags, date: undefined } },
-                    }))}
-                    style={styles.useBtn}
+                    onPress={() => { setDateChoice('suggestion'); setScan((x: Any) => ({ ...x, header: { ...x.header, date: x.header.dateSuggestion } })); }}
+                    style={[styles.useBtn, dateChoice === 'suggestion' && styles.useBtnOn]}
                   >
-                    <Text style={styles.useBtnText}>Use {scan.header.dateSuggestion}</Text>
+                    <Text style={[styles.useBtnText, dateChoice === 'suggestion' && styles.useBtnTextOn]}>Use {scan.header.dateSuggestion}</Text>
                   </Pressable>
                 ) : null}
+                <Pressable onPress={() => setDateChoice('keep')} style={[styles.useBtn, styles.keepBtn, dateChoice === 'keep' && styles.useBtnOn]}>
+                  <Text style={[styles.useBtnText, dateChoice === 'keep' && styles.useBtnTextOn]}>Keep it</Text>
+                </Pressable>
               </View>
             </View>
           </View>
@@ -279,6 +281,7 @@ export default function ScanVoyageReport() {
                   </View>
                   <Text style={styles.flSub}>
                     {s.flightNumber || 'No flight number'} · {s.pilotFlying === true ? 'Pilot flying' : s.pilotFlying === false ? 'Monitoring' : 'Duty not marked'}
+                    {s.dayOffset > 0 ? ` · ${s.sectorDate}` : ''}
                   </Text>
                 </View>
                 {s.duplicate
@@ -322,7 +325,7 @@ export default function ScanVoyageReport() {
                     />
                   </View>
                   {s.duplicate ? (
-                    <Text style={styles.whyLine}>This sector is already in your logbook, so it will be skipped.</Text>
+                    <Text style={styles.whyLine}>Already in your logbook ({s.duplicateReason}), so it will be skipped.</Text>
                   ) : null}
                   {token ? (
                     <>
@@ -356,8 +359,14 @@ export default function ScanVoyageReport() {
 
       <View style={styles.fixed}>
         <Pressable style={styles.big} onPress={discard}><Text style={styles.bigText}>Discard</Text></Pressable>
-        <Pressable style={[styles.big, styles.bigMain, (!keeping || saving) && { opacity: 0.6 }]} disabled={!keeping || saving} onPress={save}>
-          <Text style={styles.bigMainText}>{saving ? 'Saving…' : `Save ${keeping} ${keeping === 1 ? 'flight' : 'flights'}`}</Text>
+        <Pressable
+          style={[styles.big, styles.bigMain, (!keeping || saving || (!!scan.header.flags?.date && !dateChoice)) && { opacity: 0.6 }]}
+          disabled={!keeping || saving || (!!scan.header.flags?.date && !dateChoice)}
+          onPress={save}
+        >
+          <Text style={styles.bigMainText}>
+            {saving ? 'Saving…' : scan.header.flags?.date && !dateChoice ? 'Choose a date first' : `Save ${keeping} ${keeping === 1 ? 'flight' : 'flights'}`}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -387,8 +396,11 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   warnStrong: { fontFamily: fontFamilies.bodySemiBold },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   dateInput: { flex: 1, height: 38, borderWidth: 1, borderColor: '#E9B872', borderRadius: 8, paddingHorizontal: 10, backgroundColor: '#fff', color: '#5B3A0A', fontFamily: fontFamilies.body, fontSize: 14 },
-  useBtn: { height: 38, paddingHorizontal: 12, borderRadius: 8, backgroundColor: AMBER, alignItems: 'center', justifyContent: 'center' },
-  useBtnText: { color: '#fff', fontFamily: fontFamilies.bodySemiBold, fontSize: 12.5 },
+  useBtn: { height: 38, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E9B872', alignItems: 'center', justifyContent: 'center' },
+  useBtnText: { color: AMBER, fontFamily: fontFamilies.bodySemiBold, fontSize: 12.5 },
+  useBtnOn: { backgroundColor: AMBER, borderColor: AMBER },
+  useBtnTextOn: { color: '#fff' },
+  keepBtn: { backgroundColor: '#fff' },
 
   found: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 10, marginBottom: 10 },
   thumb: { width: 58, height: 74, borderRadius: 6, backgroundColor: '#F1EEE6', borderWidth: 1, borderColor: '#DDD7CA' },

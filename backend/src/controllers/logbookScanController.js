@@ -119,16 +119,25 @@ exports.createScan = async (req, res, next) => {
 async function markDuplicates(pilotId, checked) {
   const date = checked.header.date ? new Date(`${checked.header.date}T00:00:00.000Z`) : null;
   if (!date) return checked;
+  // The page may span midnight, so look at the whole window its sectors cover.
+  const span = Math.max(0, ...(checked.sectors || []).map((s) => s.dayOffset || 0));
   const sameDay = await prisma.flightLog.findMany({
-    where: { pilotId, date: { gte: date, lt: new Date(date.getTime() + 86400000) } },
-    select: { flightNumber: true, departure: true, arrival: true },
+    where: { pilotId, date: { gte: date, lt: new Date(date.getTime() + (span + 1) * 86400000) } },
+    select: { flightNumber: true, departure: true, arrival: true, registration: true },
   });
-  const key = (f, d, a) => `${String(f || '').replace(/\s+/g, '').toUpperCase()}|${String(d || '').toUpperCase()}|${String(a || '').toUpperCase()}`;
-  const existing = new Set(sameDay.map((l) => key(l.flightNumber, l.departure, l.arrival)));
+  const clean = (v) => String(v || '').replace(/\s+/g, '').toUpperCase();
+  const routeKey = (f, d, a) => `${clean(f)}|${clean(d)}|${clean(a)}`;
+  const regKey = (f, r) => `${clean(f)}|${clean(r)}`;
+  const byRoute = new Set(sameDay.map((l) => routeKey(l.flightNumber, l.departure, l.arrival)));
+  const byReg = new Set(sameDay.filter((l) => l.registration).map((l) => regKey(l.flightNumber, l.registration)));
   checked.sectors.forEach((s) => {
-    s.duplicate = existing.has(key(s.flightNumber, s.from, s.to));
-    if (s.duplicate) s.include = false;
-    else s.include = true;
+    // Same day and flight number, with either the same route or the same
+    // aircraft, is the same sector written twice.
+    const sameRoute = byRoute.has(routeKey(s.flightNumber, s.from, s.to));
+    const sameReg = !!s.flightNumber && !!s.registration && byReg.has(regKey(s.flightNumber, s.registration));
+    s.duplicate = sameRoute || sameReg;
+    s.duplicateReason = sameRoute ? 'same date, flight number and route' : sameReg ? 'same date, flight number and registration' : null;
+    s.include = !s.duplicate;
   });
   return checked;
 }
@@ -202,6 +211,24 @@ exports.saveScan = async (req, res, next) => {
     });
     const body = req.body || {};
     const header = { ...(scan.header || {}), ...(body.header || {}) };
+
+    // A wrong year does not look wrong: the day and month still read correctly
+    // and the flight lands years down the logbook where only search finds it.
+    // So a date the server flagged cannot be saved by default — the pilot has
+    // to say which date they mean.
+    const dateFlagStanding = !!(header.flags && header.flags.date) && header.date === (scan.header || {}).date;
+    const choice = String(body.dateChoice || '');
+    if (dateFlagStanding && !['suggestion', 'keep'].includes(choice)) {
+      return res.status(409).json({
+        error: 'This date needs a decision before these flights can be saved.',
+        code: 'DATE_UNCONFIRMED',
+        date: header.date,
+        suggestion: (scan.header || {}).dateSuggestion || null,
+      });
+    }
+    if (dateFlagStanding && choice === 'suggestion' && (scan.header || {}).dateSuggestion) {
+      header.date = scan.header.dateSuggestion;
+    }
     const edited = Array.isArray(body.sectors) && body.sectors.length ? body.sectors : (scan.sectors || []);
 
     // Re-run the checks over what the pilot is actually saving.
@@ -216,7 +243,24 @@ exports.saveScan = async (req, res, next) => {
       confidence: {},
     }, { pilot });
 
-    const keep = rechecked.sectors.filter((s, i) => edited[i]?.include !== false && !edited[i]?.duplicate);
+    // Duplicates are checked again HERE, not just at upload: the logbook can
+    // have changed since the review was opened — most obviously by the pilot
+    // scanning the same page twice, or saving this very review already.
+    const freshlyChecked = await markDuplicates(pilot.id, {
+      header: { ...header, date: header.date },
+      sectors: rechecked.sectors.map((s, i) => ({ ...s, include: edited[i]?.include !== false })),
+    });
+    const keep = freshlyChecked.sectors.filter((s, i) => edited[i]?.include !== false && !s.duplicate);
+    const skipped = freshlyChecked.sectors.filter((s) => s.duplicate);
+    if (!keep.length && skipped.length) {
+      return res.status(409).json({
+        error: skipped.length === 1
+          ? `${skipped[0].flightNumber || 'That sector'} is already in your logbook (${skipped[0].duplicateReason}).`
+          : `All ${skipped.length} sectors are already in your logbook.`,
+        code: 'ALL_DUPLICATES',
+        sectors: freshlyChecked.sectors,
+      });
+    }
     const blocked = keep.filter((s) => Object.values(s.flags).some((f) => f.level === 'red'));
     if (blocked.length) {
       return res.status(422).json({ error: 'Some sectors still need fixing.', sectors: rechecked.sectors });
@@ -231,7 +275,9 @@ exports.saveScan = async (req, res, next) => {
         pilotId: pilot.id,
         dutyId,
         scanId: scan.id,
-        date: new Date(`${header.date}T00:00:00.000Z`),
+        // The sector's own date: a leg that pushed back after midnight belongs
+        // to the next day, even though the page carries one date.
+        date: new Date(`${s.sectorDate || header.date}T00:00:00.000Z`),
         flightNumber: s.flightNumber,
         aircraftType: s.aircraftType || header.aircraftType || '',
         registration: s.registration || header.registration || null,
@@ -289,6 +335,7 @@ exports.saveScan = async (req, res, next) => {
     res.status(201).json({
       saved: rows.length,
       skipped: rechecked.sectors.length - rows.length,
+      skippedDetail: skipped.map((x) => ({ flightNumber: x.flightNumber, from: x.from, to: x.to, reason: x.duplicateReason })),
       imageKept: keepImage,
       totals: totals?.derivedTotals || null,
     });

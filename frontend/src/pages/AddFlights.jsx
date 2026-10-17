@@ -36,6 +36,8 @@ export default function AddFlights() {
   const [preview, setPreview] = useState(null);      // object URL of the dropped file
   const [showImport, setShowImport] = useState(false);
   const [saved, setSaved] = useState(null);
+  // 'suggestion' | 'keep' — a flagged date cannot be saved until this is set.
+  const [dateChoice, setDateChoice] = useState(null);
   const [manual, setManual] = useState({
     date: '', flightNumber: '', from: '', to: '', aircraftType: '', registration: '',
     out: '', off: '', on: '', in: '', pilotFlying: null, landings: '', commander: '', approach: '', remarks: '',
@@ -90,7 +92,7 @@ export default function AddFlights() {
   const saveScan = async () => {
     setBusy(true); setError(null);
     try {
-      const { data } = await logbookApi.saveScan(scan.id, { header: scan.header, sectors: scan.sectors });
+      const { data } = await logbookApi.saveScan(scan.id, { header: scan.header, sectors: scan.sectors, dateChoice });
       setSaved(data);
       setScan(null);
     } catch (e) {
@@ -197,6 +199,7 @@ export default function AddFlights() {
                     {scan.sectors.map((s, i) => (
                       <button key={i} type="button" className={i === active ? 'on' : ''} onClick={() => setActive(i)}>
                         {s.flightNumber || `Sector ${i + 1}`} · {s.from}–{s.to}
+                        {s.dayOffset > 0 && <span className="lb-nextday"> · {s.sectorDate}</span>}
                         {s.duplicate ? <span className="warnDot"> · already logged</span>
                           : s.needsCheck ? <span className="warnDot"> · {Object.keys(s.flags).length} to check</span> : null}
                       </button>
@@ -216,12 +219,27 @@ export default function AddFlights() {
                       <label htmlFor="h-date">Date</label>
                       <input id="h-date" type="date" value={scan.header.date || ''} onChange={(e) => setHeader({ date: e.target.value })} />
                       {scan.header.flags?.date && (
-                        <p className="why">
-                          {scan.header.flags.date.message}
-                          {scan.header.dateSuggestion && (
-                            <> <button type="button" onClick={() => setHeader({ date: scan.header.dateSuggestion, flags: { ...scan.header.flags, date: undefined } })} style={{ background: 'none', border: 0, color: 'var(--accent)', fontWeight: 600, cursor: 'pointer', padding: 0 }}>Use {scan.header.dateSuggestion}</button></>
-                          )}
-                        </p>
+                        <div className="why">
+                          <p style={{ margin: 0 }}>{scan.header.flags.date.message}</p>
+                          <div className="lb-choice">
+                            {scan.header.dateSuggestion && (
+                              <button
+                                type="button"
+                                className={dateChoice === 'suggestion' ? 'on' : undefined}
+                                onClick={() => { setDateChoice('suggestion'); setHeader({ date: scan.header.dateSuggestion }); }}
+                              >
+                                Use {scan.header.dateSuggestion}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className={dateChoice === 'keep' ? 'on' : undefined}
+                              onClick={() => setDateChoice('keep')}
+                            >
+                              Keep {scan.header.date}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                     <div className={`lb-f${scan.header.flags?.aircraftType ? ' q' : ''}`}>
@@ -258,11 +276,16 @@ export default function AddFlights() {
 
                   <div className="lb-foot">
                     <span className="s">
-                      Nothing is saved until you click Save. {scan.sectors.some((s) => s.duplicate) ? 'Sectors already in your logbook are skipped.' : ''}
+                      {scan.header.flags?.date && !dateChoice
+                        ? 'Choose which date these flights belong to before saving.'
+                        : <>Nothing is saved until you click Save.{' '}
+                          {scan.sectors.filter((x) => x.duplicate).map((x) => `${x.flightNumber || 'A sector'} is already in your logbook (${x.duplicateReason}) and will be skipped.`).join(' ')}</>}
                     </span>
                     <div style={{ display: 'flex', gap: 10 }}>
                       <Button variant="secondary" onClick={() => { logbookApi.discardScan(scan.id).catch(() => {}); setScan(null); setPreview(null); }}>Discard</Button>
-                      <Button onClick={saveScan} disabled={busy || !keeping}>{busy ? 'Saving…' : `Save ${keeping} ${keeping === 1 ? 'flight' : 'flights'}`}</Button>
+                      <Button onClick={saveScan} disabled={busy || !keeping || (!!scan.header.flags?.date && !dateChoice)}>
+                        {busy ? 'Saving…' : `Save ${keeping} ${keeping === 1 ? 'flight' : 'flights'}`}
+                      </Button>
                     </div>
                   </div>
                 </>
