@@ -338,9 +338,16 @@ cron.schedule('0 4 * * 1', () => withCronRun('fleet-refresh', async () => {
   return r && typeof r === 'object' ? r : undefined;
 }));
 
-// Immediate run on dev startup so fresh data is available without waiting for cron
-if (process.env.NODE_ENV !== 'production') {
-  setImmediate(() => runIngestion().catch((err) => logger.error(`Dev startup scrape failed: ${err.message}`)));
+// A full ingestion at boot — scrape, upsert, every dedup pass, revalidate,
+// expire, translate. It used to run on any boot where NODE_ENV was not
+// "production", which meant a laptop pointed at the prod database rewrote
+// hundreds of live rows the moment it started, and left no CronRun trace to
+// find it by. It is now opt-in and traced like everything else.
+if (process.env.RUN_INGESTION_ON_BOOT === '1') {
+  setImmediate(() => withCronRun('boot-ingestion', async () => {
+    const r = await runIngestion();
+    return r && typeof r === 'object' ? r : undefined;
+  }));
 }
 
 // On every boot (incl. production deploys): purge stored jobs that fail the

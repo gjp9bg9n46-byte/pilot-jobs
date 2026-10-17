@@ -190,3 +190,21 @@ test('each pass declares every counter it increments', () => {
       `${f.name} increments skippedByGuard without declaring it — the pass throws on the first blocked merge`);
   }
 });
+
+// A bulk write to Job that leaves no CronRun row is invisible: it took a dump
+// diff to work out that a laptop had rewritten 458 live rows. Every scheduled
+// or boot-time entry point must go through withCronRun.
+test('every scheduled / boot-time job in app.js is wrapped in withCronRun', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, '../../app.js'), 'utf8');
+  // Each entry point gets 200 characters of grace to reach withCronRun; that is
+  // far enough for the callback's opening brace and the call itself.
+  const untraced = [];
+  for (const m of src.matchAll(/(cron\.schedule\(|setImmediate\()/g)) {
+    const window = src.slice(m.index, m.index + 220);
+    if (!window.includes('withCronRun')) {
+      untraced.push(src.slice(m.index, src.indexOf('\n', m.index)).trim().slice(0, 70));
+    }
+  }
+  assert.deepStrictEqual(untraced, [], 'these boot/cron entry points write without a CronRun trace');
+});
