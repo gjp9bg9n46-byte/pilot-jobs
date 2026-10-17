@@ -39,6 +39,10 @@ export default function ScanVoyageReport() {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<Any>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  // The straightened page, fetched with the session token, so an amber field can
+  // be checked against what the camera actually saw.
+  const [token, setToken] = useState<string | null>(null);
+  useEffect(() => { getToken().then(setToken); }, []);
 
   useEffect(() => { api.get('/logbook/scan-quota').then(({ data }) => setQuota(data)).catch(() => {}); }, []);
 
@@ -291,6 +295,16 @@ export default function ScanVoyageReport() {
                   {s.duplicate ? (
                     <Text style={styles.whyLine}>This sector is already in your logbook, so it will be skipped.</Text>
                   ) : null}
+                  {token ? (
+                    <>
+                      <Text style={styles.compare}>The page, as we read it</Text>
+                      <Image
+                        source={{ uri: `${API_URL}/logbook/scan/${scan.id}/image`, headers: { Authorization: `Bearer ${token}` } }}
+                        style={styles.page}
+                        resizeMode="contain"
+                      />
+                    </>
+                  ) : null}
                 </View>
               ) : null}
             </View>
@@ -369,6 +383,8 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   whyLine: { fontSize: 12.5, lineHeight: 18, color: AMBER, fontFamily: fontFamilies.body },
   pfRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
 
+  compare: { fontSize: 11.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.faint, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
+  page: { width: '100%', height: 240, borderRadius: 8, backgroundColor: '#F1EEE6' },
   note: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 14, lineHeight: 18 },
   fixed: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 10, padding: 12, paddingBottom: 28, backgroundColor: pilot.surface, borderTopWidth: 1, borderTopColor: pilot.line },
 
