@@ -158,8 +158,8 @@ export default function LogbookDashboard({ summary, onEditCarryForward }) {
               <li><span className="lb-ic neutral">·</span><div className="m">Add landings to your flights to track currency</div></li>
             ) : (
               <>
-                <CurrencyLine role="Day" data={currency.day} />
-                <CurrencyLine role="Night" data={currency.night} />
+                <CurrencyLine role="Day" data={currency.day} incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
+                <CurrencyLine role="Night" data={currency.night} incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
               </>
             )}
           </ul>
@@ -181,11 +181,17 @@ function Gauge({ value, limit, cap }) {
   );
 }
 
-function CurrencyLine({ role, data }) {
+function CurrencyLine({ role, data, incomplete, without, inWindow }) {
   if (data.currentUntil) {
     const until = new Date(data.currentUntil + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     return (
       <li><span className="lb-ic ok">✓</span><div>{role}: current until <b>{until}</b> <span className="m">· {data.landings} landings</span></div></li>
+    );
+  }
+  // Landings missing from the window means the count is a floor, not a verdict.
+  if (incomplete) {
+    return (
+      <li><span className="lb-ic">–</span><div>{role}: <b>not known</b> <span className="m">· landings missing from {without} of {inWindow} flights</span></div></li>
     );
   }
   const need = Math.max(0, data.required - data.landings);

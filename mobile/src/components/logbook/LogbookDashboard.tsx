@@ -199,8 +199,8 @@ export default function LogbookDashboard({ summary, onEditCarryForward }: {
           </View>
         ) : (
           <>
-            <CurrencyLine role="Day" data={currency.day} styles={styles} />
-            <CurrencyLine role="Night" data={currency.night} styles={styles} />
+            <CurrencyLine role="Day" data={currency.day} styles={styles} currency={currency} />
+            <CurrencyLine role="Night" data={currency.night} styles={styles} currency={currency} />
           </>
         )}
       </View>
@@ -220,12 +220,24 @@ function Gauge({ value, limit, cap, styles }: { value: number; limit: number; ca
   );
 }
 
-function CurrencyLine({ role, data, styles }: { role: string; data: Summary; styles: Summary }) {
+function CurrencyLine({ role, data, styles, currency }: { role: string; data: Summary; styles: Summary; currency: Summary }) {
   if (data.currentUntil) {
     return (
       <View style={styles.curLine}>
         <View style={[styles.curIc, { backgroundColor: semantic.successBg }]}><Text style={{ color: semantic.success, fontSize: 11, fontWeight: '700' }}>✓</Text></View>
         <Text style={styles.curText}>{role}: current until <Text style={styles.curB}>{dayMon(data.currentUntil)}</Text> <Text style={styles.curM}>· {data.landings} landings</Text></Text>
+      </View>
+    );
+  }
+  // Landings missing from the window means the count is a floor, not a verdict.
+  if (currency?.incomplete) {
+    return (
+      <View style={styles.curLine}>
+        <View style={styles.curIc}><Text style={{ fontSize: 11, fontWeight: '700' }}>–</Text></View>
+        <Text style={styles.curText}>
+          {role}: <Text style={styles.curB}>not known</Text>
+          <Text style={styles.curM}> · landings missing from {currency.flightsWithoutLandings} of {currency.flightsInWindow} flights</Text>
+        </Text>
       </View>
     );
   }
