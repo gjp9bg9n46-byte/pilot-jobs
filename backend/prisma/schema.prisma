@@ -407,6 +407,11 @@ model FlightLog {
   instrumentSimTime    Float  @default(0)
   crossCountryTime     Float  @default(0)
   nightTime            Float  @default(0)
+  // Where nightTime came from: "form" (the crew's own N column on a voyage
+  // report) or "calculated" (the sun along the route). A figure the crew wrote
+  // down is evidence; ours is a model of it, so a form value is never
+  // recalculated behind the pilot's back — not even when the date changes.
+  nightSource          String?
   landingsDay     Int        @default(0)
   landingsNight   Int        @default(0)
   remarks         String?

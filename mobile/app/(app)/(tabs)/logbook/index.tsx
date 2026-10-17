@@ -273,15 +273,27 @@ export default function LogbookList() {
               <Text style={styles.totLabel}>Night</Text>
             </View>
           </View>
-          {summary.currency?.landingsLogged ? (
-            <View style={styles.rec}>
-              <View style={[styles.dot, cur.landings < cur.required && styles.dotWarn]} />
-              <Text style={styles.recText}>
-                <Text style={styles.recStrong}>{cur.landings} {cur.landings === 1 ? 'landing' : 'landings'}</Text>
-                {' '}in the last 90 days{cur.landings >= cur.required ? ' · current' : ` · ${cur.required} needed`}
-              </Text>
-              {dropOffLabel(cur.currentUntil) ? <Text style={styles.recDrop}>Oldest drops {dropOffLabel(cur.currentUntil)}</Text> : null}
-            </View>
+          {summary.currency && (summary.currency.landingsLogged || summary.currency.flightsInWindow > 0) ? (
+            summary.currency.incomplete && cur.landings < cur.required ? (
+              // Landings missing from the window: say what is missing rather
+              // than calling the pilot out of currency on our own gap.
+              <View style={styles.rec}>
+                <View style={[styles.dot, styles.dotGrey]} />
+                <Text style={styles.recText}>
+                  Landings not recorded for {summary.currency.flightsWithoutLandings} of your last {summary.currency.flightsInWindow} flights — recency can&apos;t be worked out.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.rec}>
+                <View style={[styles.dot, cur.landings < cur.required && styles.dotWarn]} />
+                <Text style={styles.recText}>
+                  <Text style={styles.recStrong}>{cur.landings} {cur.landings === 1 ? 'landing' : 'landings'}</Text>
+                  {' '}in the last 90 days{cur.landings >= cur.required ? ' · current' : ` · ${cur.required} needed`}
+                  {summary.currency.incomplete ? ` · ${summary.currency.flightsWithoutLandings} with none recorded` : ''}
+                </Text>
+                {dropOffLabel(cur.currentUntil) ? <Text style={styles.recDrop}>Oldest drops {dropOffLabel(cur.currentUntil)}</Text> : null}
+              </View>
+            )
           ) : null}
         </>
       ) : null}
@@ -389,6 +401,7 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   rec: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 14, marginTop: 10 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#15803D' },
   dotWarn: { backgroundColor: '#B45309' },
+  dotGrey: { backgroundColor: pilot.faint },
   recText: { flex: 1, fontSize: 13, color: pilot.ink, fontFamily: fontFamilies.body },
   recStrong: { fontFamily: fontFamilies.bodySemiBold },
   recDrop: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },

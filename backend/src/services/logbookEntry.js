@@ -49,12 +49,17 @@ async function buildFlightRow(input, pilot) {
   const airborneMin = spanMinutes(off, on);
   const hours = blockMin != null ? Math.round((blockMin / 60) * 100) / 100 : Number(input.totalTime) || 0;
 
-  // Night is calculated from the sun along the route; a figure the pilot took
-  // from the crew's own form may be passed as nightOverrideMinutes.
+  // Night comes from the sun along the route — unless the crew's own N column
+  // gave a figure, in which case that stands. It survives an edit to any other
+  // field, including the date: the sun moves between years, what the crew wrote
+  // does not.
   let nightHours = 0;
   let nightSource = null;
   if (Number.isFinite(Number(input.nightOverrideMinutes))) {
     nightHours = Math.round((Number(input.nightOverrideMinutes) / 60) * 100) / 100;
+    nightSource = 'form';
+  } else if (input.nightSource === 'form' && Number.isFinite(Number(input.nightTime))) {
+    nightHours = Number(input.nightTime);
     nightSource = 'form';
   } else if (date && departure && arrival && off && on) {
     const n = await nightMinutes({ date, departure, arrival, off, on });
@@ -84,6 +89,7 @@ async function buildFlightRow(input, pilot) {
     picTime: role === 'PIC' ? hours : 0,
     sicTime: role === 'SIC' ? hours : 0,
     nightTime: nightHours,
+    nightSource,
     landingsDay: night ? 0 : landings,
     landingsNight: night ? landings : 0,
     pilotFlying,

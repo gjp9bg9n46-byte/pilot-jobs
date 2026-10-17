@@ -207,6 +207,7 @@ exports.updateLog = async (req, res, next) => {
       offBlocksTime: existing.offBlocksTime, takeoffTime: existing.takeoffTime,
       landingTime: existing.landingTime, onBlocksTime: existing.onBlocksTime,
       picName: existing.picName, sicName: existing.sicName,
+      nightTime: existing.nightTime, nightSource: existing.nightSource,
       pilotFlying: existing.pilotFlying, approach: existing.approach, remarks: existing.remarks,
       landings: (existing.landingsDay || 0) + (existing.landingsNight || 0),
       role: existing.picTime > 0 ? 'PIC' : 'SIC',

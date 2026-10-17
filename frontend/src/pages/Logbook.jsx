@@ -816,18 +816,32 @@ export default function Logbook() {
             <div><b>{duration(Math.max(summary.totals.pic, summary.totals.sic), timeFormat)}</b><span>{summary.totals.pic > summary.totals.sic ? 'PIC' : 'SIC'}</span></div>
             <div><b>{duration(summary.totals.night, timeFormat)}</b><span>Night</span></div>
           </div>
-          {summary.currency?.landingsLogged && (
-            <div className="lb-rec">
-              <span className={`dot${summary.currency.day.landings >= summary.currency.day.required ? '' : ' warn'}`} />
-              <span>
-                <b>{summary.currency.day.landings} {summary.currency.day.landings === 1 ? 'landing' : 'landings'}</b> in the last 90 days
-                {summary.currency.day.landings >= summary.currency.day.required ? ' · current' : ` · ${summary.currency.day.required} needed`}
-              </span>
-              {dropOffLabel(summary.currency.day.currentUntil) && (
-                <span className="drop">Oldest drops {dropOffLabel(summary.currency.day.currentUntil)}</span>
-              )}
-            </div>
-          )}
+          {summary.currency && (summary.currency.landingsLogged || summary.currency.flightsInWindow > 0) && (() => {
+            const c = summary.currency;
+            const current = c.day.landings >= c.day.required;
+            // Landings missing from the window means the count is a floor, not
+            // a verdict — never show "not current" off incomplete data.
+            if (c.incomplete && !current) {
+              return (
+                <div className="lb-rec">
+                  <span className="dot grey" />
+                  <span>Landings not recorded for {c.flightsWithoutLandings} of your last {c.flightsInWindow} flights — recency can&apos;t be worked out.</span>
+                  <span className="drop">Add landings to show it</span>
+                </div>
+              );
+            }
+            return (
+              <div className="lb-rec">
+                <span className={`dot${current ? '' : ' warn'}`} />
+                <span>
+                  <b>{c.day.landings} {c.day.landings === 1 ? 'landing' : 'landings'}</b> in the last 90 days
+                  {current ? ' · current' : ` · ${c.day.required} needed`}
+                  {c.incomplete ? ` · ${c.flightsWithoutLandings} flights have none recorded` : ''}
+                </span>
+                {dropOffLabel(c.day.currentUntil) && <span className="drop">Oldest drops {dropOffLabel(c.day.currentUntil)}</span>}
+              </div>
+            );
+          })()}
         </>
       )}
 

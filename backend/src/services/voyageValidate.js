@@ -21,7 +21,7 @@ const { _internals } = require('./logbookSummary');
 
 const LOW_CONFIDENCE = 0.8;
 const BLOCK_TOLERANCE_MIN = 2;     // rounding on the form, not a misread
-const NIGHT_TOLERANCE_MIN = 10;    // sunset at altitude vs on the ground
+const NIGHT_TOLERANCE_MIN = 15;    // sunset at altitude vs on the ground, and the crew's own rounding
 const MAX_AGE_DAYS = 60;
 
 const hhmm = (mins) => (mins == null ? null : `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`);

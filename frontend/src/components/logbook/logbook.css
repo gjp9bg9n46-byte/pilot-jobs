@@ -119,3 +119,6 @@
 .lb-choice button.on { background: var(--lb-amber); border-color: var(--lb-amber); color: #fff; }
 /* A sector that pushed back after midnight carries its own date. */
 .lb-nextday { color: var(--text-faint); font-weight: 500; }
+
+/* Recency we cannot work out is grey, not red. */
+.lb-rec .dot.grey { background: var(--text-faint); }

@@ -290,6 +290,10 @@ exports.saveScan = async (req, res, next) => {
         picTime: role === 'PIC' ? hours : 0,
         sicTime: role === 'SIC' ? hours : 0,
         nightTime: s.night != null ? Math.round((s.night / 60) * 100) / 100 : 0,
+        // The crew's own N column is evidence; our sun calculation is a model
+        // of it. Remember which one this is, so a later edit cannot quietly
+        // replace what the crew wrote.
+        nightSource: s.nightSource === 'form' ? 'form' : 'calculated',
         landingsDay: s.landingsDay || 0,
         landingsNight: s.landingsNight || 0,
         pilotFlying: s.pilotFlying === true,

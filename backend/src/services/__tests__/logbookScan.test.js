@@ -369,3 +369,32 @@ test('night is worked out for the sector\'s own date, not the page\'s', async ()
   assert.ok(r.sectors[1].night > 0, 'a pre-dawn leg still has night in it');
   assert.ok(r.sectors[1].night < r.sectors[1].block, 'and it ends at sunrise, not at the chocks');
 });
+
+// ── Night: the crew's figure is evidence, ours is a model of it ────────────
+
+test("a form night value survives a date change; a calculated one does not", async () => {
+  const stored = {
+    date: '2026-10-16', from: 'CGN', to: 'HRG', out: '03:10', off: '03:20', on: '07:35', in: '07:45',
+    nightTime: 2, nightSource: 'form',
+  };
+  const moved = await buildFlightRow({ ...stored, date: '2026-10-17' }, FO);
+  assert.equal(moved.nightTime, 2, "the crew's 02:00 is kept");
+  assert.equal(moved.nightSource, 'form');
+
+  const ours = await buildFlightRow({ ...stored, nightSource: 'calculated' }, FO);
+  assert.equal(ours.nightSource, 'calculated');
+  assert.notEqual(ours.nightTime, 2, 'our own figure is recalculated for the date');
+});
+
+test('the form and the sun may differ by a quarter of an hour before it is worth asking', async () => {
+  const raw = RAW();
+  raw.sectors[1].formNight = '01:10';          // the sun says about 56 minutes
+  const within = await validateScan(raw, { pilot: FO, now: NOW });
+  assert.equal(within.sectors[1].flags.night, undefined, '14 minutes apart is rounding');
+  assert.equal(within.sectors[1].night, 70, "and the crew's figure is what is stored");
+
+  raw.sectors[1].formNight = '02:00';          // an hour out
+  const beyond = await validateScan(raw, { pilot: FO, now: NOW });
+  assert.match(beyond.sectors[1].flags.night.message, /Using the form/);
+  assert.equal(beyond.sectors[1].night, 120, 'the form still wins — it is just flagged');
+});

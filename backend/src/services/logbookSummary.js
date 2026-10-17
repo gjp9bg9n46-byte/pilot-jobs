@@ -201,10 +201,21 @@ async function buildLogbookSummary(pilotId) {
     const third = sortedDesc[2];
     return new Date(third.getTime() + 90 * DAY).toISOString().slice(0, 10);
   };
+  // Flights in the window that record no landing at all. Most imported logbooks
+  // carry none, and a pilot with 40 sectors in 90 days must not be told they
+  // are "not current" because an importer dropped a column — that is our gap in
+  // the data, not a gap in their flying.
+  const flightsInWindow = recent.length;
+  const flightsWithoutLandings = recent.filter((l) => !((l.landingsDay || 0) + (l.landingsNight || 0))).length;
   const currency = {
     day: { landings: dayLdgDates.length, required: 3, currentUntil: currentUntil(dayLdgDates) },
     night: { landings: nightLdgDates.length, required: 3, currentUntil: currentUntil(nightLdgDates) },
     landingsLogged: anyLandingLogged,
+    flightsInWindow,
+    flightsWithoutLandings,
+    // With landings missing from some of the window, the count is a floor, not
+    // a verdict: say so instead of showing a red "not current".
+    incomplete: flightsWithoutLandings > 0,
   };
 
   // ── Months (most recent first, for list section headers) ──────────────────
