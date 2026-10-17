@@ -1,6 +1,6 @@
 import React from 'react';
 import { Moon } from 'lucide-react';
-import { groupByDay, duration, landsNextDay, overnightReturnOf } from '../../lib/logbookFormat';
+import { groupByDay, duration, findOverlaps, landsNextDay, overlapLabel, overnightReturnOf } from '../../lib/logbookFormat';
 
 /**
  * Sectors grouped by the day they were flown, so a CAI–HRG–CAI rotation reads
@@ -13,6 +13,8 @@ import { groupByDay, duration, landsNextDay, overnightReturnOf } from '../../lib
  */
 export default function DayList({ logs, timeFormat, onOpen }) {
   const days = groupByDay(logs || []);
+  // Two flights cannot be in the air at once; where they are, both say so.
+  const overlaps = findOverlaps(logs || []);
   if (!days.length) return null;
   return (
     <div>
@@ -34,6 +36,7 @@ export default function DayList({ logs, timeFormat, onOpen }) {
                     {f.source === 'SCAN' && <span className="lb-scan">scanned</span>}
                     <small>{[f.flightNumber, type, f.registration].filter(Boolean).join(' · ') || 'No details'}</small>
                     {from && <small className="lb-link">Return of overnight trip from {from}</small>}
+                    {overlaps.has(f.id) && <small className="lb-overlap">{overlapLabel(overlaps.get(f.id))}</small>}
                   </span>
                   <span className="mono">{duration(f.totalTime, timeFormat)}</span>
                 </button>

@@ -119,3 +119,46 @@ export function overnightReturnOf(flight, all) {
   if (!best) return null;
   return new Date(`${best.date}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
+
+// ── Overlapping sectors ────────────────────────────────────────────────────
+// Two flights cannot be in the air at once. Compared on absolute UTC time —
+// date plus OUT, with a block that may run through midnight — so a leg that
+// lands at 02:00 and the one that leaves at 03:10 the next morning do not
+// collide, while a date or a time typed wrongly does. This is a consistency
+// check, not a legality one: it never blocks a save.
+
+export function absoluteWindow(flight) {
+  const date = String(flight.date || '').slice(0, 10);
+  const out = timeToMinutes(flight.offBlocksTime);
+  const inn = timeToMinutes(flight.onBlocksTime);
+  if (!date || out == null) return null;
+  const midnight = Date.parse(`${date}T00:00:00Z`);
+  if (Number.isNaN(midnight)) return null;
+  const start = midnight + out * 60000;
+  const minutes = inn == null ? 0 : (inn >= out ? inn - out : inn + 1440 - out);
+  return { start, end: start + minutes * 60000 };
+}
+
+// Returns a Map of flight id → the flight it overlaps.
+export function findOverlaps(flights) {
+  const windows = (flights || [])
+    .map((f) => ({ f, w: absoluteWindow(f) }))
+    .filter((x) => x.w)
+    .sort((a, b) => a.w.start - b.w.start);
+  const hits = new Map();
+  for (let i = 1; i < windows.length; i++) {
+    const prev = windows[i - 1];
+    const cur = windows[i];
+    // Touching is fine: OUT exactly on the previous IN is a turnaround.
+    if (cur.w.start < prev.w.end) {
+      hits.set(cur.f.id, prev.f);
+      hits.set(prev.f.id, cur.f);
+    }
+  }
+  return hits;
+}
+
+export function overlapLabel(other) {
+  const name = (other && (other.flightNumber || [other.departure, other.arrival].filter(Boolean).join('–'))) || 'another flight';
+  return `Overlaps ${name} — check times or date`;
+}

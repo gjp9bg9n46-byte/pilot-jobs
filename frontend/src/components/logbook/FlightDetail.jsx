@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowRight, Repeat, X } from 'lucide-react';
 import Button from '../primitives/Button';
-import { landsNextDay, minutesToHHMM, spanMinutes } from '../../lib/logbookFormat';
+import { landsNextDay, minutesToHHMM, overlapLabel, spanMinutes } from '../../lib/logbookFormat';
 
 /**
  * One flight, as the mockup's detail screen: the four times across the top,
@@ -10,7 +10,7 @@ import { landsNextDay, minutesToHHMM, spanMinutes } from '../../lib/logbookForma
  * them into. The actions are the ones a line pilot actually needs next:
  * the return trip, the next leg, a duplicate, or delete.
  */
-export default function FlightDetail({ flight, onClose, onEdit, onReturnTrip, onNextLeg, onDuplicate, onDelete }) {
+export default function FlightDetail({ flight, overlap, onClose, onEdit, onReturnTrip, onNextLeg, onDuplicate, onDelete }) {
   if (!flight) return null;
   const block = spanMinutes(flight.offBlocksTime, flight.onBlocksTime);
   const airborne = spanMinutes(flight.takeoffTime, flight.landingTime);
@@ -64,6 +64,8 @@ export default function FlightDetail({ flight, onClose, onEdit, onReturnTrip, on
             {kv('Remarks', flight.remarks || '—')}
           </div>
         </div>
+
+        {overlap && <p className="lb-overlap-note">{overlapLabel(overlap)}</p>}
 
         {flight.source === 'SCAN' && (
           <p className="lb-src">From your voyage report scan, checked by you</p>

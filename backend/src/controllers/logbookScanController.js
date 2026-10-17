@@ -15,6 +15,7 @@ const logger = require('../config/logger');
 const { prepareScanImage } = require('../services/imagePrep');
 const { ScanError, modelName } = require('../services/voyageExtractor');
 const { readPage, uprightCopy, cropRow } = require('../services/voyageReconcile');
+const { findOverlaps, overlapMessage } = require('../services/logbookOverlap');
 const { validateScan } = require('../services/voyageValidate');
 const { recomputeDerivedTotals } = require('../services/logbookSummary');
 
@@ -82,6 +83,7 @@ exports.createScan = async (req, res, next) => {
     }
 
     const withDupes = await markDuplicates(pilot.id, checked);
+    await markOverlaps(pilot.id, withDupes);
 
     // Store the straightened image upright, so the review crops read the right
     // way up whichever way the page was photographed.
@@ -138,6 +140,35 @@ async function markDuplicates(pilotId, checked) {
     s.duplicate = sameRoute || sameReg;
     s.duplicateReason = sameRoute ? 'same date, flight number and route' : sameReg ? 'same date, flight number and registration' : null;
     s.include = !s.duplicate;
+  });
+  return checked;
+}
+
+// Two flights cannot be in the air at once. A sector that overlaps one already
+// in the logbook — or an earlier sector on the same page — is flagged red on
+// the review. It never blocks the save: the pilot may be fixing exactly this.
+async function markOverlaps(pilotId, checked) {
+  const dates = [...new Set(checked.sectors.map((s) => s.sectorDate || checked.header.date).filter(Boolean))];
+  if (!dates.length) return checked;
+  const from = new Date(`${dates.sort()[0]}T00:00:00.000Z`);
+  const to = new Date(new Date(`${dates[dates.length - 1]}T00:00:00.000Z`).getTime() + 2 * 86400000);
+  const near = await prisma.flightLog.findMany({
+    where: { pilotId, date: { gte: new Date(from.getTime() - 86400000), lt: to } },
+    select: { id: true, date: true, flightNumber: true, departure: true, arrival: true, offBlocksTime: true, onBlocksTime: true },
+  });
+  const candidates = [
+    ...near.map((f) => ({ ...f, date: f.date.toISOString().slice(0, 10) })),
+    ...checked.sectors.map((s, i) => ({
+      id: `new-${i}`, date: s.sectorDate || checked.header.date, flightNumber: s.flightNumber,
+      departure: s.from, arrival: s.to, offBlocksTime: s.out, onBlocksTime: s.in,
+    })),
+  ];
+  const hits = findOverlaps(candidates);
+  checked.sectors.forEach((s, i) => {
+    const other = hits.get(`new-${i}`);
+    if (!other) return;
+    s.flags = { ...(s.flags || {}), overlap: { level: 'red', message: overlapMessage(other) } };
+    s.needsCheck = true;
   });
   return checked;
 }

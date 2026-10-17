@@ -439,3 +439,39 @@ test('a page that crosses midnight asks which day it started on', async () => {
   assert.match(r.header.flags.date.message, /crosses midnight/);
   assert.equal(r.header.dateSuggestion, '2026-10-14', 'the day before is offered, since the form may carry the end of the duty');
 });
+
+// ── Overlapping sectors ────────────────────────────────────────────────────
+const { findOverlaps: overlapsBackend, overlapMessage } = require('../logbookOverlap');
+
+test('two flights in the air at once are flagged on both', () => {
+  const a = { id: 'a', date: '2026-10-16', flightNumber: 'MSC 1', departure: 'CAI', arrival: 'HRG', offBlocksTime: '09:00', onBlocksTime: '11:00' };
+  const b = { id: 'b', date: '2026-10-16', flightNumber: 'MSC 2', departure: 'HRG', arrival: 'CAI', offBlocksTime: '10:30', onBlocksTime: '12:30' };
+  const hits = overlapsBackend([a, b]);
+  assert.equal(hits.get('a').flightNumber, 'MSC 2');
+  assert.equal(hits.get('b').flightNumber, 'MSC 1');
+  assert.equal(overlapMessage(hits.get('a')), 'Overlaps MSC 2 — check times or date');
+});
+
+test('back-to-back sectors are not an overlap', () => {
+  const a = { id: 'a', date: '2026-10-16', flightNumber: 'MSC 1', offBlocksTime: '09:00', onBlocksTime: '11:00' };
+  const b = { id: 'b', date: '2026-10-16', flightNumber: 'MSC 2', offBlocksTime: '11:00', onBlocksTime: '13:00' };
+  assert.equal(overlapsBackend([a, b]).size, 0, 'OUT exactly on the previous IN is a turnaround');
+});
+
+test('an overnight sector and the next morning\'s flight do not collide', () => {
+  const out = { id: 'a', date: '2026-10-14', flightNumber: 'MSC 2918', offBlocksTime: '20:35', onBlocksTime: '02:00' };
+  const back = { id: 'b', date: '2026-10-15', flightNumber: 'MSC 2919', offBlocksTime: '03:10', onBlocksTime: '07:45' };
+  assert.equal(overlapsBackend([out, back]).size, 0, 'the block ran through midnight, the next leg starts after it');
+});
+
+test('a sector dated a year out overlaps nothing — it is simply elsewhere', () => {
+  const now = { id: 'a', date: '2026-10-16', flightNumber: 'MSC 1', offBlocksTime: '09:00', onBlocksTime: '11:00' };
+  const wrongYear = { id: 'b', date: '2024-10-16', flightNumber: 'MSC 2', offBlocksTime: '09:30', onBlocksTime: '11:30' };
+  assert.equal(overlapsBackend([now, wrongYear]).size, 0);
+});
+
+test('a flight with no IN time cannot overlap anything after it', () => {
+  const a = { id: 'a', date: '2026-10-16', flightNumber: 'MSC 1', offBlocksTime: '09:00', onBlocksTime: null };
+  const b = { id: 'b', date: '2026-10-16', flightNumber: 'MSC 2', offBlocksTime: '09:30', onBlocksTime: '11:00' };
+  assert.equal(overlapsBackend([a, b]).size, 0, 'an unknown block is zero-length, never a false positive');
+});

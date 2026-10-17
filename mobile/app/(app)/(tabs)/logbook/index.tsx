@@ -17,7 +17,7 @@ import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
 import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
-import { duration, dropOffLabel, groupByDay, landsNextDay, overnightReturnOf, TimeFormat } from '../../../../src/lib/logbookFormat';
+import { duration, dropOffLabel, findOverlaps, groupByDay, landsNextDay, overlapLabel, overnightReturnOf, TimeFormat } from '../../../../src/lib/logbookFormat';
 import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
 import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
@@ -233,6 +233,9 @@ export default function LogbookList() {
   }, [logs, summary]);
 
   const cur = summary?.currency?.day;
+  // Two flights cannot be in the air at once; where they are, both say so.
+  const overlaps = useMemo(() => findOverlaps(logs), [logs]);
+
   const daySections = useMemo(
     () => groupByDay(logs).map((d) => ({ ym: d.date, title: d.label, hours: d.hours, data: d.flights })),
     [logs],
@@ -361,6 +364,9 @@ export default function LogbookList() {
               {overnightReturnOf(item, logs) ? (
                 <Text style={styles.legLink}>Return of overnight trip from {overnightReturnOf(item, logs)}</Text>
               ) : null}
+              {overlaps.has(item.id) ? (
+                <Text style={styles.legOverlap}>{overlapLabel(overlaps.get(item.id))}</Text>
+              ) : null}
             </View>
             <Text style={styles.legHours}>{duration(item.totalTime, timeFormat)}</Text>
           </Pressable>
@@ -421,6 +427,7 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   legRoute: { fontSize: 14, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
   legSub: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 2 },
   legLink: { fontSize: 11.5, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 3 },
+  legOverlap: { fontSize: 11.5, color: '#B42318', fontFamily: fontFamilies.bodySemiBold, marginTop: 3 },
   plus1: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.muted, backgroundColor: '#EEF1F5', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },
   legHours: { fontSize: 14, fontFamily: fontFamilies.body, color: pilot.ink, fontVariant: ['tabular-nums'] },
   pf: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#E3ECF8', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },

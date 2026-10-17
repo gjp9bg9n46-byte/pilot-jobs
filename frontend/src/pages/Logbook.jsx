@@ -15,7 +15,7 @@ import LogbookDashboard from '../components/logbook/LogbookDashboard';
 import FlightList from '../components/logbook/FlightList';
 import DayList from '../components/logbook/DayList';
 import FlightDetail from '../components/logbook/FlightDetail';
-import { duration, dropOffLabel } from '../lib/logbookFormat';
+import { duration, dropOffLabel, findOverlaps } from '../lib/logbookFormat';
 import '../components/logbook/logbook.css';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -956,6 +956,7 @@ export default function Logbook() {
       {openFlight && (
         <FlightDetail
           flight={openFlight}
+          overlap={findOverlaps(dataset).get(openFlight.id)}
           onClose={() => setOpenFlight(null)}
           onEdit={() => { setEditFlight(openFlight); setOpenFlight(null); }}
           onReturnTrip={() => relog(openFlight, 'return')}
