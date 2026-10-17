@@ -1,4 +1,6 @@
-# Handoff — Batch C round 3 → **PUSHED + HEALTHY** (origin/main 40bb928, 2026-10-07)
+# Handoff — Logbook + CV → **PUSHED + HEALTHY** (origin/main 23611b7, 2026-10-17)
+
+The scan ships dark: `SCAN_ENABLED=false`, endpoints answer 503, both clients hide it.
 
 Living doc. Keep updated as items land. Everything is on local `main`, **unpushed**.
 Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
@@ -15,6 +17,30 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Mobile job detail: `mobile/app/(app)/(tabs)/jobs/[id].tsx`. Mobile job card: `mobile/src/components/JobCardShared.tsx`.
 - Profile (edit): web `frontend/src/pages/ProfileRedesign.jsx`; mobile `mobile/app/(app)/(tabs)/profile/index.tsx`. API: `backend/src/controllers/profileController.js` (already accepts `nationality` scalar; schema `Pilot.nationality String?`).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
+
+## SCAN ACCURACY — ROUND 1 SCORED, ROUND 2 BLOCKED ON QUOTA (2026-10-17)
+Owner corrected all nine reports. **Single pass, page scale: 3/9 reports entirely
+correct**; per field: flight no. 18/18, from 17/18, to 16/18, on 16/18, in 16/18,
+off 14/18, out 13/18, PF 16/18, date 5/7 confirmed. **14 errors reached the
+review screen unflagged.**
+
+Why the block-vs-T check missed 96c1f6fc: the model read every time in that
+sector two hours late AND read that row's own T as 06:13 instead of 05:13, so
+the check compared two numbers from the same misreading. The check was right;
+the evidence was corrupted. Fixed by judging any re-read against the T from the
+FULL PAGE, plus two passes, row crops, the lower table, the page TOTAL row and
+an STD-delay check (commit `23611b7`, 8 new tests).
+
+**BLOCKER: the Gemini key is on the FREE tier — 20 requests per day per model.**
+With two passes plus row re-reads that is ~7 scans a day for the whole product,
+and it is why round 2 could not be completed (3.8-flash, then 3.7-flash,
+exhausted mid-run; resets ~23 h). **Enable billing on the API key** before the
+scan can be re-tested or shipped. The code already paces and retries, and
+`SCAN_MODEL_B` / `SCAN_ROW_MODEL` can spread load across models.
+
+**Still to do before the scan ships:** re-run all 9 on one model with billing on,
+score (target 8/9 and zero unflagged errors), then the same 9 on Gemini Pro once
+for comparison, then set `SCAN_ENABLED=true`.
 
 ## LOGBOOK REBUILD + VOYAGE-REPORT SCAN (2026-10-17) — **unpushed**
 Built end to end from `docs/design/logbook-scan-mockup.html`, web + app, with the
