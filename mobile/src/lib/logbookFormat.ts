@@ -78,3 +78,40 @@ export function dropOffLabel(currentUntil?: string | null): string | null {
   if (!currentUntil) return null;
   return new Date(`${currentUntil}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
+
+// A sector's date is the UTC date it pushed back — OUT. A leg that lands after
+// midnight is still one flight on one date; it is never split across days, and
+// the arrival is marked "+1" instead.
+export function landsNextDay(out?: string | null, inn?: string | null): boolean {
+  const a = timeToMinutes(out);
+  const b = timeToMinutes(inn);
+  if (a == null || b == null) return false;
+  return b < a;
+}
+
+// "Return of overnight trip from 14 Oct": the leg before this one left on a
+// different date, landed where this one starts, and did so within 12 hours.
+export function overnightReturnOf(flight: Log, all: Log[]): string | null {
+  if (!flight || !flight.departure) return null;
+  const date = String(flight.date).slice(0, 10);
+  const out = timeToMinutes(flight.offBlocksTime);
+  if (out == null) return null;
+  const mine = Date.parse(`${date}T00:00:00Z`) + out * 60000;
+  let best = null;
+  for (const other of all || []) {
+    if (other === flight || other.id === flight.id) continue;
+    if (String(other.arrival || '').toUpperCase() !== String(flight.departure).toUpperCase()) continue;
+    const otherDate = String(other.date).slice(0, 10);
+    if (otherDate === date) continue;                       // same day is just the next sector
+    const otherOut = timeToMinutes(other.offBlocksTime);
+    const otherIn = timeToMinutes(other.onBlocksTime);
+    if (otherOut == null || otherIn == null) continue;
+    const wrap = otherIn < otherOut ? 1440 : 0;
+    const landed = Date.parse(`${otherDate}T00:00:00Z`) + (otherIn + wrap) * 60000;
+    const gap = mine - landed;
+    if (gap < 0 || gap > 12 * 3600 * 1000) continue;        // within twelve hours
+    if (!best || landed > best.landed) best = { landed, date: otherDate };
+  }
+  if (!best) return null;
+  return new Date(`${best.date}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}

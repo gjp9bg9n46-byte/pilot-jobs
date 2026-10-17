@@ -122,3 +122,8 @@
 
 /* Recency we cannot work out is grey, not red. */
 .lb-rec .dot.grey { background: var(--text-faint); }
+
+/* An arrival after midnight, and the thread back to the outbound leg. */
+.lb-plus1 { font-size: 10.5px; font-weight: 700; color: var(--text-secondary); background: #EEF1F5; border-radius: 5px; padding: 2px 5px; margin-left: 6px; }
+.lb-moon { color: var(--accent-soft); margin-left: 6px; vertical-align: -2px; }
+.lb-leg small.lb-link { color: var(--text-faint); font-style: normal; margin-top: 3px; }

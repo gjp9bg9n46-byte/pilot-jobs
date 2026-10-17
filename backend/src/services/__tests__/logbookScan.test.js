@@ -398,3 +398,44 @@ test('the form and the sun may differ by a quarter of an hour before it is worth
   assert.match(beyond.sectors[1].flags.night.message, /Using the form/);
   assert.equal(beyond.sectors[1].night, 120, 'the form still wins — it is just flagged');
 });
+
+// ── One sector, one date ───────────────────────────────────────────────────
+const { landsNextDay, overnightReturnOf } = require('../../../../frontend/src/lib/logbookFormat.js');
+
+test('a leg that lands after midnight keeps its departure date and is marked +1', async () => {
+  const row = await buildFlightRow({
+    date: '2026-10-14', from: 'HRG', to: 'CGN', out: '20:35', off: '20:54', on: '01:49', in: '02:00',
+    aircraftType: 'A320',
+  }, FO);
+  assert.equal(row.date.toISOString().slice(0, 10), '2026-10-14', 'the date is the date it pushed back');
+  assert.equal(row._derived.blockMinutes, 325, 'and the block runs through midnight in one piece');
+  assert.equal(landsNextDay('20:35', '02:00'), true);
+  assert.equal(landsNextDay('09:38', '14:33'), false);
+});
+
+test('the morning return says which day it came from', () => {
+  const outbound = { id: 'a', date: '2026-10-14', departure: 'HRG', arrival: 'CGN', offBlocksTime: '20:35', onBlocksTime: '02:00' };
+  const ret = { id: 'b', date: '2026-10-15', departure: 'CGN', arrival: 'HRG', offBlocksTime: '03:10', onBlocksTime: '07:45' };
+  assert.match(overnightReturnOf(ret, [outbound, ret]), /14 Oct/);
+  assert.equal(overnightReturnOf(outbound, [outbound, ret]), null, 'the outbound has nothing before it');
+});
+
+test('a return the following afternoon is not an overnight link', () => {
+  const outbound = { id: 'a', date: '2026-10-14', departure: 'HRG', arrival: 'CGN', offBlocksTime: '08:00', onBlocksTime: '12:00' };
+  const ret = { id: 'b', date: '2026-10-15', departure: 'CGN', arrival: 'HRG', offBlocksTime: '14:00', onBlocksTime: '18:00' };
+  assert.equal(overnightReturnOf(ret, [outbound, ret]), null, 'more than twelve hours apart');
+});
+
+test('a page that crosses midnight asks which day it started on', async () => {
+  const raw = {
+    date: '2026-10-15', registration: 'SU-BVM', pilotRole: 'SIC', confidence: {},
+    sectors: [
+      { from: 'HRG', to: 'CGN', out: '20:35', off: '20:54', on: '01:49', in: '02:00', confidence: {} },
+      { from: 'CGN', to: 'HRG', out: '03:10', off: '03:20', on: '07:35', in: '07:45', confidence: {} },
+    ],
+  };
+  const r = await validateScan(raw, { pilot: FO, now: new Date('2026-10-17T00:00:00Z') });
+  assert.equal(r.header.crossesMidnight, true);
+  assert.match(r.header.flags.date.message, /crosses midnight/);
+  assert.equal(r.header.dateSuggestion, '2026-10-14', 'the day before is offered, since the form may carry the end of the duty');
+});

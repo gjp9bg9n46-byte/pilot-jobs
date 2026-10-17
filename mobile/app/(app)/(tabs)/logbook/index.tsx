@@ -17,7 +17,7 @@ import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
 import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
-import { duration, dropOffLabel, groupByDay, TimeFormat } from '../../../../src/lib/logbookFormat';
+import { duration, dropOffLabel, groupByDay, landsNextDay, overnightReturnOf, TimeFormat } from '../../../../src/lib/logbookFormat';
 import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
 import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
@@ -349,12 +349,18 @@ export default function LogbookList() {
             <View style={{ flex: 1 }}>
               <View style={styles.legTop}>
                 <Text style={styles.legRoute}>{item.departure || '—'} → {item.arrival || '—'}</Text>
+                {/* Landed after midnight: one flight, one date, marked +1. */}
+                {landsNextDay(item.offBlocksTime, item.onBlocksTime) ? <Text style={styles.plus1}>+1</Text> : null}
                 {item.pilotFlying === true ? <Text style={styles.pf}>PF</Text> : null}
+                {Number(item.nightTime) > 0 ? <Ionicons name="moon-outline" size={13} color={pilot.accentSoft} /> : null}
                 {item.source === 'SCAN' ? <Text style={styles.scanned}>scanned</Text> : null}
               </View>
               <Text style={styles.legSub}>
                 {[item.flightNumber, item.displayType || item.aircraftType, item.registration].filter(Boolean).join(' · ') || 'No details'}
               </Text>
+              {overnightReturnOf(item, logs) ? (
+                <Text style={styles.legLink}>Return of overnight trip from {overnightReturnOf(item, logs)}</Text>
+              ) : null}
             </View>
             <Text style={styles.legHours}>{duration(item.totalTime, timeFormat)}</Text>
           </Pressable>
@@ -414,6 +420,8 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   legTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legRoute: { fontSize: 14, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
   legSub: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 2 },
+  legLink: { fontSize: 11.5, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 3 },
+  plus1: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.muted, backgroundColor: '#EEF1F5', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },
   legHours: { fontSize: 14, fontFamily: fontFamilies.body, color: pilot.ink, fontVariant: ['tabular-nums'] },
   pf: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#E3ECF8', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
   scanned: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.faint, borderWidth: 1, borderColor: pilot.line, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1, overflow: 'hidden' },

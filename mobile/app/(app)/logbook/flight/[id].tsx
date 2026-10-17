@@ -8,7 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import { getPendingFlight, setPendingFlight } from '../../../../src/lib/pendingFlight';
-import { minutesToHHMM, spanMinutes } from '../../../../src/lib/logbookFormat';
+import { landsNextDay, minutesToHHMM, spanMinutes } from '../../../../src/lib/logbookFormat';
 import { fontFamilies, fontSizes, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
@@ -112,7 +112,7 @@ export default function FlightDetail() {
             {cell('Out', flight.offBlocksTime || '—')}
             {cell('Off', flight.takeoffTime || '—')}
             {cell('On', flight.landingTime || '—')}
-            {cell('In', flight.onBlocksTime || '—')}
+            {cell('In', `${flight.onBlocksTime || '—'}${landsNextDay(flight.offBlocksTime, flight.onBlocksTime) ? ' +1' : ''}`)}
           </View>
           <View style={styles.kv}>
             {kv('Block', minutesToHHMM(block))}

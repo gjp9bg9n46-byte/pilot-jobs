@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowRight, Repeat, X } from 'lucide-react';
 import Button from '../primitives/Button';
-import { minutesToHHMM, spanMinutes } from '../../lib/logbookFormat';
+import { landsNextDay, minutesToHHMM, spanMinutes } from '../../lib/logbookFormat';
 
 /**
  * One flight, as the mockup's detail screen: the four times across the top,
@@ -44,7 +44,7 @@ export default function FlightDetail({ flight, onClose, onEdit, onReturnTrip, on
             {cell('Out', flight.offBlocksTime || '—')}
             {cell('Off', flight.takeoffTime || '—')}
             {cell('On', flight.landingTime || '—')}
-            {cell('In', flight.onBlocksTime || '—')}
+            {cell('In', `${flight.onBlocksTime || '—'}${landsNextDay(flight.offBlocksTime, flight.onBlocksTime) ? ' +1' : ''}`)}
           </div>
           <div className="lb-kv">
             {kv('Block', minutesToHHMM(block))}

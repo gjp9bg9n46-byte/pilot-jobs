@@ -319,6 +319,20 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
     }
   }
 
+  // A page whose sectors cross midnight cannot say, by itself, which day its
+  // date refers to. Measured on a roster-confirmed example: the Air Cairo form
+  // for a duty running 20:35 on the 14th to 07:45 on the 15th carried "15" —
+  // the day the duty ENDED, not the day the first sector left. One example is
+  // not a rule, so this asks instead of shifting: the pilot confirms which day
+  // the first sector departed, and the save is blocked until they do.
+  const maxOffset = Math.max(0, ...sectors.map((x) => x.dayOffset || 0));
+  if (maxOffset > 0 && date && !headerFlags.date) {
+    const earlier = new Date(date.getTime() - maxOffset * 86400000).toISOString().slice(0, 10);
+    headerFlags.date = flag('amber',
+      `This page crosses midnight. If ${date.toISOString().slice(0, 10)} is the day the duty ENDED, the first sector left on ${earlier}.`);
+    dateSuggestion = dateSuggestion || earlier;
+  }
+
   const issues = sectors.reduce((n, s) => n + Object.keys(s.flags).length, 0) + Object.keys(headerFlags).length;
   return {
     header: {
@@ -329,6 +343,7 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
       firstOfficer: String(raw.firstOfficer || '').trim() || null,
       pilotRole,
       pageOrientation: raw.pageOrientation || 'upright',
+      crossesMidnight: maxOffset > 0,
       totals: raw.totals || null,
       flags: headerFlags,
     },
