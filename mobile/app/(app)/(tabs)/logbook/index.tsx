@@ -258,15 +258,15 @@ export default function LogbookList() {
         <>
           <View style={styles.tot}>
             <View style={styles.totCard}>
-              <Text style={styles.totNum}>{duration(summary.totals.totalTime, timeFormat)}</Text>
+              <Text style={styles.totNum}>{duration(summary.totals.total, timeFormat)}</Text>
               <Text style={styles.totLabel}>Total</Text>
             </View>
             <View style={styles.totCard}>
-              <Text style={styles.totNum}>{duration(Math.max(summary.totals.picTime, summary.totals.sicTime), timeFormat)}</Text>
-              <Text style={styles.totLabel}>{summary.totals.picTime > summary.totals.sicTime ? 'PIC' : 'SIC'}</Text>
+              <Text style={styles.totNum}>{duration(Math.max(summary.totals.pic, summary.totals.sic), timeFormat)}</Text>
+              <Text style={styles.totLabel}>{summary.totals.pic > summary.totals.sic ? 'PIC' : 'SIC'}</Text>
             </View>
             <View style={styles.totCard}>
-              <Text style={styles.totNum}>{duration(summary.totals.nightTime, timeFormat)}</Text>
+              <Text style={styles.totNum}>{duration(summary.totals.night, timeFormat)}</Text>
               <Text style={styles.totLabel}>Night</Text>
             </View>
           </View>

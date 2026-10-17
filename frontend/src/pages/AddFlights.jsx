@@ -216,7 +216,7 @@ export default function AddFlights() {
                       <label htmlFor="h-reg">Registration</label>
                       <input id="h-reg" value={scan.header.registration || ''} onChange={(e) => setHeader({ registration: e.target.value })} />
                     </div>
-                    <div className="lb-f">
+                    <div className="lb-f span2">
                       <label htmlFor="h-role">Your role</label>
                       <select id="h-role" value={scan.header.pilotRole || 'SIC'} onChange={(e) => setHeader({ pilotRole: e.target.value })}>
                         <option value="SIC">First Officer (SIC)</option>
@@ -266,6 +266,7 @@ export default function AddFlights() {
             <div className="lb-fg">
               <div className="lb-f span2"><label htmlFor="m-date">Date</label><input id="m-date" type="date" value={manual.date} onChange={(e) => setManual({ ...manual, date: e.target.value })} /></div>
               <div className="lb-f span2"><label htmlFor="m-type">Aircraft{prefs?.last.aircraftType && <span className="rem"> · remembered</span>}</label><input id="m-type" value={manual.aircraftType} onChange={(e) => setManual({ ...manual, aircraftType: e.target.value })} /></div>
+              <div className="lb-f span2"><label htmlFor="m-reg">Registration{prefs?.last.registration && <span className="rem"> · remembered</span>}</label><input id="m-reg" value={manual.registration} onChange={(e) => setManual({ ...manual, registration: e.target.value })} /></div>
               <div className="lb-f span2"><label htmlFor="m-cmd">Commander{prefs?.last.commander && <span className="rem"> · remembered</span>}</label><input id="m-cmd" value={manual.commander} onChange={(e) => setManual({ ...manual, commander: e.target.value })} /></div>
             </div>
             <SectorForm value={manual} onChange={setManual} night={null} nightNote="calculated on save" />

@@ -36,9 +36,8 @@ export default function SectorForm({ value, flags = {}, onChange, onFieldFocus, 
       <div className="lb-gl"><span>Flight</span></div>
       <div className="lb-fg">
         {field('flightNumber', 'Flight no.', { span: 'span2' })}
-        {field('from', 'From', { placeholder: 'CAI' })}
-        {field('to', 'To', { placeholder: 'HRG' })}
-        {field('registration', 'Registration', { span: 'span2', hint: 'remembered' })}
+        {field('from', 'From', { span: 'span2', placeholder: 'CAI' })}
+        {field('to', 'To', { span: 'span2', placeholder: 'HRG' })}
       </div>
 
       <div className="lb-gl"><span>Times · UTC</span></div>

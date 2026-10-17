@@ -190,7 +190,7 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }) {
   const [form, setForm] = useState(() => {
     let f;
     if (kind === 'personal') {
-      f = { firstName: profile.firstName || '', lastName: profile.lastName || '', role: profile.role || '', city: profile.city || '', country: canonCountry(profile.country), nationalities: pilotNationalities(profile), phone: profile.phone || '', education: profile.education || '' };
+      f = { firstName: profile.firstName || '', lastName: profile.lastName || '', role: profile.role || '', city: profile.city || '', country: canonCountry(profile.country), nationalities: pilotNationalities(profile), phone: profile.phone || '', staffNumber: profile.staffNumber || '', education: profile.education || '' };
     } else if (kind === 'prefs') {
       const p = profile.preferences || {};
       f = { preferredCountries: (p.preferredCountries || []).join(', '), preferredAircraft: (p.preferredAircraft || []).join(', '), preferredContractTypes: (p.preferredContractTypes || []).join(', '), willingToRelocate: !!profile.willingToRelocate };
@@ -259,7 +259,7 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }) {
         // Only send changed fields, so untouched values keep their stored casing.
         const orig = JSON.parse(initial.current);
         const body = {};
-        for (const k of ['firstName', 'lastName', 'role', 'city', 'country', 'phone', 'education']) {
+        for (const k of ['firstName', 'lastName', 'role', 'city', 'country', 'phone', 'staffNumber', 'education']) {
           if (form[k] === orig[k]) continue;
           const v = String(form[k]).trim();
           body[k] = v === '' ? null : v; // required names can't blank out (validated above)
@@ -322,6 +322,9 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }) {
             <MultiCountry values={form.nationalities} onChange={(v) => set('nationalities', v)} />
           </Field>
           <Field label="Phone (private)"><input value={form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+          <Field label="Staff number" hint="Optional. Your airline crew number, as it appears in the PF / PM columns of a voyage report — a scan uses it to tell which sectors you flew. Never shown to employers.">
+            <input value={form.staffNumber} onChange={(e) => set('staffNumber', e.target.value)} placeholder="e.g. 3074" />
+          </Field>
           <Field label="Education"><select value={form.education} onChange={(e) => set('education', e.target.value)}>{EDU.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
           <p className="fnote">Email is shown to airlines you apply to — change it in account settings.</p>
         </div>

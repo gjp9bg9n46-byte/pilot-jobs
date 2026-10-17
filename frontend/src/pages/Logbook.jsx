@@ -812,9 +812,9 @@ export default function Logbook() {
       {summary && (
         <>
           <div className="lb-tot">
-            <div><b>{duration(summary.totals.totalTime, timeFormat)}</b><span>Total</span></div>
-            <div><b>{duration(summary.totals.picTime > summary.totals.sicTime ? summary.totals.picTime : summary.totals.sicTime, timeFormat)}</b><span>{summary.totals.picTime > summary.totals.sicTime ? 'PIC' : 'SIC'}</span></div>
-            <div><b>{duration(summary.totals.nightTime, timeFormat)}</b><span>Night</span></div>
+            <div><b>{duration(summary.totals.total, timeFormat)}</b><span>Total</span></div>
+            <div><b>{duration(Math.max(summary.totals.pic, summary.totals.sic), timeFormat)}</b><span>{summary.totals.pic > summary.totals.sic ? 'PIC' : 'SIC'}</span></div>
+            <div><b>{duration(summary.totals.night, timeFormat)}</b><span>Night</span></div>
           </div>
           {summary.currency?.landingsLogged && (
             <div className="lb-rec">

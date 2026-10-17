@@ -294,8 +294,15 @@ exports.updateProfile = async (req, res, next) => {
       dateOfBirth, passportNumber, passportExpiry,
       emergencyContactName, emergencyContactPhone,
       willingToRelocate, isInstructor, isExaminer, education, role,
-      openToWork, availableFrom,
+      openToWork, availableFrom, staffNumber,
     } = req.body;
+
+    // Airline staff/crew number — optional, and the thing a scanned voyage
+    // report matches against its PF/PM columns. Never sent to employers.
+    if (staffNumber !== undefined && staffNumber !== null && String(staffNumber).trim()
+        && !/^[A-Za-z0-9-]{1,16}$/.test(String(staffNumber).trim())) {
+      return res.status(422).json({ error: 'Staff number: letters, digits and dashes only (16 characters max).' });
+    }
 
     const VALID_ROLES = ['FIRST_OFFICER', 'CAPTAIN'];
     if (role && !VALID_ROLES.includes(role)) {
@@ -315,6 +322,7 @@ exports.updateProfile = async (req, res, next) => {
         ...(availableFrom !== undefined ? { availableFrom: availableFrom ? new Date(availableFrom) : null } : {}),
         education: education === null ? null : (education || undefined),
         role: role || null,
+        ...(staffNumber !== undefined ? { staffNumber: String(staffNumber || '').trim() || null } : {}),
       },
     });
     const { passwordHash, ...profile } = pilot;
