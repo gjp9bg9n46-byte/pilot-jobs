@@ -16,6 +16,60 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Profile (edit): web `frontend/src/pages/ProfileRedesign.jsx`; mobile `mobile/app/(app)/(tabs)/profile/index.tsx`. API: `backend/src/controllers/profileController.js` (already accepts `nationality` scalar; schema `Pilot.nationality String?`).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
+## LOGBOOK REBUILD + VOYAGE-REPORT SCAN (2026-10-17) — **unpushed**
+Built end to end from `docs/design/logbook-scan-mockup.html`, web + app, with the
+Air Cairo FL-OPS 02 form as the reference layout.
+
+**Backend** (`4ffb3fa`, fixes in later commits)
+- `services/voyageExtractor.js` — the ONE place a vision model is called.
+  `GEMINI_MODEL` picks it; **pinned to `gemini-3.8-flash`** (the newest stable
+  non-preview Flash on the account). Also set it on Railway. Image bytes and crew
+  names are never logged — only sizes, tokens and timings.
+- The prompt knows the real form: stacked ATD (chox off = OUT, A/B = OFF) and
+  ATA (T/Down = ON, chox on = IN) cells, STD/STA as scheduled-only, the D/N/T
+  columns, "MSC 2926/2927" split one per sector, "SU ___" registrations, and the
+  PF/PM staff-number table. Cabin crew are explicitly out of scope.
+- `services/imagePrep.js` — EXIF-upright, deskew (projection profile over the
+  page's ruled lines), resize, normalise. 90°-rotated pages are read as they lie
+  and the STORED copy is turned upright from the model's `pageOrientation`, which
+  beats guessing a rotation direction from pixels.
+- `services/nightTime.js` — sun elevation along the great circle, minute by
+  minute, civil twilight (−6°), coordinates from the existing airportService.
+  **Night is counted over BLOCK (OUT→IN)**, which is what the crew's N column
+  records: measured on the nine samples, airborne-window night agreed with the
+  form on 4/14 sectors, block-window on 11/14.
+- `services/voyageValidate.js` — airports must resolve, times must run
+  OUT→OFF→ON→IN across midnight, **block must equal the form's T** (±2 min) or
+  OUT and IN go amber, and where the form states night and the sun disagrees the
+  form wins with both figures kept. The pilot's **staff number** in the PF/PM
+  columns overrides the model's guess at who was flying (and therefore the
+  landing). Future dates are red, >60 days old amber, both with a
+  "did you mean <same day, sensible year>?" suggestion — a misread year is the
+  commonest error by far.
+- Endpoints: `POST /logbook/scan`, `GET /logbook/scan/:id`, `.../image`,
+  `POST .../save`, `DELETE /logbook/scan/:id`, `GET /logbook/scan-quota`,
+  `GET|PUT /logbook/prefs`. 30 scans per pilot per day plus a burst limit; the
+  photo is deleted on save unless `keepScanImages`, and on discard always.
+- `services/logbookEntry.js` — block, airborne and night are derived for MANUAL
+  entry too; the role preset decides PIC vs SIC. Nothing types a duration.
+
+**Web** — Logbook (recency + the drop-off date, hh:mm/decimal saved per pilot,
+day groups, full table still one tap away), `/logbook/add` (drop a photo → per
+sector tabs → Save), flight-detail drawer with Return trip / Next leg /
+Duplicate / Delete.
+**App** — the same list, the "+" sheet (Scan / Manually / Import), the scan flow
+(camera, gallery or PDF; the native document scanner needs a real build), the
+review screen with editable amber fields, flight detail and the short manual form.
+
+**Migrations (additive, already applied):** `20261017090000_logbook_scan`
+(FlightLog.pilotFlying/approach/scanId, LogSource.SCAN, Pilot.logbookPrefs, table
+LogbookScan) and `20261017101500_pilot_staff_number` (Pilot.staffNumber).
+
+**Accuracy run** — 9 real reports, 18 sectors, avg **$0.0019/scan**; block == the
+form's T on 14/18, night ≈ the form's N on 11/14. Per-photo readings are with the
+owner for correction; score lands after that. Sample photos are never copied into
+the repo, and the screenshots use a generated blank form instead.
+
 ## CV BUILDER — BUILT END TO END (web + app, 2026-10-16) — **unpushed**
 Built from `docs/design/cv-mockup.html`, with the two updates the user gave: nav is
 Dashboard · Jobs · Airlines · Logbook · **CV Builder** · Profile, and "Before you send"
