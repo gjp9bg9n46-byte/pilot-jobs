@@ -18,6 +18,37 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Profile (edit): web `frontend/src/pages/ProfileRedesign.jsx`; mobile `mobile/app/(app)/(tabs)/profile/index.tsx`. API: `backend/src/controllers/profileController.js` (already accepts `nationality` scalar; schema `Pilot.nationality String?`).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
+## SCAN ACCURACY — ROUND 2 (2026-10-17, paid key)
+Same nine reports, same pipeline, scored against the owner's corrections.
+
+| | round 1 (1 pass) | round 2 · 3.8-flash | round 2 · 3.1-pro-preview |
+|---|---|---|---|
+| reports fully correct | 3/9 | **3/9** | 2/9 |
+| **errors reaching the logbook unflagged** | **14** | **2** | 6 |
+| out / on / in | 13 / 16 / 16 of 18 | **18 / 18 / 18** | 17 / 17 / 18 |
+| off | 14/18 | 16/18 | 16/18 |
+| from / to | 17 / 16 | 17 / 17 | **18 / 18** |
+| pilot flying | 16/18 | **18/18** | **18/18** |
+| date | 5/7 | 4/7 (all 3 misses flagged) | 5/7 |
+| cost per scan | $0.0019 | **$0.0057** | $0.0328 |
+| wall time per scan | ~20 s | ~18 s | ~20 s |
+
+Flash is the better choice on both safety and cost: Pro reads routes and dates a
+little better but makes time errors that nothing on the page contradicts, so
+they arrive silently. Neither meets the bar (8/9 correct, 0 unflagged).
+
+**The remaining gap is one field: OFF (airborne).** Both silent errors are OFF
+misread by 2–6 minutes, and nothing on the form cross-checks it — block comes
+from OUT/IN and the D/N/T columns are block. Tested directly: cropping those two
+rows and re-reading makes the crop disagree with the page in both cases, so an
+always-on crop pass (one extra call per sector, about +$0.004/scan) would take
+unflagged errors to zero. It would not correct them — the crop read one as null
+and one as 07:14 — so the cost is more amber on the review screen.
+**Owner's call: ship with 2 silent OFF-by-minutes errors per nine reports, or
+always crop and accept the extra amber.**
+
+Still OFF: `SCAN_ENABLED` unset.
+
 ## SCAN ACCURACY — ROUND 1 SCORED, ROUND 2 BLOCKED ON QUOTA (2026-10-17)
 Owner corrected all nine reports. **Single pass, page scale: 3/9 reports entirely
 correct**; per field: flight no. 18/18, from 17/18, to 16/18, on 16/18, in 16/18,
