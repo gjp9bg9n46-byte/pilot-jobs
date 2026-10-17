@@ -18,6 +18,40 @@ Backend talks to prod DB (migrations already applied in the earlier A/B deploy).
 - Profile (edit): web `frontend/src/pages/ProfileRedesign.jsx`; mobile `mobile/app/(app)/(tabs)/profile/index.tsx`. API: `backend/src/controllers/profileController.js` (already accepts `nationality` scalar; schema `Pilot.nationality String?`).
 - Scratch scripts: `/private/tmp/claude-501/.../scratchpad/` — `C-reports.js` (event/nat/clearance lists), `dedup-focus.js` (NetJets/Lineage), `gen-payloads.js` + `shoot.js` (mobile shots), `shoot-web.js` (web shots), `postdeploy.js` (key-diff/timing/CronRun), `mon5xx.sh` (30-min 5xx).
 
+## SCAN — ROUND 4: ZERO UNFLAGGED (2026-10-17) · PUSHED, FLAG STILL OFF
+| | r1 (1 pass) | r2 (2 passes) | **r4 (always-crop + PF checks)** | pro 3.1 |
+|---|---|---|---|---|
+| unflagged errors | 14 | 2 | **0** | 6 |
+| reports fully correct | 3/9 | 3/9 | 3/9 | 2/9 |
+| cost / scan | $0.0019 | $0.0057 | **$0.0074** | $0.0328 |
+| time / scan | ~20 s | ~18 s | ~23 s | ~20 s |
+| amber per report | — | ~2 | ~6 | — |
+
+"Fully correct" stays at 3/9 because the model's reading of this handwriting
+varies run to run — the same photo read 12:54 once and 12:59 the next time, and
+a PF column read 3074 once and 2540 the next. What changed is that **every one
+of those now arrives amber** instead of silently. A single clean run is not a
+guarantee; the checks are the guarantee.
+
+**The one residual, measured:** a ±2-minute OFF misread that the page and the
+crop agree on still passes. Nothing on the form can contradict it.
+
+**TO TURN IT ON:** set `SCAN_ENABLED=true` on Railway (nothing else needed —
+the key, the model and the code are deployed). Both clients hide the entry until
+the server says `enabled: true`, and it carries a Beta label when it appears.
+
+## UNTRACED PROD WRITES — ROOT CAUSE FOUND (2026-10-17)
+`src/app.js` ran a full `runIngestion()` on **every non-production boot**
+("Immediate run on dev startup"), **not wrapped in `withCronRun`** — the only
+bulk Job writer with no trace. That is what wrote 458 rows from this laptop
+between 10:29 and 10:42 today: requirement arrays re-extracted on 392 active
+jobs, 136 status flips, 42 rows re-created by upsert, 1 new merge. Proven by
+diffing the 09:55 `pg_dump` against the live table.
+`SCHEDULERS_OFF` now covers it (and now accepts "true"), but it still writes no
+CronRun row. **Proposed, NOT applied — needs the owner's OK:** wrap it in
+`withCronRun`, and gate it behind an explicit opt-in rather than
+`NODE_ENV !== 'production'`.
+
 ## SCAN ACCURACY — ROUND 2 (2026-10-17, paid key)
 Same nine reports, same pipeline, scored against the owner's corrections.
 
