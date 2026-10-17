@@ -44,6 +44,15 @@ type Log = any;
 
 export type Day = { date: string; label: string; hours: number; flights: Log[] };
 
+// A day header without a year reads as "this year" — which is how a flight
+// saved with a misread year (2024 for 2026) can sit in a logbook looking
+// perfectly ordinary while being two years out of place.
+export function dayLabel(date: string, now: Date = new Date()): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  const year = d.getUTCFullYear() === now.getUTCFullYear() ? undefined : 'numeric';
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year, timeZone: 'UTC' } as Intl.DateTimeFormatOptions);
+}
+
 // Sectors grouped by the day they were flown, newest first, so a CAI–HRG–CAI
 // rotation reads as one block.
 export function groupByDay(logs: Log[]): Day[] {
@@ -57,9 +66,10 @@ export function groupByDay(logs: Log[]): Day[] {
     .sort((a, b) => (a[0] < b[0] ? 1 : -1))
     .map(([date, flights]) => ({
       date,
-      label: new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }),
+      label: dayLabel(date),
       hours: flights.reduce((n: number, f: Log) => n + (Number(f.totalTime) || 0), 0),
-      flights: [...flights].sort((a, b) => String(a.offBlocksTime || '').localeCompare(String(b.offBlocksTime || ''))),
+      // Newest first inside the day too, matching the order the server pages in.
+      flights: [...flights].sort((a, b) => String(b.offBlocksTime || '').localeCompare(String(a.offBlocksTime || ''))),
     }));
 }
 

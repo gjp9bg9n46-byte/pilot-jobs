@@ -274,3 +274,48 @@ test('staff numbers that read differently twice put the landing up for checking'
   assert.match(r.sectors[1].flags.pilotFlying.message, /read differently the second time/);
   assert.equal(r.sectors[0].flags.pilotFlying, undefined, 'the sector they agreed on is left alone');
 });
+
+// ── Ordering: a logbook that is not strictly chronological hides flights ────
+// A scan dated two years back (a misread year) sat at position ~200 and could
+// only be found by search. These pin the order the list is built from.
+
+const { groupByDay, dayLabel } = require('../../../../frontend/src/lib/logbookFormat.js');
+
+test('the list orders by flight date then OUT, newest first, whatever the source', () => {
+  const logs = [
+    { id: 'a', date: '2026-10-16', offBlocksTime: '09:38', source: 'SCAN', totalTime: 4.9 },
+    { id: 'b', date: '2026-10-16', offBlocksTime: '15:32', source: 'SCAN', totalTime: 4.2 },
+    { id: 'c', date: '2026-10-17', offBlocksTime: '06:00', source: 'MANUAL', totalTime: 2 },
+    { id: 'd', date: '2024-10-16', offBlocksTime: '09:00', source: 'SCAN', totalTime: 3 },
+  ];
+  const days = groupByDay(logs);
+  assert.deepEqual(days.map((d) => d.date), ['2026-10-17', '2026-10-16', '2024-10-16']);
+  // A flight entered today but flown two years ago sorts last, not first.
+  assert.equal(days[days.length - 1].flights[0].id, 'd');
+  // Newest first inside the day as well.
+  assert.deepEqual(days[1].flights.map((f) => f.id), ['b', 'a']);
+});
+
+test('a scanned flight dated yesterday leads the list over one typed today', () => {
+  const now = new Date('2026-10-17T12:00:00Z');
+  const logs = [
+    { id: 'typed-today-for-last-week', date: '2026-10-10', offBlocksTime: '08:00', source: 'MANUAL', totalTime: 1 },
+    { id: 'scanned-yesterday', date: '2026-10-16', offBlocksTime: '09:38', source: 'SCAN', totalTime: 1 },
+  ];
+  const days = groupByDay(logs);
+  assert.equal(days[0].flights[0].id, 'scanned-yesterday');
+  assert.equal(days[0].label, dayLabel('2026-10-16', now));
+});
+
+test('the weekday comes from the date shown: 2026-10-16 is a Friday', () => {
+  const now = new Date('2026-10-17T00:00:00Z');
+  assert.match(dayLabel('2026-10-16', now), /^Fri\b.*16 Oct$/);
+  // 2024-10-16 really is a Wednesday — the weekday was never the bug, the year was.
+  assert.match(dayLabel('2024-10-16', now), /^Wed\b.*16 Oct 2024$/);
+});
+
+test('a day in another year says so, so a misread year cannot hide', () => {
+  const now = new Date('2026-10-17T00:00:00Z');
+  assert.ok(!dayLabel('2026-05-22', now).includes('2026'), 'this year needs no year');
+  assert.ok(dayLabel('2024-10-16', now).includes('2024'), 'another year is spelled out');
+});

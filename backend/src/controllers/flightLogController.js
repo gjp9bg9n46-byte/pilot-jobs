@@ -38,8 +38,19 @@ exports.getLogs = async (req, res, next) => {
       ];
     }
 
+    // Strictly chronological, newest first: flight date, then OUT time, then id
+    // as a tie-break. Ordering by date alone left same-day sectors in whatever
+    // order Postgres returned them, which is not stable across queries — so a
+    // flight could appear twice, or not at all, across page boundaries. The key
+    // is the same for every source: a scanned flight and a typed one sort by
+    // when they were FLOWN, never by when they were entered.
     const [rows, total] = await Promise.all([
-      prisma.flightLog.findMany({ where, orderBy: { date: 'desc' }, skip, take: limit }),
+      prisma.flightLog.findMany({
+        where,
+        orderBy: [{ date: 'desc' }, { offBlocksTime: 'desc' }, { id: 'desc' }],
+        skip,
+        take: limit,
+      }),
       prisma.flightLog.count({ where }),
     ]);
     // Attach the read-time display type (import left aircraftType blank for some

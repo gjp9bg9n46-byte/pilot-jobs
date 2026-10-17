@@ -203,10 +203,37 @@ export default function ScanVoyageReport() {
           </View>
         </View>
 
+        {/* The date is the one field that can bury a flight without looking
+            wrong: a misread year still shows the right day and month, and the
+            flight lands two years down the logbook. It is editable here, and
+            the server's suggestion is one tap. */}
         {scan.header.flags?.date ? (
           <View style={styles.warn}>
             <Ionicons name="alert-circle-outline" size={16} color={AMBER} />
-            <Text style={styles.warnText}>{scan.header.flags.date.message}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.warnText}>{scan.header.flags.date.message}</Text>
+              <View style={styles.dateRow}>
+                <TextInput
+                  value={scan.header.date || ''}
+                  onChangeText={(v) => setScan((x: Any) => ({ ...x, header: { ...x.header, date: v } }))}
+                  style={styles.dateInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={pilot.faint}
+                  keyboardType="numbers-and-punctuation"
+                />
+                {scan.header.dateSuggestion ? (
+                  <Pressable
+                    onPress={() => setScan((x: Any) => ({
+                      ...x,
+                      header: { ...x.header, date: x.header.dateSuggestion, flags: { ...x.header.flags, date: undefined } },
+                    }))}
+                    style={styles.useBtn}
+                  >
+                    <Text style={styles.useBtnText}>Use {scan.header.dateSuggestion}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
           </View>
         ) : null}
 
@@ -358,6 +385,10 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   warn: { flexDirection: 'row', gap: 9, backgroundColor: '#FFF8EC', borderWidth: 1, borderColor: '#F3DDB5', borderRadius: 10, padding: 11, marginBottom: 10 },
   warnText: { flex: 1, fontSize: 12.5, lineHeight: 18, color: '#5B3A0A', fontFamily: fontFamilies.body },
   warnStrong: { fontFamily: fontFamilies.bodySemiBold },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  dateInput: { flex: 1, height: 38, borderWidth: 1, borderColor: '#E9B872', borderRadius: 8, paddingHorizontal: 10, backgroundColor: '#fff', color: '#5B3A0A', fontFamily: fontFamilies.body, fontSize: 14 },
+  useBtn: { height: 38, paddingHorizontal: 12, borderRadius: 8, backgroundColor: AMBER, alignItems: 'center', justifyContent: 'center' },
+  useBtnText: { color: '#fff', fontFamily: fontFamilies.bodySemiBold, fontSize: 12.5 },
 
   found: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 10, marginBottom: 10 },
   thumb: { width: 58, height: 74, borderRadius: 6, backgroundColor: '#F1EEE6', borderWidth: 1, borderColor: '#DDD7CA' },
