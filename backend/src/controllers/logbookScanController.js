@@ -327,6 +327,8 @@ exports.saveScan = async (req, res, next) => {
         nightSource: s.nightSource === 'form' ? 'form' : 'calculated',
         landingsDay: s.landingsDay || 0,
         landingsNight: s.landingsNight || 0,
+        // A scan always asks the question, even when the answer is none.
+        landingsRecorded: true,
         pilotFlying: s.pilotFlying === true,
         approach: s.approach || null,
         remarks: s.remarks || null,

@@ -414,6 +414,12 @@ model FlightLog {
   nightSource          String?
   landingsDay     Int        @default(0)
   landingsNight   Int        @default(0)
+  // Whether the source recorded landings for this sector at all. The counts
+  // above cannot say: a monitoring sector legitimately has zero, and so does a
+  // row from an import whose file had no landings column. Without this, a pilot
+  // with four flights and two landings was told landings were "missing from 3
+  // of 4" — treating 0 as unknown. 0 is an answer; null is not.
+  landingsRecorded Boolean?
   remarks         String?
   // Voyage-report scan + the new manual entry: who was flying the sector, the
   // approach flown, and the scan the row came from (null for typed/imported rows).

@@ -475,3 +475,20 @@ test('a flight with no IN time cannot overlap anything after it', () => {
   const b = { id: 'b', date: '2026-10-16', flightNumber: 'MSC 2', offBlocksTime: '09:30', onBlocksTime: '11:00' };
   assert.equal(overlapsBackend([a, b]).size, 0, 'an unknown block is zero-length, never a false positive');
 });
+
+// ── Zero landings is an answer; no landings column is not ──────────────────
+
+test('a monitoring sector records zero landings and is not "missing"', async () => {
+  const row = await buildFlightRow({
+    date: '2026-10-16', from: 'MUC', to: 'HRG', out: '15:32', in: '19:45', pilotFlying: false,
+  }, FO);
+  assert.equal(row.landingsDay + row.landingsNight, 0, 'the monitoring pilot logs no landing');
+  assert.equal(row.landingsRecorded, true, 'but the question was asked and answered');
+});
+
+test('a scanned sector always records landings, even when there are none', async () => {
+  const r = await validateScan(RAW(), { pilot: FO, now: NOW });
+  // sector 1 is flown by the other pilot: zero landings for this logbook
+  assert.equal(r.sectors[0].myLandings, 0);
+  assert.equal(r.sectors[1].myLandings, 1);
+});

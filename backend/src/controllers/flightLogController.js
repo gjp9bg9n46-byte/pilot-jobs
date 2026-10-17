@@ -330,8 +330,17 @@ exports.importConfirm = async (req, res, next) => {
     const valid = [];
     const skipped = [];
 
+    // Did the file have a landings column at all? If any row carries a value —
+    // "0" included — then it did, and a zero elsewhere means "no landing".
+    // If none does, the column was absent and zero means nobody asked.
+    const hasValue = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+    const landingsColumnPresent = rows.some((r) => hasValue(r.landingsDay) || hasValue(r.landingsNight));
+
     for (let i = 0; i < rows.length; i++) {
       const { coerced, errors } = coerceRow(rows[i]);
+      // Only a file with a landings column can tell us "no landing"; without
+      // one, zero means nobody asked.
+      coerced.landingsRecorded = landingsColumnPresent;
       if (errors.length > 0) {
         skipped.push({ rowIndex: i + 1, errors });
       } else {

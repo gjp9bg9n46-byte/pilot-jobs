@@ -92,6 +92,8 @@ async function buildFlightRow(input, pilot) {
     nightSource,
     landingsDay: night ? 0 : landings,
     landingsNight: night ? landings : 0,
+    // Typed by hand, or derived from who was flying: either way it is recorded.
+    landingsRecorded: true,
     pilotFlying,
     approach: input.approach || null,
     remarks: input.remarks || null,

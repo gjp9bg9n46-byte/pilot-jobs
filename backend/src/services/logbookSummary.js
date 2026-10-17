@@ -206,7 +206,12 @@ async function buildLogbookSummary(pilotId) {
   // are "not current" because an importer dropped a column — that is our gap in
   // the data, not a gap in their flying.
   const flightsInWindow = recent.length;
-  const flightsWithoutLandings = recent.filter((l) => !((l.landingsDay || 0) + (l.landingsNight || 0))).length;
+  // Missing means nobody recorded landings for that sector — not that the
+  // answer was none. A monitoring sector has zero landings and is perfectly
+  // well recorded. Rows predating the column (landingsRecorded null) with no
+  // landing on them are the only unknowns.
+  const flightsWithoutLandings = recent.filter((l) => l.landingsRecorded !== true
+    && !((l.landingsDay || 0) + (l.landingsNight || 0))).length;
   const currency = {
     day: { landings: dayLdgDates.length, required: 3, currentUntil: currentUntil(dayLdgDates) },
     night: { landings: nightLdgDates.length, required: 3, currentUntil: currentUntil(nightLdgDates) },
