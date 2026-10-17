@@ -152,6 +152,9 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
       pfStaff: String(s.pfStaff || '').trim() || null,
       pmStaff: String(s.pmStaff || '').trim() || null,
       formDay: s.formDay || null, formNight: s.formNight || null, formTotal: s.formTotal || null,
+      // Where this row sits on the stored page, so the review screen can show
+      // the pilot the strip of paper a flagged value came from.
+      rowBox: s.rowBoxUpright || s.rowBox || null,
     };
 
     // Airports must exist. A code we cannot resolve is a red flag, not a guess.
@@ -227,11 +230,24 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
     // Landings: the pilot flying gets them. Their staff number settles who that was.
     let pilotFlying = typeof s.pilotFlying === 'boolean' ? s.pilotFlying : null;
     let pfSource = pilotFlying == null ? null : 'read';
+    let staffMatched = false;
     if (staffNumber && (sect.pfStaff || sect.pmStaff)) {
-      if (sect.pfStaff && sect.pfStaff.includes(staffNumber)) { pilotFlying = true; pfSource = 'staff number'; }
-      else if (sect.pmStaff && sect.pmStaff.includes(staffNumber)) { pilotFlying = false; pfSource = 'staff number'; }
+      if (sect.pfStaff && sect.pfStaff.includes(staffNumber)) { pilotFlying = true; pfSource = 'staff number'; staffMatched = true; }
+      else if (sect.pmStaff && sect.pmStaff.includes(staffNumber)) { pilotFlying = false; pfSource = 'staff number'; staffMatched = true; }
     }
-    if (pilotFlying == null) flags.pilotFlying = flag('amber', 'Who was flying is not marked.');
+    if (pilotFlying == null) {
+      flags.pilotFlying = flag('amber', 'Who was flying is not marked.');
+    } else if (staffNumber && !staffMatched) {
+      // The staff numbers were read but none of them is this pilot's, so the
+      // only thing left deciding who flew — and therefore who gets the landing
+      // — is the model's guess. Measured: the guess flipped between two runs of
+      // the same photo, and the staff column said 3574 where the pilot is 3074.
+      flags.pilotFlying = flag('amber', `Your staff number ${staffNumber} is not in the PF or PM column here — check who was flying.`);
+    } else if (staffMatched && ((shaky[sectorIndex] || []).includes('pfStaff') || (shaky[sectorIndex] || []).includes('pmStaff'))) {
+      // The two readings put different numbers in those columns, so the match
+      // that decided this is only as good as one of them.
+      flags.pilotFlying = flag('amber', 'The PF / PM staff numbers read differently the second time — check who was flying.');
+    }
 
     const landings = sect.landings == null ? (pilotFlying ? 1 : 0) : sect.landings;
     const mine = pilotFlying === true ? landings : 0;

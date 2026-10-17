@@ -34,6 +34,7 @@ router.get('/scan-quota', scan.quota);
 router.post('/scan', scanBurst, scanUpload.single('file'), scan.createScan);
 router.get('/scan/:id', scan.getScan);
 router.get('/scan/:id/image', scan.getScanImage);
+router.get('/scan/:id/row/:index/image', scan.getRowImage);
 router.post('/scan/:id/save', scan.saveScan);
 router.delete('/scan/:id', scan.discardScan);
 

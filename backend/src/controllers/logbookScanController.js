@@ -14,7 +14,7 @@ const prisma = require('../config/database');
 const logger = require('../config/logger');
 const { prepareScanImage } = require('../services/imagePrep');
 const { ScanError, modelName } = require('../services/voyageExtractor');
-const { readPage, uprightCopy } = require('../services/voyageReconcile');
+const { readPage, uprightCopy, cropRow } = require('../services/voyageReconcile');
 const { validateScan } = require('../services/voyageValidate');
 const { recomputeDerivedTotals } = require('../services/logbookSummary');
 
@@ -161,6 +161,28 @@ exports.getScanImage = async (req, res, next) => {
     res.setHeader('Content-Type', scan.mimeType || 'image/jpeg');
     res.setHeader('Cache-Control', 'private, max-age=600');
     res.send(Buffer.from(scan.imageData));
+  } catch (err) { next(err); }
+};
+
+// GET /logbook/scan/:id/row/:index/image — the strip of paper one sector was
+// read from. The review screen puts it beside the amber fields so the pilot can
+// fix a time by looking at it, instead of hunting for the row on the whole page.
+exports.getRowImage = async (req, res, next) => {
+  try {
+    if (!SCAN_ENABLED) return res.status(503).json(OFF);
+    const scan = await prisma.logbookScan.findFirst({
+      where: { id: req.params.id, pilotId: req.pilot.id },
+      select: { imageData: true, mimeType: true, sectors: true },
+    });
+    if (!scan || !scan.imageData) return res.status(404).json({ error: 'The photo is no longer stored.' });
+    const sector = (scan.sectors || [])[Number(req.params.index)];
+    const crop = sector && sector.rowBox
+      ? await cropRow(Buffer.from(scan.imageData), sector.rowBox).catch(() => null)
+      : null;
+    // No box (a PDF, or the model did not give one): the whole page still helps.
+    res.setHeader('Content-Type', crop ? 'image/jpeg' : (scan.mimeType || 'image/jpeg'));
+    res.setHeader('Cache-Control', 'private, max-age=600');
+    res.send(crop || Buffer.from(scan.imageData));
   } catch (err) { next(err); }
 };
 

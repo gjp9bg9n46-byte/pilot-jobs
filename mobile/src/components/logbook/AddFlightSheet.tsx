@@ -23,7 +23,7 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
 
   const option = (
     key: string, icon: keyof typeof Ionicons.glyphMap, title: string, body: string,
-    onPress: () => void, main = false,
+    onPress: () => void, main = false, beta = false,
   ) => (
     <Pressable key={key} onPress={() => { onClose(); onPress(); }} style={[styles.opt, main && styles.optMain]}>
       <View style={[styles.ic, !main && styles.icSoft]}>
@@ -33,6 +33,7 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
         <View style={styles.titleRow}>
           <Text style={styles.optTitle}>{title}</Text>
           {main ? <Text style={styles.tag}>Fastest</Text> : null}
+          {beta ? <Text style={styles.beta}>Beta</Text> : null}
         </View>
         <Text style={styles.optBody}>{body}</Text>
       </View>
@@ -49,8 +50,8 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
         {scanEnabled ? option('scan', 'scan-outline', 'Scan voyage report',
           scansLeft != null && scansLeft <= 0
             ? 'No scans left today — enter the flight manually.'
-            : 'Take a photo. We read every sector and you check it.',
-          onScan, true) : null}
+            : 'Take a photo. We read every sector — check the amber fields against it before saving.',
+          onScan, true, true) : null}
         {option('manual', 'create-outline', 'Enter manually',
           'Type the times yourself. Route, aircraft and crew are remembered from your last flight.', onManual, !scanEnabled)}
         {option('import', 'download-outline', 'Import a file',
@@ -73,5 +74,6 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   optTitle: { fontSize: fontSizes.base, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
   tag: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#E3ECF8', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
+  beta: { fontSize: 10, fontFamily: fontFamilies.bodyBold, color: '#B45309', backgroundColor: '#FDF1DD', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden', textTransform: 'uppercase' },
   optBody: { fontSize: 13, color: pilot.muted, lineHeight: 19, fontFamily: fontFamilies.body, marginTop: 2 },
 });

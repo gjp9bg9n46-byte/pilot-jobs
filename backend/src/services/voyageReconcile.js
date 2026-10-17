@@ -170,7 +170,16 @@ async function readPage({ buffer, mimeType }) {
     }
     const nightFight = nightDisagrees(s, calculated);
     const timesDiffer = disagree[i] && [...disagree[i].fields].some((f) => TIME_FIELDS.includes(f));
-    if (!fightsForm && !nightFight && !timesDiffer) continue;
+
+    // EVERY sector gets a close second look, not only the ones the form
+    // contradicts. Measured on nine real reports: block, night, the lower table
+    // and the page total between them cover OUT, IN and the route — but nothing
+    // on the page checks OFF, and the two errors that still reached the logbook
+    // silently were both OFF, out by two and six minutes. A crop disagrees with
+    // the page in both cases, so cropping always is what makes the review screen
+    // honest. It costs one more call per sector and some extra amber.
+    const alwaysCrop = String(process.env.SCAN_ALWAYS_CROP || 'true').toLowerCase() !== 'false';
+    if (!fightsForm && !nightFight && !timesDiffer && !alwaysCrop) continue;
 
     // Cut the row from the UPRIGHT page, using the box from whichever pass saw
     // that page: pass two if it ran, pass one only when nothing was rotated.
@@ -201,12 +210,33 @@ async function readPage({ buffer, mimeType }) {
     if (winner && winner.name !== 'page') {
       raw.sectors[i] = { ...s, ...winner.sector, formTotal: s.formTotal, rowBox: s.rowBox };
       if (disagree[i]) delete disagree[i];
-    } else if (!winner) {
+    } else if (!winner && references.length) {
       // Nothing matched the crew's total. Keep the page reading and say so.
       disagree[i] = disagree[i] || { fields: new Set(), other: null };
       TIME_FIELDS.forEach((f) => disagree[i].fields.add(f));
     }
+
+    // Whatever was chosen, any time the close-up reads differently is a field
+    // the pilot should look at. The crop is never trusted enough to overwrite
+    // on its own — it can misread too — but it is trusted enough to ask.
+    if (read) {
+      const chosen = raw.sectors[i];
+      for (const f of TIME_FIELDS) {
+        const cropValue = read.row[f];
+        if (!cropValue || norm(cropValue) === norm(chosen[f])) continue;
+        disagree[i] = disagree[i] || { fields: new Set(), other: null };
+        disagree[i].fields.add(f);
+      }
+    }
   }
+
+  // The review screen crops these rows out of the stored page, so the boxes
+  // have to survive alongside the values.
+  (raw.sectors || []).forEach((s, i) => {
+    const fromB = b && b.raw && b.raw.sectors && b.raw.sectors[i] && b.raw.sectors[i].rowBox;
+    s.rowBoxUpright = upright.rotated ? (fromB || null) : (fromB || s.rowBox || null);
+  });
+  raw.pageUpright = upright.rotated;
 
   const uncertain = {
     header: [...headerDisagree],

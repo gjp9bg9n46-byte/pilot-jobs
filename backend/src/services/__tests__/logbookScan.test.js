@@ -257,3 +257,20 @@ test('a sector that matches its form total and schedule stays clean', async () =
   const r = await validateScan(raw, { pilot: FO, now: NOW });
   assert.deepEqual(r.sectors[1].flags, {});
 });
+
+test('an unmatched staff number leaves who-was-flying unverified, and says so', async () => {
+  const raw = RAW();
+  raw.sectors[0].pfStaff = '3574';          // a digit off the pilot's own 3074
+  raw.sectors[0].pmStaff = '1407';
+  const r = await validateScan(raw, { pilot: FO, now: NOW });
+  assert.match(r.sectors[0].flags.pilotFlying.message, /not in the PF or PM column/);
+});
+
+test('staff numbers that read differently twice put the landing up for checking', async () => {
+  const r = await validateScan(RAW(), {
+    pilot: FO, now: NOW,
+    uncertain: { header: [], sectors: { 1: ['pfStaff', 'pmStaff'] } },
+  });
+  assert.match(r.sectors[1].flags.pilotFlying.message, /read differently the second time/);
+  assert.equal(r.sectors[0].flags.pilotFlying, undefined, 'the sector they agreed on is left alone');
+});

@@ -261,7 +261,9 @@ export default function ScanVoyageReport() {
                     : <Text style={styles.ok}>Looks right</Text>}
               </Pressable>
 
-              <View style={styles.grid4}>{(['out', 'off', 'on', 'in'] as const).map((k) => cell(k, k.toUpperCase()))}</View>
+              <Pressable onPress={() => setExpanded(open ? null : i)} style={styles.grid4}>
+                {(['out', 'off', 'on', 'in'] as const).map((k) => cell(k, k.toUpperCase()))}
+              </Pressable>
 
               <View style={styles.kv}>
                 <View style={styles.kvCell}><Text style={styles.kvLabel}>Block</Text><Text style={styles.kvValue}>{minutesToHHMM(block)}</Text></View>
@@ -297,9 +299,16 @@ export default function ScanVoyageReport() {
                   ) : null}
                   {token ? (
                     <>
-                      <Text style={styles.compare}>The page, as we read it</Text>
+                      <Text style={styles.compare}>
+                        {Object.keys(flags).length ? 'The row this was read from' : 'The page, as we read it'}
+                      </Text>
                       <Image
-                        source={{ uri: `${API_URL}/logbook/scan/${scan.id}/image`, headers: { Authorization: `Bearer ${token}` } }}
+                        source={{
+                          // One sector's strip of paper, so an amber time can be
+                          // checked without hunting for the row on a whole page.
+                          uri: `${API_URL}/logbook/scan/${scan.id}/row/${i}/image`,
+                          headers: { Authorization: `Bearer ${token}` },
+                        }}
                         style={styles.page}
                         resizeMode="contain"
                       />
@@ -384,7 +393,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   pfRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
 
   compare: { fontSize: 11.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.faint, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
-  page: { width: '100%', height: 240, borderRadius: 8, backgroundColor: '#F1EEE6' },
+  page: { width: '100%', height: 190, borderRadius: 8, backgroundColor: '#F1EEE6' },
   note: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 14, lineHeight: 18 },
   fixed: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 10, padding: 12, paddingBottom: 28, backgroundColor: pilot.surface, borderTopWidth: 1, borderTopColor: pilot.line },
 

@@ -100,3 +100,14 @@
   .lb-drawer .panel { width: 100%; padding: 18px 16px 120px; }
   .lb-acts { grid-template-columns: 1fr 1fr; }
 }
+
+/* The row strip shown next to flagged fields on the review screen. */
+.lb-crop { border: 1px solid var(--lb-amber-line); border-radius: 10px; overflow: hidden; background: var(--lb-amber-bg); margin: 14px 0 4px; }
+.lb-crop-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--lb-amber); padding: 8px 12px 6px; }
+.lb-crop img { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; background: #fff; }
+.lb-crop-wait { padding: 18px 12px; font-size: 12.5px; color: var(--text-faint); }
+
+/* "Beta" on the scan entry: the reading is good, not infallible. */
+.lb-beta { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--lb-amber); background: #FDF1DD; border-radius: 5px; padding: 2px 5px; margin-left: 6px; vertical-align: 1px; }
+.lb-tabs button.on .lb-beta { color: #FFE2B0; background: rgba(255,255,255,.14); }

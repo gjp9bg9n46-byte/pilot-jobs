@@ -4,6 +4,7 @@ import { AlertTriangle, Camera, Check, Loader2, Upload } from 'lucide-react';
 import LightPage from '../components/primitives/LightPage';
 import Button from '../components/primitives/Button';
 import SectorForm from '../components/logbook/SectorForm';
+import RowCrop from '../components/logbook/RowCrop';
 import ImportModal from '../components/ImportModal';
 import { logbookApi, flightLogApi } from '../services/api';
 import '../components/logbook/logbook.css';
@@ -130,7 +131,9 @@ export default function AddFlights() {
 
         {quota?.enabled && (
           <div className="lb-tabs" style={{ marginTop: 20 }}>
-            <button type="button" className={mode === 'scan' ? 'on' : ''} onClick={() => setMode('scan')}>Scan a voyage report</button>
+            <button type="button" className={mode === 'scan' ? 'on' : ''} onClick={() => setMode('scan')}>
+              Scan a voyage report <span className="lb-beta">Beta</span>
+            </button>
             <button type="button" className={mode === 'manual' ? 'on' : ''} onClick={() => setMode('manual')}>Enter manually</button>
           </div>
         )}
@@ -168,7 +171,10 @@ export default function AddFlights() {
                   <>
                     <Camera size={26} style={{ color: 'var(--accent)' }} />
                     <b style={{ color: 'var(--text-primary)' }}>Drop a photo or PDF of your voyage report</b>
-                    <span style={{ fontSize: 13 }}>Every sector on it becomes a flight you check before saving.</span>
+                    <span style={{ fontSize: 13 }}>
+                      Every sector on it becomes a flight you check before saving.
+                      <br />Reading handwriting is new here — check the amber fields against the photo.
+                    </span>
                     <Button variant="secondary" onClick={() => fileRef.current?.click()} style={{ marginTop: 6 }}>Choose a file</Button>
                   </>
                 )}
@@ -234,6 +240,11 @@ export default function AddFlights() {
                       </select>
                     </div>
                   </div>
+
+                  {/* The photo of this row, beside the fields to check */}
+                  {scan.sectors[active] && Object.keys(scan.sectors[active].flags || {}).length > 0 && (
+                    <RowCrop scanId={scan.id} index={active} />
+                  )}
 
                   {scan.sectors[active] && (
                     <SectorForm

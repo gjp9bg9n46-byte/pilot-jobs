@@ -100,6 +100,9 @@ export const logbookApi = {
   scan: (formData) => api.post('/logbook/scan', formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000 }),
   getScan: (id) => api.get(`/logbook/scan/${id}`),
   scanImageUrl: (id) => `${api.defaults.baseURL}/logbook/scan/${id}/image`,
+  // The strip of paper one sector was read from. Fetched as a blob because an
+  // <img src> cannot carry the auth header.
+  scanRowImage: (id, index) => api.get(`/logbook/scan/${id}/row/${index}/image`, { responseType: 'blob' }),
   saveScan: (id, body) => api.post(`/logbook/scan/${id}/save`, body),
   discardScan: (id) => api.delete(`/logbook/scan/${id}`),
 };
