@@ -83,15 +83,13 @@ export default function AirlineDetail() {
 
   const payBox = pay.length > 0 && (
     <div className="af-box">
-      <h3>
-        Pay
-        <em>{[pay[0].period, pay[0].currency].filter(Boolean).join(', ')}</em>
-      </h3>
+      <h3>Pay{pay.some((p) => p.usd) ? <em>US dollars, converted</em> : <em>as recorded</em>}</h3>
       {pay.map((p) => (
         <div className="af-kv" key={p.key}>
           <span className="k">{p.label}</span>
           <span className="v mono">
-            {p.value}
+            {p.usd || p.recorded}
+            {p.usd && <span className="d">recorded {p.recorded} · converted at {p.convertedAt} rate</span>}
             <span className="d">
               {dateNote('payRanges', p.key) || 'no date recorded'}
               <button type="button" onClick={() => reaffirm(`payRanges:${p.key}`)}>still right?</button>

@@ -9,7 +9,7 @@ const assert = require('node:assert');
 
 const { requirementChecks } = require('../airlineFactfile');
 const {
-  parseStages, readPay, fleetRows, aircraftTotal, missingFacts, shortFleet, upgradeLabel,
+  parseStages, readPay, fleetRows, aircraftTotal, missingFacts, shortFleet, upgradeLabel, fxDateLabel, FX,
 } = require('../../../../frontend/src/lib/airlineFacts.js');
 
 const CTX = () => ({
@@ -75,12 +75,32 @@ test('a whole process stored as one arrow-separated line still numbers correctly
   assert.equal(stages[1].title, 'COMPASS test');
 });
 
-test('pay is reported in the currency and period it was recorded in', () => {
-  const rows = readPay({ captain: { min: 100000, max: 235000, period: 'Annual', currency: 'EURO' } });
-  assert.equal(rows[0].value, '100,000 – 235,000');
-  assert.equal(rows[0].currency, 'EUR');
-  assert.equal(rows[0].period, 'annual');
+test('pay keeps the currency and period it was recorded in', () => {
+  const [row] = readPay({ captain: { min: 100000, max: 235000, period: 'Annual', currency: 'EURO' } });
+  assert.equal(row.recorded, '€100,000 – €235,000 / year', 'never divided, never relabelled');
+  assert.equal(row.currency, 'EUR');
+  assert.equal(row.period, 'annual');
   assert.deepEqual(readPay(null), [], 'no pay recorded shows no pay box');
+});
+
+test('a non-USD figure also carries a dated dollar estimate, rounded', () => {
+  const [row] = readPay({ captain: { min: 100000, max: 235000, period: 'Annual', currency: 'EURO' } });
+  assert.equal(row.usd, '≈ $108,000 – $254,000 / year');
+  assert.equal(row.convertedAt, fxDateLabel());
+  assert.ok(/000( |$)/.test(row.usd.split(' – ')[0]), 'rounded to the nearest thousand');
+});
+
+test('a USD figure is shown as recorded, with nothing converted', () => {
+  const [row] = readPay({ captain: { min: 8000, max: 9500, period: 'Month', currency: 'USD' } });
+  assert.equal(row.recorded, '$8,000 – $9,500 / month');
+  assert.equal(row.usd, null);
+  assert.equal(row.convertedAt, null);
+});
+
+test('an unknown currency is left exactly as recorded rather than guessed at', () => {
+  const [row] = readPay({ captain: { min: 50000, max: 60000, period: 'Annual', currency: 'XYZ' } });
+  assert.equal(row.usd, null, 'no rate, no estimate');
+  assert.match(row.recorded, /50,000/);
 });
 
 test('the fleet falls back to the plain list when nobody recorded the numbers', () => {
@@ -112,4 +132,22 @@ test('upgrade time reads as a range, or says which end is known', () => {
   assert.equal(upgradeLabel(4, 6), '4 – 6 years');
   assert.equal(upgradeLabel(null, null), null);
   assert.match(upgradeLabel(5, null), /5 years/);
+});
+
+
+test('the conversion rate is fixed and dated, not fetched', () => {
+  assert.match(FX.asOf, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(FX.toUsd.USD, 1);
+  assert.ok(FX.toUsd.EUR > 0 && FX.toUsd.SGD > 0, 'every currency in the data has a rate');
+});
+
+// Account deletion is the one flow an App Store reviewer always tries.
+test('deleting an account without a password is a bad request, not a crash', async () => {
+  const controller = require('../../controllers/authController');
+  const codes = [];
+  const res = { status(c) { codes.push(c); return this; }, json() { return this; } };
+  await controller.deleteAccount({ pilot: { id: 'nobody' }, body: {} }, res, (e) => { throw e; });
+  assert.deepEqual(codes, [400], 'a missing password answers 400');
+  await controller.deleteAccount({ pilot: { id: 'nobody' } }, res, (e) => { throw e; });
+  assert.deepEqual(codes, [400, 400], 'so does a request with no body at all');
 });

@@ -9,7 +9,14 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cockpithire.app"
+      "bundleIdentifier": "com.cockpithire.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "CockpitHire uses the camera so you can photograph a voyage report and have your flights read from it.",
+        "NSPhotoLibraryUsageDescription": "CockpitHire needs your photo library so you can pick a photo of a voyage report, or a profile photo for your CV.",
+        "NSPhotoLibraryAddUsageDescription": "CockpitHire saves a CV or a flight report to your photos only when you ask it to."
+      }
     },
     "android": {
       "package": "com.cockpithire.app",

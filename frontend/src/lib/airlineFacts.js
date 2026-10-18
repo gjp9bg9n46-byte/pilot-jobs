@@ -34,19 +34,36 @@ export function parseStages(stages) {
 const PERIOD = { month: 'monthly', monthly: 'monthly' };
 
 // Pay as it was actually recorded — never converted, never relabelled.
+// Pay exactly as it was recorded — the period is never divided, the figure
+// never rewritten. A non-USD row additionally carries a dated conversion, so a
+// pilot can compare it with the rest without us pretending it was in dollars.
 export function readPay(payRanges) {
   const p = payRanges || {};
   const rows = [];
   for (const [key, label] of [['captain', 'Captain'], ['fo', 'First Officer']]) {
     const v = p[key];
     if (!v || (v.min == null && v.max == null)) continue;
+    const currency = v.currency === 'EURO' ? 'EUR' : (v.currency || null);
+    const period = PERIOD[String(v.period || '').toLowerCase()]
+      || (/^(annual|yearly|year|per year)$/i.test(String(v.period || '')) ? 'annual' : (v.period || null));
+    const per = period === 'monthly' ? '/ month' : period === 'annual' ? '/ year' : (period ? `/ ${period}` : '');
+    const usdMin = toUsdRounded(v.min, currency);
+    const usdMax = toUsdRounded(v.max, currency);
+    const isUsd = String(currency || '').toUpperCase() === 'USD';
     rows.push({
       key,
       label,
-      value: [v.min, v.max].filter((n) => n != null).map((n) => Number(n).toLocaleString('en-GB')).join(' – '),
-      currency: v.currency === 'EURO' ? 'EUR' : (v.currency || null),
-      period: PERIOD[String(v.period || '').toLowerCase()]
-        || (/^(annual|yearly|year|per year)$/i.test(String(v.period || '')) ? 'annual' : (v.period || null)),
+      period,
+      currency,
+      // What the airline actually pays, in its own currency.
+      recorded: `${range(v.min, v.max, currency)}${per ? ` ${per}` : ''}`,
+      // The dollar estimate, only where a conversion was needed.
+      usd: isUsd || (usdMin == null && usdMax == null)
+        ? null
+        : `\u2248 ${range(usdMin, usdMax, 'USD')}${per ? ` ${per}` : ''}`,
+      convertedAt: isUsd ? null : fxDateLabel(),
+      // Kept for the old callers that printed a bare range.
+      value: range(v.min, v.max, currency),
     });
   }
   return rows;
@@ -123,3 +140,30 @@ export function shortFleet(fleet, max = 3) {
   }
   return seen.join(', ');
 }
+
+// ── Currency ───────────────────────────────────────────────────────────────
+// One fixed, dated rate table, stored here rather than fetched: a pay figure
+// that moves on its own would make two pilots reading the same fact file
+// disagree, and a live rate cannot be shown with the date it was true. Update
+// the table and the date together; the UI always prints the date it used.
+export const FX = {
+  asOf: '2026-10-18',
+  // 1 unit of the currency, in US dollars.
+  toUsd: { USD: 1, EUR: 1.08, EURO: 1.08, GBP: 1.26, SGD: 0.74, AED: 0.27, SAR: 0.27, QAR: 0.27, CHF: 1.12, CAD: 0.72, AUD: 0.65 },
+};
+
+const SYMBOL = { USD: '$', EUR: '\u20ac', EURO: '\u20ac', GBP: '\u00a3', SGD: 'S$', AED: 'AED ', SAR: 'SAR ', QAR: 'QAR ', CHF: 'CHF ', CAD: 'C$', AUD: 'A$' };
+
+export const fxDateLabel = () => new Date(`${FX.asOf}T00:00:00Z`)
+  .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+// Rounded to the nearest 1,000: a converted figure is an estimate, and
+// printing it to the dollar would dress it up as one.
+const toUsdRounded = (n, currency) => {
+  const rate = FX.toUsd[String(currency || '').toUpperCase()];
+  if (!rate || n == null) return null;
+  return Math.round((Number(n) * rate) / 1000) * 1000;
+};
+
+const money = (n, currency) => `${SYMBOL[String(currency || '').toUpperCase()] || ''}${Number(n).toLocaleString('en-GB')}`;
+const range = (min, max, currency) => [min, max].filter((n) => n != null).map((n) => money(n, currency)).join(' – ');

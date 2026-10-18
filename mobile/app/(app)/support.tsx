@@ -6,6 +6,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TextField } from '../../src/components/ui';
+import { WEB_URL } from '../../src/lib/api';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../src/theme/ThemeContext';
 
@@ -110,6 +111,18 @@ export default function SupportScreen() {
           {WHATS_NEW.map((w) => (
             <View key={w} style={styles.bullet}><Text style={styles.bulletDot}>•</Text><Text style={styles.bulletText}>{w}</Text></View>
           ))}
+          {/* App Review expects the privacy policy and terms to be reachable
+              from inside the app, not only from the store listing. */}
+          <View style={styles.legalRow}>
+            <Pressable onPress={() => Linking.openURL(`${WEB_URL}/privacy`)} hitSlop={6}>
+              <Text style={styles.legalLink}>Privacy policy</Text>
+            </Pressable>
+            <Text style={styles.legalDot}>·</Text>
+            <Pressable onPress={() => Linking.openURL(`${WEB_URL}/terms`)} hitSlop={6}>
+              <Text style={styles.legalLink}>Terms of use</Text>
+            </Pressable>
+          </View>
+
           <View style={styles.versionRow}>
             <Text style={styles.contactLabel}>CockpitHire Mobile <Text style={styles.betaBadge}> Beta </Text></Text>
             <Text style={styles.contactSub}>Version 1.0.0</Text>
@@ -149,6 +162,9 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   bullet: { flexDirection: 'row', gap: 8, marginTop: 5 },
   bulletDot: { fontSize: fontSizes.sm, color: pilot.navy },
   bulletText: { flex: 1, fontSize: fontSizes.sm, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 21 },
+  legalRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  legalLink: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: 13.5 },
+  legalDot: { color: pilot.faint },
   versionRow: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: pilot.line },
   betaBadge: { fontSize: 11, color: '#1E40AF', backgroundColor: '#EFF6FF', fontFamily: fontFamilies.bodyBold, overflow: 'hidden' },
 });

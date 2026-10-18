@@ -185,8 +185,19 @@ exports.changePassword = async (req, res, next) => {
 
 exports.deleteAccount = async (req, res, next) => {
   try {
-    const { password } = req.body;
+    const { password } = req.body || {};
+    // Without this, a request with no password reached bcrypt.compare(undefined,
+    // …) and came back 500 — on the one flow an App Store reviewer is certain
+    // to try. A missing password is a bad request, and says so.
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Enter your password to confirm.' });
+    }
     const pilot = await prisma.pilot.findUnique({ where: { id: req.pilot.id } });
+    if (!pilot) return res.status(404).json({ error: 'Account not found.' });
+    if (!pilot.passwordHash) {
+      // Google sign-in accounts have no password to check against.
+      return res.status(409).json({ error: 'This account signs in with Google. Contact support@cockpithire.com to delete it.' });
+    }
     const valid = await bcrypt.compare(password, pilot.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Password is incorrect' });
     // Hard delete; soft-delete variant: update({ deletedAt: new Date() }) + a cleanup cron

@@ -129,13 +129,14 @@ export default function AirlineFactFile() {
           <View style={styles.box}>
             <View style={styles.boxHead}>
               <Text style={styles.boxTitle}>Pay</Text>
-              <Text style={styles.boxEm}>{[pay[0].period, pay[0].currency].filter(Boolean).join(', ')}</Text>
+              <Text style={styles.boxEm}>{pay.some((x) => x.usd) ? 'US dollars, converted' : 'as recorded'}</Text>
             </View>
             {pay.map((p) => (
               <View key={p.key} style={styles.kv}>
                 <Text style={styles.kvK}>{p.label}</Text>
                 <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
-                  <Text style={styles.kvV}>{p.value}</Text>
+                  <Text style={styles.kvV}>{p.usd || p.recorded}</Text>
+                  {p.usd ? <Text style={styles.kvD}>recorded {p.recorded} · converted at {p.convertedAt} rate</Text> : null}
                   <Text style={styles.kvD}>{dateNote('payRanges', p.key) || 'no date recorded'}</Text>
                 </View>
               </View>
