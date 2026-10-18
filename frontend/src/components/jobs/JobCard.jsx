@@ -43,7 +43,7 @@ export default function JobCard({ job, selected, onClick, compact = false, logoU
             {timeLine ? ` · ${timeLine}` : ''}
           </div>
         </div>
-        <div className="logo-slot"><AirlineLogo logoUrl={logoUrl} name={job.company} box={42} maxW={42} hideIfMissing /></div>
+        <div className="logo-slot"><AirlineLogo logoUrl={logoUrl} name={job.company} box={48} maxW={72} frameless={false} hideIfMissing /></div>
       </div>
 
       {chips.length > 0 && (

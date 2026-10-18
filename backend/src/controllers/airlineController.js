@@ -1,8 +1,10 @@
 'use strict';
 
 const prisma = require('../config/database');
+const { jobStatsFor, requirementChecks } = require('../services/airlineFactfile');
+const { buildMatchContext } = require('../services/jobMatch');
 
-const VALID_SORT = ['name', 'lastUpdated', 'hiringStatus'];
+const VALID_SORT = ['name', 'lastUpdated', 'hiringStatus', 'openJobs'];
 const VALID_HIRING_STATUSES = new Set(['ACTIVELY_HIRING', 'OCCASIONAL', 'PAUSED', 'UNKNOWN']);
 const VALID_HIRING_FREQUENCIES = new Set(['CONTINUOUS', 'PERIODIC', 'RARE', 'UNKNOWN']);
 const VALID_CONTRACT_TYPES = new Set(['PERMANENT', 'FIXED_TERM', 'AGENCY', 'PAY_TO_FLY', 'MIXED']);
@@ -115,7 +117,18 @@ exports.listAirlines = async (req, res, next) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
 
     const where = {};
-    if (q)            where.name         = { contains: q, mode: 'insensitive' };
+    // Search covers what a pilot actually types: the airline, where it is, or
+    // the aircraft they are rated on.
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { country: { contains: q, mode: 'insensitive' } },
+        { headquarters: { contains: q, mode: 'insensitive' } },
+        { fleet: { has: String(q).toUpperCase() } },
+        { iataCode: { equals: String(q).toUpperCase() } },
+        { icaoCode: { equals: String(q).toUpperCase() } },
+      ];
+    }
     if (region)       where.region       = region;
     if (hiringStatus) where.hiringStatus = hiringStatus;
 
@@ -124,15 +137,33 @@ exports.listAirlines = async (req, res, next) => {
       sort === 'hiringStatus' ? [{ hiringStatus: 'asc' }, { name: 'asc' }] :
                                 { name: 'asc' };
 
-    const [total, items] = await Promise.all([
-      prisma.airline.count({ where }),
-      prisma.airline.findMany({
-        where, orderBy,
-        skip: (pageNum - 1) * limitNum,
-        take: limitNum,
-        select: LIST_SELECT,
-      }),
-    ]);
+    // Hiring first, then by how much is actually open: the order a pilot wants.
+    // Paged in memory for that sort, because the job counts live in another
+    // table — the airline list is a few hundred rows, so this is cheap.
+    const sortsByJobs = sort === 'openJobs';
+    const all = await prisma.airline.findMany({
+      where,
+      orderBy: sortsByJobs ? { name: 'asc' } : orderBy,
+      ...(sortsByJobs ? {} : { skip: (pageNum - 1) * limitNum, take: limitNum }),
+      select: LIST_SELECT,
+    });
+    const total = sortsByJobs ? all.length : await prisma.airline.count({ where });
+
+    // Open jobs, and how many of them this pilot qualifies for. Anonymous
+    // callers get the counts without the match.
+    const stats = await jobStatsFor(all.map((a) => a.name), req.pilot?.id || null);
+    const HIRING_RANK = { ACTIVELY_HIRING: 0, OCCASIONAL: 1, UNKNOWN: 2, PAUSED: 3 };
+    let items = all.map((a) => ({
+      ...a,
+      jobs: stats.get(String(a.name).trim().toLowerCase()) || { open: 0, qualify: 0, close: 0, matchable: false },
+    }));
+    if (sortsByJobs) {
+      items.sort((x, y) => (HIRING_RANK[x.hiringStatus] - HIRING_RANK[y.hiringStatus])
+        || (y.jobs.open - x.jobs.open)
+        || (y.jobs.qualify - x.jobs.qualify)
+        || x.name.localeCompare(y.name));
+      items = items.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+    }
 
     res.json({ items, total, page: pageNum, totalPages: Math.ceil(total / limitNum) });
   } catch (err) {
@@ -151,13 +182,15 @@ async function deriveRequirementsFromJobs(airlineName) {
   const jobs = await prisma.job.findMany({
     where: { status: 'ACTIVE', company: { equals: airlineName, mode: 'insensitive' } },
     select: {
-      reqMinTotalHours: true, reqCertificates: true, reqAircraftTypes: true,
-      reqAuthorities: true, lastSeenAt: true, updatedAt: true,
+      reqMinTotalHours: true, reqMinPicHours: true, reqCertificates: true, reqAircraftTypes: true,
+      reqTypeRatings: true, reqAuthorities: true, reqEnglishLevel: true, lastSeenAt: true, updatedAt: true,
     },
   });
   if (!jobs.length) return null;
 
   const hoursVals = jobs.map((j) => j.reqMinTotalHours).filter((h) => h != null);
+  const picVals = jobs.map((j) => j.reqMinPicHours).filter((h) => h != null);
+  const elpVals = jobs.map((j) => j.reqEnglishLevel).filter((l) => l != null);
   const union = (key) => [...new Set(jobs.flatMap((j) => j[key] || []))];
   const statedCount = (key) => jobs.filter((j) => (j[key] || []).length > 0).length;
   // "last confirmed" = most recent time a contributing vacancy was seen in a
@@ -173,9 +206,11 @@ async function deriveRequirementsFromJobs(airlineName) {
     // vacancies actually state it, so one job's number isn't shown as consensus.
     minTotalHours: hoursVals.length ? Math.min(...hoursVals) : null,
     hoursStatedCount: hoursVals.length,
+    minPicHours: picVals.length ? Math.min(...picVals) : null,
+    englishLevel: elpVals.length ? Math.min(...elpVals) : null,
     certificates: union('reqCertificates'),
     certStatedCount: statedCount('reqCertificates'),
-    aircraftTypes: union('reqAircraftTypes'),
+    aircraftTypes: union('reqTypeRatings').length ? union('reqTypeRatings') : union('reqAircraftTypes'),
     typeStatedCount: statedCount('reqAircraftTypes'),
     authorities: union('reqAuthorities'),
     lastConfirmed,
@@ -210,7 +245,17 @@ exports.getAirline = async (req, res, next) => {
     const fieldDateMap = {};
     for (const fd of fieldDates) fieldDateMap[fd.field] = fd.recordedAt;
     const derivedRequirements = await deriveRequirementsFromJobs(airline.name);
-    res.json({ ...rest, fieldDates: fieldDateMap, derivedRequirements });
+    // The same matcher the Jobs page uses, so a green tick here and a job in
+    // the "you qualify" group there can never disagree.
+    const stats = await jobStatsFor([airline.name], req.pilot?.id || null);
+    const ctx = req.pilot?.id ? await buildMatchContext(req.pilot.id, prisma) : null;
+    res.json({
+      ...rest,
+      fieldDates: fieldDateMap,
+      derivedRequirements,
+      jobs: stats.get(String(airline.name).trim().toLowerCase()) || { open: 0, qualify: 0, close: 0, matchable: false },
+      requirementChecks: requirementChecks(derivedRequirements, ctx && ctx.matchable ? ctx : null),
+    });
   } catch (err) {
     next(err);
   }

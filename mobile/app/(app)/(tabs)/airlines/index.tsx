@@ -1,134 +1,168 @@
-// Airlines list — mirrors frontend/src/pages/Airlines.jsx. Pilot editorial-light.
-// GET /airlines { q, region, hiringStatus, sort, page, limit:24 } →
-// { items, total, page, totalPages }. Search + region + hiring + sort + pagination.
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+// Airlines — fact files, checked against the pilot's licence. Same design as
+// the mobile web page at 390 px (docs/design/airlines-mockup.html).
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
-import AirlineLogo from '../../../../src/components/AirlineLogo';
-import { SelectField, TextField } from '../../../../src/components/ui';
-import { HIRING_STATUSES, REGIONS, SORT_OPTIONS, hiringMeta } from '../../../../src/lib/airlineFormat';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { HiringPill, LogoTile } from '../../../../src/components/airlines/AirlineBits';
+import { shortFleet } from '../../../../src/lib/airlineFacts';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
+import { fontFamilies, spacing } from '../../../../src/theme/tokens';
+import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Airline = Record<string, any>;
-const REGION_OPTS: [string, string][] = [['', 'All Regions'], ...REGIONS.map((r) => [r, r] as [string, string])];
+type Any = any;
 
-export default function Airlines() {
-  const tabBarClearance = useTabBarClearance();
+const REGIONS = ['All', 'Middle East', 'Europe', 'Asia-Pacific', 'Americas', 'Africa'];
+
+export default function AirlinesList() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const clearance = useTabBarClearance();
+
   const [q, setQ] = useState('');
-  const [region, setRegion] = useState('');
-  const [hiringStatus, setHiringStatus] = useState('');
-  const [sort, setSort] = useState('name');
-  const [page, setPage] = useState(1);
-  const [data, setData] = useState<{ items: Airline[]; total: number; page: number; totalPages: number }>({ items: [], total: 0, page: 1, totalPages: 1 });
+  const [search, setSearch] = useState('');
+  const [region, setRegion] = useState('All');
+  const [data, setData] = useState<Any>({ items: [], total: 0 });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchAirlines = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => { const t = setTimeout(() => setSearch(q.trim()), 300); return () => clearTimeout(t); }, [q]);
+
+  const load = useCallback(async () => {
     try {
-      const params: Record<string, unknown> = { sort, page, limit: 24 };
-      if (q) params.q = q;
-      if (region) params.region = region;
-      if (hiringStatus) params.hiringStatus = hiringStatus;
-      const { data: res } = await api.get('/airlines', { params });
+      const { data: res } = await api.get('/airlines', {
+        params: { sort: 'openJobs', limit: 50, ...(search ? { q: search } : {}), ...(region !== 'All' ? { region } : {}) },
+      });
       setData(res);
-    } catch { /* ignore */ } finally { setLoading(false); }
-  }, [q, region, hiringStatus, sort, page]);
+    } catch { /* leave the last good list on screen */ }
+    finally { setLoading(false); }
+  }, [search, region]);
 
-  useEffect(() => { fetchAirlines(); }, [fetchAirlines]);
-  useEffect(() => { setPage(1); }, [q, region, hiringStatus, sort]);
+  useEffect(() => { setLoading(true); load(); }, [load]);
+  const onRefresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
 
-  const renderCard = ({ item: a }: { item: Airline }) => {
-    // No badge when hiring status is unknown — grey "Unknown" pills are noise.
-    const known = a.hiringStatus && a.hiringStatus !== 'UNKNOWN';
-    const badge = known ? hiringMeta(a.hiringStatus) : null;
-    return (
-      <Pressable style={({ pressed }) => [styles.card, pressed && { transform: [{ scale: 0.98 }], opacity: 0.92 }]} onPress={() => router.push(`/airlines/${a.id}`)}>
-        <View style={styles.cardHead}>
-          <View style={styles.cardHeadLeft}>
-            <AirlineLogo logoUrl={a.logoUrl} iataCode={a.iataCode} name={a.name} box={56} bare />
-            <Text style={styles.name} numberOfLines={2}>{a.name}</Text>
-          </View>
-          {a.iataCode ? <Text style={styles.iata}>{a.iataCode}</Text> : null}
-        </View>
-        <View style={styles.meta}>
-          <Text style={styles.metaItem}>{a.country}</Text>
-          <Text style={styles.metaItem}>· {a.region}</Text>
-          {a.fleet?.length > 0 ? <Text style={styles.metaItem}>· {a.fleet.length} type{a.fleet.length !== 1 ? 's' : ''}</Text> : null}
-        </View>
-        {badge ? (
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}><Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text></View>
-        ) : null}
-      </Pressable>
-    );
-  };
+  const hiring = useMemo(
+    () => (data.items || []).filter((a: Any) => a.hiringStatus === 'ACTIVELY_HIRING').length,
+    [data.items],
+  );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <FlatList
-        data={loading ? [] : data.items}
-        keyExtractor={(a) => a.id}
-        renderItem={renderCard}
-        contentContainerStyle={[styles.list, { paddingBottom: tabBarClearance }]}
-        ListHeaderComponent={
-          <View>
-            <Text style={styles.h1}>Airlines</Text>
-            <Text style={styles.subtitle}>Who's hiring, what they fly, what they pay.</Text>
-            <TextField label="" placeholder="Search airlines…" value={q} onChangeText={setQ} autoCapitalize="none" containerStyle={{ marginBottom: 10 }} />
-            <View style={styles.filters}>
-              <View style={{ flex: 1 }}><SelectField label="" value={region} options={REGION_OPTS} placeholder="All Regions" onSelect={setRegion} /></View>
-              <View style={{ flex: 1 }}><SelectField label="" value={hiringStatus} options={HIRING_STATUSES} placeholder="All Statuses" onSelect={setHiringStatus} /></View>
-              <View style={{ flex: 1 }}><SelectField label="" value={sort} options={SORT_OPTIONS} onSelect={setSort} /></View>
-            </View>
-            {!loading && data.total > 0 ? <Text style={styles.count}>{data.total} airline{data.total !== 1 ? 's' : ''}</Text> : null}
-          </View>
-        }
-        ListEmptyComponent={
-          loading ? <View style={styles.center}><ActivityIndicator color={pilot.navy} /></View>
-            : <View style={styles.center}><Text style={styles.empty}>No airlines found.</Text></View>
-        }
-        ListFooterComponent={
-          !loading && data.totalPages > 1 ? (
-            <View style={styles.pager}>
-              <Pressable disabled={page <= 1} style={[styles.pageBtn, page <= 1 && styles.pageBtnOff]} onPress={() => setPage((p) => p - 1)}><Text style={styles.pageBtnText}>← Previous</Text></Pressable>
-              <Text style={styles.pageInfo}>Page {data.page} of {data.totalPages}</Text>
-              <Pressable disabled={page >= data.totalPages} style={[styles.pageBtn, page >= data.totalPages && styles.pageBtnOff]} onPress={() => setPage((p) => p + 1)}><Text style={styles.pageBtnText}>Next →</Text></Pressable>
-            </View>
-          ) : null
-        }
-      />
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: clearance }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
+      >
+        <Text style={styles.h1}>Airlines</Text>
+        <Text style={styles.sub}>Fact files, checked against your licence</Text>
+
+        {/* Jobs | Airlines — both live under the Jobs tab, so no sixth tab. */}
+        <View style={styles.seg}>
+          <Pressable style={styles.segBtn} onPress={() => router.replace('/jobs')}>
+            <Text style={styles.segText}>Jobs</Text>
+          </Pressable>
+          <Pressable style={[styles.segBtn, styles.segOn]}>
+            <Text style={[styles.segText, styles.segTextOn]}>Airlines</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.search}>
+          <Ionicons name="search" size={16} color={pilot.faint} />
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder="Airline, country or aircraft type"
+            placeholderTextColor={pilot.faint}
+            style={styles.searchInput}
+            autoCorrect={false}
+          />
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={{ gap: 6 }}>
+          {REGIONS.map((r) => (
+            <Pressable key={r} onPress={() => setRegion(r)} style={[styles.chip, region === r && styles.chipOn]}>
+              <Text style={[styles.chipText, region === r && styles.chipTextOn]}>{r}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        <View style={styles.meta}>
+          <Text style={styles.metaText}><Text style={styles.metaStrong}>Hiring now</Text> first</Text>
+          <Text style={styles.metaText}>
+            {loading ? 'Loading…' : `${data.total} airline${data.total === 1 ? '' : 's'}${hiring ? ` · ${hiring} hiring` : ''}`}
+          </Text>
+        </View>
+
+        {loading && !(data.items || []).length ? <ActivityIndicator color={pilot.navy} style={{ marginTop: 24 }} /> : null}
+
+        {(data.items || []).map((a: Any) => {
+          const jobs = a.jobs || { open: 0, qualify: 0, matchable: false };
+          const fleet = shortFleet(a.fleet);
+          return (
+            <Pressable key={a.id} style={styles.card} onPress={() => router.push(`/airlines/${a.id}`)}>
+              <LogoTile logoUrl={a.logoUrl} iataCode={a.iataCode} name={a.name} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.name} numberOfLines={1}>{a.name}</Text>
+                <Text style={styles.country} numberOfLines={1}>{[a.country, fleet].filter(Boolean).join(' · ')}</Text>
+                <View style={styles.jobLine}>
+                  <HiringPill status={a.hiringStatus} />
+                  <Text style={styles.jobText}>
+                    {jobs.open === 0 ? 'no open jobs' : `${jobs.open} open · `}
+                    {jobs.open > 0 && (jobs.qualify > 0
+                      ? <Text style={styles.jobStrong}>you qualify for {jobs.qualify}</Text>
+                      : jobs.matchable ? '0 for you yet' : 'add your licence to check')}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#B7C1CE" />
+            </Pressable>
+          );
+        })}
+
+        {!loading && !(data.items || []).length ? (
+          <Text style={styles.empty}>No airlines match that search.</Text>
+        ) : null}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  list: { padding: spacing.xl, paddingBottom: 40 },
-  h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
-  subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 20 },
-  filters: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  count: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, marginBottom: 12, marginTop: 4 },
-  center: { alignItems: 'center', paddingVertical: 60 },
-  empty: { color: pilot.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.base },
-  card: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 18, marginBottom: 14, gap: 10 },
-  cardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  cardHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
-  name: { fontSize: fontSizes.base, fontFamily: fontFamilies.bodyBold, color: pilot.ink, flex: 1, lineHeight: 20 },
-  iata: { fontSize: 11, fontFamily: fontFamilies.mono, fontWeight: '700', color: pilot.navy, backgroundColor: 'rgba(0,63,136,0.08)', borderWidth: 1, borderColor: 'rgba(0,63,136,0.2)', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden' },
-  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  metaItem: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body },
-  badge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { fontSize: 11, fontFamily: fontFamilies.bodyBold },
-  pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 },
-  pageBtn: { borderWidth: 1, borderColor: pilot.navy, borderRadius: 4, paddingHorizontal: 14, paddingVertical: 9 },
-  pageBtnOff: { opacity: 0.4, borderColor: pilot.line },
-  pageBtnText: { color: pilot.navy, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm },
-  pageInfo: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body },
+  content: { padding: spacing.xl, paddingTop: 10 },
+  h1: { fontFamily: fontFamilies.display, fontSize: 30, color: pilot.ink },
+  sub: { fontSize: 13.5, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
+
+  seg: { flexDirection: 'row', backgroundColor: '#E7ECF2', borderRadius: 10, padding: 3, marginTop: 12 },
+  segBtn: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8 },
+  segOn: { backgroundColor: pilot.surface, shadowColor: '#0F1B2D', shadowOpacity: 0.1, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  segText: { fontSize: 13.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted },
+  segTextOn: { color: pilot.ink },
+
+  search: { marginTop: 12, height: 44, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12 },
+  searchInput: { flex: 1, fontSize: 14, color: pilot.ink, fontFamily: fontFamilies.body, padding: 0 },
+  chips: { marginTop: 10, flexGrow: 0 },
+  chip: { borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 6 },
+  chipOn: { backgroundColor: pilot.navy, borderColor: pilot.navy },
+  chipText: { fontSize: 12.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted },
+  chipTextOn: { color: '#fff' },
+
+  meta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 4 },
+  metaText: { fontSize: 12.5, color: pilot.faint, fontFamily: fontFamilies.body },
+  metaStrong: { color: pilot.muted, fontFamily: fontFamilies.bodySemiBold },
+
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 13, marginTop: 8 },
+  name: { fontSize: 15, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
+  country: { fontSize: 12.5, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 2 },
+  jobLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' },
+  jobText: { fontSize: 12.5, color: pilot.muted, fontFamily: fontFamilies.body },
+  jobStrong: { color: '#15803D', fontFamily: fontFamilies.bodySemiBold },
+  empty: { textAlign: 'center', color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 40, fontSize: 14 },
 });

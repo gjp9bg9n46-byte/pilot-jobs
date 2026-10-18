@@ -1,286 +1,281 @@
-// Airline factfile — mirrors frontend/src/pages/AirlineDetail.jsx. Pilot
-// editorial-light. GET /airlines/:id + GET /airlines/:id/job-count. Read-only;
-// "Suggest an edit" (any authed user) → the moderated contribution flow.
-// Sections in web order: Hero → Operations → Compensation → Career →
-// Application Process → Notes → trust footer.
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+// One airline's fact file, in the order a pilot asks the questions: can I apply
+// here, what do they want, what is it like, how does hiring go — then what
+// nobody has recorded yet. Matches the web page at 390 px.
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
-import AirlineLogo from '../../../../src/components/AirlineLogo';
-import { EMPTY_FIELD, contractLabel, hiringFreqLabel, hiringMeta, relativeDate } from '../../../../src/lib/airlineFormat';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
-import { resolveFieldDate, formatFieldDate, hashStage } from '../../../../src/lib/fieldDates';
+import { HiringPill, LogoTile, RequirementRow } from '../../../../src/components/airlines/AirlineBits';
+import { formatFieldDate, hashStage, resolveFieldDate } from '../../../../src/lib/fieldDates';
+import {
+  aircraftTotal, contractLabel, fleetRows, missingFacts, parseStages, readPay, upgradeLabel,
+} from '../../../../src/lib/airlineFacts';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
+import { fontFamilies, spacing } from '../../../../src/theme/tokens';
+import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Airline = Record<string, any>;
+type Any = any;
 
-// Small per-field date badge — recorded/verified date for this field or item.
-// NULL renders a visible "—" (never blank/hidden), same rule as web.
-function DateBadge({ date }: { date?: string | null }) {
-  const styles = useThemedStyles(createStyles);
-  return <Text style={[styles.dateBadge, !date && styles.dateBadgeEmpty]}>{formatFieldDate(date)}</Text>;
-}
-
-// date === false → suppress the field-level badge (used when each item below
-// carries its own date, e.g. interview stages).
-function Field({ label, children, date }: { label: string; children?: React.ReactNode; date?: string | null | false }) {
-  const styles = useThemedStyles(createStyles);
-  // Empty field → "Not yet contributed" + NO date badge (nothing to date).
-  // Populated → value + badge ("—" if unknown). date===false suppresses the
-  // field-level badge (per-item dates below carry their own).
-  const hasValue = children != null && children !== false;
-  return (
-    <View style={styles.field}>
-      <View style={styles.fieldHeadRow}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        {hasValue && date !== false ? <DateBadge date={date} /> : null}
-      </View>
-      {hasValue ? <View style={styles.fieldValue}>{children}</View> : <Text style={styles.emptyField}>{EMPTY_FIELD}</Text>}
-    </View>
-  );
-}
-function Tags({ items }: { items: string[] }) {
-  const styles = useThemedStyles(createStyles);
-  return <View style={styles.tags}>{items.map((t) => <Text key={t} style={styles.tag}>{t}</Text>)}</View>;
-}
-function Val({ children }: { children: string }) {
-  const styles = useThemedStyles(createStyles); return <Text style={styles.valText}>{children}</Text>; }
-
-export default function AirlineDetail() {
-  const tabBarClearance = useTabBarClearance();
+export default function AirlineFactFile() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const clearance = useTabBarClearance();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [airline, setAirline] = useState<Airline | null>(null);
-  const [jobCount, setJobCount] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [airline, setAirline] = useState<Any>(null);
+  const [gone, setGone] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.get(`/airlines/${id}`), api.get(`/airlines/${id}/job-count`)])
-      .then(([a, j]) => { setAirline(a.data); setJobCount(j.data.count); })
-      .catch(() => router.replace('/airlines'))
-      .finally(() => setLoading(false));
-  }, [id, router]);
+    api.get(`/airlines/${id}`).then(({ data }) => setAirline(data)).catch(() => setGone(true));
+  }, [id]);
 
-  if (loading) return <SafeAreaView style={styles.safe}><View style={styles.center}><ActivityIndicator color={pilot.navy} /></View></SafeAreaView>;
-  if (!airline) return null;
+  const header = (
+    <View style={styles.bar}>
+      <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
+        <Ionicons name="chevron-back" size={20} color={pilot.navy} />
+        <Text style={styles.backText}>Airlines</Text>
+      </Pressable>
+    </View>
+  );
 
-  const a = airline;
-  const badge = hiringMeta(a.hiringStatus);
-  const pay = a.payRanges;
-  const payStr = (p: Airline) => `${p.min?.toLocaleString() ?? '?'} – ${p.max?.toLocaleString() ?? '?'} ${p.currency ?? ''} / ${p.period ?? 'year'}`;
-  const fd = a.fieldDates || {};
-  const dateFor = (logical: string, item?: string | number) => resolveFieldDate(fd, logical, item);
+  if (gone) {
+    return <SafeAreaView style={styles.safe} edges={['top']}>{header}<Text style={styles.empty}>That airline is no longer listed.</Text></SafeAreaView>;
+  }
+  if (!airline) {
+    return <SafeAreaView style={styles.safe} edges={['top']}>{header}<ActivityIndicator color={pilot.navy} style={{ marginTop: 30 }} /></SafeAreaView>;
+  }
+
+  const fd = airline.fieldDates || {};
+  const jobs = airline.jobs || { open: 0, qualify: 0, close: 0, matchable: false };
+  const checks = airline.requirementChecks || [];
+  const derived = airline.derivedRequirements;
+  const pay = readPay(airline.payRanges);
+  const fleet = fleetRows(airline);
+  const stages = parseStages(airline.interviewStages);
+  const gaps = missingFacts(airline);
+  const aircraft = aircraftTotal(airline);
+  const bases = (airline.bases || []).length;
+  const simStage = stages.findIndex((s) => /sim/i.test(s.title));
+
+  const dateNote = (logical: string, item?: string) => {
+    const d = resolveFieldDate(fd, logical, item);
+    return d ? `recorded ${formatFieldDate(d)}` : null;
+  };
+
+  const tiles = [
+    aircraft ? { v: String(aircraft), l: 'Aircraft' } : null,
+    bases ? { v: String(bases), l: bases === 1 ? 'Base' : 'Bases' } : null,
+    airline.avgResponseDays ? { v: `~${airline.avgResponseDays} d`, l: 'Reply time' } : null,
+  ].filter(Boolean) as { v: string; l: string }[];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]} showsVerticalScrollIndicator={false}>
-        <Pressable onPress={() => router.replace('/airlines')} style={styles.backRow}><Text style={styles.back}>← Back to Airlines</Text></Pressable>
-
-        {/* Hero */}
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {header}
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: clearance }]} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <View style={styles.heroTop}>
-            <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', gap: 14 }}>
-              {a.logoUrl ? (
-                <AirlineLogo logoUrl={a.logoUrl} iataCode={a.iataCode} name={a.name} box={76} />
-              ) : (
-                <View style={styles.logo}><Text style={styles.logoText}>{String(a.name).split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}</Text></View>
-              )}
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.heroName}>{a.name}</Text>
-                <View style={styles.codes}>
-                  {a.iataCode ? <Text style={[styles.codeChip, styles.codeAccent]}>IATA: {a.iataCode}</Text> : null}
-                  {a.icaoCode ? <Text style={styles.codeChip}>ICAO: {a.icaoCode}</Text> : null}
+          <LogoTile logoUrl={airline.logoUrl} iataCode={airline.iataCode} name={airline.name} size={64} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.name}>{airline.name}</Text>
+            <Text style={styles.sub}>
+              {[airline.iataCode, airline.icaoCode, airline.headquarters || airline.country].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.status}>
+          <HiringPill status={airline.hiringStatus} long />
+          {resolveFieldDate(fd, 'hiringStatus')
+            ? <Text style={styles.statusDate}>checked {formatFieldDate(resolveFieldDate(fd, 'hiringStatus'))}</Text>
+            : null}
+        </View>
+
+        {jobs.open > 0 ? (
+          <Pressable style={styles.cta} onPress={() => router.push(`/jobs?company=${encodeURIComponent(airline.name)}`)}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.ctaTitle}>{jobs.open} open job{jobs.open === 1 ? '' : 's'}</Text>
+              <Text style={styles.ctaSub}>
+                {jobs.matchable
+                  ? `You qualify for ${jobs.qualify}${jobs.close ? ` · ${jobs.close} more are close` : ''}`
+                  : 'Add your licence and hours to see which are open to you'}
+              </Text>
+            </View>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </Pressable>
+        ) : null}
+
+        {tiles.length > 0 ? (
+          <View style={styles.quick}>
+            {tiles.map((t) => (
+              <View key={t.l} style={styles.quickCell}><Text style={styles.quickNum}>{t.v}</Text><Text style={styles.quickLabel}>{t.l}</Text></View>
+            ))}
+          </View>
+        ) : null}
+
+        {checks.length > 0 ? (
+          <View style={styles.box}>
+            <View style={styles.boxHead}>
+              <Text style={styles.boxTitle}>What they ask for</Text>
+              {derived?.vacancyCount ? <Text style={styles.boxEm}>from {derived.vacancyCount} current job{derived.vacancyCount === 1 ? '' : 's'}</Text> : null}
+            </View>
+            {checks.map((c: Any, i: number) => <RequirementRow key={i} label={c.label} status={c.status} you={c.you} />)}
+            <Text style={styles.note}>Worked out from the airline&apos;s current job ads, not typed in by hand.</Text>
+          </View>
+        ) : null}
+
+        {pay.length > 0 ? (
+          <View style={styles.box}>
+            <View style={styles.boxHead}>
+              <Text style={styles.boxTitle}>Pay</Text>
+              <Text style={styles.boxEm}>{[pay[0].period, pay[0].currency].filter(Boolean).join(', ')}</Text>
+            </View>
+            {pay.map((p) => (
+              <View key={p.key} style={styles.kv}>
+                <Text style={styles.kvK}>{p.label}</Text>
+                <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+                  <Text style={styles.kvV}>{p.value}</Text>
+                  <Text style={styles.kvD}>{dateNote('payRanges', p.key) || 'no date recorded'}</Text>
                 </View>
-                <Text style={styles.heroMeta}>{a.country} · {a.region}</Text>
-                {a.domain ? (
-                  <Pressable
-                    onPress={() => Linking.openURL(`https://${String(a.domain).replace(/^https?:\/\//, '')}`)}
-                    hitSlop={8}
-                    style={styles.websiteLink}
-                    accessibilityRole="link"
-                    accessibilityLabel={`Open ${a.name} official website`}
-                  >
-                    <Ionicons name="globe-outline" size={13} color={pilot.navy} />
-                    <Text style={styles.websiteText}>{String(a.domain).replace(/^https?:\/\//, '').replace(/\/$/, '')}</Text>
-                    <Ionicons name="open-outline" size={12} color={pilot.navy} />
-                  </Pressable>
-                ) : null}
               </View>
-            </View>
-            <View style={[styles.badge, { backgroundColor: badge.bg }]}><Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text></View>
+            ))}
           </View>
-          <Pressable style={styles.suggestBtn} onPress={() => router.push(`/airlines/${id}/contribute`)}>
-            <Ionicons name="create-outline" size={14} color={pilot.navy} />
-            <Text style={styles.suggestText}> Suggest an edit</Text>
-          </Pressable>
-          {a.description ? <Text style={styles.desc}>{a.description}</Text> : null}
-          <Pressable style={styles.jobsLink} onPress={() => router.push({ pathname: '/jobs', params: { q: a.name } })}>
-            <Text style={styles.jobsLinkText}>Open jobs at {a.name}{jobCount !== null ? ` (${jobCount})` : ''} →</Text>
-          </Pressable>
-        </View>
+        ) : null}
 
-        {/* Legend — what the date column means; keeps "—" honest without softening it. */}
-        <Text style={styles.legend}>Dates show when each detail was last confirmed — “—” means the date is unknown; a blank field hasn’t been contributed yet.</Text>
-
-        {/* Requirements DERIVED from current vacancies — populated + dated, distinct from hand-entered facts. */}
-        {a.derivedRequirements ? (() => {
-          const dr = a.derivedRequirements;
-          const n = dr.vacancyCount;
-          const frac = (c: number) => ` (${c} of ${n} state${c === 1 ? 's' : ''})`;
-          return (
-            <View style={styles.derived}>
-              <View style={styles.fieldHeadRow}>
-                <Text style={styles.derivedTitle}>FROM CURRENT VACANCIES</Text>
-                <DateBadge date={dr.lastConfirmed} />
-              </View>
-              {dr.minTotalHours != null ? <Text style={styles.derivedRow}>Minimum total time <Text style={styles.derivedStrong}>{dr.minTotalHours.toLocaleString()} hrs</Text>{frac(dr.hoursStatedCount)}</Text> : null}
-              {dr.certificates.length > 0 ? <Text style={styles.derivedRow}>Licence {dr.certificates.join(' / ')}{frac(dr.certStatedCount)}</Text> : null}
-              {dr.aircraftTypes.length > 0 ? <Text style={styles.derivedRow}>Aircraft {dr.aircraftTypes.join(', ')}{frac(dr.typeStatedCount)}</Text> : null}
-              <Text style={styles.derivedFoot}>Derived from {n} current vacanc{n === 1 ? 'y' : 'ies'} · last confirmed {formatFieldDate(dr.lastConfirmed)}. Not a hand-entered fact.</Text>
+        {fleet.length > 0 ? (
+          <View style={styles.box}>
+            <View style={styles.boxHead}>
+              <Text style={styles.boxTitle}>Fleet</Text>
+              {dateNote('fleet') ? <Text style={styles.boxEm}>{dateNote('fleet')}</Text> : null}
             </View>
-          );
-        })() : null}
-
-        {/* Operations */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>OPERATIONS</Text>
-          <Field label="Headquarters" date={dateFor('headquarters')}>{a.headquarters ? <Val>{a.headquarters}</Val> : null}</Field>
-          {a.fleetDetail?.length > 0 ? (
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Fleet</Text>
-              {a.fleetDetail.map((r: Airline, i: number) => {
-                const segs: string[] = [];
-                if (r.inService != null) segs.push(`${r.inService} in service`);
-                if (r.ordered != null) segs.push(`${r.ordered} on order`);
-                if (r.retired != null) segs.push(`${r.retired} retired`);
-                return (
-                  <View key={r.type + i} style={[styles.fleetCard, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }]}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.fleetType}>{r.type}</Text>
-                      <Text style={styles.fleetLine}>{segs.join(' · ') || '—'}</Text>
-                    </View>
-                    <DateBadge date={dateFor('fleet', r.type)} />
-                  </View>
-                );
-              })}
+            <View style={styles.fleetHead}>
+              <Text style={[styles.fleetTh, { flex: 1, textAlign: 'left' }]}>Type</Text>
+              <Text style={styles.fleetTh}>In service</Text>
+              <Text style={styles.fleetTh}>On order</Text>
             </View>
-          ) : (
-            <Field label="Fleet" date={dateFor('fleet')}>{a.fleet?.length > 0 ? <Tags items={a.fleet} /> : null}</Field>
-          )}
-          <Field label="Bases" date={dateFor('bases')}>{a.bases?.length > 0 ? <Tags items={a.bases} /> : null}</Field>
-          <Field label="Contract Type" date={dateFor('contractType')}>{a.contractType ? <Val>{contractLabel(a.contractType)}</Val> : null}</Field>
-          <Field label="Roster Pattern" date={dateFor('rosterPattern')}>{a.rosterPattern ? <Val>{a.rosterPattern}</Val> : null}</Field>
-          <Field label="Work Auth Required" date={dateFor('workAuthRequired')}>{a.workAuthRequired?.length > 0 ? <Tags items={a.workAuthRequired} /> : null}</Field>
-        </View>
-
-        {/* Compensation */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>COMPENSATION</Text>
-          <Field label="Captain Pay" date={dateFor('payRanges', 'captain')}>{pay?.captain ? <Val>{payStr(pay.captain)}</Val> : null}</Field>
-          <Field label="First Officer Pay" date={dateFor('payRanges', 'fo')}>{pay?.fo ? <Val>{payStr(pay.fo)}</Val> : null}</Field>
-        </View>
-
-        {/* Career */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CAREER</Text>
-          <Field label="Hiring Status" date={dateFor('hiringStatus')}><View style={[styles.badge, { backgroundColor: badge.bg, alignSelf: 'flex-start' }]}><Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text></View></Field>
-          <Field label="Hiring Frequency" date={dateFor('hiringFrequency')}>{hiringFreqLabel(a.hiringFrequency) ? <Val>{hiringFreqLabel(a.hiringFrequency) as string}</Val> : null}</Field>
-          <Field label="Upgrade Timeline" date={dateFor('upgradeTime')}>{(a.upgradeTimeMinYears != null || a.upgradeTimeMaxYears != null) ? <Val>{`${a.upgradeTimeMinYears ?? '?'} – ${a.upgradeTimeMaxYears ?? '?'} years`}</Val> : null}</Field>
-        </View>
-
-        {/* Application Process */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>APPLICATION PROCESS</Text>
-          <Field label="Avg Response Time" date={dateFor('avgResponseDays')}>{a.avgResponseDays != null ? <Val>{`~${a.avgResponseDays} day${a.avgResponseDays !== 1 ? 's' : ''}`}</Val> : null}</Field>
-          <Field label="Interview Stages" date={a.interviewStages?.length > 0 ? false : dateFor('interviewStages')}>{a.interviewStages?.length > 0 ? (
-            <View>{a.interviewStages.map((s: string, i: number) => (
-              <View key={i} style={[styles.stageRow, { justifyContent: 'space-between' }]}>
-                <View style={{ flexDirection: 'row', flex: 1 }}><Text style={styles.stageNum}>{i + 1} </Text><Text style={styles.valText}>{s}</Text></View>
-                <DateBadge date={dateFor('interviewStages', hashStage(s))} />
+            {fleet.map((f) => (
+              <View key={f.type} style={styles.fleetRow}>
+                <Text style={[styles.fleetCell, { flex: 1, textAlign: 'left' }]}>{f.type}</Text>
+                <Text style={styles.fleetCell}>{f.inService ?? '—'}</Text>
+                <Text style={styles.fleetCell}>{f.ordered ?? '—'}</Text>
               </View>
-            ))}</View>
-          ) : null}</Field>
-          <Field label="Sim Type" date={dateFor('simType')}>{a.simType ? <Val>{a.simType}</Val> : null}</Field>
-        </View>
-
-        {/* Notes */}
-        <View style={styles.section}>
-          <View style={styles.fieldHeadRow}>
-            <Text style={styles.sectionTitle}>NOTES</Text>
-            {a.notes ? <DateBadge date={dateFor('notes')} /> : null}
+            ))}
           </View>
-          {a.notes ? <Text style={styles.notes}>{a.notes}</Text> : <Text style={styles.emptyField}>{EMPTY_FIELD}</Text>}
-        </View>
+        ) : null}
 
-        {/* Trust footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Submitted by {a.verifiedContributors} pilot{a.verifiedContributors !== 1 ? 's' : ''}</Text>
-          <Text style={styles.footerText}>Last updated {relativeDate(a.lastUpdatedAt)}</Text>
-        </View>
+        {(bases > 0 || airline.contractType || airline.rosterPattern
+          || airline.upgradeTimeMinYears != null || airline.upgradeTimeMaxYears != null) ? (
+            <View style={styles.box}>
+              <View style={styles.boxHead}><Text style={styles.boxTitle}>Contract and roster</Text></View>
+              {bases > 0 ? <Row k="Bases" v={airline.bases.join(', ')} d={dateNote('bases')} styles={styles} /> : null}
+              {contractLabel(airline.contractType) ? <Row k="Contract" v={contractLabel(airline.contractType) as string} d={dateNote('contractType')} styles={styles} /> : null}
+              {airline.rosterPattern ? <Row k="Roster" v={airline.rosterPattern} d={dateNote('rosterPattern')} styles={styles} /> : null}
+              {upgradeLabel(airline.upgradeTimeMinYears, airline.upgradeTimeMaxYears)
+                ? <Row k="Upgrade to Captain" v={upgradeLabel(airline.upgradeTimeMinYears, airline.upgradeTimeMaxYears) as string} d={dateNote('upgradeTime')} styles={styles} />
+                : null}
+            </View>
+          ) : null}
+
+        {(stages.length > 0 || airline.simType) ? (
+          <View style={styles.box}>
+            <View style={styles.boxHead}><Text style={styles.boxTitle}>Hiring process</Text></View>
+            {stages.map((s, i) => (
+              <View key={`${s.title}-${i}`} style={styles.stage}>
+                <View style={styles.stageNum}><Text style={styles.stageNumText}>{i + 1}</Text></View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.stageText}>
+                    {s.title}{i === simStage && airline.simType ? ` · ${airline.simType}` : ''}
+                  </Text>
+                  {s.points.length > 0 ? <Text style={styles.stagePoints}>{s.points.join(' · ')}</Text> : null}
+                  {dateNote('interviewStages', hashStage(s.title))
+                    ? <Text style={styles.stageDate}>{dateNote('interviewStages', hashStage(s.title))}</Text>
+                    : null}
+                </View>
+              </View>
+            ))}
+            {airline.simType && simStage === -1 ? (
+              <View style={styles.stage}>
+                <View style={styles.stageNum}><Text style={styles.stageNumText}>{stages.length + 1}</Text></View>
+                <Text style={[styles.stageText, { flex: 1 }]}>Simulator: {airline.simType}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {gaps.length > 0 ? (
+          <View style={styles.unknown}>
+            <Text style={styles.unknownText}>
+              <Text style={styles.unknownStrong}>Not recorded yet:</Text> {gaps.join(', ')}. Flown for them?{' '}
+              <Text style={styles.link} onPress={() => router.push(`/airlines/${id}/contribute`)}>Add what you know</Text>
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+function Row({ k, v, d, styles }: { k: string; v: string; d: string | null; styles: Any }) {
+  return (
+    <View style={styles.kv}>
+      <Text style={styles.kvK}>{k}</Text>
+      <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+        <Text style={styles.kvV}>{v}</Text>
+        {d ? <Text style={styles.kvD}>{d}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: spacing.xl, paddingBottom: 40 },
-  backRow: { marginBottom: 16 },
-  back: { color: pilot.muted, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm },
-  hero: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 14, padding: 22, marginBottom: 16 },
-  heroTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' },
-  logo: { width: 52, height: 52, borderRadius: 10, backgroundColor: 'rgba(0,63,136,0.06)', alignItems: 'center', justifyContent: 'center' },
-  logoText: { fontFamily: fontFamilies.bodyBold, fontSize: 16, color: pilot.navy },
-  heroName: { fontFamily: fontFamilies.display, fontSize: fontSizes['2xl'], color: pilot.ink, letterSpacing: -0.3 },
-  codes: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
-  codeChip: { fontSize: 11, fontFamily: fontFamilies.mono, fontWeight: '700', color: pilot.muted, backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
-  codeAccent: { color: pilot.navy, backgroundColor: 'rgba(0,63,136,0.08)', borderColor: 'rgba(0,63,136,0.2)' },
-  heroMeta: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 12 },
-  websiteLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, alignSelf: 'flex-start' },
-  websiteText: { fontSize: fontSizes.sm, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
-  badge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
-  badgeText: { fontSize: 12, fontFamily: fontFamilies.bodyBold },
-  suggestBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderWidth: 1, borderColor: pilot.navy, borderRadius: 4, paddingHorizontal: 14, paddingVertical: 9, marginTop: 16 },
-  suggestText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm },
-  desc: { marginTop: 14, fontSize: fontSizes.base, color: pilot.muted, fontFamily: fontFamilies.body, lineHeight: 24 },
-  jobsLink: { alignSelf: 'flex-start', backgroundColor: 'rgba(0,63,136,0.06)', borderWidth: 1, borderColor: 'rgba(0,63,136,0.2)', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, marginTop: 14 },
-  jobsLinkText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base },
-  section: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 20, marginBottom: 14 },
-  sectionTitle: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.muted, letterSpacing: 1, marginBottom: 16 },
-  legend: { fontSize: fontSizes.xs, color: pilot.muted, marginHorizontal: spacing.xl, marginBottom: 12, lineHeight: 17 },
-  derived: { backgroundColor: 'rgba(0,63,136,0.05)', borderWidth: 1, borderColor: 'rgba(0,63,136,0.18)', borderRadius: 12, padding: 16, marginHorizontal: spacing.xl, marginBottom: 14 },
-  derivedTitle: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.navy, letterSpacing: 1 },
-  derivedRow: { fontSize: fontSizes.sm, color: pilot.ink, marginTop: 6, lineHeight: 20 },
-  derivedStrong: { fontFamily: fontFamilies.bodyBold },
-  derivedFoot: { fontSize: fontSizes.xs, color: pilot.muted, marginTop: 10, fontStyle: 'italic', lineHeight: 16 },
-  field: { marginBottom: 14 },
-  fieldHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  fieldLabel: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.bodySemiBold, marginBottom: 6 },
-  dateBadge: {
-    fontSize: 11, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted,
-    backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 6,
-    paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden', marginBottom: 6,
-  },
-  dateBadgeEmpty: { fontStyle: 'italic', opacity: 0.6 },
-  fieldValue: {},
-  valText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 22 },
-  emptyField: { fontSize: fontSizes.sm, color: pilot.muted, fontStyle: 'italic', fontFamily: fontFamilies.body },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tag: { fontSize: fontSizes.xs, color: pilot.navy, backgroundColor: 'rgba(0,63,136,0.08)', borderWidth: 1, borderColor: 'rgba(0,63,136,0.2)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
-  fleetCard: { backgroundColor: pilot.cream, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, padding: 12, marginBottom: 8 },
-  fleetType: { fontSize: fontSizes.base, fontFamily: fontFamilies.bodyBold, color: pilot.ink, marginBottom: 4 },
-  fleetLine: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.mono },
-  stageRow: { flexDirection: 'row', marginBottom: 4 },
-  stageNum: { color: pilot.navy, fontSize: 11, fontFamily: fontFamilies.bodyBold, paddingTop: 3 },
-  notes: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 26 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 6, borderTopWidth: 1, borderTopColor: pilot.line, paddingTop: 16 },
-  footerText: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body },
+  content: { padding: spacing.xl, paddingTop: 4 },
+  bar: { paddingHorizontal: 12, paddingVertical: 8 },
+  back: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  backText: { color: pilot.navy, fontSize: 14, fontFamily: fontFamilies.body },
+  empty: { padding: spacing.xl, color: pilot.muted, fontFamily: fontFamilies.body },
+
+  hero: { flexDirection: 'row', gap: 14, alignItems: 'center', marginTop: 10 },
+  name: { fontFamily: fontFamilies.display, fontSize: 26, color: pilot.ink, lineHeight: 30 },
+  sub: { fontSize: 13, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 4 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  statusDate: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },
+
+  cta: { marginTop: 14, backgroundColor: pilot.navy, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  ctaTitle: { color: '#fff', fontSize: 15, fontFamily: fontFamilies.bodySemiBold },
+  ctaSub: { color: '#fff', opacity: 0.82, fontSize: 12.5, fontFamily: fontFamilies.body, marginTop: 2 },
+
+  quick: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  quickCell: { flex: 1, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
+  quickNum: { fontFamily: fontFamilies.display, fontSize: 19, color: pilot.ink },
+  quickLabel: { fontSize: 11.5, color: pilot.faint, fontFamily: fontFamilies.body },
+
+  box: { backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 14, marginTop: 12 },
+  boxHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 4 },
+  boxTitle: { fontSize: 12, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.8, textTransform: 'uppercase', color: '#6B778A' },
+  boxEm: { fontSize: 11.5, color: pilot.faint, fontFamily: fontFamilies.body },
+  note: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 8, lineHeight: 17 },
+
+  kv: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#EEF1F5' },
+  kvK: { fontSize: 13.5, color: pilot.muted, fontFamily: fontFamilies.body },
+  kvV: { fontSize: 13.5, color: pilot.ink, fontFamily: fontFamilies.bodySemiBold, textAlign: 'right' },
+  kvD: { fontSize: 11.5, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 2 },
+
+  fleetHead: { flexDirection: 'row', gap: 10, paddingBottom: 4 },
+  fleetTh: { width: 68, textAlign: 'right', fontSize: 11, color: pilot.faint, fontFamily: fontFamilies.bodySemiBold },
+  fleetRow: { flexDirection: 'row', gap: 10, paddingVertical: 7, borderTopWidth: 1, borderTopColor: '#EEF1F5' },
+  fleetCell: { width: 68, textAlign: 'right', fontSize: 13.5, color: pilot.ink, fontFamily: fontFamilies.body, fontVariant: ['tabular-nums'] },
+
+  stage: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', paddingVertical: 7 },
+  stageNum: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#EEF2F7', alignItems: 'center', justifyContent: 'center' },
+  stageNumText: { fontSize: 11.5, fontFamily: fontFamilies.bodyBold, color: pilot.navy },
+  stageText: { fontSize: 13.5, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 19 },
+  stagePoints: { fontSize: 12.5, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 3, lineHeight: 18 },
+  stageDate: { fontSize: 11.5, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 2 },
+
+  unknown: { marginTop: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: '#C9D2DD', borderRadius: 12, padding: 13 },
+  unknownText: { fontSize: 13, color: pilot.muted, fontFamily: fontFamilies.body, lineHeight: 20 },
+  unknownStrong: { color: pilot.ink, fontFamily: fontFamilies.bodySemiBold },
+  link: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
 });

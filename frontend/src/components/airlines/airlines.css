@@ -1,0 +1,101 @@
+/* Airlines list + fact file, from docs/design/airlines-mockup.html.
+   Scoped to .af* so nothing leaks. Semantic colours follow the mockup; the
+   rest uses the shared palette tokens. */
+.af {
+  --af-green: #15803D; --af-green-bg: #ECF7EF;
+  --af-amber: #B45309; --af-amber-bg: #FFF8EC;
+  --af-red: #B42318;   --af-red-bg: #FDF0EF;
+  font-family: var(--font-body);
+}
+.af .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.af-head h1 { font-family: var(--font-display); font-size: 30px; font-weight: 600; margin: 0; color: var(--text-primary); letter-spacing: -0.01em; }
+.af-head .sub { font-size: 13.5px; color: var(--text-secondary); margin: 4px 0 0; }
+.af-search { margin-top: 12px; height: 44px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; gap: 10px; padding: 0 12px; }
+.af-search input { border: 0; outline: 0; background: none; font-size: 14px; width: 100%; color: var(--text-primary); font-family: inherit; }
+.af-search svg { color: var(--text-faint); flex: none; }
+.af-chips { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.af-chips::-webkit-scrollbar { display: none; }
+.af-chip { font-size: 12.5px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 6px 11px; color: var(--text-secondary); white-space: nowrap; cursor: pointer; font-family: inherit; }
+.af-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.af-meta { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 4px; font-size: 12.5px; color: var(--text-faint); }
+.af-meta b { color: var(--text-secondary); font-weight: 600; }
+
+.af-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-top: 8px; padding: 13px 14px; display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; cursor: pointer; font-family: inherit; color: inherit; }
+.af-card:hover { border-color: #CFD8E3; }
+.af-tile { height: 48px; min-width: 48px; max-width: 72px; border-radius: 8px; background: #EEF2F7; display: flex; align-items: center; justify-content: center; flex: none; padding: 0 8px; overflow: hidden; }
+.af-tile img { max-height: 40px; max-width: 64px; object-fit: contain; display: block; }
+.af-tile .initials { font: 700 13px var(--font-body); letter-spacing: .04em; color: var(--accent); }
+.af-card .n { font-weight: 600; font-size: 15px; color: var(--text-primary); }
+.af-card .c { font-size: 12.5px; color: var(--text-faint); margin-top: 2px; }
+.af-card .j { font-size: 12.5px; margin-top: 6px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.af-card .j b { color: var(--af-green); font-weight: 600; }
+.af-chev { margin-left: auto; color: #B7C1CE; flex: none; }
+
+.af-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; border-radius: 6px; padding: 3px 7px; white-space: nowrap; }
+.af-pill .dot { width: 6px; height: 6px; border-radius: 3px; background: currentColor; }
+.af-pill.g { background: var(--af-green-bg); color: var(--af-green); }
+.af-pill.a { background: var(--af-amber-bg); color: var(--af-amber); }
+.af-pill.r { background: var(--af-red-bg); color: var(--af-red); }
+.af-pill.n { background: #EEF2F7; color: var(--text-secondary); }
+
+.af-back { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 14px; font-weight: 500; background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+.af-hero { display: flex; gap: 14px; align-items: center; margin-top: 14px; }
+.af-hero .af-tile { height: 64px; min-width: 64px; max-width: 120px; border-radius: 12px; }
+.af-hero .af-tile img { max-height: 54px; max-width: 108px; }
+.af-hero h1 { font-family: var(--font-display); font-weight: 600; font-size: 26px; margin: 0; line-height: 1.1; color: var(--text-primary); }
+.af-hero .c { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+.af-status { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-faint); margin-top: 12px; flex-wrap: wrap; }
+.af-cta { margin-top: 14px; background: var(--accent); color: #fff; border-radius: 12px; padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; border: 0; cursor: pointer; font-family: inherit; text-align: left; }
+.af-cta b { font-size: 15px; display: block; }
+.af-cta span { font-size: 12.5px; opacity: .82; }
+.af-quick { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 12px; }
+.af-quick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.af-quick b { display: block; font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--text-primary); }
+.af-quick span { font-size: 11.5px; color: var(--text-faint); }
+
+.af-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-top: 12px; padding: 14px; }
+.af-box h3 { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6B778A; margin: 0 0 4px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.af-box h3 em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-faint); font-size: 11.5px; white-space: nowrap; }
+.af-box .note { font-size: 12px; color: var(--text-faint); margin: 0; }
+
+.af-req { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid #EEF1F5; font-size: 13.5px; color: var(--text-primary); }
+.af-req:first-of-type { border-top: 0; }
+.af-req .v { margin-left: auto; font-size: 12.5px; color: var(--text-faint); text-align: right; white-space: nowrap; }
+.af-req svg { flex: none; margin-top: 2px; }
+.af-ok { color: var(--af-green); } .af-no { color: var(--af-red); } .af-q { color: var(--af-amber); }
+
+.af-kv { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid #EEF1F5; font-size: 13.5px; }
+.af-kv:first-of-type { border-top: 0; }
+.af-kv .k { color: var(--text-secondary); }
+.af-kv .v { font-weight: 600; text-align: right; color: var(--text-primary); }
+.af-kv .d { display: block; font-weight: 400; font-size: 11.5px; color: var(--text-faint); margin-top: 2px; }
+.af-kv .d button { background: none; border: 0; padding: 0 0 0 6px; color: var(--accent); font: inherit; font-size: 11.5px; cursor: pointer; }
+
+/* hiring process — one numbered row per stage, wrapping on its own line */
+.af-stage { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; padding: 7px 0; font-size: 13.5px; color: var(--text-primary); }
+.af-stage i { font-style: normal; width: 22px; height: 22px; border-radius: 11px; background: #EEF2F7; color: var(--accent); font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+.af-stage span { line-height: 1.45; min-width: 0; overflow-wrap: anywhere; }
+
+.af-fleet { width: 100%; border-collapse: collapse; }
+.af-fleet th { font-size: 11px; color: var(--text-faint); font-weight: 600; text-align: right; padding-bottom: 4px; }
+.af-fleet th:first-child { text-align: left; }
+.af-fleet td { padding: 7px 0; border-top: 1px solid #EEF1F5; font-size: 13.5px; color: var(--text-primary); }
+.af-fleet tr:first-child td { border-top: 0; }
+.af-fleet td + td { text-align: right; }
+
+.af-unknown { margin-top: 12px; border: 1px dashed #C9D2DD; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.af-unknown b { color: var(--text-primary); }
+.af-unknown button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
+
+.af-grid { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+.af-grid > div > .af-box:first-child, .af-grid > div > .af-cta:first-child { margin-top: 0; }
+.af-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 1023px) {
+  .af-grid { grid-template-columns: 1fr; }
+  .af-pair { grid-template-columns: 1fr; }
+}
+@media (max-width: 767px) {
+  .af-head h1 { font-size: 28px; }
+  .af-hero h1 { font-size: 24px; }
+}

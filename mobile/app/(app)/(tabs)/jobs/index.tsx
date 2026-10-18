@@ -261,6 +261,18 @@ function JobsBrowse() {
         <Text style={styles.h1}>Jobs</Text>
         {/* A#5 wording, plus web's qualify count (inventory 1.3). */}
         <Text style={styles.subtitle}>All cockpit roles, with your match on each.</Text>
+
+        {/* Jobs | Airlines. The fact files used to be reachable only by tapping
+            an airline on a job, or from Settings; this makes them findable
+            without adding a sixth tab. */}
+        <View style={styles.seg}>
+          <Pressable style={[styles.segBtn, styles.segOn]}>
+            <Text style={[styles.segText, styles.segTextOn]}>Jobs</Text>
+          </Pressable>
+          <Pressable style={styles.segBtn} onPress={() => router.push('/airlines')}>
+            <Text style={styles.segText}>Airlines</Text>
+          </Pressable>
+        </View>
         <Text style={styles.count}>
           {num(regionCounts?.All ?? total)} cockpit jobs worldwide
           {qualifyCount != null ? <Text style={styles.countStrong}>{`  ·  ${qualifyCount} you qualify for`}</Text> : null}
@@ -409,6 +421,11 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   // Rows run edge-to-edge; only the header block is inset.
   listContent: {}, // bottom padding comes from useTabBarClearance()
   headerPad: { paddingHorizontal: spacing.xl },
+  seg: { flexDirection: 'row', backgroundColor: '#E7ECF2', borderRadius: 10, padding: 3, marginTop: 12, marginBottom: 4 },
+  segBtn: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8 },
+  segOn: { backgroundColor: pilot.surface, shadowColor: '#0F1B2D', shadowOpacity: 0.1, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  segText: { fontSize: 13.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.muted },
+  segTextOn: { color: pilot.ink },
   count: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2, marginBottom: 12 },
   countStrong: { color: '#166534', fontFamily: fontFamilies.bodyBold },
   regionRow: { paddingHorizontal: spacing.xl, gap: 8, paddingBottom: 12 },

@@ -673,6 +673,12 @@ export default function Jobs() {
       <div className="jobs-rd">
         <div className="rd-head">
           <h1>Jobs</h1>
+          {/* On a phone there is no nav bar on screen, so Airlines would be
+              unreachable from here without this. Hidden from 768px up. */}
+          <div className="rd-seg">
+            <button type="button" className="on">Jobs</button>
+            <button type="button" onClick={() => navigate('/airlines')}>Airlines</button>
+          </div>
           <div className="rd-sub">
             {(meta?.regionCounts?.All ?? meta?.total ?? total ?? 0).toLocaleString()} cockpit jobs worldwide
             {token && meta?.qualifyCount != null && <> · <b>{meta.qualifyCount} you qualify for</b></>}
