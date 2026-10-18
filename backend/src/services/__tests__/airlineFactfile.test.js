@@ -85,7 +85,7 @@ test('pay keeps the currency and period it was recorded in', () => {
 
 test('a non-USD figure also carries a dated dollar estimate, rounded', () => {
   const [row] = readPay({ captain: { min: 100000, max: 235000, period: 'Annual', currency: 'EURO' } });
-  assert.equal(row.usd, '≈ $108,000 – $254,000 / year');
+  assert.equal(row.usd, '≈ $113,000 – $264,000 / year');
   assert.equal(row.convertedAt, fxDateLabel());
   assert.ok(/000( |$)/.test(row.usd.split(' – ')[0]), 'rounded to the nearest thousand');
 });
@@ -135,10 +135,18 @@ test('upgrade time reads as a range, or says which end is known', () => {
 });
 
 
-test('the conversion rate is fixed and dated, not fetched', () => {
+test('the conversion rate is fixed, dated and sourced, not fetched', () => {
   assert.match(FX.asOf, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(FX.source && FX.source.length > 10, 'the table says where the rates came from');
   assert.equal(FX.toUsd.USD, 1);
-  assert.ok(FX.toUsd.EUR > 0 && FX.toUsd.SGD > 0, 'every currency in the data has a rate');
+  // The spellings the airline records actually use.
+  assert.equal(FX.toUsd.EURO, FX.toUsd.EUR, 'EURO and EUR are the same currency');
+  for (const c of ['EUR', 'GBP', 'CHF', 'SGD', 'CAD', 'AUD', 'AED', 'SAR', 'QAR']) {
+    assert.ok(FX.toUsd[c] > 0, `${c} has a rate`);
+  }
+  // Gulf pegs, to two places: a drift here would mean the table was edited by hand.
+  assert.ok(Math.abs(FX.toUsd.AED - 0.2723) < 1e-6);
+  assert.ok(Math.abs(FX.toUsd.SAR - 0.2667) < 1e-6);
 });
 
 // Account deletion is the one flow an App Store reviewer always tries.

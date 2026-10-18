@@ -147,9 +147,22 @@ export function shortFleet(fleet, max = 3) {
 // disagree, and a live rate cannot be shown with the date it was true. Update
 // the table and the date together; the UI always prints the date it used.
 export const FX = {
-  asOf: '2026-10-18',
-  // 1 unit of the currency, in US dollars.
-  toUsd: { USD: 1, EUR: 1.08, EURO: 1.08, GBP: 1.26, SGD: 0.74, AED: 0.27, SAR: 0.27, QAR: 0.27, CHF: 1.12, CAD: 0.72, AUD: 0.65 },
+  asOf: '2026-10-16',
+  source: 'ECB reference rates; Gulf currencies at their official USD peg',
+  // 1 unit of the currency, in US dollars. EURO is the spelling the airline
+  // records use; it is the same rate as EUR.
+  toUsd: {
+    USD: 1,
+    EUR: 1.1253, EURO: 1.1253,
+    GBP: 1.3335,
+    CHF: 1.2137,
+    SGD: 0.7817,
+    CAD: 0.7062,
+    AUD: 0.6959,
+    AED: 0.2723,
+    SAR: 0.2667,
+    QAR: 0.2747,
+  },
 };
 
 const SYMBOL = { USD: '$', EUR: '\u20ac', EURO: '\u20ac', GBP: '\u00a3', SGD: 'S$', AED: 'AED ', SAR: 'SAR ', QAR: 'QAR ', CHF: 'CHF ', CAD: 'C$', AUD: 'A$' };
