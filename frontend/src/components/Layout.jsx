@@ -112,13 +112,21 @@ export default function Layout() {
   const navigate   = useNavigate();
   const pilot      = useSelector((s) => s.auth.pilot);
   const alerts     = useSelector((s) => s.jobs.alerts);
-  // Badge counts only unread alerts for jobs the pilot fully QUALIFIES for
-  // (server-side strict check); re-synced whenever the alerts slice changes
-  // (mark read / dismiss) so the number stays honest.
+  // Two different numbers from one call, never mixed up again:
+  //  • `unread`  — unread alerts for jobs the pilot fully QUALIFIES for; the
+  //    notifications count beside the avatar (the app's header bell).
+  //  • `newJobs` — new jobs since the last visit; the Dashboard/Home badge. It
+  //    is the SAME count and timestamp the dashboard line renders, so a badge
+  //    of 12 can no longer sit above "No new jobs since your last visit".
+  // Both re-sync whenever the alerts slice changes (mark read / dismiss).
   const [unread, setUnread] = useState(0);
+  const [newJobs, setNewJobs] = useState(0);
   useEffect(() => {
     if (!pilot) return;
-    jobApi.getUnreadCount().then(({ data }) => setUnread(data?.unread ?? 0)).catch(() => {});
+    jobApi.getUnreadCount().then(({ data }) => {
+      setUnread(data?.unread ?? 0);
+      setNewJobs(data?.newSinceLastVisit ?? 0);
+    }).catch(() => {});
   }, [pilot, alerts]);
   const isMobile   = useIsMobile();
   const isDesktop  = !useIsMobile(1024); // ≥1024px = wide-desktop top-bar layout
@@ -231,7 +239,7 @@ export default function Layout() {
               >
                 <span style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
                 <span style={{ flex: 1 }}>{label}</span>
-                {to === '/dashboard' && unread > 0 && <span style={unreadBadge}>{unread}</span>}
+                {to === '/dashboard' && newJobs > 0 && <span style={unreadBadge}>{newJobs}</span>}
               </NavLink>
             ))}
 
@@ -379,7 +387,7 @@ export default function Layout() {
             {TOP_NAV.map(({ to, label }) => (
               <NavLink key={to} to={to} className="nav-link ch-navitem" style={({ isActive }) => topLinkStyle(isActive)}>
                 {label}
-                {to === '/dashboard' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 6 }}>{unread}</span>}
+                {to === '/dashboard' && newJobs > 0 && <span style={{ ...unreadBadge, marginLeft: 6 }}>{newJobs}</span>}
               </NavLink>
             ))}
           </nav>
@@ -483,7 +491,7 @@ export default function Layout() {
               <NavLink to={to} className="nav-link ch-navitem" style={({ isActive }) => navLinkStyle(isActive)}>
                 <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{icon}</span>
                 {label}
-                {to === '/dashboard' && unread > 0 && <span style={{ ...unreadBadge, marginLeft: 'auto' }}>{unread}</span>}
+                {to === '/dashboard' && newJobs > 0 && <span style={{ ...unreadBadge, marginLeft: 'auto' }}>{newJobs}</span>}
               </NavLink>
             </React.Fragment>
           ))}

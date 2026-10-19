@@ -162,3 +162,41 @@ export function overlapLabel(other) {
   const name = (other && (other.flightNumber || [other.departure, other.arrival].filter(Boolean).join('–'))) || 'another flight';
   return `Overlaps ${name} — check times or date`;
 }
+
+// The recency strip, in one place for both platforms.
+//
+// A pilot who flew four sectors as pilot flying and saw "2 of 3" was being
+// shown the DAY currency alone: two of those landings were after dark (arrivals
+// at 00:53 and 02:57), so day and night each stood at 2 of 3. The count was
+// right and the sentence was wrong. Now the headline is every landing in the
+// window, and the split says which kind they were.
+export function recencyLine(currency) {
+  if (!currency) return null;
+  const day = currency.day || { landings: 0, required: 3 };
+  const night = currency.night || { landings: 0, required: 3 };
+  const total = (day.landings || 0) + (night.landings || 0);
+  const dayOk = day.landings >= day.required;
+  const nightOk = night.landings >= night.required;
+
+  // Landings missing from the window: the count is a floor, not a verdict.
+  if (currency.incomplete && !dayOk) {
+    return {
+      tone: 'unknown',
+      headline: `Landings not recorded for ${currency.flightsWithoutLandings} of your last ${currency.flightsInWindow} flights`,
+      detail: "recency can't be worked out",
+    };
+  }
+  return {
+    tone: dayOk ? 'ok' : 'short',
+    headline: `${total} landing${total === 1 ? '' : 's'} in the last 90 days`,
+    detail: `day ${Math.min(day.landings, day.required)} of ${day.required} · night ${Math.min(night.landings, night.required)} of ${night.required}`,
+    dayOk,
+    nightOk,
+    // What is actually needed, named so nobody has to work it out.
+    short: [
+      dayOk ? null : `${day.required - day.landings} more day`,
+      nightOk ? null : `${night.required - night.landings} more night`,
+    ].filter(Boolean).join(' · '),
+    currentUntil: dayOk ? day.currentUntil : null,
+  };
+}

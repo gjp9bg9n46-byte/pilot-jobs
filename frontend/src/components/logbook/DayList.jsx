@@ -33,7 +33,6 @@ export default function DayList({ logs, timeFormat, onOpen }) {
                     {nextDay && <span className="lb-plus1" title="Lands the next day">+1</span>}
                     {f.pilotFlying === true && <span className="lb-pf">PF</span>}
                     {Number(f.nightTime) > 0 && <Moon size={13} className="lb-moon" aria-label="Night time logged" />}
-                    {f.source === 'SCAN' && <span className="lb-scan">scanned</span>}
                     <small>{[f.flightNumber, type, f.registration].filter(Boolean).join(' · ') || 'No details'}</small>
                     {from && <small className="lb-link">Return of overnight trip from {from}</small>}
                     {overlaps.has(f.id) && <small className="lb-overlap">{overlapLabel(overlaps.get(f.id))}</small>}

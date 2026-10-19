@@ -6,6 +6,8 @@ import { LightPage } from '../components/primitives';
 import { statusMeta } from '../lib/jobMatch';
 import { roleLabel } from '../lib/jobDisplay';
 import { companyName, locationName } from '../lib/displayNames';
+import AirlineLogo from '../components/AirlineLogo';
+import { fetchAirlineMap, resolveAirline } from '../lib/airlineLookup';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const fmtD = (iso) => { if (!iso) return null; const d = new Date(iso); return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
@@ -54,14 +56,20 @@ function Pct({ match }) {
   );
 }
 
-function JobRow({ item, onView }) {
+function JobRow({ item, onView, logoUrl }) {
   const j = item.job; const m = j.match; const meta = statusMeta(m);
   const pill = m && (m.status === 'QUALIFY' ? { t: 'You qualify', bg: C.greenbg, c: C.green }
     : (m.status === 'SHORT' || m.status === 'CHECK') ? { t: m.status === 'SHORT' ? '1 short' : 'Check', bg: C.amberbg, c: C.amber } : null);
   const sub = [companyName(j.company), locationName(j.location || j.country), ago(j.postedAt) && `${ago(j.postedAt)}`, j.sourceType && j.sourceType !== 'aggregator' ? 'Direct apply' : null].filter(Boolean).join(' · ');
   return (
     <div className="dash-job" style={{ borderTop: `1px solid ${C.line}` }}>
-      <div style={{ minWidth: 0 }}>
+      {/* Logo exactly as on the Jobs cards: 48 tall, up to 72 wide, hidden when
+          the airline has none (no initials chip, no empty slot). */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minWidth: 0 }}>
+        {logoUrl && (
+          <div className="dash-joblogo"><AirlineLogo logoUrl={logoUrl} name={j.company} box={48} maxW={72} hideIfMissing /></div>
+        )}
+      <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontWeight: 600, fontSize: 15 }}>
           {item.isNew && <i style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: C.navy, marginRight: 7, verticalAlign: 'middle' }} />}
           {j.title}
@@ -74,6 +82,7 @@ function JobRow({ item, onView }) {
             {m?.category?.advisory && <span style={{ color: C.faint }}>· {m.category.advisory}</span>}
           </div>
         )}
+      </div>
       </div>
       {/* % and View on ONE line, right side (#3) */}
       <div className="dash-jobside" style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
@@ -90,11 +99,13 @@ export default function Dashboard() {
   const [err, setErr] = useState(null);
   const [tab, setTab] = useState('allNew');
   const [dismissed, setDismissed] = useState({}); // appId → hide "Did you apply?" prompt
+  const [airlineMap, setAirlineMap] = useState(null); // company → airline (logos), same lookup as Jobs
 
   const load = useCallback(async () => {
     try { const res = await dashboardApi.get(); setData(res.data); } catch (e) { setErr(e?.response?.data?.error || 'Could not load your dashboard.'); }
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { fetchAirlineMap().then(setAirlineMap).catch(() => {}); }, []);
 
   const setStatus = async (id, status) => {
     try { await jobApi.setApplicationStatus(id, status); setData((d) => ({ ...d, applications: d.applications.map((a) => (a.id === id ? { ...a, status } : a)) })); }
@@ -150,7 +161,7 @@ export default function Dashboard() {
                 <span className="dash-seg-note" style={{ marginLeft: 'auto', alignSelf: 'center', fontSize: 12.5, color: C.faint, fontWeight: 500, whiteSpace: 'nowrap' }}>Sorted by match %, then newest</span>
               </div>
               {list.length === 0 ? <div style={{ padding: '18px', color: C.sub, fontSize: 14 }}>No jobs in this group yet.</div>
-                : list.map((item) => <JobRow key={item.id} item={{ job: item, isNew: item.isNew }} onView={(id) => navigate(`/jobs/${id}`)} />)}
+                : list.map((item) => <JobRow key={item.id} item={{ job: item, isNew: item.isNew }} onView={(id) => navigate(`/jobs/${id}`)} logoUrl={resolveAirline(airlineMap, item.company)?.logoUrl || null} />)}
               <div style={{ padding: '10px 18px 14px', borderTop: `1px solid ${C.line}`, fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
                 Match % = stated requirements you meet ÷ stated requirements. Requirements the airline didn't state are shown, not counted. Same number as on the Jobs page.
               </div>
@@ -232,6 +243,7 @@ export default function Dashboard() {
       <style>{`
         .dash-job{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 16px;padding:10px 18px}
         .dash-job>div{min-width:0}
+        .dash-joblogo{flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:72px;height:48px}
         @media (max-width:820px){
           .dash-wrap{padding-left:16px !important;padding-right:16px !important}
           .dash-grid{grid-template-columns:minmax(0,1fr) !important}

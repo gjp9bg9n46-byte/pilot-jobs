@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../src/lib/api';
 import { statusMeta } from '../../../src/lib/jobMatch';
 import { companyName, locationName } from '../../../src/lib/displayNames';
+import AirlineLogo from '../../../src/components/AirlineLogo';
+import { fetchAirlineMap, resolveAirline } from '../../../src/lib/airlineLookup';
 import { useUnread } from '../../../src/context/UnreadContext';
 import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
@@ -49,6 +51,7 @@ export default function DashboardScreen() {
   const [tab, setTab] = useState<'allNew' | 'qualify' | 'oneShort'>('allNew');
   const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
+  const [airlineMap, setAirlineMap] = useState<Awaited<ReturnType<typeof fetchAirlineMap>> | null>(null);
 
   const load = useCallback(async () => {
     try { const res = await api.get('/dashboard'); setData(res.data); setErr(null); }
@@ -56,6 +59,7 @@ export default function DashboardScreen() {
     catch (e: any) { setErr(e?.response?.data?.error || 'Could not load your dashboard.'); }
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { fetchAirlineMap().then(setAirlineMap).catch(() => {}); }, []);
   // Reload on every focus (bell/tab return) so counts + "new" stay fresh.
   useFocusEffect(useCallback(() => { load().then(refresh); }, [load, refresh]));
 
@@ -124,7 +128,7 @@ export default function DashboardScreen() {
           </ScrollView>
           {list.length === 0
             ? <Text style={styles.emptyRow}>No jobs in this group yet.</Text>
-            : list.map((j) => <JobRow key={j.id} job={j} styles={styles} pilot={pilot} onView={() => router.push(`/jobs/${j.id}`)} />)}
+            : list.map((j) => <JobRow key={j.id} job={j} styles={styles} pilot={pilot} onView={() => router.push(`/jobs/${j.id}`)} air={resolveAirline(airlineMap, j.company)} />)}
           <Text style={styles.footNote}>Match % = stated requirements you meet ÷ stated requirements. Requirements the airline didn't state are shown, not counted. Same number as on the Jobs page.</Text>
         </View>
 
@@ -228,7 +232,7 @@ export default function DashboardScreen() {
   );
 }
 
-function JobRow({ job, onView, styles, pilot }: { job: Any; onView: () => void; styles: Any; pilot: ThemePalette }) {
+function JobRow({ job, onView, styles, pilot, air }: { job: Any; onView: () => void; styles: Any; pilot: ThemePalette; air?: Any | null }) {
   const m = job.match;
   const meta = statusMeta(m);
   const pill = m && (m.status === 'QUALIFY' ? { t: 'You qualify', bg: SEM.greenbg, c: SEM.green }
@@ -243,10 +247,17 @@ function JobRow({ job, onView, styles, pilot }: { job: Any; onView: () => void; 
           space-between }). The old two-column layout squeezed the title and
           clipped the meta line, which is where "· Direct apply" was being
           lost. */}
-      <Text style={styles.jobTitle}>
-        {job.isNew && <Text style={{ color: pilot.navy }}>● </Text>}{job.title}
-      </Text>
-      <Text style={styles.jobSub}>{sub}</Text>
+      {/* Logo as on the Jobs cards — same AirlineLogo, same box, hideIfMissing
+          (nothing is drawn when the airline has no logo). */}
+      <View style={styles.jobHead}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.jobTitle}>
+            {job.isNew && <Text style={{ color: pilot.navy }}>● </Text>}{job.title}
+          </Text>
+          <Text style={styles.jobSub}>{sub}</Text>
+        </View>
+        <AirlineLogo hideIfMissing logoUrl={air?.logoUrl} iataCode={air?.iataCode} name={job.company} box={42} />
+      </View>
 
       {(pill || meta?.shortfall || m?.category?.advisory) && (
         <View style={styles.jobMetaRow}>
@@ -321,6 +332,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   footNote: { padding: 14, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: pilot.line, fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, lineHeight: 18 },
 
   jobRow: { borderTopWidth: 1, borderTopColor: pilot.line, paddingHorizontal: 16, paddingVertical: 10 },
+  jobHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   jobTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.md, color: pilot.ink, lineHeight: 20 },
   jobSub: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2, lineHeight: 18 },
   // the %/View row: full width, % left, View right — web's phone layout

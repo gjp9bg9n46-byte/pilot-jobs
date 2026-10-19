@@ -51,6 +51,8 @@ const FIT_GROUPS: { key: string; label: string; hint: string }[] = [
   { key: 'oneShort', label: 'One requirement short', hint: "shows what's missing" },
   { key: 'few', label: 'Few requirements stated', hint: '' },
   { key: 'other', label: 'Everything else', hint: '' },
+  // Recruitment days are not vacancies: no requirements, no match, last.
+  { key: 'event', label: 'Events', hint: 'recruitment days, not vacancies' },
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

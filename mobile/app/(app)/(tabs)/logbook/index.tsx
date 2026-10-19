@@ -17,7 +17,7 @@ import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
 import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
-import { duration, dropOffLabel, findOverlaps, groupByDay, landsNextDay, overlapLabel, overnightReturnOf, TimeFormat } from '../../../../src/lib/logbookFormat';
+import { duration, dropOffLabel, findOverlaps, groupByDay, landsNextDay, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
 import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
 import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
@@ -110,7 +110,8 @@ function FlightCard({ log, onEdit, onClone, onDelete }: {
 }
 
 export default function LogbookList() {
-  const tabBarClearance = useTabBarClearance();
+  // The + floats above the tab bar, so the list must clear both.
+  const tabBarClearance = useTabBarClearance(72);
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -276,42 +277,27 @@ export default function LogbookList() {
               <Text style={styles.totLabel}>Night</Text>
             </View>
           </View>
-          {summary.currency && (summary.currency.landingsLogged || summary.currency.flightsInWindow > 0) ? (
-            summary.currency.incomplete && cur.landings < cur.required ? (
-              // Landings missing from the window: say what is missing rather
-              // than calling the pilot out of currency on our own gap.
+          {summary.currency && (summary.currency.landingsLogged || summary.currency.flightsInWindow > 0) ? (() => {
+            const r = recencyLine(summary.currency);
+            if (!r) return null;
+            const until = r.currentUntil ? dropOffLabel(r.currentUntil) : null;
+            return (
               <View style={styles.rec}>
-                <View style={[styles.dot, styles.dotGrey]} />
+                <View style={[styles.dot, r.tone === 'short' && styles.dotWarn, r.tone === 'unknown' && styles.dotGrey]} />
                 <Text style={styles.recText}>
-                  Landings not recorded for {summary.currency.flightsWithoutLandings} of your last {summary.currency.flightsInWindow} flights — recency can&apos;t be worked out.
+                  <Text style={styles.recStrong}>{r.headline}</Text>
+                  {r.detail ? ` · ${r.detail}` : ''}
+                  {r.short ? ` · ${r.short} needed` : ''}
+                  {r.tone === 'ok' && until ? ` · current until ${until}` : ''}
                 </Text>
               </View>
-            ) : (
-              <View style={styles.rec}>
-                <View style={[styles.dot, cur.landings < cur.required && styles.dotWarn]} />
-                <Text style={styles.recText}>
-                  {/* "2 of 3 landings … · 1 more needed"; current reads
-                      "3 of 3 · current until 2 Dec", which is the same date the
-                      drop-off chip would show, so it is not repeated. */}
-                  <Text style={styles.recStrong}>
-                    {Math.min(cur.landings, cur.required)} of {cur.required}{cur.landings >= cur.required ? '' : ' landings'}
-                  </Text>
-                  {cur.landings >= cur.required
-                    ? ` · current${dropOffLabel(cur.currentUntil) ? ` until ${dropOffLabel(cur.currentUntil)}` : ''}`
-                    : ` in the last 90 days · ${Math.max(0, cur.required - cur.landings)} more needed`}
-                  {summary.currency.incomplete ? ` · ${summary.currency.flightsWithoutLandings} with none recorded` : ''}
-                </Text>
-                {cur.landings < cur.required && dropOffLabel(cur.currentUntil)
-                  ? <Text style={styles.recDrop}>Oldest drops {dropOffLabel(cur.currentUntil)}</Text>
-                  : null}
-              </View>
-            )
-          ) : null}
+            );
+          })() : null}
         </>
       ) : null}
 
       {/* Hours dashboard (real data from /logbook/summary) */}
-      <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} />
+      <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} timeFormat={timeFormat} />
 
       {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
       <CarryForwardPanel openSignal={cfOpenSignal} onSaved={loadSummary} />
@@ -365,7 +351,6 @@ export default function LogbookList() {
                 {landsNextDay(item.offBlocksTime, item.onBlocksTime) ? <Text style={styles.plus1}>+1</Text> : null}
                 {item.pilotFlying === true ? <Text style={styles.pf}>PF</Text> : null}
                 {Number(item.nightTime) > 0 ? <Ionicons name="moon-outline" size={13} color={pilot.accentSoft} /> : null}
-                {item.source === 'SCAN' ? <Text style={styles.scanned}>scanned</Text> : null}
               </View>
               <Text style={styles.legSub}>
                 {[item.flightNumber, item.displayType || item.aircraftType, item.registration].filter(Boolean).join(' · ') || 'No details'}
@@ -440,7 +425,6 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   plus1: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.muted, backgroundColor: '#EEF1F5', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },
   legHours: { fontSize: 14, fontFamily: fontFamilies.body, color: pilot.ink, fontVariant: ['tabular-nums'] },
   pf: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#E3ECF8', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
-  scanned: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.faint, borderWidth: 1, borderColor: pilot.line, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1, overflow: 'hidden' },
   fab: { position: 'absolute', right: 20, bottom: 104, width: 58, height: 58, borderRadius: 29, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center', shadowColor: '#003F88', shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
 
   safe: { flex: 1, backgroundColor: pilot.cream },

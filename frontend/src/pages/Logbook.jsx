@@ -15,7 +15,7 @@ import LogbookDashboard from '../components/logbook/LogbookDashboard';
 import FlightList from '../components/logbook/FlightList';
 import DayList from '../components/logbook/DayList';
 import FlightDetail from '../components/logbook/FlightDetail';
-import { duration, dropOffLabel, findOverlaps } from '../lib/logbookFormat';
+import { duration, dropOffLabel, findOverlaps, recencyLine } from '../lib/logbookFormat';
 import '../components/logbook/logbook.css';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -817,38 +817,18 @@ export default function Logbook() {
             <div><b>{duration(summary.totals.night, timeFormat)}</b><span>Night</span></div>
           </div>
           {summary.currency && (summary.currency.landingsLogged || summary.currency.flightsInWindow > 0) && (() => {
-            const c = summary.currency;
-            const current = c.day.landings >= c.day.required;
-            // Landings missing from the window means the count is a floor, not
-            // a verdict — never show "not current" off incomplete data.
-            if (c.incomplete && !current) {
-              return (
-                <div className="lb-rec">
-                  <span className="dot grey" />
-                  <span>Landings not recorded for {c.flightsWithoutLandings} of your last {c.flightsInWindow} flights — recency can&apos;t be worked out.</span>
-                  <span className="drop">Add landings to show it</span>
-                </div>
-              );
-            }
-            // "2 of 3 landings … · 1 more needed" says both how far along and
-            // how far to go. Current reads "3 of 3 · current until 2 Dec" —
-            // the date the third-oldest landing rolls out of the window, so
-            // the separate drop-off chip would only repeat it.
-            const have = Math.min(c.day.landings, c.day.required);
-            const short = Math.max(0, c.day.required - c.day.landings);
-            const until = dropOffLabel(c.day.currentUntil);
+            const r = recencyLine(summary.currency);
+            if (!r) return null;
+            const until = r.currentUntil ? dropOffLabel(r.currentUntil) : null;
             return (
               <div className="lb-rec">
-                <span className={`dot${current ? '' : ' warn'}`} />
+                <span className={`dot${r.tone === 'ok' ? '' : r.tone === 'unknown' ? ' grey' : ' warn'}`} />
                 <span>
-                  <b>{have} of {c.day.required}{current ? '' : ' landings'}</b>
-                  {current ? '' : ' in the last 90 days'}
-                  {current
-                    ? ` · current${until ? ` until ${until}` : ''}`
-                    : ` · ${short} more needed`}
-                  {c.incomplete ? ` · ${c.flightsWithoutLandings} flights have none recorded` : ''}
+                  <b>{r.headline}</b>
+                  {r.detail ? ` · ${r.detail}` : ''}
+                  {r.short ? ` · ${r.short} needed` : ''}
+                  {r.tone === 'ok' && until ? ` · current until ${until}` : ''}
                 </span>
-                {!current && until && <span className="drop">Oldest drops {until}</span>}
               </div>
             );
           })()}
@@ -866,7 +846,7 @@ export default function Logbook() {
         </div>
       ) : (
         <div style={{ marginBottom: 22 }}>
-          <LogbookDashboard summary={summary} onEditCarryForward={openCarryForwardEditor} />
+          <LogbookDashboard summary={summary} onEditCarryForward={openCarryForwardEditor} timeFormat={timeFormat} />
         </div>
       )}
 

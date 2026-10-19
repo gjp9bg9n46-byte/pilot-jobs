@@ -12,7 +12,7 @@ import { useTheme } from '../../../src/theme/ThemeContext';
 import { fontFamilies } from '../../../src/theme/tokens';
 
 export default function TabsLayout() {
-  const { unread } = useUnread();
+  const { newJobs } = useUnread();
   const { colors: pilot, mode } = useTheme();
   return (
     <Tabs
@@ -38,8 +38,9 @@ export default function TabsLayout() {
           // A#2 — "Dashboard" was clipped on a real device and the badge sat on
           // top of it. "Home" fits the pill at any text size.
           title: 'Home',
-          // A#1 — the ONE badge in the app: new matches since the last visit.
-          tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined,
+          // A#1 — the ONE badge in the app: new jobs since the last visit. Same
+          // count, same timestamp as the dashboard's own line (newSinceLastVisit).
+          tabBarBadge: newJobs > 0 ? (newJobs > 99 ? '99+' : newJobs) : undefined,
           tabBarBadgeStyle: { backgroundColor: pilot.navy, fontFamily: fontFamilies.bodyBold, fontSize: 10 },
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}

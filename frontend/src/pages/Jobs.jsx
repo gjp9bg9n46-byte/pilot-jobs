@@ -38,6 +38,8 @@ const FIT_GROUPS = [
   { key: 'oneShort', label: 'One requirement short', cls: '', hint: "shows what's missing" },
   { key: 'few', label: 'Few requirements stated', cls: '', hint: '' },
   { key: 'other', label: 'Everything else', cls: '', hint: '' },
+  // Recruitment days are not vacancies: no requirements, no match, last.
+  { key: 'event', label: 'Events', cls: '', hint: 'recruitment days, not vacancies' },
 ];
 
 // Semantic status colors remapped to light-AA shades (meaning preserved):

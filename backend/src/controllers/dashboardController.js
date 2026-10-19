@@ -3,6 +3,7 @@
 const prisma = require('../config/database');
 const { buildMatchContext, matchJob } = require('../services/jobMatch');
 const { computeReadiness, computeStrengthAndNudge } = require('../services/profileReadiness');
+const { visitWindow, selectNewJobs } = require('../services/newJobs');
 
 // Fields the unified matcher reads (explicit select overrides the global omit of the
 // two new columns). These rows are matched/clustered, not serialized wholesale.
@@ -47,13 +48,11 @@ exports.getDashboard = async (req, res, next) => {
       prisma.savedJob.findMany({ where: { pilotId }, select: { jobId: true } }),
     ]);
 
-    // Visit window (#2): a NEW visit starts only when the last visit is >30 min stale.
-    // Within a visit, "new" stays stable (same jobs + dots) across refreshes. "New" is
-    // measured against the PREVIOUS visit's start, never "now".
+    // Visit window + the "new for you" set come from services/newJobs.js — the
+    // SAME two functions the Home badge (/jobs/alerts/unread-count) calls, so the
+    // badge and this line can never disagree again.
     const now = new Date();
-    const last = pilot?.dashboardSeenAt ? new Date(pilot.dashboardSeenAt) : null;
-    const newVisit = !last || (now - last) > 30 * 60 * 1000;
-    const prevSeenAt = newVisit ? last : (pilot?.previousDashboardSeenAt ? new Date(pilot.previousDashboardSeenAt) : null);
+    const { newVisit, last, prevSeenAt } = visitWindow(pilot, now);
 
     // ── Identity clustering is PRECOMPUTED (jobIdentityStore, run at ingest + after
     //    each scrape/dedup). The request does ZERO clustering — it just reads the
@@ -65,22 +64,7 @@ exports.getDashboard = async (req, res, next) => {
       if (!activeByKey.has(j._key)) activeByKey.set(j._key, j);
     }
 
-    // ── New jobs for you: the pilot's matched (alert) jobs that are live + canonical ──
-    const alertJobIds = new Set(alerts.filter((a) => !a.dismissedAt).map((a) => a.jobId));
-    const seenCard = new Set();
-    const items = [];
-    for (const j of activeJobs) {
-      if (!alertJobIds.has(j.id)) continue;
-      if (seenCard.has(j._key)) continue; // one card per identity cluster (re-posts collapse)
-      seenCard.add(j._key);
-      const m = ctx ? matchJob(j, ctx) : null;
-      if (m && (m.status === 'WRONG_CATEGORY' || m.status === 'EVENT')) continue; // not real vacancies for this pilot
-      // identity-first-seen: NEW only if the cluster first appeared after the last
-      // visit. identityFirstSeenAt is precomputed; fall back to createdAt if unset.
-      const firstSeen = j.identityFirstSeenAt ? new Date(j.identityFirstSeenAt).getTime() : new Date(j.createdAt).getTime();
-      const isNew = prevSeenAt ? firstSeen > prevSeenAt.getTime() : true;
-      items.push({ job: j, match: m, isNew });
-    }
+    const items = selectNewJobs({ activeJobs, alerts, ctx, prevSeenAt });
     items.sort((a, b) => (b.match?.pct ?? -1) - (a.match?.pct ?? -1) || (new Date(b.job.postedAt) - new Date(a.job.postedAt)));
 
     const qualify = items.filter((x) => x.match?.status === 'QUALIFY');

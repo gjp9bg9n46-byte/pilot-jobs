@@ -7,6 +7,7 @@ const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
 const {
   buildMatchContext, contextFromPilot, matchJob, regionForCountry, defaultRegionForPilot, REGIONS,
 } = require('../services/jobMatch');
+const { visitWindow, selectNewJobs, NEW_JOBS_SELECT } = require('../services/newJobs');
 
 const EU_COUNTRIES_RTW = new Set([
   'austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic',
@@ -421,7 +422,7 @@ exports.getJobs = async (req, res, next) => {
     const emptyProfile = !!ctx && !ctx.matchable;
 
     // Fit-group counts over the region-filtered view (drives the header + groups).
-    const fitGroupCounts = { qualify: 0, incomplete: 0, oneShort: 0, few: 0, other: 0 };
+    const fitGroupCounts = { qualify: 0, incomplete: 0, oneShort: 0, few: 0, other: 0, event: 0 };
     if (matchable) for (const m of view) fitGroupCounts[m.match.fitGroup] += 1;
 
     // Profile nudge for the "Complete your profile to check" (incomplete) group:
@@ -956,7 +957,29 @@ exports.getUnreadCount = async (req, res, next) => {
       if (computeMatchScore(pilot, totals, a.job) != null) qualified++;
     }
 
-    res.json({ unread: qualified, totalUnread: alerts.length, noReqUnread: noReq });
+    // The Home badge (web nav + app tab) shows newSinceLastVisit — the SAME
+    // number, from the same instant, as the dashboard's "N new jobs since your
+    // last visit" line (services/newJobs.js). `unread` stays what it always was
+    // (unread qualifying alerts) and still drives the bell and the Alerts tabs.
+    // Read-only: only GET /api/dashboard may advance the visit window.
+    let newSinceLastVisit = 0;
+    let lastVisit = null;
+    const { prevSeenAt } = visitWindow(pilot);
+    lastVisit = prevSeenAt ? prevSeenAt.toISOString() : null;
+    const [ctx, alertsAll] = await Promise.all([
+      buildMatchContext(pilotId, prisma),
+      prisma.jobAlert.findMany({ where: { pilotId }, select: { jobId: true, dismissedAt: true } }),
+    ]);
+    const alertJobIds = alertsAll.filter((a) => !a.dismissedAt).map((a) => a.jobId);
+    if (alertJobIds.length) {
+      const activeJobs = await prisma.job.findMany({
+        where: { id: { in: alertJobIds }, status: 'ACTIVE', mergedInto: null },
+        select: NEW_JOBS_SELECT,
+      });
+      newSinceLastVisit = selectNewJobs({ activeJobs, alerts: alertsAll, ctx, prevSeenAt }).filter((x) => x.isNew).length;
+    }
+
+    res.json({ unread: qualified, totalUnread: alerts.length, noReqUnread: noReq, newSinceLastVisit, lastVisit });
   } catch (err) {
     next(err);
   }

@@ -438,3 +438,17 @@ Port the app to match the mobile web screen-for-screen (visually identical: font
 2. **Answer the four-screen inventory** (`docs/design/screens-web-vs-app-inventory.md`) — especially Logbook 3.1 (row design) and Dashboard 1.1 — then port in the order listed there.
 3. **Watch the next gated identity run** (`nightly-rescreen`, 03:30Z) now that the guards are live: expect ~12 clusters / 13 rows, all with a parsed type or identical titles.
 4. **Backlog** (match-context cache, requirements-coverage drop at 77.8%, upsert test fixtures).
+
+---
+
+## TestFlight build 1 — the nine findings (2026-10-19)
+All fixed web + app, verified in-process as the TEST pilot (`cvtest-0y9ilqy4@example.com`) and in 390/393 px shots (`docs/design/screens/tf1/`, not committed).
+1. **Recency counter** — read-only check first: the owner's data was right (7 flights in the window, 4 PF sectors each with 1 landing, `landingsRecorded=true`; 2 day + 2 night — the 00:53 and 02:57 arrivals are night landings). No data change. The strip was the bug: it showed day currency only. Shared `recencyLine()` (`frontend/src/lib/logbookFormat.js`, `mobile/src/lib/logbookFormat.ts`) now leads with the 90-day total and gives the day/night split.
+2. **hh:mm / decimal toggle** applies to every figure — `LogbookDashboard` takes `timeFormat`; one formatter drives Total time, PIC/SIC legend, next milestone, limits and gauges; the unit label follows.
+3. **Dashboard line vs Home badge** — they computed different things (unread-ever through the legacy scorer vs new-since-last-visit through the shared matcher). New `backend/src/services/newJobs.js` holds the ONE definition (`visitWindow` + `selectNewJobs`); `/api/dashboard` and `/jobs/alerts/unread-count` both call it, and the badge endpoint stays read-only — only the dashboard advances the visit window. `unread` still drives the bell/Alerts tabs.
+4. **Recruitment events** get `fitGroup: 'event'` (was `'few'`) and their own **Events** group, last, labelled "recruitment days, not vacancies".
+5. **FAB/tab-bar clearance** on the app logbook list.
+6. **CV Builder** — page title plus Share/Download as icon buttons in the header row; full-width Download at the end of the preview; the floating bar is gone (web `.mbar` and app `mbar` both removed).
+7. **Dashboard job cards** carry the airline logo like the Jobs cards (web 48 tall / up to 72 wide, app box 42, `hideIfMissing`), from the same `fetchAirlineMap` lookup.
+8. **"scanned" chip** removed from logbook rows (source shows in flight detail only).
+9. `mobile/eas.json` `production.autoIncrement` back to `true`.

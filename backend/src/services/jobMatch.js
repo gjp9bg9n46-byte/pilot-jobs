@@ -354,7 +354,7 @@ function matchJob(job, ctx) {
       requirements: [], counts: { met: 0, unmet: 0, unknown: 0 }, known: 0,
       stated: 0, met: 0, notMet: 0, addCount: 0,
       pct: null, status: 'EVENT', shortfall: 'Recruitment event', category: { jobCategory: null, gate: 'n/a', label: null, advisory: null },
-      unmetKeys: [], unknownKeys: [], blocker: null, fitGroup: 'few',
+      unmetKeys: [], unknownKeys: [], blocker: null, fitGroup: 'event',
     };
   }
 

@@ -1,6 +1,8 @@
 // CV Builder — the app twin of the mobile web page (handoff rule B).
-// Preview / Edit tabs, a fixed bottom bar with Share + Download PDF, and the
-// same control panel: Before you send, Summary, Template, Accent, Sections.
+// A "CV Builder" page title with Share + Download as icon buttons beside it,
+// Preview / Edit tabs, and the same control panel: Before you send, Summary,
+// Template, Accent, Sections. (The actions used to float in a bar above the
+// tab pill, where they covered the bottom of the sheet — TestFlight #6.)
 //
 // The document, the checks and the masking all come from GET /cv/document, so
 // the app cannot disagree with the web builder, the PDF or the share page.
@@ -10,14 +12,13 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import api, { WEB_URL } from '../../../src/lib/api';
 import { cvSheetHtml } from '../../../src/cv/sheetHtml';
 import SheetView from '../../../src/cv/SheetView';
-import { TAB_BAR_CLEARANCE, useTabBarClearance } from '../../../src/theme/tabBar';
+import { useTabBarClearance } from '../../../src/theme/tabBar';
 import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
 
@@ -40,11 +41,9 @@ export default function CvBuilderScreen() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  // The action bar floats just above the pill tab bar (the pill can't be hidden
-  // here — this is a tab screen), so content clears both.
-  const barBottom = TAB_BAR_CLEARANCE - 16 + insets.bottom;
-  const clearance = useTabBarClearance(70);
+  // Nothing floats over the sheet any more, so the scroll only has to clear
+  // the tab pill itself.
+  const clearance = useTabBarClearance(24);
 
   const [data, setData] = useState<Any>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -148,6 +147,22 @@ export default function CvBuilderScreen() {
 
   return (
     <View style={styles.safe}>
+      <View style={styles.headRow}>
+        <Text style={styles.h1}>CV Builder</Text>
+        <View style={styles.headActions}>
+          <Pressable onPress={onShare} disabled={busy === 'share'} accessibilityLabel={data.share.enabled ? 'Sharing on' : 'Share CV'}
+            style={[styles.iconBtn, data.share.enabled && styles.iconBtnOn]} hitSlop={6}>
+            <Ionicons name="share-outline" size={18} color={data.share.enabled ? '#fff' : pilot.navy} />
+          </Pressable>
+          <Pressable onPress={download} disabled={busy === 'pdf'} accessibilityLabel="Download PDF"
+            style={[styles.iconBtn, styles.iconBtnPrimary]} hitSlop={6}>
+            {busy === 'pdf'
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Ionicons name="download-outline" size={18} color="#fff" />}
+          </Pressable>
+        </View>
+      </View>
+
       <View style={styles.tabs}>
         {(['preview', 'edit'] as const).map((t) => (
           <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabOn]}>
@@ -164,6 +179,12 @@ export default function CvBuilderScreen() {
             {sheetW ? <SheetView html={cvSheetHtml(doc, { fitWidth: sheetW })} /> : null}
           </View>
           <Text style={styles.zoom}>{doc.template === 'modern' ? 'Modern' : 'Classic'} · {accentLabel} · A4 · 1 page</Text>
+          <View style={styles.pad}>
+            <Pressable onPress={download} disabled={busy === 'pdf'} style={[styles.btn, styles.btnPrimary, styles.btnWide]}>
+              <Ionicons name="download-outline" size={16} color="#fff" />
+              <Text style={styles.btnPrimaryText}>{busy === 'pdf' ? 'Building…' : 'Download PDF'}</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={[styles.pad, { paddingBottom: clearance }]} keyboardShouldPersistTaps="handled">
@@ -223,17 +244,6 @@ export default function CvBuilderScreen() {
           </Text>
         </ScrollView>
       )}
-
-      <View style={[styles.mbar, { bottom: barBottom }]}>
-        <Pressable onPress={onShare} disabled={busy === 'share'} style={[styles.btn, styles.btnGhost]}>
-          <Ionicons name="share-outline" size={16} color={pilot.navy} />
-          <Text style={styles.btnGhostText}>{data.share.enabled ? 'Sharing on' : 'Share'}</Text>
-        </Pressable>
-        <Pressable onPress={download} disabled={busy === 'pdf'} style={[styles.btn, styles.btnPrimary]}>
-          <Ionicons name="download-outline" size={16} color="#fff" />
-          <Text style={styles.btnPrimaryText}>{busy === 'pdf' ? 'Building…' : 'Download PDF'}</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -244,6 +254,13 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   loading: { color: pilot.muted, fontFamily: fontFamilies.body },
   err: { color: pilot.ink, fontFamily: fontFamilies.body, textAlign: 'center' },
   pad: { paddingHorizontal: spacing.xl, paddingTop: 14 },
+  headRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: pilot.cream },
+  h1: { flex: 1, fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink },
+  headActions: { flexDirection: 'row', gap: 8 },
+  iconBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface },
+  iconBtnOn: { backgroundColor: pilot.navy, borderColor: pilot.navy },
+  iconBtnPrimary: { backgroundColor: pilot.navy, borderColor: pilot.navy },
+  btnWide: { width: '100%', marginTop: spacing.md },
   tabs: { flexDirection: 'row', backgroundColor: pilot.surface, borderBottomWidth: 1, borderBottomColor: pilot.line },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabOn: { borderBottomColor: pilot.navy },
@@ -289,7 +306,6 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   sheetBox: { height: 520, borderWidth: 1, borderColor: pilot.line, marginHorizontal: spacing.xl, marginTop: 14, borderRadius: 6, overflow: 'hidden', backgroundColor: '#fff' },
   zoom: { textAlign: 'center', fontSize: 12.5, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 10 },
 
-  mbar: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', gap: 10, padding: 8, borderRadius: 16, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, shadowColor: '#0F1B2D', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 10 },
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: 9, borderWidth: 1 },
   btnGhost: { borderColor: pilot.line, backgroundColor: pilot.surface },
   btnGhostText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base },

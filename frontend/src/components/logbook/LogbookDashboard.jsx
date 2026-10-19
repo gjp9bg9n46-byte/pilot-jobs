@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './LogbookDashboard.css';
+import { duration } from '../../lib/logbookFormat';
 
 // Hours dashboard shared shell (web). Renders entirely from the /logbook/summary
 // payload — no placeholder numbers. See docs/design/logbook-totals-mockup.html.
 
-const fmtH = (n) => (n == null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+// Hours are written the way the pilot asked for on the page above: hh:mm or
+// decimal. Every figure in this card goes through here, so the toggle cannot
+// reach some numbers and miss others.
+const makeFmtH = (timeFormat) => (n) => (n == null ? '—' : duration(Number(n), timeFormat));
 const fmtInt = (n) => Number(n || 0).toLocaleString('en-US');
 const monthYear = (iso) => {
   if (!iso) return null;
@@ -13,7 +17,8 @@ const monthYear = (iso) => {
   return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 };
 
-export default function LogbookDashboard({ summary, onEditCarryForward }) {
+export default function LogbookDashboard({ summary, onEditCarryForward, timeFormat = 'hhmm' }) {
+  const fmtH = makeFmtH(timeFormat);
   const [open, setOpen] = useState(false);
   if (!summary) return null;
   const { totals, byType, milestone, limits, currency } = summary;
@@ -48,7 +53,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward }) {
         {/* 1 · TOTAL TIME */}
         <section className="s-total">
           <div className="label">Total time</div>
-          <div className="lb-big"><span className="n">{fmtH(totals.total)}</span><span className="u">hours</span></div>
+          <div className="lb-big"><span className="n">{fmtH(totals.total)}</span><span className="u">{timeFormat === 'decimal' ? 'hours' : 'hh:mm'}</span></div>
           <div className="fine">
             {cf > 0 ? <>Includes {fmtH(cf)} h carried forward · </> : <>Add previous / carry-forward hours · </>}
             <a href="#" onClick={(e) => { e.preventDefault(); onEditCarryForward && onEditCarryForward(); }}>Edit</a>
@@ -80,7 +85,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward }) {
         <section className="s-ms">
           <div className="label">Next milestone</div>
           {next ? (
-            <div className="lb-ms-title"><span className="num">{fmtH(milestone.remaining)} h</span> to {next.toLocaleString()} hours</div>
+            <div className="lb-ms-title"><span className="num">{fmtH(milestone.remaining)}{timeFormat === 'decimal' ? ' h' : ''}</span> to {next.toLocaleString()} hours</div>
           ) : (
             <div className="lb-ms-title">Top of the ladder reached</div>
           )}
@@ -145,7 +150,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward }) {
               <Gauge value={limits.last28Days.hours} limit={limits.last28Days.limit} cap="Last 28 days" />
               <Gauge value={limits.calendarYear.hours} limit={limits.calendarYear.limit} cap={`Calendar year ${new Date().getFullYear()}`} />
               <Gauge value={limits.last12Months.hours} limit={limits.last12Months.limit}
-                cap={`Last 12 months · ${fmtH(Math.max(0, limits.last12Months.limit - limits.last12Months.hours))} h left`} />
+                cap={`Last 12 months · ${fmtH(Math.max(0, limits.last12Months.limit - limits.last12Months.hours))}${timeFormat === 'decimal' ? ' h' : ''} left`} />
             </div>
           </div>
         )}

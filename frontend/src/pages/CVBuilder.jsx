@@ -148,6 +148,21 @@ export default function CVBuilder() {
   return (
     <LightPage>
       <div className={`cvb${tab === 'edit' ? ' edit' : ''}`}>
+        {/* Phone header (#6): the page title like every other page, with Share
+            and Download as icon buttons beside it. They used to sit in a bar
+            floating over the bottom of the sheet. */}
+        <div className="ph-head">
+          <h1>CV Builder</h1>
+          <div className="ph-acts">
+            <button type="button" className={`ibtn${data.share.enabled ? ' on' : ''}`} onClick={toggleShare} disabled={busy === 'share'}
+              aria-label={data.share.enabled ? 'Sharing on' : 'Share CV'} title={data.share.enabled ? 'Sharing on' : 'Share CV'}>
+              {data.share.enabled ? <Link2 size={18} /> : <Share2 size={18} />}
+            </button>
+            <button type="button" className="ibtn p" onClick={download} disabled={busy === 'pdf'}
+              aria-label="Download PDF" title="Download PDF"><Download size={18} /></button>
+          </div>
+        </div>
+
         <div className="tabs">
           <button type="button" className={tab === 'preview' ? 'on' : ''} onClick={() => setTab('preview')}>Preview</button>
           <button type="button" className={tab === 'edit' ? 'on' : ''} onClick={() => setTab('edit')}>Edit</button>
@@ -155,7 +170,7 @@ export default function CVBuilder() {
 
         <div className="cvb-wrap">
           <aside>
-            <h1>Your CV</h1>
+            <h1>CV Builder</h1>
             <p className="intro">Built from your profile and logbook. Update a licence or log a flight and your CV updates with it.</p>
 
             <div className="sec">{checkPanel}</div>
@@ -250,16 +265,10 @@ export default function CVBuilder() {
               <div className="sheetbox"><CvSheet doc={doc} /></div>
             </div>
             <p className="zoom">Pinch to zoom · 1 page</p>
+            <button type="button" className="btn p ph-dl" onClick={download} disabled={busy === 'pdf'}>
+              <Download size={16} />{busy === 'pdf' ? 'Building…' : 'Download PDF'}
+            </button>
           </main>
-        </div>
-
-        <div className="mbar">
-          <button type="button" className="btn" onClick={toggleShare} disabled={busy === 'share'}>
-            <Share2 size={16} />{data.share.enabled ? 'Sharing on' : 'Share'}
-          </button>
-          <button type="button" className="btn p" onClick={download} disabled={busy === 'pdf'}>
-            <Download size={16} />{busy === 'pdf' ? 'Building…' : 'Download PDF'}
-          </button>
         </div>
       </div>
     </LightPage>

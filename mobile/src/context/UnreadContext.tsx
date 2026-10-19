@@ -6,17 +6,27 @@
 // for jobs the pilot fully qualifies for (every specified requirement met,
 // strict server-side check). Jobs with no specified requirements don't count
 // toward the badge — they live in the Alerts "No requirements" chip.
+//
+// The same call also returns `newSinceLastVisit`: new jobs since the last visit,
+// the SAME count and timestamp the dashboard's "N new jobs since your last
+// visit" line renders (backend services/newJobs.js). That — not `unread` — is
+// what the Home tab badge shows, so the badge can no longer read 12 while the
+// dashboard says "No new jobs since your last visit".
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import api from '../lib/api';
 import { useAuth } from './AuthContext';
 
-type UnreadValue = { unread: number; setUnread: (n: number) => void; refresh: () => Promise<void> };
+type UnreadValue = {
+  unread: number; setUnread: (n: number) => void;
+  newJobs: number; refresh: () => Promise<void>;
+};
 
-const UnreadContext = createContext<UnreadValue>({ unread: 0, setUnread: () => {}, refresh: async () => {} });
+const UnreadContext = createContext<UnreadValue>({ unread: 0, setUnread: () => {}, newJobs: 0, refresh: async () => {} });
 
 export function UnreadProvider({ children }: { children: React.ReactNode }) {
   const { accountType, token } = useAuth();
   const [unread, setUnread] = useState(0);
+  const [newJobs, setNewJobs] = useState(0);
 
   const refresh = useCallback(async () => {
     // Only fetch for a fully-hydrated pilot. A transient null accountType during
@@ -27,6 +37,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const d: any = data;
       setUnread(typeof d?.unread === 'number' ? d.unread : 0);
+      setNewJobs(typeof d?.newSinceLastVisit === 'number' ? d.newSinceLastVisit : 0);
     } catch {
       /* best-effort — leave the last known count */
     }
@@ -35,7 +46,7 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
   // Re-run once token AND accountType have both hydrated to a pilot session.
   useEffect(() => { if (token && accountType === 'pilot') refresh(); }, [token, accountType, refresh]);
 
-  return <UnreadContext.Provider value={{ unread, setUnread, refresh }}>{children}</UnreadContext.Provider>;
+  return <UnreadContext.Provider value={{ unread, setUnread, newJobs, refresh }}>{children}</UnreadContext.Provider>;
 }
 
 export const useUnread = () => useContext(UnreadContext);

@@ -9,6 +9,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fontFamilies, pilot as pilotTokens, semantic } from '../../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../theme/ThemeContext';
+import { duration, TimeFormat } from '../../lib/logbookFormat';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Summary = Record<string, any>;
@@ -21,7 +22,9 @@ const TRACK_BG = '#E3E8EF';
 function group(intStr: string): string {
   return intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
-function fmtH(n: number | null | undefined): string {
+// Superseded by the format-aware formatter inside the component.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function fmtHDecimal(n: number | null | undefined): string {
   if (n == null) return '—';
   const v = Number(n);
   const neg = v < 0 ? '-' : '';
@@ -47,12 +50,16 @@ function dayMon(iso?: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-export default function LogbookDashboard({ summary, onEditCarryForward }: {
-  summary: Summary | null; onEditCarryForward?: () => void;
+export default function LogbookDashboard({ summary, onEditCarryForward, timeFormat = 'hhmm' }: {
+  summary: Summary | null; onEditCarryForward?: () => void; timeFormat?: TimeFormat;
 }) {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const [open, setOpen] = useState(false);
+  // Hours are written the way the pilot chose on the page above; every figure
+  // in this card goes through one formatter so the toggle cannot miss any.
+  const fmtH = (n: number | null | undefined) => (n == null ? '—' : duration(Number(n), timeFormat));
+  const hUnit = timeFormat === 'decimal' ? ' h' : '';
   if (!summary) return null;
   const { totals, byType, milestone, limits, currency } = summary;
 
@@ -84,7 +91,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward }: {
           <Text style={styles.label}>Total time</Text>
           <View style={styles.bigRow}>
             <Text style={styles.bigNum}>{fmtH(totals.total)}</Text>
-            <Text style={styles.bigUnit}>hours</Text>
+            <Text style={styles.bigUnit}>{timeFormat === 'decimal' ? 'hours' : 'hh:mm'}</Text>
           </View>
           <Text style={styles.fine}>
             {cf > 0 ? `Includes ${fmtH(cf)} h carried forward · ` : 'Add previous / carry-forward hours · '}
@@ -117,7 +124,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward }: {
         <View style={[styles.section, styles.sectionDivider]}>
           <Text style={styles.label}>Next milestone</Text>
           {next ? (
-            <Text style={styles.msTitle}><Text style={styles.msNum}>{fmtH(milestone.remaining)} h</Text> to {group(String(next))} hours</Text>
+            <Text style={styles.msTitle}><Text style={styles.msNum}>{fmtH(milestone.remaining)}{hUnit}</Text> to {group(String(next))} hours</Text>
           ) : (
             <Text style={styles.msTitle}>Top of the ladder reached</Text>
           )}
@@ -175,10 +182,10 @@ export default function LogbookDashboard({ summary, onEditCarryForward }: {
         {open && limits ? (
           <View style={[styles.section, styles.sectionDivider]}>
             <Text style={styles.label}>Flight time limits (EASA ORO.FTL)</Text>
-            <Gauge value={limits.last28Days.hours} limit={limits.last28Days.limit} cap="Last 28 days" styles={styles} />
-            <Gauge value={limits.calendarYear.hours} limit={limits.calendarYear.limit} cap={`Calendar year ${new Date().getFullYear()}`} styles={styles} />
-            <Gauge value={limits.last12Months.hours} limit={limits.last12Months.limit}
-              cap={`Last 12 months · ${fmtH(Math.max(0, limits.last12Months.limit - limits.last12Months.hours))} h left`} styles={styles} />
+            <Gauge fmtH={fmtH} hUnit={hUnit} value={limits.last28Days.hours} limit={limits.last28Days.limit} cap="Last 28 days" styles={styles} />
+            <Gauge fmtH={fmtH} hUnit={hUnit} value={limits.calendarYear.hours} limit={limits.calendarYear.limit} cap={`Calendar year ${new Date().getFullYear()}`} styles={styles} />
+            <Gauge fmtH={fmtH} hUnit={hUnit} value={limits.last12Months.hours} limit={limits.last12Months.limit}
+              cap={`Last 12 months · ${fmtH(Math.max(0, limits.last12Months.limit - limits.last12Months.hours))}${hUnit} left`} styles={styles} />
           </View>
         ) : null}
 
@@ -208,12 +215,12 @@ export default function LogbookDashboard({ summary, onEditCarryForward }: {
   );
 }
 
-function Gauge({ value, limit, cap, styles }: { value: number; limit: number; cap: string; styles: Summary }) {
+function Gauge({ value, limit, cap, styles, fmtH, hUnit }: { value: number; limit: number; cap: string; styles: Summary; fmtH: (n: number | null | undefined) => string; hUnit: string }) {
   const pct = Math.min(100, (value / limit) * 100);
   const warn = pct >= 85;
   return (
     <View style={styles.gauge}>
-      <Text style={styles.gaugeV}><Text style={styles.gaugeNum}>{fmtH(value)}</Text> / {group(String(limit))} h</Text>
+      <Text style={styles.gaugeV}><Text style={styles.gaugeNum}>{fmtH(value)}</Text> / {group(String(limit))}{hUnit || ' h'}</Text>
       <View style={styles.gaugeBar}><View style={[styles.gaugeBarFill, { width: `${pct}%`, backgroundColor: warn ? pilotTokens.amber : semantic.success }]} /></View>
       <Text style={styles.gaugeCap}>{cap}</Text>
     </View>
