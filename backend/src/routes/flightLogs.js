@@ -2,6 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middleware/auth');
+const { invalidateMatchContext } = require('../services/matchContextCache');
 const flightLogController = require('../controllers/flightLogController');
 
 // Existing upload: 20 MB, used by the legacy ForeFlight/LogbookPro importer
@@ -32,6 +33,16 @@ const importConfirmLimit = rateLimit({
 });
 
 router.use(authMiddleware);
+
+// A logbook write changes the pilot's totals, so the cached match context goes
+// (services/matchContextCache.js).
+router.use((req, res, next) => {
+  if (req.method !== 'GET' && req.pilot && req.pilot.id) {
+    const id = req.pilot.id;
+    res.on('finish', () => invalidateMatchContext(id));
+  }
+  next();
+});
 
 router.get('/recent-aircraft', flightLogController.recentAircraft);
 router.get('/', flightLogController.getLogs);

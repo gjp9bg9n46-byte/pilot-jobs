@@ -1,11 +1,28 @@
 const router = require('express').Router();
 const authMiddleware = require('../middleware/auth');
 const profileController = require('../controllers/profileController');
+const { invalidateMatchContext } = require('../services/matchContextCache');
+const bundles = require('../controllers/bundleController');
 
 router.use(authMiddleware);
 
+// Any write here changes what the matcher sees for this pilot, so the cached
+// match context is dropped when the response finishes. One hook per router
+// beats remembering it in every handler (services/matchContextCache.js).
+router.use((req, res, next) => {
+  if (req.method !== 'GET' && req.pilot && req.pilot.id) {
+    const id = req.pilot.id;
+    res.on('finish', () => invalidateMatchContext(id));
+  }
+  next();
+});
+
+
 router.get('/', profileController.getProfile);
 router.get('/readiness', profileController.getReadiness);
+// One call for everything the Profile tab opens with (profile + readiness +
+// logbook totals + applications + CV). See controllers/bundleController.js.
+router.get('/overview', bundles.profileOverview);
 router.patch('/', profileController.updateProfile);
 router.get('/totals',         profileController.getFlightTotals);
 router.get('/airports',       profileController.getAirports);

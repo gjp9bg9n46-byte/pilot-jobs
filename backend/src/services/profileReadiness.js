@@ -6,7 +6,8 @@
 // "Complete your profile" group, so the numbers agree.
 
 const prisma = require('../config/database');
-const { buildMatchContext, matchJob } = require('./jobMatch');
+const { matchJob } = require('./jobMatch');
+const { getMatchContext } = require('./matchContextCache');
 
 const DAY = 86400000;
 
@@ -167,7 +168,7 @@ const NUDGE_LABEL = {
 };
 
 async function computeStrengthAndNudge(pilotId) {
-  const ctx = await buildMatchContext(pilotId, prisma);
+  const ctx = await getMatchContext(pilotId, prisma);
   const strength = strengthFromContext(ctx);
   if (!ctx || !ctx.matchable) return { strength, nudge: null, qualifyCount: 0, incompleteCount: 0 };
 

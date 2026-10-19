@@ -1,7 +1,8 @@
 'use strict';
 
 const prisma = require('../config/database');
-const { buildMatchContext, matchJob } = require('../services/jobMatch');
+const { matchJob } = require('../services/jobMatch');
+const { getMatchContext } = require('../services/matchContextCache');
 const { computeReadiness, computeStrengthAndNudge } = require('../services/profileReadiness');
 const { visitWindow, selectNewJobs } = require('../services/newJobs');
 
@@ -37,7 +38,7 @@ exports.getDashboard = async (req, res, next) => {
 
     const [pilot, ctx, readiness, strength, activeJobs, alerts, apps, prefs, savedSearches, savedJobs] = await Promise.all([
       prisma.pilot.findUnique({ where: { id: pilotId }, select: { dashboardSeenAt: true, previousDashboardSeenAt: true, derivedTotals: true, emailVerified: true } }),
-      buildMatchContext(pilotId, prisma),
+      getMatchContext(pilotId, prisma),
       computeReadiness(pilotId),
       computeStrengthAndNudge(pilotId),
       prisma.job.findMany({ where: { status: 'ACTIVE', mergedInto: null }, select: MATCH_SELECT }),
@@ -99,6 +100,9 @@ exports.getDashboard = async (req, res, next) => {
 
     const response = {
       blockers: { count: readiness.blockers || 0, items: (readiness.items || []).filter((i) => i.blocker) },
+      // The badge the Home tab draws, in the payload the Home tab already loads
+      // (it is the same number, from the same instant — services/newJobs.js).
+      badge: { newSinceLastVisit: newCount, lastVisit: prevSeenAt ? prevSeenAt.toISOString() : null },
       newJobs: {
         newSinceLastVisit: newCount,
         lastVisit: prevSeenAt ? prevSeenAt.toISOString() : null,

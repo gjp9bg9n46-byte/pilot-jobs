@@ -2,7 +2,8 @@
 
 const prisma = require('../config/database');
 const { jobStatsFor, requirementChecks } = require('../services/airlineFactfile');
-const { buildMatchContext } = require('../services/jobMatch');
+const { } = require('../services/jobMatch');
+const { getMatchContext } = require('../services/matchContextCache');
 
 const VALID_SORT = ['name', 'lastUpdated', 'hiringStatus', 'openJobs'];
 const VALID_HIRING_STATUSES = new Set(['ACTIVELY_HIRING', 'OCCASIONAL', 'PAUSED', 'UNKNOWN']);
@@ -248,7 +249,7 @@ exports.getAirline = async (req, res, next) => {
     // The same matcher the Jobs page uses, so a green tick here and a job in
     // the "you qualify" group there can never disagree.
     const stats = await jobStatsFor([airline.name], req.pilot?.id || null);
-    const ctx = req.pilot?.id ? await buildMatchContext(req.pilot.id, prisma) : null;
+    const ctx = req.pilot?.id ? await getMatchContext(req.pilot.id, prisma) : null;
     res.json({
       ...rest,
       fieldDates: fieldDateMap,
@@ -349,4 +350,21 @@ exports.getMyContributions = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+// GET /airlines/logos — the company → logo lookup the job cards need, whole, in
+// one response. The clients used to page through /airlines at 100 a time, which
+// is five sequential round trips (~2 s each from Cairo) before a single logo
+// could be drawn. This is four small fields per airline, so the entire table is
+// smaller than one page of the full listing. Public: logos are public data.
+exports.listAirlineLogos = async (req, res, next) => {
+  try {
+    const items = await prisma.airline.findMany({
+      select: { id: true, name: true, iataCode: true, logoUrl: true },
+      orderBy: { name: 'asc' },
+    });
+    // Rarely changes; let the client and any proxy keep it for an hour.
+    res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+    res.json({ items, total: items.length });
+  } catch (err) { next(err); }
 };

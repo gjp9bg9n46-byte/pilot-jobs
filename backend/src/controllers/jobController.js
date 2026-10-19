@@ -5,8 +5,9 @@ const {
 } = require('../services/matchingService');
 const { EDU_RANK, parseElpLevel } = require('../lib/eduRank');
 const {
-  buildMatchContext, contextFromPilot, matchJob, regionForCountry, defaultRegionForPilot, REGIONS,
+  contextFromPilot, matchJob, regionForCountry, defaultRegionForPilot, REGIONS,
 } = require('../services/jobMatch');
+const { getMatchContext } = require('../services/matchContextCache');
 const { visitWindow, selectNewJobs, NEW_JOBS_SELECT } = require('../services/newJobs');
 
 const EU_COUNTRIES_RTW = new Set([
@@ -103,7 +104,8 @@ const CANDIDATE_SELECT = {
 // 50-row full-description page fetch — dominate /jobs and swing widely under DB
 // connection-pool contention. Job listings are PILOT-INDEPENDENT and only change
 // when the scraper/liveness job writes, so we cache them process-wide for a short
-// window. The per-pilot MATCH is never cached: buildMatchContext and the pilot's
+// window. The per-pilot MATCH is still computed per request; only the pilot's
+// match CONTEXT is cached (60 s, invalidated on write):
 // saved/applied sets are fetched live every request, so a pilot always sees their
 // current profile matched against listings that may be at most JOBS_CACHE_TTL_MS
 // stale. Call clearJobsCache() after a scrape to drop staleness to zero.
@@ -394,7 +396,7 @@ exports.getJobs = async (req, res, next) => {
     // re-fetched in full afterwards.
     const [candidates, ctx, pilotSets] = await Promise.all([
       getCandidates(where, orderBy),
-      req.pilot ? buildMatchContext(req.pilot.id, prisma) : Promise.resolve(null),
+      req.pilot ? getMatchContext(req.pilot.id, prisma) : Promise.resolve(null),
       req.pilot ? fetchPilotJobSets(req.pilot.id) : Promise.resolve(null),
     ]);
     _mark('fetch');
@@ -531,7 +533,7 @@ exports.getHoursHistogram = async (req, res, next) => {
     if (AND.length) where.AND = AND;
 
     const rows = await prisma.job.findMany({ where, take: 2000, select: CANDIDATE_SELECT });
-    const ctx = (qualifiedOnly === 'true' && req.pilot) ? await buildMatchContext(req.pilot.id, prisma) : null;
+    const ctx = (qualifiedOnly === 'true' && req.pilot) ? await getMatchContext(req.pilot.id, prisma) : null;
     const regionSel = region && region !== 'All' ? region : null;
 
     const buckets = HISTO_EDGES.map((lo, i) => ({ min: lo, max: HISTO_EDGES[i + 1] ?? null, count: 0 }));
@@ -585,7 +587,7 @@ exports.getJob = async (req, res, next) => {
     let match = null;
     let similarJobs = [];
     if (req.pilot) {
-      const ctx = await buildMatchContext(req.pilot.id, prisma);
+      const ctx = await getMatchContext(req.pilot.id, prisma);
       if (ctx) {
         // The full `job` row is globally omitted of the two new columns; fetch them
         // just for matching (NOT merged into the serialized response, so shape is
@@ -967,7 +969,7 @@ exports.getUnreadCount = async (req, res, next) => {
     const { prevSeenAt } = visitWindow(pilot);
     lastVisit = prevSeenAt ? prevSeenAt.toISOString() : null;
     const [ctx, alertsAll] = await Promise.all([
-      buildMatchContext(pilotId, prisma),
+      getMatchContext(pilotId, prisma),
       prisma.jobAlert.findMany({ where: { pilotId }, select: { jobId: true, dismissedAt: true } }),
     ]);
     const alertJobIds = alertsAll.filter((a) => !a.dismissedAt).map((a) => a.jobId);

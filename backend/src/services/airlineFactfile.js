@@ -12,7 +12,8 @@
  */
 
 const prisma = require('../config/database');
-const { buildMatchContext, matchJob } = require('./jobMatch');
+const { matchJob } = require('./jobMatch');
+const { getMatchContext } = require('./matchContextCache');
 
 const norm = (s) => String(s || '').trim().toLowerCase();
 
@@ -47,7 +48,7 @@ async function activeJobsFor(names) {
  */
 async function jobStatsFor(names, pilotId) {
   const byCompany = await activeJobsFor(names);
-  const ctx = pilotId ? await buildMatchContext(pilotId, prisma) : null;
+  const ctx = pilotId ? await getMatchContext(pilotId, prisma) : null;
   const out = new Map();
   for (const [company, jobs] of byCompany) {
     let qualify = 0;
