@@ -17,7 +17,7 @@ import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
 import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
-import { duration, dropOffLabel, findOverlaps, groupByDay, landsNextDay, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
+import { duration, findOverlaps, groupByDay, landsNextDay, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
 import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
 import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
@@ -280,16 +280,13 @@ export default function LogbookList() {
           {summary.currency && (summary.currency.landingsLogged || summary.currency.flightsInWindow > 0) ? (() => {
             const r = recencyLine(summary.currency);
             if (!r) return null;
-            const until = r.currentUntil ? dropOffLabel(r.currentUntil) : null;
             return (
               <View style={styles.rec}>
                 <View style={[styles.dot, r.tone === 'short' && styles.dotWarn, r.tone === 'unknown' && styles.dotGrey]} />
-                <Text style={styles.recText}>
-                  <Text style={styles.recStrong}>{r.headline}</Text>
-                  {r.detail ? ` · ${r.detail}` : ''}
-                  {r.short ? ` · ${r.short} needed` : ''}
-                  {r.tone === 'ok' && until ? ` · current until ${until}` : ''}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recText}><Text style={styles.recStrong}>{r.text}</Text></Text>
+                  {r.note ? <Text style={styles.recNote}>{r.note}</Text> : null}
+                </View>
               </View>
             );
           })() : null}
@@ -410,6 +407,8 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   dotGrey: { backgroundColor: pilot.faint },
   recText: { flex: 1, fontSize: 13, color: pilot.ink, fontFamily: fontFamilies.body },
   recStrong: { fontFamily: fontFamilies.bodySemiBold },
+  // Why the night leg does or doesn't apply — stated, never implied.
+  recNote: { marginTop: 2, fontSize: 12, lineHeight: 16, color: pilot.muted, fontFamily: fontFamilies.body },
   recDrop: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },
   dayHeader: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18, marginBottom: 6 },
   dayLabel: { fontSize: 11.5, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.9, textTransform: 'uppercase', color: pilot.faint },

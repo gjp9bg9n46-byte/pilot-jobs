@@ -452,3 +452,20 @@ All fixed web + app, verified in-process as the TEST pilot (`cvtest-0y9ilqy4@exa
 7. **Dashboard job cards** carry the airline logo like the Jobs cards (web 48 tall / up to 72 wide, app box 42, `hideIfMissing`), from the same `fetchAirlineMap` lookup.
 8. **"scanned" chip** removed from logbook rows (source shows in flight detail only).
 9. `mobile/eas.json` `production.autoIncrement` back to `true`.
+
+## Recency: the night leg is a rule, not a default (2026-10-19)
+`backend/src/services/recencyRules.js` is the ONE table. The requirement is 3 take-offs/landings in 90 days (day or night alike); the night leg is separate and only asserted where an authority imposes it on that pilot.
+
+| Authority | Base | Night leg | IR exempts it? | Source |
+|---|---|---|---|---|
+| EASA | 3 / 90 days | 1 of the 3 at night | **yes** | Part-FCL FCL.060(b) |
+| UK CAA | 3 / 90 days | 1 of the 3 at night | **yes** | UK (retained) Part-FCL FCL.060(b) |
+| FAA | 3 / 90 days | 3 at night, full stop | no | 14 CFR 61.57(a),(b) |
+| ECAA (Egypt) | **not mapped** | — | — | ECAR Part 61 is FAA-derived; night wording + any IR exemption unverified |
+| GCAA (UAE) | **not mapped** | — | — | CAR-FCL is JAR-derived; IR-exemption wording unverified |
+
+Not mapped, or no authority on file → the 90-day total against 3 only, with the night count as information. Never "needed", never amber. An ATPL/ATP/MPL counts as holding instrument privileges, as does a current IR certificate; an expired IR does not.
+
+`GET /logbook/summary` now returns `currency.rule` (authority, mapped, hasIr, nightApplies, nightRequired, nightNote, ref, note) plus `currency.landings` / `required` / `currentUntil` for the whole window. `recencyLine()` (shared, web + app) returns `{tone, text, note}`; "Current · N landings in the last 90 days · M at night · until <date>" when met.
+
+Also fixed here: the web `Gauge` called `fmtH` from outside its scope after the hh:mm refactor, which crashed the whole logbook dashboard. It now takes the formatter as a prop, like the app twin.

@@ -163,40 +163,62 @@ export function overlapLabel(other) {
   return `Overlaps ${name} — check times or date`;
 }
 
-// The recency strip, in one place for both platforms.
-//
-// A pilot who flew four sectors as pilot flying and saw "2 of 3" was being
-// shown the DAY currency alone: two of those landings were after dark (arrivals
-// at 00:53 and 02:57), so day and night each stood at 2 of 3. The count was
-// right and the sentence was wrong. Now the headline is every landing in the
-// window, and the split says which kind they were.
+// ── The recency strip, in one place (web + app) ───────────────────────────────
+// Two separate things, never mixed up:
+//   • the requirement — 3 take-offs/landings in the last 90 days, day or night
+//     alike. That is what "needed" and the amber dot are about.
+//   • the night leg — a SEPARATE condition that only some authorities impose,
+//     and that an instrument rating removes under EASA/UK CAA. The server
+//     resolves it (services/recencyRules.js) and sends `currency.rule`. When
+//     `rule.nightApplies` is false — IR holder, unmapped authority, or no
+//     authority on file — the night figure is stated as information and is
+//     NEVER called "needed" and never turns the strip amber.
 export function recencyLine(currency) {
   if (!currency) return null;
-  const day = currency.day || { landings: 0, required: 3 };
+  const rule = currency.rule || { nightApplies: false, mapped: false, base: 3 };
   const night = currency.night || { landings: 0, required: 3 };
-  const total = (day.landings || 0) + (night.landings || 0);
-  const dayOk = day.landings >= day.required;
-  const nightOk = night.landings >= night.required;
+  const required = currency.required || rule.base || 3;
+  // Total landings in the window (older payloads only carried the day/night split).
+  const total = currency.landings != null
+    ? currency.landings
+    : (currency.day?.landings || 0) + (night.landings || 0);
+  const nightCount = night.landings || 0;
+  // How many must be at night, per the pilot's authority (EASA/UK: one of the
+  // three; FAA: three). Null/absent when no night requirement applies.
+  const nightNeed = rule.nightApplies ? (rule.nightRequired ?? night.required ?? 1) : 0;
+  const nightOk = nightCount >= nightNeed;
+  const totalOk = total >= required;
+  const until = currency.currentUntil || currency.day?.currentUntil || null;
 
   // Landings missing from the window: the count is a floor, not a verdict.
-  if (currency.incomplete && !dayOk) {
+  if (currency.incomplete && !totalOk) {
     return {
       tone: 'unknown',
-      headline: `Landings not recorded for ${currency.flightsWithoutLandings} of your last ${currency.flightsInWindow} flights`,
-      detail: "recency can't be worked out",
+      text: `Landings not recorded for ${currency.flightsWithoutLandings} of your last ${currency.flightsInWindow} flights — recency can't be worked out`,
+      note: null,
     };
   }
+
+  const nightInfo = `${nightCount} at night`;
+  // Current = the requirement is met, and the night leg too where it applies.
+  const current = totalOk && (!rule.nightApplies || nightOk);
+  if (current) {
+    const parts = [`${total} landing${total === 1 ? '' : 's'} in the last 90 days`, nightInfo];
+    if (until) parts.push(`until ${dropOffLabel(until)}`);
+    return { tone: 'ok', text: `Current · ${parts.join(' · ')}`, note: rule.nightNote || null };
+  }
+
+  const needs = [];
+  if (!totalOk) needs.push(`${required - total} more`);
+  if (rule.nightApplies && !nightOk) needs.push(`${nightNeed - nightCount} more at night`);
+  // "3 of 3" would be a lie when the three are flown and only the night leg is
+  // outstanding, so the head states the count plainly in that case.
+  const head = totalOk
+    ? `${total} landing${total === 1 ? '' : 's'} in the last 90 days`
+    : `${total} of ${required} landings in the last 90 days`;
   return {
-    tone: dayOk ? 'ok' : 'short',
-    headline: `${total} landing${total === 1 ? '' : 's'} in the last 90 days`,
-    detail: `day ${Math.min(day.landings, day.required)} of ${day.required} · night ${Math.min(night.landings, night.required)} of ${night.required}`,
-    dayOk,
-    nightOk,
-    // What is actually needed, named so nobody has to work it out.
-    short: [
-      dayOk ? null : `${day.required - day.landings} more day`,
-      nightOk ? null : `${night.required - night.landings} more night`,
-    ].filter(Boolean).join(' · '),
-    currentUntil: dayOk ? day.currentUntil : null,
+    tone: 'short',
+    text: `${head} · ${nightInfo}${needs.length ? ` · ${needs.join(' · ')} needed` : ''}`,
+    note: rule.nightNote || null,
   };
 }

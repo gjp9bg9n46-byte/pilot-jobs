@@ -19,6 +19,8 @@ const monthYear = (iso) => {
 
 export default function LogbookDashboard({ summary, onEditCarryForward, timeFormat = 'hhmm' }) {
   const fmtH = makeFmtH(timeFormat);
+  // " h" only makes sense next to a decimal figure; 14:36 carries its own unit.
+  const hUnit = timeFormat === 'decimal' ? ' h' : '';
   const [open, setOpen] = useState(false);
   if (!summary) return null;
   const { totals, byType, milestone, limits, currency } = summary;
@@ -147,9 +149,9 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
           <div className="lb-card limits">
             <div className="label">Flight time limits (EASA ORO.FTL)</div>
             <div className="lb-gauges">
-              <Gauge value={limits.last28Days.hours} limit={limits.last28Days.limit} cap="Last 28 days" />
-              <Gauge value={limits.calendarYear.hours} limit={limits.calendarYear.limit} cap={`Calendar year ${new Date().getFullYear()}`} />
-              <Gauge value={limits.last12Months.hours} limit={limits.last12Months.limit}
+              <Gauge fmtH={fmtH} hUnit={hUnit} value={limits.last28Days.hours} limit={limits.last28Days.limit} cap="Last 28 days" />
+              <Gauge fmtH={fmtH} hUnit={hUnit} value={limits.calendarYear.hours} limit={limits.calendarYear.limit} cap={`Calendar year ${new Date().getFullYear()}`} />
+              <Gauge fmtH={fmtH} hUnit={hUnit} value={limits.last12Months.hours} limit={limits.last12Months.limit}
                 cap={`Last 12 months · ${fmtH(Math.max(0, limits.last12Months.limit - limits.last12Months.hours))}${timeFormat === 'decimal' ? ' h' : ''} left`} />
             </div>
           </div>
@@ -163,8 +165,21 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
               <li><span className="lb-ic neutral">·</span><div className="m">Add landings to your flights to track currency</div></li>
             ) : (
               <>
-                <CurrencyLine role="Day" data={currency.day} incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
-                <CurrencyLine role="Night" data={currency.night} incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
+                {/* The requirement: 3 take-offs/landings in 90 days, day or
+                    night alike. The night leg is listed separately and only
+                    counts as a shortfall where the authority imposes it. */}
+                <CurrencyLine
+                  role="Landings" data={{ landings: currency.landings ?? ((currency.day?.landings || 0) + (currency.night?.landings || 0)), required: currency.required ?? 3, currentUntil: currency.currentUntil ?? currency.day?.currentUntil }}
+                  incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
+                <CurrencyLine
+                  role="Night" data={currency.night} applies={currency.rule ? currency.rule.nightApplies : false}
+                  incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
+                {currency.rule?.nightNote && (
+                  <li><span className="lb-ic neutral">·</span><div className="m">{currency.rule.nightNote}</div></li>
+                )}
+                {currency.rule?.note && (
+                  <li><span className="lb-ic neutral">·</span><div className="m">{currency.rule.note}</div></li>
+                )}
               </>
             )}
           </ul>
@@ -174,19 +189,27 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
   );
 }
 
-function Gauge({ value, limit, cap }) {
+function Gauge({ value, limit, cap, fmtH, hUnit }) {
   const pct = Math.min(100, (value / limit) * 100);
   const warn = pct >= 85;
   return (
     <div className="lb-g">
-      <div className="v"><span className="num">{fmtH(value)}</span> / {limit.toLocaleString()} h</div>
+      <div className="v"><span className="num">{fmtH(value)}</span> / {limit.toLocaleString()}{hUnit}</div>
       <div className="gbar"><i className={warn ? 'warn' : ''} style={{ width: `${pct}%` }} /></div>
       <div className="cap">{cap}</div>
     </div>
   );
 }
 
-function CurrencyLine({ role, data, incomplete, without, inWindow }) {
+// `applies` is what separates a requirement from a fact. When it is false the
+// line states the count and nothing else: no "needed", no amber.
+function CurrencyLine({ role, data, incomplete, without, inWindow, applies = true }) {
+  if (!applies) {
+    const n = data.landings || 0;
+    return (
+      <li><span className="lb-ic neutral">·</span><div>{role}: <b>{n} landing{n === 1 ? '' : 's'}</b> <span className="m">· for information</span></div></li>
+    );
+  }
   if (data.currentUntil) {
     const until = new Date(data.currentUntil + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     return (

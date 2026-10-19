@@ -15,7 +15,7 @@ import LogbookDashboard from '../components/logbook/LogbookDashboard';
 import FlightList from '../components/logbook/FlightList';
 import DayList from '../components/logbook/DayList';
 import FlightDetail from '../components/logbook/FlightDetail';
-import { duration, dropOffLabel, findOverlaps, recencyLine } from '../lib/logbookFormat';
+import { duration, findOverlaps, recencyLine } from '../lib/logbookFormat';
 import '../components/logbook/logbook.css';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -819,15 +819,12 @@ export default function Logbook() {
           {summary.currency && (summary.currency.landingsLogged || summary.currency.flightsInWindow > 0) && (() => {
             const r = recencyLine(summary.currency);
             if (!r) return null;
-            const until = r.currentUntil ? dropOffLabel(r.currentUntil) : null;
             return (
               <div className="lb-rec">
                 <span className={`dot${r.tone === 'ok' ? '' : r.tone === 'unknown' ? ' grey' : ' warn'}`} />
                 <span>
-                  <b>{r.headline}</b>
-                  {r.detail ? ` · ${r.detail}` : ''}
-                  {r.short ? ` · ${r.short} needed` : ''}
-                  {r.tone === 'ok' && until ? ` · current until ${until}` : ''}
+                  <b>{r.text}</b>
+                  {r.note ? <small className="lb-rec-note">{r.note}</small> : null}
                 </span>
               </div>
             );

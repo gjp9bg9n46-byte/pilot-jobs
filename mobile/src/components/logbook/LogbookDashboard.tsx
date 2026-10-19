@@ -206,8 +206,30 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
           </View>
         ) : (
           <>
-            <CurrencyLine role="Day" data={currency.day} styles={styles} currency={currency} />
-            <CurrencyLine role="Night" data={currency.night} styles={styles} currency={currency} />
+            {/* The requirement: 3 take-offs/landings in 90 days, day or night
+                alike. The night leg is listed separately and only counts as a
+                shortfall where the authority imposes it. */}
+            <CurrencyLine
+              role="Landings" styles={styles} currency={currency}
+              data={{
+                landings: currency.landings ?? ((currency.day?.landings || 0) + (currency.night?.landings || 0)),
+                required: currency.required ?? 3,
+                currentUntil: currency.currentUntil ?? currency.day?.currentUntil,
+              }} />
+            <CurrencyLine role="Night" data={currency.night} styles={styles} currency={currency}
+              applies={currency.rule ? currency.rule.nightApplies : false} />
+            {currency.rule?.nightNote ? (
+              <View style={styles.curLine}>
+                <View style={[styles.curIc, { backgroundColor: TRACK_BG }]}><Text style={{ color: FAINT, fontSize: 11 }}>·</Text></View>
+                <Text style={[styles.curText, { color: pilot.muted }]}>{currency.rule.nightNote}</Text>
+              </View>
+            ) : null}
+            {currency.rule?.note ? (
+              <View style={styles.curLine}>
+                <View style={[styles.curIc, { backgroundColor: TRACK_BG }]}><Text style={{ color: FAINT, fontSize: 11 }}>·</Text></View>
+                <Text style={[styles.curText, { color: pilot.muted }]}>{currency.rule.note}</Text>
+              </View>
+            ) : null}
           </>
         )}
       </View>
@@ -227,7 +249,18 @@ function Gauge({ value, limit, cap, styles, fmtH, hUnit }: { value: number; limi
   );
 }
 
-function CurrencyLine({ role, data, styles, currency }: { role: string; data: Summary; styles: Summary; currency: Summary }) {
+// `applies` is what separates a requirement from a fact. When it is false the
+// line states the count and nothing else: no "needed", no amber.
+function CurrencyLine({ role, data, styles, currency, applies = true }: { role: string; data: Summary; styles: Summary; currency: Summary; applies?: boolean }) {
+  if (!applies) {
+    const n = data.landings || 0;
+    return (
+      <View style={styles.curLine}>
+        <View style={styles.curIc}><Text style={{ fontSize: 11 }}>·</Text></View>
+        <Text style={styles.curText}>{role}: <Text style={styles.curB}>{n} landing{n === 1 ? '' : 's'}</Text><Text style={styles.curM}> · for information</Text></Text>
+      </View>
+    );
+  }
   if (data.currentUntil) {
     return (
       <View style={styles.curLine}>

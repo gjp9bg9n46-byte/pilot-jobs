@@ -8,6 +8,7 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
+const { recencyRuleFor } = require('./recencyRules');
 
 // ── Time helpers ───────────────────────────────────────────────────────────
 // Block time is authoritatively re-derived from the off/on-block strings when a
@@ -94,9 +95,11 @@ function buildLadder() {
 const round1 = (n) => Math.round(n * 10) / 10;
 
 async function buildLogbookSummary(pilotId) {
-  const [logs, pilot] = await Promise.all([
+  const [logs, pilot, certs] = await Promise.all([
     prisma.flightLog.findMany({ where: { pilotId } }),
     prisma.pilot.findUnique({ where: { id: pilotId }, select: { carryForward: true } }),
+    // Licence authority + instrument privileges decide WHICH recency rule applies.
+    prisma.pilotCertificate.findMany({ where: { pilotId }, select: { type: true, issuingAuthority: true, expiryDate: true } }),
   ]);
   const cf = (pilot && pilot.carryForward) || {};
   const cfNum = (k) => (Number.isFinite(+cf[k]) ? +cf[k] : 0);
@@ -212,9 +215,21 @@ async function buildLogbookSummary(pilotId) {
   // landing on them are the only unknowns.
   const flightsWithoutLandings = recent.filter((l) => l.landingsRecorded !== true
     && !((l.landingsDay || 0) + (l.landingsNight || 0))).length;
+  // The requirement is 3 take-offs/landings in 90 days — day or night, they all
+  // count toward it. The night leg is a SEPARATE condition that applies only
+  // where the pilot's authority says so (services/recencyRules.js); where it
+  // does not, the night figure is information, never a shortfall.
+  const rule = recencyRuleFor(certs);
+  const allLdgDates = [...dayLdgDates, ...nightLdgDates];
   const currency = {
+    rule,
+    landings: allLdgDates.length,
+    required: rule.base,
+    currentUntil: currentUntil(allLdgDates),
     day: { landings: dayLdgDates.length, required: 3, currentUntil: currentUntil(dayLdgDates) },
-    night: { landings: nightLdgDates.length, required: 3, currentUntil: currentUntil(nightLdgDates) },
+    // `required` here is the authority's night leg (EASA/UK: one of the three;
+    // FAA: three). null when no night requirement applies to this pilot.
+    night: { landings: nightLdgDates.length, required: rule.nightRequired, currentUntil: currentUntil(nightLdgDates), applies: rule.nightApplies },
     landingsLogged: anyLandingLogged,
     flightsInWindow,
     flightsWithoutLandings,
