@@ -1,0 +1,12 @@
+Vendored, not installed as a plugin (the Claude Code CLI could not be installed
+on this machine, so /plugin is unavailable).
+
+  source : https://github.com/anthropics/claude-plugins-official
+  path   : plugins/frontend-design/skills/frontend-design/
+  commit : 44490cccaf6d9f82fdeec9416fbf7c9bd72575dc (2026-09-01, "Update /frontend-design SKILL.md")
+  files  : SKILL.md, LICENSE.txt (Apache-2.0)
+  fetched: 2026-10-19
+
+To update, re-download both files from that path at the commit you want and
+bump the lines above:
+  curl -o SKILL.md https://raw.githubusercontent.com/anthropics/claude-plugins-official/<sha>/plugins/frontend-design/skills/frontend-design/SKILL.md
