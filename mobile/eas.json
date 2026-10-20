@@ -22,6 +22,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        // App Store Connect app (Apple ID). Without it --auto-submit cannot run
+        // unattended: EAS has no app to upload to and falls back to prompting.
+        "ascAppId": "6824029737"
+      }
+    }
   }
 }
