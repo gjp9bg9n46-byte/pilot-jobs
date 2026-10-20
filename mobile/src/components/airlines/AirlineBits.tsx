@@ -1,7 +1,8 @@
 // The pieces the Airlines list and the fact file share — the app's half of
 // frontend/src/components/airlines/AirlineBits.jsx, so the two platforms
 // cannot drift.
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../lib/api';
 import { fontFamilies } from '../../theme/tokens';
@@ -42,7 +43,7 @@ export function LogoTile({ logoUrl, iataCode, name, size = 48 }: {
   return (
     <View style={[styles.tile, { height: size, minWidth: size, maxWidth: size * 1.5, borderRadius: size > 56 ? 12 : 8 }]}>
       {logoUrl
-        ? <Image source={{ uri: proxied(logoUrl) }} resizeMode="contain" style={{ width: size * 1.33, height: size * 0.84 }} />
+        ? <ExpoImage source={{ uri: proxied(logoUrl) }} contentFit="contain" cachePolicy="memory-disk" transition={150} style={{ width: size * 1.33, height: size * 0.84 }} />
         : <Text style={styles.initials}>{initials}</Text>}
     </View>
   );

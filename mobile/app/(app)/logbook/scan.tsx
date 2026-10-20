@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import api, { API_URL, getToken } from '../../../src/lib/api';
+import { notifySuccess } from '../../../src/lib/haptics';
 import { minutesToHHMM, spanMinutes } from '../../../src/lib/logbookFormat';
 import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
@@ -89,6 +90,7 @@ export default function ScanVoyageReport() {
     setSaving(true); setError(null);
     try {
       const { data } = await api.post(`/logbook/scan/${scan.id}/save`, { header: scan.header, sectors: scan.sectors, dateChoice });
+      notifySuccess();
       setResult(data);
       setStage('done');
     } catch (e: Any) {

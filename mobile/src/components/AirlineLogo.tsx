@@ -11,9 +11,11 @@
 // User-Agent header so Android (okhttp) is covered too. onError logs so a future
 // broken logo host is visible instead of silently falling through to initials.
 import { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { API_URL } from '../lib/api';
 import { fontFamilies, pilot } from '../theme/tokens';
+import { IMAGE_FADE_MS } from '../theme/motion';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
 // VERIFIED ROOT CAUSE (2026-07): Wikimedia 403s image requests from
@@ -63,13 +65,20 @@ export default function AirlineLogo({
     // card at full box size — no bordered white box.
     return (
       <View style={{ width: box, height: box, alignItems: 'center', justifyContent: 'center' }}>
+        {/* expo-image: decoded once, then served from memory and disk, so a
+            logo seen on the Jobs list is already there on the dashboard and
+            after a restart. The short fade stops the grid flickering as rows
+            recycle during a fast scroll. */}
         <Image
           source={{ uri: proxiedLogoUrl(logoUrl) }}
-          resizeMode="contain"
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          transition={IMAGE_FADE_MS}
+          recyclingKey={logoUrl}
           style={{ width: box, height: box }}
           onError={(e) => {
             // eslint-disable-next-line no-console
-            console.warn('[AirlineLogo] failed to load', logoUrl, e?.nativeEvent?.error);
+            console.warn('[AirlineLogo] failed to load', logoUrl, (e as { error?: string })?.error);
             setFailed(true);
           }}
         />

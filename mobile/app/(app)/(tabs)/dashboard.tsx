@@ -5,7 +5,7 @@
 // search cards. One GET /api/dashboard call powers all of it; the match % + status
 // come straight from the server (services/jobMatch.js) via statusMeta — the SAME
 // number web shows, never recomputed on the client.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
@@ -16,7 +16,11 @@ import api from '../../../src/lib/api';
 import { statusMeta } from '../../../src/lib/jobMatch';
 import { companyName, locationName } from '../../../src/lib/displayNames';
 import AirlineLogo from '../../../src/components/AirlineLogo';
-import { fetchAirlineMap, resolveAirline } from '../../../src/lib/airlineLookup';
+import { mapFromRefs, resolveAirline } from '../../../src/lib/airlineLookup';
+import { useQueryClient } from '@tanstack/react-query';
+import { keys, useAirlineLogos, useDashboard } from '../../../src/hooks/queries';
+import { DashboardSkeleton } from '../../../src/components/Skeleton';
+import { tapLight } from '../../../src/lib/haptics';
 import { useUnread } from '../../../src/context/UnreadContext';
 import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
@@ -45,33 +49,46 @@ export default function DashboardScreen() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { refresh } = useUnread();
-  const [data, setData] = useState<Any | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const { setNewJobs } = useUnread();
   const [tab, setTab] = useState<'allNew' | 'qualify' | 'oneShort'>('allNew');
   const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
-  const [airlineMap, setAirlineMap] = useState<Awaited<ReturnType<typeof fetchAirlineMap>> | null>(null);
+  const qc = useQueryClient();
 
-  const load = useCallback(async () => {
-    try { const res = await api.get('/dashboard'); setData(res.data); setErr(null); }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    catch (e: any) { setErr(e?.response?.data?.error || 'Could not load your dashboard.'); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { fetchAirlineMap().then(setAirlineMap).catch(() => {}); }, []);
-  // Reload on every focus (bell/tab return) so counts + "new" stay fresh.
-  useFocusEffect(useCallback(() => { load().then(refresh); }, [load, refresh]));
+  // Cached first, refreshed behind it. The dashboard was refetched on every
+  // focus with a full-screen loader; now the previous answer stays up while the
+  // new one is on the way.
+  const { data, isPending, error: queryError, refetch } = useDashboard();
+  const err = queryError ? ((queryError as Any)?.response?.data?.error || 'Could not load your dashboard.') : null;
+  // Logos come from one cached call for the whole airline table.
+  const { data: airlineRefs } = useAirlineLogos();
+  const airlineMap = useMemo(() => mapFromRefs(airlineRefs), [airlineRefs]);
 
-  const onRefresh = useCallback(async () => { setRefreshing(true); await load(); refresh(); setRefreshing(false); }, [load, refresh]);
+  // The tab badge comes from this payload — no extra request for the same
+  // number (backend services/newJobs.js computes both from one definition).
+  useEffect(() => {
+    const n = data?.badge?.newSinceLastVisit ?? data?.newJobs?.newSinceLastVisit;
+    if (typeof n === 'number') setNewJobs(n);
+  }, [data, setNewJobs]);
+
+  // Returning to the tab refreshes the list quietly, no spinner.
+  useFocusEffect(useCallback(() => { void refetch(); }, [refetch]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    tapLight();
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const setStatus = async (id: string, status: string) => {
-    setData((d: Any) => ({ ...d, applications: d.applications.map((a: Any) => (a.id === id ? { ...a, status } : a)) }));
+    tapLight();
+    qc.setQueryData(keys.dashboard, (d: Any) => (d ? { ...d, applications: d.applications.map((a: Any) => (a.id === id ? { ...a, status } : a)) } : d));
     try { await api.patch(`/jobs/applications/${id}/status`, { status }); } catch { /* optimistic; server reconciles next load */ }
   };
 
-  if (err) return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><Text style={styles.emptyTitle}>Could not load dashboard</Text><Text style={styles.dim}>{err}</Text></View></SafeAreaView>;
-  if (!data) return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><ActivityIndicator color={pilot.navy} /><Text style={styles.dim}>Loading your dashboard…</Text></View></SafeAreaView>;
+  if (err && !data) return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><Text style={styles.emptyTitle}>Could not load dashboard</Text><Text style={styles.dim}>{err}</Text></View></SafeAreaView>;
+  if (isPending && !data) return <SafeAreaView style={styles.safe} edges={[]}><DashboardSkeleton /></SafeAreaView>;
 
   const nj = data.newJobs;
   // New items first (stable — keeps the server's match%/recency order within each group).

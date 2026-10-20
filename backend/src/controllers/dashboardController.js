@@ -6,6 +6,19 @@ const { getMatchContext } = require('../services/matchContextCache');
 const { computeReadiness, computeStrengthAndNudge } = require('../services/profileReadiness');
 const { visitWindow, selectNewJobs } = require('../services/newJobs');
 
+// The ACTIVE job set is pilot-independent and only changes when the scraper
+// writes, but the dashboard re-read all ~311 rows (descriptions included) on
+// every open — the single slowest query on the screen. Same short TTL as the
+// /jobs cache; a pilot sees listings at most 45 s stale, matched live.
+const ACTIVE_JOBS_TTL_MS = Number(process.env.JOBS_CACHE_TTL_MS || 45000);
+let _activeJobs = { rows: null, exp: 0 };
+async function getActiveJobs() {
+  if (_activeJobs.rows && _activeJobs.exp > Date.now()) return _activeJobs.rows;
+  const rows = await prisma.job.findMany({ where: { status: 'ACTIVE', mergedInto: null }, select: MATCH_SELECT });
+  _activeJobs = { rows, exp: Date.now() + ACTIVE_JOBS_TTL_MS };
+  return rows;
+}
+
 // Fields the unified matcher reads (explicit select overrides the global omit of the
 // two new columns). These rows are matched/clustered, not serialized wholesale.
 const MATCH_SELECT = {
@@ -41,7 +54,7 @@ exports.getDashboard = async (req, res, next) => {
       getMatchContext(pilotId, prisma),
       computeReadiness(pilotId),
       computeStrengthAndNudge(pilotId),
-      prisma.job.findMany({ where: { status: 'ACTIVE', mergedInto: null }, select: MATCH_SELECT }),
+      getActiveJobs(),
       prisma.jobAlert.findMany({ where: { pilotId }, select: { jobId: true, createdAt: true, readAt: true, dismissedAt: true } }),
       prisma.application.findMany({ where: { pilotId }, orderBy: { statusUpdatedAt: 'desc' }, select: { id: true, jobId: true, status: true, appliedAt: true, statusUpdatedAt: true, matchScore: true } }),
       prisma.pilotPreference.findUnique({ where: { pilotId } }),

@@ -5,7 +5,7 @@
 // sheet. Mobile-only chrome (My Applications, Settings link, Log out) sits last.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View,
+  ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -21,6 +21,11 @@ import {
 } from '../../../../src/lib/profileLabels';
 import { fontFamilies, fontSizes, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { Image } from 'expo-image';
+import { IMAGE_FADE_MS } from '../../../../src/theme/motion';
+import { useProfileOverview } from '../../../../src/hooks/queries';
+import { ProfileSkeleton } from '../../../../src/components/Skeleton';
+import { tapLight } from '../../../../src/lib/haptics';
 import { hours } from '../../../../src/lib/format';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,35 +66,32 @@ export default function ProfileView() {
   const router = useRouter();
   const { logout } = useAuth();
 
-  const [profile, setProfile] = useState<Any | null>(null);
-  const [readiness, setReadiness] = useState<Any | null>(null);
-  const [summary, setSummary] = useState<Any | null>(null);
-  const [apps, setApps] = useState<Any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState<EditSpec>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [photoOk, setPhotoOk] = useState(true);
   const [otwSaving, setOtwSaving] = useState(false);
-  const [cvShareToken, setCvShareToken] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const [p, rd, s, a, cv] = await Promise.allSettled([
-      api.get('/profile'), api.get('/profile/readiness'), api.get('/logbook/summary'), api.get('/jobs/applications'),
-      api.get('/cv/document'),
-    ]);
-    if (p.status === 'fulfilled') setProfile(p.value.data);
-    if (rd.status === 'fulfilled') setReadiness(rd.value.data);
-    if (s.status === 'fulfilled') setSummary(s.value.data);
-    if (a.status === 'fulfilled') setApps(a.value.data || []);
-    // Only a live share link can be previewed, so the button hides until the
-    // pilot turns sharing on in the CV Builder.
-    if (cv.status === 'fulfilled') setCvShareToken(cv.value.data?.share?.enabled ? cv.value.data.share.token : null);
-  }, []);
+  // ONE call for profile + readiness + logbook totals + applications + CV
+  // (GET /profile/overview), cached. This screen used to open five requests and
+  // sit on a spinner until the slowest came back.
+  const { data: overview, isPending, refetch } = useProfileOverview();
+  const load = useCallback(async () => { await refetch(); }, [refetch]);
+  useFocusEffect(useCallback(() => { void refetch(); }, [refetch]));
+  const onRefresh = useCallback(async () => { setRefreshing(true); tapLight(); await refetch(); setRefreshing(false); }, [refetch]);
 
-  useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
-  const onRefresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
+  // Local edits (the open-to-work switch) take effect at once, then the
+  // refreshed payload takes over.
+  const [profileOverride, setProfileOverride] = useState<Any | null>(null);
+  const profile: Any = profileOverride ?? overview?.profile ?? null;
+  const setProfile = (updater: Any) => setProfileOverride((prev: Any) => (typeof updater === 'function' ? updater(prev ?? overview?.profile ?? {}) : updater));
+  const readiness: Any = overview?.readiness ?? null;
+  const summary: Any = overview?.logbook ?? null;
+  const apps: Any[] = overview?.applications ?? [];
+  // Only a live share link can be previewed, so the button hides until the
+  // pilot turns sharing on in the CV Builder.
+  const cvShareToken: string | null = overview?.cv?.share?.enabled ? overview.cv.share.token : null;
+  const loading = isPending;
 
   const byTypeHours = useMemo(() => {
     const m = new Map<string, number>();
@@ -108,8 +110,8 @@ export default function ProfileView() {
     finally { setOtwSaving(false); }
   };
 
-  if (loading) {
-    return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><ActivityIndicator color={pilot.navy} /><Text style={styles.loadingText}>Loading your profile…</Text></View></SafeAreaView>;
+  if (loading && !profile) {
+    return <SafeAreaView style={styles.safe} edges={[]}><ProfileSkeleton /></SafeAreaView>;
   }
   if (!profile) {
     return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.center}><Text style={styles.loadingText}>Couldn’t load your profile.</Text></View></SafeAreaView>;
@@ -201,7 +203,7 @@ export default function ProfileView() {
         {/* ── HERO (phone/email never here) ───────────────────────────────── */}
         <View style={styles.hero}>
           {profile.photoUrl && photoOk
-            ? <Image source={{ uri: profile.photoUrl }} style={styles.avatar} onError={() => setPhotoOk(false)} />
+            ? <Image source={{ uri: profile.photoUrl }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" transition={IMAGE_FADE_MS} onError={() => setPhotoOk(false)} />
             : <View style={[styles.avatar, styles.avatarInit]}><Text style={styles.avatarInitText}>{initials || 'P'}</Text></View>}
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.name} numberOfLines={2}>{name || 'Pilot'}</Text>

@@ -18,10 +18,11 @@ import { useAuth } from './AuthContext';
 
 type UnreadValue = {
   unread: number; setUnread: (n: number) => void;
-  newJobs: number; refresh: () => Promise<void>;
+  newJobs: number; setNewJobs: (n: number) => void;
+  refresh: () => Promise<void>;
 };
 
-const UnreadContext = createContext<UnreadValue>({ unread: 0, setUnread: () => {}, newJobs: 0, refresh: async () => {} });
+const UnreadContext = createContext<UnreadValue>({ unread: 0, setUnread: () => {}, newJobs: 0, setNewJobs: () => {}, refresh: async () => {} });
 
 export function UnreadProvider({ children }: { children: React.ReactNode }) {
   const { accountType, token } = useAuth();
@@ -43,10 +44,15 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
     }
   }, [accountType]);
 
-  // Re-run once token AND accountType have both hydrated to a pilot session.
-  useEffect(() => { if (token && accountType === 'pilot') refresh(); }, [token, accountType, refresh]);
+  // NOT fetched at app start. The Home tab's badge arrives inside the dashboard
+  // payload it already loads (`badge.newSinceLastVisit`), and this endpoint is
+  // one of the slowest in the API — firing it on launch cost ~1.5–3 s of the
+  // first screen for a number the dashboard was about to hand us anyway. The
+  // bell's `unread` is fetched when something actually needs it: the Alerts
+  // screen on mount, or an explicit refresh after marking alerts read.
+  useEffect(() => { if (!token) { setUnread(0); setNewJobs(0); } }, [token]);
 
-  return <UnreadContext.Provider value={{ unread, setUnread, newJobs, refresh }}>{children}</UnreadContext.Provider>;
+  return <UnreadContext.Provider value={{ unread, setUnread, newJobs, setNewJobs, refresh }}>{children}</UnreadContext.Provider>;
 }
 
 export const useUnread = () => useContext(UnreadContext);

@@ -13,6 +13,12 @@ import { shortFleet } from '../../../../src/lib/airlineFacts';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 import { fontFamilies, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { FlashList } from '@shopify/flash-list';
+import { useAirlines } from '../../../../src/hooks/queries';
+import { CardListSkeleton } from '../../../../src/components/Skeleton';
+import PressableScale from '../../../../src/components/PressableScale';
+import Segmented from '../../../../src/components/Segmented';
+import { tapLight } from '../../../../src/lib/haptics';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -28,85 +34,88 @@ export default function AirlinesList() {
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
   const [region, setRegion] = useState('All');
-  const [data, setData] = useState<Any>({ items: [], total: 0 });
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => setSearch(q.trim()), 300); return () => clearTimeout(t); }, [q]);
 
-  const load = useCallback(async () => {
-    try {
-      const { data: res } = await api.get('/airlines', {
-        params: { sort: 'openJobs', limit: 50, ...(search ? { q: search } : {}), ...(region !== 'All' ? { region } : {}) },
-      });
-      setData(res);
-    } catch { /* leave the last good list on screen */ }
-    finally { setLoading(false); }
-  }, [search, region]);
-
-  useEffect(() => { setLoading(true); load(); }, [load]);
-  const onRefresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
+  // Search text and region are part of the cache key, so a search you ran a
+  // moment ago comes back instantly while the fresh answer loads behind it.
+  const query = useMemo(() => ({
+    sort: 'openJobs', limit: 50,
+    ...(search ? { q: search } : {}),
+    ...(region !== 'All' ? { region } : {}),
+  }), [search, region]);
+  const { data: res, isPending, refetch } = useAirlines(query);
+  const data: Any = res ?? { items: [], total: 0 };
+  const loading = isPending;
+  const onRefresh = useCallback(async () => { setRefreshing(true); tapLight(); await refetch(); setRefreshing(false); }, [refetch]);
 
   const hiring = useMemo(
     () => (data.items || []).filter((a: Any) => a.hiringStatus === 'ACTIVELY_HIRING').length,
     [data.items],
   );
 
+  // The page header travels as the list header, so FlashList owns the scroll:
+  // a list nested in a ScrollView cannot virtualise, which is what made a long
+  // airline list stutter.
+  const ListHeader = (
+    <View>
+      <Text style={styles.h1}>Airlines</Text>
+      <Text style={styles.sub}>Fact files, checked against your licence</Text>
+
+      {/* Jobs | Airlines — both live under the Jobs tab, so no sixth tab. */}
+      <Segmented
+        style={{ marginTop: 14 }}
+        value="airlines"
+        onChange={(v) => { if (v === 'jobs') router.replace('/jobs'); }}
+        options={[{ value: 'jobs', label: 'Jobs' }, { value: 'airlines', label: 'Airlines' }]}
+      />
+
+      <View style={styles.search}>
+        <Ionicons name="search" size={16} color={pilot.faint} />
+        <TextInput
+          value={q}
+          onChangeText={setQ}
+          placeholder="Airline, country or aircraft type"
+          placeholderTextColor={pilot.faint}
+          style={styles.searchInput}
+          autoCorrect={false}
+        />
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={{ gap: 6 }}>
+        {REGIONS.map((r) => (
+          <Pressable key={r} onPress={() => { tapLight(); setRegion(r); }} style={[styles.chip, region === r && styles.chipOn]}>
+            <Text style={[styles.chipText, region === r && styles.chipTextOn]}>{r}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      <View style={styles.meta}>
+        <Text style={styles.metaText}><Text style={styles.metaStrong}>Hiring now</Text> first</Text>
+        <Text style={styles.metaText}>
+          {loading && !(data.items || []).length ? 'Loading…' : `${data.total} airline${data.total === 1 ? '' : 's'}${hiring ? ` · ${hiring} hiring` : ''}`}
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: clearance }]}
+      <FlashList
+        data={(data.items || []) as Any[]}
+        keyExtractor={(a: Any) => a.id}
+        ListHeaderComponent={ListHeader}
+        contentContainerStyle={{ paddingBottom: clearance, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
-      >
-        <Text style={styles.h1}>Airlines</Text>
-        <Text style={styles.sub}>Fact files, checked against your licence</Text>
-
-        {/* Jobs | Airlines — both live under the Jobs tab, so no sixth tab. */}
-        <View style={styles.seg}>
-          <Pressable style={styles.segBtn} onPress={() => router.replace('/jobs')}>
-            <Text style={styles.segText}>Jobs</Text>
-          </Pressable>
-          <Pressable style={[styles.segBtn, styles.segOn]}>
-            <Text style={[styles.segText, styles.segTextOn]}>Airlines</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.search}>
-          <Ionicons name="search" size={16} color={pilot.faint} />
-          <TextInput
-            value={q}
-            onChangeText={setQ}
-            placeholder="Airline, country or aircraft type"
-            placeholderTextColor={pilot.faint}
-            style={styles.searchInput}
-            autoCorrect={false}
-          />
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={{ gap: 6 }}>
-          {REGIONS.map((r) => (
-            <Pressable key={r} onPress={() => setRegion(r)} style={[styles.chip, region === r && styles.chipOn]}>
-              <Text style={[styles.chipText, region === r && styles.chipTextOn]}>{r}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        <View style={styles.meta}>
-          <Text style={styles.metaText}><Text style={styles.metaStrong}>Hiring now</Text> first</Text>
-          <Text style={styles.metaText}>
-            {loading ? 'Loading…' : `${data.total} airline${data.total === 1 ? '' : 's'}${hiring ? ` · ${hiring} hiring` : ''}`}
-          </Text>
-        </View>
-
-        {loading && !(data.items || []).length ? <ActivityIndicator color={pilot.navy} style={{ marginTop: 24 }} /> : null}
-
-        {(data.items || []).map((a: Any) => {
+        ListEmptyComponent={loading ? <CardListSkeleton rows={6} chips={false} /> : <Text style={styles.empty}>No airlines match that search.</Text>}
+        renderItem={({ item: a }: { item: Any }) => {
           const jobs = a.jobs || { open: 0, qualify: 0, matchable: false };
           const fleet = shortFleet(a.fleet);
           return (
-            <Pressable key={a.id} style={styles.card} onPress={() => router.push(`/airlines/${a.id}`)}>
+            <PressableScale style={styles.card} onPress={() => router.push(`/airlines/${a.id}`)}>
               <LogoTile logoUrl={a.logoUrl} iataCode={a.iataCode} name={a.name} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.name} numberOfLines={1}>{a.name}</Text>
@@ -122,14 +131,10 @@ export default function AirlinesList() {
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#B7C1CE" />
-            </Pressable>
+            </PressableScale>
           );
-        })}
-
-        {!loading && !(data.items || []).length ? (
-          <Text style={styles.empty}>No airlines match that search.</Text>
-        ) : null}
-      </ScrollView>
+        }}
+      />
     </SafeAreaView>
   );
 }

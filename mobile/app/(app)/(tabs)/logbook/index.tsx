@@ -7,7 +7,7 @@
 // - 20 cards per page with ellipsis pagination, ?page= URL state.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View,
+  Alert, Pressable, RefreshControl, StyleSheet, Text, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -23,6 +23,13 @@ import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlig
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
+import { FlashList } from '@shopify/flash-list';
+import { useQueryClient } from '@tanstack/react-query';
+import { useLogbook } from '../../../../src/hooks/queries';
+import { LogbookSkeleton } from '../../../../src/components/Skeleton';
+import { notifySuccess, tapLight } from '../../../../src/lib/haptics';
+import PressableScale from '../../../../src/components/PressableScale';
+import Segmented from '../../../../src/components/Segmented';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Log = Record<string, any>;
@@ -117,59 +124,40 @@ export default function LogbookList() {
   const router = useRouter();
   const params = useLocalSearchParams<{ page?: string }>();
   const [page, setPage] = useState(Math.max(1, Number(params.page) || 1));
-  const [logs, setLogs] = useState<Log[]>([]);
-  const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState<Log | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [cfOpenSignal, setCfOpenSignal] = useState(0);
-  const [timeFormat, setTimeFormatState] = useState<TimeFormat>('hhmm');
-  const [scansLeft, setScansLeft] = useState<number | null>(null);
-  const [scanEnabled, setScanEnabled] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const qc = useQueryClient();
+
+  // ONE call for prefs + scan quota + totals + this page (GET /logbook/bootstrap),
+  // served from the on-device cache first. The four separate fetches this
+  // replaced each cost a round trip, and the page one re-ran on every focus
+  // with a spinner over data we already had.
+  const { data, isPending, isFetching, refetch, error: queryError } = useLogbook(page);
+  const logs: Log[] = useMemo(() => data?.flights?.logs ?? [], [data]);
+  const total: number = data?.flights?.total ?? 0;
+  const summary = data?.summary ?? null;
+  const scansLeft: number | null = data?.scanQuota?.left ?? null;
+  const scanEnabled = !!data?.scanQuota?.enabled;
+  const error = queryError ? ((queryError as Log)?.response?.data?.error || (queryError as Log)?.message || 'Failed to load flights') : null;
+  const loading = isPending;
+  const [refreshing, setRefreshing] = useState(false);
 
   // How durations are written is a profile preference, shared with the web.
-  useEffect(() => {
-    api.get('/logbook/prefs').then(({ data }) => setTimeFormatState(data.timeFormat || 'hhmm')).catch(() => {});
-    api.get('/logbook/scan-quota')
-      .then(({ data }) => { setScansLeft(data.left); setScanEnabled(!!data.enabled); })
-      .catch(() => {});
-  }, []);
+  // Applied locally at once, then written; the bundle carries the stored value.
+  const [timeFormatOverride, setTimeFormatOverride] = useState<TimeFormat | null>(null);
+  const timeFormat: TimeFormat = timeFormatOverride ?? (data?.prefs?.timeFormat as TimeFormat) ?? 'hhmm';
   const setTimeFormat = (fmt: TimeFormat) => {
-    setTimeFormatState(fmt);
-    api.put('/logbook/prefs', { timeFormat: fmt }).catch(() => {});
+    if (fmt === timeFormat) return;
+    tapLight();
+    setTimeFormatOverride(fmt);
+    api.put('/logbook/prefs', { timeFormat: fmt })
+      .then(() => qc.invalidateQueries({ queryKey: ['logbook'] }))
+      .catch(() => {});
   };
 
-  const loadSummary = useCallback(() => {
-    api.get('/logbook/summary').then(({ data }) => setSummary(data)).catch(() => {});
-  }, []);
-
-  const loadPage = useCallback(async (p: number) => {
-    setLoading(true);
-    try {
-      const { data } = await api.get('/flight-logs', { params: { page: p, limit: PAGE_SIZE } });
-      setLogs(data.logs || []);
-      setTotal(data.total ?? 0);
-      setError(null);
-    } catch (err) {
-      // Surface the failure instead of silently rendering "0 flights" (which is
-      // indistinguishable from an empty account). e.g. a 401 or network error.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError((err as any)?.response?.data?.error || (err as any)?.message || 'Failed to load flights');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadPage(page); }, [page, loadPage]);
-  useEffect(() => { loadSummary(); }, [loadSummary]);
-  // Refetch when returning from add/import.
-  useFocusEffect(useCallback(() => {
-    loadPage(page);
-    loadSummary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]));
+  // Returning from add / import / a scan: refresh behind the list. The cached
+  // page stays on screen while it runs — no spinner over data we already have.
+  useFocusEffect(useCallback(() => { void refetch(); }, [refetch]));
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const lastFlightStr = summary?.totals?.lastFlightDate
@@ -184,10 +172,10 @@ export default function LogbookList() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadPage(page);
-    loadSummary();
+    tapLight();
+    await refetch();
     setRefreshing(false);
-  }, [page, loadPage, loadSummary]);
+  }, [refetch]);
 
   // Edit / Clone → stash the log in the module holder (no GET /flight-logs/:id),
   // then navigate. Edit prefills as-is (→ PATCH); clone clears the date (→ POST).
@@ -204,8 +192,8 @@ export default function LogbookList() {
         text: 'Delete', style: 'destructive', onPress: async () => {
           try {
             await api.delete(`/flight-logs/${id}`);
-            await loadPage(page);
-            loadSummary();
+            notifySuccess();
+            await refetch();
           } catch { /* ignore */ }
         },
       },
@@ -251,13 +239,13 @@ export default function LogbookList() {
             {(summary?.totals?.flightCount ?? total)} flights{lastFlightStr ? ` · last ${lastFlightStr}` : ''}
           </Text>
         </View>
-        <View style={styles.seg}>
-          {(['hhmm', 'decimal'] as TimeFormat[]).map((f) => (
-            <Pressable key={f} onPress={() => setTimeFormat(f)} style={[styles.segBtn, timeFormat === f && styles.segOn]}>
-              <Text style={[styles.segText, timeFormat === f && styles.segTextOn]}>{f === 'hhmm' ? 'hh:mm' : 'decimal'}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <Segmented
+          compact
+          style={{ minWidth: 148 }}
+          value={timeFormat}
+          onChange={(f) => setTimeFormat(f as TimeFormat)}
+          options={[{ value: 'hhmm', label: 'hh:mm' }, { value: 'decimal', label: 'decimal' }]}
+        />
       </View>
 
       {/* Totals, then landings in the last 90 days and the day currency lapses */}
@@ -297,7 +285,7 @@ export default function LogbookList() {
       <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} timeFormat={timeFormat} />
 
       {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
-      <CarryForwardPanel openSignal={cfOpenSignal} onSaved={loadSummary} />
+      <CarryForwardPanel openSignal={cfOpenSignal} onSaved={() => { void refetch(); }} />
     </View>
   );
 
@@ -318,50 +306,77 @@ export default function LogbookList() {
     ? <Text style={styles.empty}>Could not load your logbook.{'\n'}{error}{'\n'}Pull to refresh to try again.</Text>
     : (!loading ? <Text style={styles.empty}>No flights logged yet. Tap "Log a Flight" to get started.</Text> : null);
 
+  // FlashList takes ONE flat array, so the day headers travel in the list with
+  // the sectors they head. Same shape on screen as the SectionList it replaces,
+  // but only the visible rows are mounted — a 500-flight logbook scrolls at the
+  // same cost as a 20-flight one.
+  type Row = { kind: 'day'; key: string; title: string; hours: number }
+           | { kind: 'leg'; key: string; log: Log; first: boolean; last: boolean };
+  const rows: Row[] = useMemo(() => {
+    const out: Row[] = [];
+    for (const d of daySections) {
+      out.push({ kind: 'day', key: `d:${d.ym}`, title: d.title, hours: d.hours });
+      d.data.forEach((log: Log, i: number) => {
+        out.push({ kind: 'leg', key: log.id, log, first: i === 0, last: i === d.data.length - 1 });
+      });
+    }
+    return out;
+  }, [daySections]);
+
+  // Nothing cached yet: a skeleton shaped like the logbook, not a spinner.
+  if (loading && !data) {
+    return <SafeAreaView style={styles.safe} edges={[]}><LogbookSkeleton /></SafeAreaView>;
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <SectionList
-        sections={daySections}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}
+      <FlashList
+        data={rows}
+        keyExtractor={(r) => r.key}
+        getItemType={(r) => r.kind}
+        contentContainerStyle={{ paddingBottom: tabBarClearance, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}
         showsVerticalScrollIndicator={false}
-        stickySectionHeadersEnabled={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
         ListHeaderComponent={ListHeader}
         ListFooterComponent={ListFooter}
         ListEmptyComponent={ListEmpty}
-        renderSectionHeader={({ section }) => (
-          <View style={styles.dayHeader}>
-            <Text style={styles.dayLabel}>{section.title}</Text>
-            <Text style={styles.dayHours}>{duration(section.hours, timeFormat)}</Text>
-          </View>
-        )}
-        renderItem={({ item, index, section }) => (
-          <Pressable
-            onPress={() => { stashFlight(item); router.push(`/logbook/flight/${item.id}`); }}
-            style={[styles.dayLeg, index === 0 && styles.legFirst, index === section.data.length - 1 && styles.legLast]}
-          >
-            <View style={{ flex: 1 }}>
-              <View style={styles.legTop}>
-                <Text style={styles.legRoute}>{item.departure || '—'} → {item.arrival || '—'}</Text>
-                {/* Landed after midnight: one flight, one date, marked +1. */}
-                {landsNextDay(item.offBlocksTime, item.onBlocksTime) ? <Text style={styles.plus1}>+1</Text> : null}
-                {item.pilotFlying === true ? <Text style={styles.pf}>PF</Text> : null}
-                {Number(item.nightTime) > 0 ? <Ionicons name="moon-outline" size={13} color={pilot.accentSoft} /> : null}
+        renderItem={({ item }) => {
+          if (item.kind === 'day') {
+            return (
+              <View style={styles.dayHeader}>
+                <Text style={styles.dayLabel}>{item.title}</Text>
+                <Text style={styles.dayHours}>{duration(item.hours, timeFormat)}</Text>
               </View>
-              <Text style={styles.legSub}>
-                {[item.flightNumber, item.displayType || item.aircraftType, item.registration].filter(Boolean).join(' · ') || 'No details'}
-              </Text>
-              {overnightReturnOf(item, logs) ? (
-                <Text style={styles.legLink}>Return of overnight trip from {overnightReturnOf(item, logs)}</Text>
-              ) : null}
-              {overlaps.has(item.id) ? (
-                <Text style={styles.legOverlap}>{overlapLabel(overlaps.get(item.id))}</Text>
-              ) : null}
-            </View>
-            <Text style={styles.legHours}>{duration(item.totalTime, timeFormat)}</Text>
-          </Pressable>
-        )}
+            );
+          }
+          const log = item.log;
+          return (
+            <PressableScale
+              onPress={() => { stashFlight(log); router.push(`/logbook/flight/${log.id}`); }}
+              style={[styles.dayLeg, item.first && styles.legFirst, item.last && styles.legLast]}
+            >
+              <View style={{ flex: 1 }}>
+                <View style={styles.legTop}>
+                  <Text style={styles.legRoute}>{log.departure || '—'} → {log.arrival || '—'}</Text>
+                  {/* Landed after midnight: one flight, one date, marked +1. */}
+                  {landsNextDay(log.offBlocksTime, log.onBlocksTime) ? <Text style={styles.plus1}>+1</Text> : null}
+                  {log.pilotFlying === true ? <Text style={styles.pf}>PF</Text> : null}
+                  {Number(log.nightTime) > 0 ? <Ionicons name="moon-outline" size={13} color={pilot.accentSoft} /> : null}
+                </View>
+                <Text style={styles.legSub}>
+                  {[log.flightNumber, log.displayType || log.aircraftType, log.registration].filter(Boolean).join(' · ') || 'No details'}
+                </Text>
+                {overnightReturnOf(log, logs) ? (
+                  <Text style={styles.legLink}>Return of overnight trip from {overnightReturnOf(log, logs)}</Text>
+                ) : null}
+                {overlaps.has(log.id) ? (
+                  <Text style={styles.legOverlap}>{overlapLabel(overlaps.get(log.id))}</Text>
+                ) : null}
+              </View>
+              <Text style={styles.legHours}>{duration(log.totalTime, timeFormat)}</Text>
+            </PressableScale>
+          );
+        }}
       />
       <Pressable style={styles.fab} onPress={() => setAddOpen(true)} accessibilityLabel="Add a flight">
         <Ionicons name="add" size={26} color="#fff" />

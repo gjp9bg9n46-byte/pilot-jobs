@@ -11,6 +11,7 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { notifySuccess } from '../../lib/haptics';
 import api from '../../lib/api';
 import { getPendingFlight, clearPendingFlight } from '../../lib/pendingFlight';
 import { minutesToHHMM, spanMinutes } from '../../lib/logbookFormat';
@@ -62,6 +63,7 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
         ...form,
         landings: form.landings === '' ? undefined : Number(form.landings),
       });
+      notifySuccess();
       router.replace('/logbook');
     } catch (e: Any) {
       setError(e?.response?.data?.error || 'Could not save that flight.');

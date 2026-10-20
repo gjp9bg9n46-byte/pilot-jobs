@@ -24,7 +24,10 @@ import {
 } from '@expo-google-fonts/inter';
 import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
 
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { CACHE_BUSTER, persister, queryClient } from '../src/lib/queryClient';
+import { usePrefetchTabs } from '../src/hooks/queries';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { pilot } from '../src/theme/tokens';
 
@@ -35,6 +38,9 @@ import { pilot } from '../src/theme/tokens';
 // a redirect race with those flows.
 function AuthGate() {
   const { token, loading } = useAuth();
+  // Warm Home, Jobs, Logbook and CV as soon as there is a session, so the first
+  // visit to each tab reads from cache instead of waiting on the network.
+  usePrefetchTabs(!!token && !loading);
   const { colors, mode } = useTheme();
   const segments = useSegments();
   const router = useRouter();
@@ -83,9 +89,16 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <AuthGate />
-          </AuthProvider>
+          {/* The cache is written to AsyncStorage and restored on launch, so a
+              cold start paints last session's data before the network answers. */}
+          <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{ persister, buster: CACHE_BUSTER, maxAge: 7 * 24 * 60 * 60 * 1000 }}
+          >
+            <AuthProvider>
+              <AuthGate />
+            </AuthProvider>
+          </PersistQueryClientProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

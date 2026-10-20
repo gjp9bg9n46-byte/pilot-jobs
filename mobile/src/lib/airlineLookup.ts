@@ -6,7 +6,7 @@
 import api from './api';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AirlineRef = { id: string; name: string; logoUrl: string | null; iataCode: string | null; domain: string | null };
+type AirlineRef = { id: string; name: string; logoUrl: string | null; iataCode: string | null; domain?: string | null };
 
 export function normalizeCompany(str: string): string {
   return String(str || '')
@@ -51,4 +51,21 @@ export async function fetchAirlineMap(): Promise<Map<string, AirlineRef>> {
 export function resolveAirline(map: Map<string, AirlineRef> | null, company: string): AirlineRef | null {
   if (!map || !company) return null;
   return map.get(normalizeCompany(company)) ?? map.get(coreCompanyKey(company)) ?? null;
+}
+
+// Build the same lookup Map from a flat list of airline refs — the shape
+// GET /airlines/logos returns in one call, and what the cached query hands
+// every screen. Keyed exactly like fetchAirlineMap (normalised name first,
+// then the suffix-stripped core key), first write wins.
+export function mapFromRefs(refs?: { id: string; name: string; logoUrl: string | null; iataCode: string | null; domain?: string | null }[] | null): Map<string, AirlineRef> | null {
+  if (!refs) return null;
+  const map = new Map<string, AirlineRef>();
+  for (const a of refs) {
+    const entry: AirlineRef = { id: a.id, name: a.name, logoUrl: a.logoUrl ?? null, iataCode: a.iataCode ?? null, domain: a.domain ?? null };
+    const k = normalizeCompany(a.name);
+    if (k && !map.has(k)) map.set(k, entry);
+    const core = coreCompanyKey(a.name);
+    if (core && core !== k && !map.has(core)) map.set(core, entry);
+  }
+  return map;
 }

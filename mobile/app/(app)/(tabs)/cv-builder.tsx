@@ -8,7 +8,7 @@
 // the app cannot disagree with the web builder, the PDF or the share page.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, Share,
+  ActivityIndicator, Alert, Linking, Platform, Pressable, RefreshControl, ScrollView, Share,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -21,6 +21,10 @@ import SheetView from '../../../src/cv/SheetView';
 import { useTabBarClearance } from '../../../src/theme/tabBar';
 import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import { useCvDocument } from '../../../src/hooks/queries';
+import { CvSkeleton } from '../../../src/components/Skeleton';
+import Segmented from '../../../src/components/Segmented';
+import { notifySuccess, tapLight } from '../../../src/lib/haptics';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -45,26 +49,32 @@ export default function CvBuilderScreen() {
   // the tab pill itself.
   const clearance = useTabBarClearance(24);
 
-  const [data, setData] = useState<Any>(null);
-  const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<'preview' | 'edit'>('preview');
+  // Errors from an action the pilot took (rewrite, save) — shown under the
+  // control they came from, separate from a failure to load the document.
+  const [actionErr, setActionErr] = useState<string | null>(null);
   const [summary, setSummary] = useState('');
+  const [summarySeeded, setSummarySeeded] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [sheetW, setSheetW] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const { data: d } = await api.get('/cv/document');
-      setData(d); setSummary(d.document.summary || '');
-    } catch (e: Any) { setErr(e?.response?.data?.error || 'Could not load your CV.'); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
+  // The CV document is cached, so the tab opens on the last version you saw
+  // while the fresh one loads behind it.
+  const { data, isPending, refetch, error: queryError } = useCvDocument();
+  const err = queryError ? ((queryError as Any)?.response?.data?.error || 'Could not load your CV.') : null;
+  const load = useCallback(async () => { await refetch(); }, [refetch]);
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => { setRefreshing(true); tapLight(); await refetch(); setRefreshing(false); }, [refetch]);
+  // Seed the editable summary from the document the first time it arrives.
+  useEffect(() => {
+    if (!summarySeeded && data?.document) { setSummary(data.document.summary || ''); setSummarySeeded(true); }
+  }, [data, summarySeeded]);
 
   const save = useCallback(async (patch: Any) => {
     setBusy('save');
     try { await api.put('/cv/settings', patch); await load(); }
-    catch (e: Any) { setErr(e?.response?.data?.error || 'Could not save.'); }
+    catch (e: Any) { setActionErr(e?.response?.data?.error || 'Could not save.'); }
     finally { setBusy(null); }
   }, [load]);
 
@@ -76,13 +86,14 @@ export default function CvBuilderScreen() {
   };
 
   const rewrite = async () => {
-    setErr(null); setBusy('rewrite');
+    setActionErr(null); setBusy('rewrite');
     try { const { data: r } = await api.post('/cv/summary/rewrite'); setSummary(r.summary || ''); await load(); }
-    catch (e: Any) { setErr(e?.response?.data?.error || 'Could not rewrite.'); }
+    catch (e: Any) { setActionErr(e?.response?.data?.error || 'Could not rewrite.'); }
     finally { setBusy(null); }
   };
 
   const onShare = async () => {
+    tapLight();
     setBusy('share');
     try {
       const enabled = !data.share.enabled;
@@ -92,13 +103,14 @@ export default function CvBuilderScreen() {
         const url = `${WEB_URL}/cv/s/${r.token}`;
         await Share.share({ message: url, url });
       }
-    } catch (e: Any) { setErr(e?.response?.data?.error || 'Could not change the share link.'); }
+    } catch (e: Any) { setActionErr(e?.response?.data?.error || 'Could not change the share link.'); }
     finally { setBusy(null); }
   };
 
   // The PDF is the ONLY surface that carries contact details, so it is fetched
   // with audience=pdf rather than reusing the masked preview document.
   const download = async () => {
+    tapLight();
     setBusy('pdf');
     try {
       const { data: d } = await api.get('/cv/document', { params: { audience: 'pdf' } });
@@ -108,10 +120,11 @@ export default function CvBuilderScreen() {
       const name = `${String(d.document.header.name).replace(/\s+/g, '-')}-CV.pdf`;
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: name, UTI: 'com.adobe.pdf' });
+      notifySuccess();
       } else {
         Alert.alert('PDF ready', uri);
       }
-    } catch (e: Any) { setErr(e?.response?.data?.error || 'Could not build the PDF.'); }
+    } catch (e: Any) { setActionErr(e?.response?.data?.error || 'Could not build the PDF.'); }
     finally { setBusy(null); }
   };
 
@@ -121,7 +134,7 @@ export default function CvBuilderScreen() {
   };
 
   if (err && !data) return <View style={styles.center}><Text style={styles.err}>{err}</Text></View>;
-  if (!data) return <View style={styles.center}><ActivityIndicator color={pilot.navy} /><Text style={styles.loading}>Loading your CV…</Text></View>;
+  if (isPending && !data) return <CvSkeleton />;
 
   const doc = data.document;
   const toFix = (data.issues || []).filter((i: Any) => i.level !== 'green');
@@ -163,16 +176,19 @@ export default function CvBuilderScreen() {
         </View>
       </View>
 
-      <View style={styles.tabs}>
-        {(['preview', 'edit'] as const).map((t) => (
-          <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabOn]}>
-            <Text style={[styles.tabText, tab === t && styles.tabTextOn]}>{t === 'preview' ? 'Preview' : 'Edit'}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.tabsWrap}>
+        <Segmented
+          value={tab}
+          onChange={(t) => setTab(t as 'preview' | 'edit')}
+          options={[{ value: 'preview', label: 'Preview' }, { value: 'edit', label: 'Edit' }]}
+        />
       </View>
 
       {tab === 'preview' ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: clearance }}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: clearance }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
+        >
           <View style={styles.pad}>{checkPanel}</View>
           <View style={[styles.sheetBox, sheetW ? { height: Math.round(sheetW * (1123 / 794)) } : null]}
             onLayout={(e) => setSheetW(Math.round(e.nativeEvent.layout.width))}>
@@ -187,14 +203,18 @@ export default function CvBuilderScreen() {
           </View>
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={[styles.pad, { paddingBottom: clearance }]} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.pad, { paddingBottom: clearance }]}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
+        >
           {checkPanel}
 
           <Text style={styles.secTitle}>Summary</Text>
           <TextInput style={styles.textarea} multiline value={summary} onChangeText={onSummary}
             placeholder="A short paragraph for recruiters. The only text not taken from your profile."
             placeholderTextColor={pilot.faint} />
-          {err ? <Text style={styles.errLine}>{err}</Text> : null}
+          {actionErr ? <Text style={styles.errLine}>{actionErr}</Text> : null}
           <View style={styles.metaRow}>
             <Pressable onPress={rewrite} disabled={busy === 'rewrite'} hitSlop={6}>
               <Text style={styles.link}>{busy === 'rewrite' ? 'Rewriting…' : 'Rewrite from my profile'}</Text>
@@ -261,6 +281,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   iconBtnOn: { backgroundColor: pilot.navy, borderColor: pilot.navy },
   iconBtnPrimary: { backgroundColor: pilot.navy, borderColor: pilot.navy },
   btnWide: { width: '100%', marginTop: spacing.md },
+  tabsWrap: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, backgroundColor: pilot.cream },
   tabs: { flexDirection: 'row', backgroundColor: pilot.surface, borderBottomWidth: 1, borderBottomColor: pilot.line },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabOn: { borderBottomColor: pilot.navy },

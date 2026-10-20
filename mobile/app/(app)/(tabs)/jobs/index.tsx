@@ -9,14 +9,19 @@
 // job detail page (tap a row to open it).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import JobCardContent from '../../../../src/components/JobCardShared';
 import { SelectField, TextField } from '../../../../src/components/ui';
-import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
+import { mapFromRefs, resolveAirline } from '../../../../src/lib/airlineLookup';
+import { FlashList } from '@shopify/flash-list';
+import { useAirlineLogos, useJobs } from '../../../../src/hooks/queries';
+import { CardListSkeleton } from '../../../../src/components/Skeleton';
+import Segmented from '../../../../src/components/Segmented';
+import { tapLight } from '../../../../src/lib/haptics';
 import { postedAgo, roleLabel } from '../../../../src/lib/jobMatch';
 import { num } from '../../../../src/lib/format';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
@@ -88,64 +93,45 @@ function JobsBrowse() {
   const [visaOnly, setVisaOnly] = useState(false);
   const [ntrOnly, setNtrOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [regionCounts, setRegionCounts] = useState<Record<string, number> | null>(null);
-  const [facets, setFacets] = useState<Any>({});
-  const [qualifyCount, setQualifyCount] = useState<number | null>(null);
-  const [emptyProfile, setEmptyProfile] = useState(false);
 
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Airline logo lookup: jobs carry only a scraped `company` string (no logoUrl),
-  // so we fetch the airline list once and resolve company → airline → logoUrl.
-  const [airlineMap, setAirlineMap] = useState<Awaited<ReturnType<typeof fetchAirlineMap>> | null>(null);
+  // so one cached call fetches the whole airline table and we resolve
+  // company → airline → logoUrl from it (GET /airlines/logos).
+  const { data: airlineRefs } = useAirlineLogos();
+  const airlineMap = useMemo(() => mapFromRefs(airlineRefs), [airlineRefs]);
 
-  useEffect(() => {
-    fetchAirlineMap().then(setAirlineMap).catch(() => {});
-  }, []);
-
-  const fetchJobs = useCallback(async () => {
-    setError(null);
-    try {
-      const query: Record<string, unknown> = { limit: 1000, sort };
-      if (qualifiedOnly) query.qualifiedOnly = true;
-      if (region) query.region = region;
-      if (maxReqHours) query.maxReqHours = maxReqHours;
-      if (aircraftType) query.aircraft = aircraftType;
-      if (role) query.role = role;
-      if (authority) query.authority = authority;
-      if (contractType) query.contractType = contractType;
-      if (postedWithin) query.postedWithin = postedWithin;
-      if (visaOnly) query.visa = 'true';
-      if (ntrOnly) query.typeRating = 'ntr';
-      const { data } = await api.get('/jobs', { params: query });
-      setJobs(data.jobs || []);
-      setTotal(data.total ?? (data.jobs?.length || 0));
-      // These come back at the TOP level of the response, not under `meta`.
-      setRegionCounts(data.regionCounts || null);
-      setFacets(data.facetCounts || {});
-      setQualifyCount(data.qualifyCount ?? null);
-      setEmptyProfile(!!data.emptyProfile);
-    } catch (err) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError((err as any)?.response?.data?.error || 'Failed to load jobs');
-    }
+  // The filter set IS the cache key, so going back to a filter you used a
+  // moment ago is instant and then refreshed. Previously every filter change
+  // and every tab focus re-fetched 1,000 jobs with nothing on screen.
+  const jobsQuery: Record<string, unknown> = useMemo(() => {
+    const q: Record<string, unknown> = { limit: 1000, sort };
+    if (qualifiedOnly) q.qualifiedOnly = true;
+    if (region) q.region = region;
+    if (maxReqHours) q.maxReqHours = maxReqHours;
+    if (aircraftType) q.aircraft = aircraftType;
+    if (role) q.role = role;
+    if (authority) q.authority = authority;
+    if (contractType) q.contractType = contractType;
+    if (postedWithin) q.postedWithin = postedWithin;
+    if (visaOnly) q.visa = 'true';
+    if (ntrOnly) q.typeRating = 'ntr';
+    return q;
   }, [sort, qualifiedOnly, region, maxReqHours, aircraftType, role, authority, contractType, postedWithin, visaOnly, ntrOnly]);
 
-  useEffect(() => {
-    setLoading(true);
-    fetchJobs().finally(() => setLoading(false));
-  }, [fetchJobs]);
+  const { data: jobsData, isPending, error: jobsError, refetch } = useJobs(jobsQuery);
+  const jobs: Job[] = useMemo(() => jobsData?.jobs ?? [], [jobsData]);
+  const total: number = jobsData?.total ?? jobs.length;
+  const regionCounts = jobsData?.regionCounts ?? null;
+  const facets = jobsData?.facetCounts ?? {};
+  const qualifyCount = jobsData?.qualifyCount ?? null;
+  const emptyProfile = !!jobsData?.emptyProfile;
+  const loading = isPending;
+  const error = jobsError ? ((jobsError as Job)?.response?.data?.error || 'Failed to load jobs') : null;
 
-  // Silent refetch on every focus — the tab stays mounted, so mount-only fetches
-  // go stale. The server recomputes each job's match against the pilot on every
-  // GET /jobs, so the % stays current after edits elsewhere without a client recompute.
-  useFocusEffect(useCallback(() => {
-    fetchJobs();
-  }, [fetchJobs]));
+  // Silent refresh on focus — the match % moves when the profile changes.
+  useFocusEffect(useCallback(() => { void refetch(); }, [refetch]));
 
   // Persist URL state (omit defaults) like web.
   useEffect(() => {
@@ -159,9 +145,10 @@ function JobsBrowse() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchJobs();
+    tapLight();
+    await refetch();
     setRefreshing(false);
-  }, [fetchJobs]);
+  }, [refetch]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -192,7 +179,7 @@ function JobsBrowse() {
     const ordered = [...filtered].sort(byRank);
     const showGroups = sort === 'best' && ordered.some((j) => j.match);
     if (!showGroups) return ordered.map((job) => ({ type: 'job' as const, job, key: job.id }));
-    // Flatten groups into one list so a single FlatList renders headers + rows.
+    // Flatten groups into one list so a single FlashList renders headers + rows.
     const out: ({ type: 'head'; label: string; hint: string; count: number; key: string } | { type: 'job'; job: Job; key: string })[] = [];
     for (const g of FIT_GROUPS) {
       const inGroup = ordered.filter((j) => j.match?.fitGroup === g.key);
@@ -253,6 +240,7 @@ function JobsBrowse() {
     ntrOnly ? { key: 'ntr', label: 'No type rating', clear: () => setNtrOnly(false) } : null,
   ].filter(Boolean) as { key: string; label: string; clear: () => void }[];
   const clearAll = () => {
+    tapLight();
     setRegion(''); setMaxReqHours(''); setAircraftType(''); setRole(''); setAuthority('');
     setContractType(''); setPostedWithin(''); setVisaOnly(false); setNtrOnly(false);
   };
@@ -267,14 +255,11 @@ function JobsBrowse() {
         {/* Jobs | Airlines. The fact files used to be reachable only by tapping
             an airline on a job, or from Settings; this makes them findable
             without adding a sixth tab. */}
-        <View style={styles.seg}>
-          <Pressable style={[styles.segBtn, styles.segOn]}>
-            <Text style={[styles.segText, styles.segTextOn]}>Jobs</Text>
-          </Pressable>
-          <Pressable style={styles.segBtn} onPress={() => router.push('/airlines')}>
-            <Text style={styles.segText}>Airlines</Text>
-          </Pressable>
-        </View>
+        <Segmented
+          value="jobs"
+          onChange={(v) => { if (v === 'airlines') router.push('/airlines'); }}
+          options={[{ value: 'jobs', label: 'Jobs' }, { value: 'airlines', label: 'Airlines' }]}
+        />
         <Text style={styles.count}>
           {num(regionCounts?.All ?? total)} cockpit jobs worldwide
           {qualifyCount != null ? <Text style={styles.countStrong}>{`  ·  ${qualifyCount} you qualify for`}</Text> : null}
@@ -288,7 +273,7 @@ function JobsBrowse() {
             const active = r === 'All' ? !region : region === r;
             const count = r === 'All' ? regionCounts.All : regionCounts[r];
             return (
-              <Pressable key={r} onPress={() => setRegion(r === 'All' ? '' : r)} style={[styles.regionTab, active && styles.regionTabOn]}>
+              <Pressable key={r} onPress={() => { tapLight(); setRegion(r === 'All' ? '' : r); }} style={[styles.regionTab, active && styles.regionTabOn]}>
                 <Text style={[styles.regionText, active && styles.regionTextOn]}>{r === 'All' ? 'All regions' : r}</Text>
                 <Text style={[styles.regionCount, active && styles.regionCountOn]}>{count ?? 0}</Text>
               </Pressable>
@@ -318,10 +303,10 @@ function JobsBrowse() {
           <Ionicons name="options-outline" size={13} color={anySheetFilter ? '#FFFFFF' : pilot.muted} />
           <Text style={[styles.chipText, anySheetFilter && styles.chipTextOn]}>  Filters</Text>
         </Pressable>
-        <Pressable onPress={() => setVisaOnly((v) => !v)} style={[styles.chip, visaOnly && styles.chipOn]}>
+        <Pressable onPress={() => { tapLight(); setVisaOnly((v) => !v); }} style={[styles.chip, visaOnly && styles.chipOn]}>
           <Text style={[styles.chipText, visaOnly && styles.chipTextOn]}>{visaOnly ? '✓ ' : ''}Visa</Text>
         </Pressable>
-        <Pressable onPress={() => setQualifiedOnly((v) => !v)} style={[styles.chip, qualifiedOnly && styles.chipOn]}>
+        <Pressable onPress={() => { tapLight(); setQualifiedOnly((v) => !v); }} style={[styles.chip, qualifiedOnly && styles.chipOn]}>
           <Text style={[styles.chipText, qualifiedOnly && styles.chipTextOn]}>{qualifiedOnly ? '✓ ' : ''}Qualified only</Text>
         </Pressable>
         <View style={styles.sortWrap}>
@@ -384,7 +369,7 @@ function JobsBrowse() {
   return (
     <View style={styles.safe}>
       {FiltersSheet}
-      <FlatList
+      <FlashList
         data={loading ? [] : rows}
         keyExtractor={(r: any) => r.key}
         renderItem={renderRow}
@@ -393,7 +378,7 @@ function JobsBrowse() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
         ListEmptyComponent={
           loading ? (
-            <View style={styles.center}><ActivityIndicator color={pilot.navy} /><Text style={styles.loadingText}>Loading jobs from around the world...</Text></View>
+            <CardListSkeleton rows={5} />
           ) : error ? (
             <View style={styles.center}><Text style={styles.emptyTitle}>Could not load jobs</Text><Text style={styles.emptyText}>{error}</Text></View>
           ) : (
