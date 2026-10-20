@@ -8,6 +8,7 @@
 const prisma = require('../config/database');
 const { matchJob } = require('./jobMatch');
 const { getMatchContext } = require('./matchContextCache');
+const { getActiveJobs } = require('./activeJobs');
 
 const DAY = 86400000;
 
@@ -172,8 +173,10 @@ async function computeStrengthAndNudge(pilotId) {
   const strength = strengthFromContext(ctx);
   if (!ctx || !ctx.matchable) return { strength, nudge: null, qualifyCount: 0, incompleteCount: 0 };
 
-  // Match against ACTIVE jobs — same input the Jobs list uses.
-  const jobs = await prisma.job.findMany({ where: { status: 'ACTIVE' } });
+  // Match against ACTIVE jobs — the SAME cached list the dashboard reads
+  // (services/activeJobs.js). This used to be an uncached findMany with no
+  // select, pulling every column of every live job to produce three counts.
+  const jobs = await getActiveJobs();
   let qualifyCount = 0;
   const incomplete = [];
   for (const j of jobs) {
