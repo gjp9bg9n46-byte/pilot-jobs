@@ -1,6 +1,10 @@
 // The "+" on the Logbook: three ways in, scanning first because it is the
 // fastest. Straight from the mockup's first screen.
+import { useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { SPRING, timing } from '../../theme/motion';
+import { tapMedium } from '../../lib/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { fontFamilies, fontSizes, spacing } from '../../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../theme/ThemeContext';
@@ -40,10 +44,25 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
     </Pressable>
   );
 
+  // The sheet is thrown up under the thumb, so it settles on a damped spring
+  // rather than a fixed slide — the one place in the app where weight should be
+  // believable. The dim behind it is a plain fade, so only one thing moves.
+  const shown = useSharedValue(0);
+  useEffect(() => {
+    if (visible) { tapMedium(); shown.value = withSpring(1, SPRING); }
+    else { shown.value = withTiming(0, timing()); }
+  }, [visible, shown]);
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: (1 - shown.value) * 320 }],
+  }));
+  const dimStyle = useAnimatedStyle(() => ({ opacity: shown.value }));
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.dim} onPress={onClose} />
-      <View style={styles.sheet}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[StyleSheet.absoluteFill, dimStyle]}>
+        <Pressable style={styles.dim} onPress={onClose} />
+      </Animated.View>
+      <Animated.View style={[styles.sheet, sheetStyle]}>
         <View style={styles.grab} />
         <Text style={styles.h3}>Add a flight</Text>
         <Text style={styles.sub}>Every sector you flew today, in under a minute.</Text>
@@ -56,7 +75,7 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
           'Type the times yourself. Route, aircraft and crew are remembered from your last flight.', onManual, !scanEnabled)}
         {option('import', 'download-outline', 'Import a file',
           "ForeFlight, LogTen or a CSV from your airline's system.", onImport)}
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
