@@ -25,6 +25,7 @@ import { useCvDocument } from '../../../src/hooks/queries';
 import { CvSkeleton } from '../../../src/components/Skeleton';
 import Segmented from '../../../src/components/Segmented';
 import { notifySuccess, tapLight } from '../../../src/lib/haptics';
+import { withErrorBoundary } from '../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -41,7 +42,7 @@ const SECTION_LABEL: Record<string, string> = {
   education: 'Education & languages', photo: 'Photo',
 };
 
-export default function CvBuilderScreen() {
+function CvBuilderScreen() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -333,3 +334,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   btnPrimary: { borderColor: pilot.navy, backgroundColor: pilot.navy },
   btnPrimaryText: { color: '#fff', fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base },
 });
+
+// A render error here shows "Something went wrong · Try again" instead of
+// taking the whole app down with it.
+export default withErrorBoundary(CvBuilderScreen, 'CV');

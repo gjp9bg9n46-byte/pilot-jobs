@@ -19,13 +19,14 @@ import { CardListSkeleton } from '../../../../src/components/Skeleton';
 import PressableScale from '../../../../src/components/PressableScale';
 import Segmented from '../../../../src/components/Segmented';
 import { tapLight } from '../../../../src/lib/haptics';
+import { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
 
 const REGIONS = ['All', 'Middle East', 'Europe', 'Asia-Pacific', 'Americas', 'Africa'];
 
-export default function AirlinesList() {
+function AirlinesList() {
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -171,3 +172,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   jobStrong: { color: '#15803D', fontFamily: fontFamilies.bodySemiBold },
   empty: { textAlign: 'center', color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 40, fontSize: 14 },
 });
+
+// A render error here shows "Something went wrong · Try again" instead of
+// taking the whole app down with it.
+export default withErrorBoundary(AirlinesList, 'Airlines');

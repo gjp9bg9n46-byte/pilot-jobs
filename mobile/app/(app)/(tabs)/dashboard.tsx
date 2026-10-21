@@ -26,6 +26,7 @@ import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
 import { hours } from '../../../src/lib/format';
 import { useTabBarClearance } from '../../../src/theme/tabBar';
+import { withErrorBoundary } from '../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -44,7 +45,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const fmtD = (iso?: string | null) => { if (!iso) return null; const d = new Date(iso); return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
 const daysSince = (iso?: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : Infinity);
 
-export default function DashboardScreen() {
+function DashboardScreen() {
   const tabBarClearance = useTabBarClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -394,3 +395,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   suggestChip: { borderWidth: 1, borderColor: '#BCC6D3', borderStyle: 'dashed', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
   suggestChipText: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body },
 });
+
+// A render error here shows "Something went wrong · Try again" instead of
+// taking the whole app down with it.
+export default withErrorBoundary(DashboardScreen, 'Home');

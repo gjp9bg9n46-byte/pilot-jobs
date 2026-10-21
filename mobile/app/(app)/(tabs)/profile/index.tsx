@@ -27,6 +27,7 @@ import { useProfileOverview } from '../../../../src/hooks/queries';
 import { ProfileSkeleton } from '../../../../src/components/Skeleton';
 import { tapLight } from '../../../../src/lib/haptics';
 import { hours } from '../../../../src/lib/format';
+import { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -58,7 +59,7 @@ const LICENCE_RANK = ['ATPL', 'ATP', 'MPL', 'CPL', 'PPL'];
 const LICENCE_NAME: Record<string, string> = { ATPL: 'Airline Transport Pilot', ATP: 'Airline Transport Pilot', MPL: 'Multi-crew Pilot', CPL: 'Commercial Pilot', PPL: 'Private Pilot' };
 const rankOf = (t?: string) => { const i = LICENCE_RANK.indexOf(t || ''); return i === -1 ? 99 : i; };
 
-export default function ProfileView() {
+function ProfileView() {
   const tabBarClearance = useTabBarClearance(12);
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -600,3 +601,7 @@ export function FlightDashboard({ totals, styles, palette }: { totals: Any; styl
     </View>
   );
 }
+
+// A render error here shows "Something went wrong · Try again" instead of
+// taking the whole app down with it.
+export default withErrorBoundary(ProfileView, 'Profile');

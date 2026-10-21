@@ -22,11 +22,24 @@ export const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
 /** Symmetric: for things that move and come back, like a press. */
 export const EASE_IN_OUT = Easing.bezier(0.4, 0, 0.2, 1);
 
-export const timing = (duration = DURATION.base, easing = EASE_OUT) => ({
-  duration,
-  easing,
-  reduceMotion: ReduceMotion.System,
-});
+// ⚠️ A worklet may only call functions that are themselves worklets. Capturing
+// a plain function in a worklet closure turns it into a "Remote Function" on
+// the UI runtime, and CALLING it throws
+//   [Worklets] Tried to synchronously call a Remote Function. Called "timing"
+//   on the UI Runtime.
+// inside a display-link callback, where nothing catches it — std::terminate,
+// SIGABRT, the app is gone. That is exactly how build 2 crashed on Jobs and CV.
+// The directive below makes this callable from either runtime; even so, prefer
+// building the config on the JS thread (see TIMING_BASE) and keeping worklet
+// bodies to pure arithmetic.
+export const timing = (duration = DURATION.base, easing = EASE_OUT) => {
+  'worklet';
+  return { duration, easing, reduceMotion: ReduceMotion.System };
+};
+
+/** The default timing config, pre-built so no call is needed in a hot path. */
+export const TIMING_BASE = { duration: DURATION.base, easing: EASE_OUT, reduceMotion: ReduceMotion.System } as const;
+export const TIMING_FAST = { duration: DURATION.fast, easing: EASE_IN_OUT, reduceMotion: ReduceMotion.System } as const;
 
 /** Sheets and anything the thumb throws. Damped — one settle, no bounce. */
 export const SPRING = {

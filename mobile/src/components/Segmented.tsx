@@ -7,10 +7,10 @@
 //
 // Width is measured from the laid-out track, so it stays correct at any text
 // size — no hard-coded pill width to drift.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import { timing } from '../theme/motion';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { TIMING_BASE } from '../theme/motion';
 import { tapLight } from '../lib/haptics';
 import { ThemePalette, useThemedStyles } from '../theme/ThemeContext';
 import { fontFamilies } from '../theme/tokens';
@@ -31,9 +31,20 @@ export default function Segmented<T extends string>({
   const index = Math.max(0, options.findIndex((o) => o.value === value));
   const segW = trackW ? trackW / options.length : 0;
 
+  // The animation is started on the JS thread and the worklet only reads a
+  // shared value. The worklet body stays pure arithmetic — no calls out to
+  // anything, which is the rule that keeps it off the UI runtime's remote-
+  // function guard (see theme/motion.ts).
+  const x = useSharedValue(0);
+  useEffect(() => {
+    const target = segW * index;
+    if (!Number.isFinite(target)) return;      // pre-layout: segW is 0, never NaN
+    x.value = withTiming(target, TIMING_BASE);
+  }, [segW, index, x]);
+
   const pill = useAnimatedStyle(() => ({
     width: segW,
-    transform: [{ translateX: withTiming(segW * index, timing()) }],
+    transform: [{ translateX: x.value }],
     opacity: segW ? 1 : 0,
   }));
 

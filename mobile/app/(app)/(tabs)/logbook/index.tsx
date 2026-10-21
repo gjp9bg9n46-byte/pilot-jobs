@@ -30,6 +30,7 @@ import { LogbookSkeleton } from '../../../../src/components/Skeleton';
 import { notifySuccess, tapLight } from '../../../../src/lib/haptics';
 import PressableScale from '../../../../src/components/PressableScale';
 import Segmented from '../../../../src/components/Segmented';
+import { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Log = Record<string, any>;
@@ -116,7 +117,7 @@ function FlightCard({ log, onEdit, onClone, onDelete }: {
   );
 }
 
-export default function LogbookList() {
+function LogbookList() {
   // The + floats above the tab bar, so the list must clear both.
   const tabBarClearance = useTabBarClearance(72);
   const pilot = useThemeColors();
@@ -514,3 +515,7 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   pageBtnTextActive: { color: '#fff', fontFamily: fontFamilies.bodyBold },
   ellipsis: { color: pilot.muted, paddingHorizontal: 4 },
 }); };
+
+// A render error here shows "Something went wrong · Try again" instead of
+// taking the whole app down with it.
+export default withErrorBoundary(LogbookList, 'Logbook');

@@ -27,6 +27,7 @@ import { num } from '../../../../src/lib/format';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // A#4 — signed-in pilots open on Best match. The server already groups by fit
 // (jobController "best"); the client then orders within that by % and recency,
@@ -394,7 +395,7 @@ function JobsBrowse() {
 // A#6 — the Browse/Matches segmented control is gone: matches live on the Home
 // (dashboard) tab, which also owns the single unread badge (A#1). Alerts are
 // still reachable from the drawer (/alerts).
-export default function JobsScreen() {
+function JobsScreen() {
   const pilotColors = useThemeColors();
   return (
     <View style={{ flex: 1, backgroundColor: pilotColors.cream }}>
@@ -471,3 +472,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   emptyTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.xl, color: pilot.ink },
   emptyText: { fontSize: fontSizes.base, color: pilot.muted, fontFamily: fontFamilies.body, textAlign: 'center', lineHeight: 22 },
 });
+
+// A render error here shows "Something went wrong · Try again" instead of
+// taking the whole app down with it.
+export default withErrorBoundary(JobsScreen, 'Jobs');
