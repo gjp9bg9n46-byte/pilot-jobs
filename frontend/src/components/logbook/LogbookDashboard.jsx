@@ -23,7 +23,11 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
   const hUnit = timeFormat === 'decimal' ? ' h' : '';
   const [open, setOpen] = useState(false);
   if (!summary) return null;
-  const { totals, byType, milestone, limits, currency } = summary;
+  const { totals, byType, limits, currency } = summary;
+  // A payload without a milestone (an older backend, or a pilot with no hours
+  // yet) must not blank the page — the card is skipped instead. The app hit
+  // exactly this and was caught by its error boundary; the web has none.
+  const milestone = summary.milestone || null;
 
   // ── Total time ──────────────────────────────────────────────────────────
   const cf = totals.carryForward || 0;
@@ -39,15 +43,15 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
   ].filter(([, v]) => v > 0);
 
   // ── Milestone track geometry ────────────────────────────────────────────
-  const next = milestone.next;
-  const scale = next || milestone.current || 1;
+  const next = milestone ? milestone.next : null;
+  const scale = next || (milestone ? milestone.current : 0) || 1;
   const pos = (h) => Math.min(99.5, Math.max(0, (h / scale) * 100));
-  const youPct = Math.min(100, Math.max(0, (milestone.current / scale) * 100));
+  const youPct = Math.min(100, Math.max(0, ((milestone ? milestone.current : 0) / scale) * 100));
   const ticks = [
-    ...milestone.passed.map((p) => ({ hours: p.hours, top: p.hours.toLocaleString(), bot: p.label, done: true })),
+    ...((milestone && milestone.passed) || []).map((p) => ({ hours: p.hours, top: p.hours.toLocaleString(), bot: p.label, done: true })),
     ...(next ? [{ hours: next, top: next.toLocaleString(), bot: 'Next', done: false, isNext: true }] : []),
   ];
-  const lastPassedWithDate = [...milestone.passed].reverse().find((p) => p.date);
+  const lastPassedWithDate = [...((milestone && milestone.passed) || [])].reverse().find((p) => p.date);
 
   return (
     <div className={`lb-dash${open ? ' open' : ''}`}>
@@ -84,6 +88,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
         </section>
 
         {/* 2 · NEXT MILESTONE */}
+        {milestone && (
         <section className="s-ms">
           <div className="label">Next milestone</div>
           {next ? (
@@ -115,6 +120,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
             </div>
           )}
         </section>
+        )}
 
         {/* 3 · HOURS BY AIRCRAFT TYPE */}
         <section className="s-types">

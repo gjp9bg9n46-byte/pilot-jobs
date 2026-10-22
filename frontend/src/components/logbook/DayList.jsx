@@ -1,47 +1,36 @@
 import React from 'react';
-import { Moon } from 'lucide-react';
-import { groupByDay, duration, findOverlaps, landsNextDay, overlapLabel, overnightReturnOf } from '../../lib/logbookFormat';
+import { groupBy, duration, findOverlaps, overlapLabel, overnightReturnOf } from '../../lib/logbookFormat';
+import FlightRow from './FlightRow';
 
 /**
- * Sectors grouped by the day they were flown, so a CAI–HRG–CAI rotation reads
- * as one block with the day's total beside it.
+ * Sectors grouped by month (the default) or by day, so a CAI–HRG–CAI rotation
+ * reads as one block with its total beside it.
  *
  * A sector belongs to the date it pushed back on and is never split: a leg that
  * lands after midnight shows "+1" on its arrival, and the return that follows
  * the next morning says where it came from, so an overnight trip reads as one
  * thing across two days instead of two orphans.
  */
-export default function DayList({ logs, timeFormat, onOpen }) {
-  const days = groupByDay(logs || []);
+export default function DayList({ logs, timeFormat, grouping = 'month', onOpen }) {
+  const groups = groupBy(logs || [], grouping);
   // Two flights cannot be in the air at once; where they are, both say so.
   const overlaps = findOverlaps(logs || []);
-  if (!days.length) return null;
+  if (!groups.length) return null;
   return (
     <div>
-      {days.map((day) => (
-        <section key={day.date}>
-          <div className="lb-day"><span>{day.label}</span><span className="mono">{duration(day.hours, timeFormat)}</span></div>
-          <div className="lb-pair">
-            {day.flights.map((f) => {
-              const type = f.displayType || f.aircraftType;
-              const nextDay = landsNextDay(f.offBlocksTime, f.onBlocksTime);
-              const from = overnightReturnOf(f, logs);
-              return (
-                <button type="button" key={f.id} className="lb-leg" onClick={() => onOpen(f)}>
-                  <span>
-                    <b>{f.departure || '—'} → {f.arrival || '—'}</b>
-                    {nextDay && <span className="lb-plus1" title="Lands the next day">+1</span>}
-                    {f.pilotFlying === true && <span className="lb-pf">PF</span>}
-                    {Number(f.nightTime) > 0 && <Moon size={13} className="lb-moon" aria-label="Night time logged" />}
-                    <small>{[f.flightNumber, type, f.registration].filter(Boolean).join(' · ') || 'No details'}</small>
-                    {from && <small className="lb-link">Return of overnight trip from {from}</small>}
-                    {overlaps.has(f.id) && <small className="lb-overlap">{overlapLabel(overlaps.get(f.id))}</small>}
-                  </span>
-                  <span className="mono">{duration(f.totalTime, timeFormat)}</span>
-                </button>
-              );
-            })}
-          </div>
+      {groups.map((g) => (
+        <section key={g.date}>
+          <div className="lb-day"><span>{g.label}</span><span className="mono">{duration(g.hours, timeFormat)}</span></div>
+          {g.flights.map((f) => (
+            <FlightRow
+              key={f.id}
+              log={f}
+              timeFormat={timeFormat}
+              overnightFrom={overnightReturnOf(f, logs)}
+              overlap={overlaps.has(f.id) ? overlapLabel(overlaps.get(f.id)) : null}
+              onOpen={onOpen}
+            />
+          ))}
         </section>
       ))}
     </div>

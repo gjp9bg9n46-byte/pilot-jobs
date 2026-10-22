@@ -33,6 +33,7 @@ export default function AddFlights() {
   const [over, setOver] = useState(false);
   const [scan, setScan] = useState(null);            // { id, header, sectors }
   const [active, setActive] = useState(0);
+  const [answered, setAnswered] = useState({});
   const [preview, setPreview] = useState(null);      // object URL of the dropped file
   const [showImport, setShowImport] = useState(false);
   const [saved, setSaved] = useState(null);
@@ -110,7 +111,12 @@ export default function AddFlights() {
     } finally { setBusy(false); }
   };
 
-  const toCheck = scan ? scan.sectors.filter((s) => s.needsCheck && !s.duplicate).length : 0;
+  // Questions are optional: answering improves the record, ignoring one still
+  // files the flight. Only the page date must be answered explicitly.
+  const openQuestions = (i, sec) => (sec.questions || []).filter((q) => !answered[`${i}:${q.id}`]);
+  const totalOpen = scan
+    ? scan.sectors.reduce((n, sec, i) => n + (sec.duplicate || sec.include === false ? 0 : openQuestions(i, sec).length), 0)
+    : 0;
   const keeping = scan ? scan.sectors.filter((s) => s.include !== false && !s.duplicate).length : 0;
 
   return (
@@ -201,17 +207,33 @@ export default function AddFlights() {
                         {s.flightNumber || `Sector ${i + 1}`} · {s.from}–{s.to}
                         {s.dayOffset > 0 && <span className="lb-nextday"> · {s.sectorDate}</span>}
                         {s.duplicate ? <span className="warnDot"> · already logged</span>
-                          : s.needsCheck ? <span className="warnDot"> · {Object.keys(s.flags).length} to check</span> : null}
+                          : openQuestions(i, s).length
+                            ? <span className="warnDot"> · {openQuestions(i, s).length} quick {openQuestions(i, s).length === 1 ? 'question' : 'questions'}</span>
+                            : null}
                       </button>
                     ))}
                   </div>
 
-                  {toCheck > 0 && (
-                    <div className="lb-warn">
-                      <AlertTriangle size={16} style={{ color: 'var(--lb-amber)', flex: 'none' }} />
-                      <span><b>{toCheck} {toCheck === 1 ? 'sector needs' : 'sectors need'} a look.</b> Amber fields are the ones to compare with the photo.</span>
+                  {/* Each question on the sector it belongs to, with its answer
+                      one click away — never a reason the save is refused. */}
+                  {openQuestions(active, scan.sectors[active] || {}).map((q) => (
+                    <div className="lb-q" key={q.id}>
+                      <p className="t">{q.title}</p>
+                      <p className="b">{q.body}</p>
+                      <div className="a">
+                        {(q.actions || []).map((a) => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            className={a.id === 'confirm' ? 'main' : undefined}
+                            onClick={() => setAnswered((prev) => ({ ...prev, [`${active}:${q.id}`]: true }))}
+                          >
+                            {a.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  ))}
 
                   <div className="lb-gl"><span>Report</span><span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{scan.header.commander ? `Capt ${scan.header.commander}` : ''}</span></div>
                   <div className="lb-fg">
@@ -278,6 +300,8 @@ export default function AddFlights() {
                     <span className="s">
                       {scan.header.flags?.date && !dateChoice
                         ? 'Choose which date these flights belong to before saving.'
+                        : totalOpen > 0
+                          ? `${totalOpen} quick ${totalOpen === 1 ? 'question' : 'questions'} above. Everything else is ready.`
                         : <>Nothing is saved until you click Save.{' '}
                           {scan.sectors.filter((x) => x.duplicate).map((x) => `${x.flightNumber || 'A sector'} is already in your logbook (${x.duplicateReason}) and will be skipped.`).join(' ')}</>}
                     </span>

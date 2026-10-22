@@ -594,6 +594,7 @@ export default function Logbook() {
   // Preferences decide how every duration on this page is written.
   useEffect(() => { logbookApi.prefs().then(({ data }) => setPrefs(data)).catch(() => {}); }, []);
   const timeFormat = prefs?.timeFormat || 'hhmm';
+  const [grouping, setGrouping] = useState('month');
   const setTimeFormat = async (fmt) => {
     setPrefs((p) => ({ ...(p || {}), timeFormat: fmt }));
     try { const { data } = await logbookApi.updatePrefs({ timeFormat: fmt }); setPrefs(data); } catch { /* keep the optimistic choice */ }
@@ -803,6 +804,12 @@ export default function Logbook() {
             <button type="button" className={timeFormat === 'hhmm' ? 'on' : ''} onClick={() => setTimeFormat('hhmm')} aria-pressed={timeFormat === 'hhmm'}>hh:mm</button>
             <button type="button" className={timeFormat === 'decimal' ? 'on' : ''} onClick={() => setTimeFormat('decimal')} aria-pressed={timeFormat === 'decimal'}>decimal</button>
           </div>
+          {/* "How much did I fly in October" is the everyday question, so the
+              list groups by month unless the pilot asks for days. */}
+          <div className="lb-group" role="group" aria-label="Group flights by">
+            <button type="button" className={grouping === 'month' ? 'on' : ''} onClick={() => setGrouping('month')} aria-pressed={grouping === 'month'}>Month</button>
+            <button type="button" className={grouping === 'day' ? 'on' : ''} onClick={() => setGrouping('day')} aria-pressed={grouping === 'day'}>Day</button>
+          </div>
           {!isMobile && <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import</Button>}
           <Button onClick={() => navigate('/logbook/add')}>+ Add flight</Button>
         </div>
@@ -859,7 +866,7 @@ export default function Logbook() {
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>Loading your logbook...</div>
       ) : grouped ? (
         <>
-          <DayList logs={dataset} timeFormat={timeFormat} onOpen={setOpenFlight} />
+          <DayList logs={dataset} timeFormat={timeFormat} grouping={grouping} onOpen={setOpenFlight} />
           {!dataset.length && (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
               {searching ? 'No flights match that search.' : 'No flights yet.'}
