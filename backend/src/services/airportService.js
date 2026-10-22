@@ -51,11 +51,12 @@ function splitCsvLine(line) {
 const OVERRIDES = [
   {
     icao: 'HEAX', iata: 'ALY', name: 'Alexandria El Nouzha', city: 'Alexandria',
-    country: 'EG', lat: 31.184, lon: 29.949, closed: true,
-    // El Nouzha stopped taking scheduled traffic in 2011 (it moved to Borg El
-    // Arab, HBE). Marked closed so the scan review asks rather than assumes,
-    // and never so that the flight is refused.
-    source: 'owner decision 2026-10-22; OurAirports has no ALY',
+    country: 'EG', lat: 31.184, lon: 29.949,
+    // Open. El Nouzha closed to scheduled traffic in 2011 and OurAirports has
+    // not caught up with its reopening; the owner flies there, which is better
+    // evidence than the dataset. Open means the review asks nothing about it.
+    closed: false,
+    source: 'owner, landed there 2026-10; OurAirports has no ALY record at all',
   },
 ];
 

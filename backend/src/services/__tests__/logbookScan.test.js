@@ -507,14 +507,13 @@ test('a scanned sector always records landings, even when there are none', async
   assert.equal(r.sectors[1].myLandings, 1);
 });
 
-test('a closed airport is asked about, and the flight still saves', async () => {
+test('ALY is an ordinary airport now: no flag, no question', async () => {
+  // El Nouzha is operating again and the owner lands there. The override marks
+  // it open, so a sector to ALY must read exactly like one to CAI.
   const raw = RAW();
-  raw.sectors[0].to = 'ALY';   // Alexandria El Nouzha — closed since 2011
+  raw.sectors[0].to = 'ALY';
   const r = await validateScan(raw, { pilot: FO, now: NOW });
   const s0 = r.sectors[0];
-  assert.notEqual(s0.flags.to && s0.flags.to.level, 'red', 'a closed airport is not a refusal');
-  const q = (s0.questions || []).find((x) => x.id === 'to-closed');
-  assert.ok(q, 'the pilot is asked to confirm it');
-  assert.match(q.body, /closed/i);
-  assert.equal(q.actions[0].id, 'confirm');
+  assert.equal(s0.flags.to, undefined, 'nothing to flag about a known, open airport');
+  assert.equal((s0.questions || []).filter((q) => q.field === 'to').length, 0, 'and nothing to ask');
 });

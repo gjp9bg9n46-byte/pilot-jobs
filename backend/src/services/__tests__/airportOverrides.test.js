@@ -7,12 +7,14 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { resolveAirport } = require('../airportService');
 
-test('ALY resolves to Alexandria El Nouzha, and says it is closed', async () => {
+test('ALY resolves to Alexandria El Nouzha, open, with its own coordinates', async () => {
   const a = await resolveAirport('ALY');
   assert.ok(a, 'ALY must resolve — a pilot writing it means Alexandria');
   assert.equal(a.icao, 'HEAX');
-  assert.equal(a.closed, true, 'closed, so the review can ask rather than assume');
-  assert.ok(Number.isFinite(a.lat) && Number.isFinite(a.lon), 'coordinates, or night cannot be worked out');
+  assert.equal(a.closed, false, 'open: the owner flies there, whatever the dataset says');
+  // El Nouzha, not Borg El Arab (30.932, 29.696) — the row OurAirports conflates it with.
+  assert.equal(a.lat, 31.184);
+  assert.equal(a.lon, 29.949);
 });
 
 test('the override is case-insensitive and works from either code', async () => {
@@ -22,12 +24,13 @@ test('the override is case-insensitive and works from either code', async () => 
   }
 });
 
-test('a closed airport still resolves generally, not just the override', async () => {
-  // Including 'closed' in the dataset filter is the general rule; the override
-  // only covers what the dataset omits entirely.
-  const open = await resolveAirport('CAI');
-  assert.equal(open.closed, false);
-  assert.equal(open.icao, 'HECA');
+test('ordinary codes are unaffected by the override table', async () => {
+  const cai = await resolveAirport('CAI');
+  assert.equal(cai.closed, false);
+  assert.equal(cai.icao, 'HECA');
+  // Borg El Arab keeps the dataset's own record; only ALY/HEAX are overridden.
+  const hbe = await resolveAirport('HBE');
+  assert.equal(hbe.iata, 'HBE');
 });
 
 test('a code that does not exist anywhere still returns null', async () => {
