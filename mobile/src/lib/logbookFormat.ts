@@ -79,10 +79,11 @@ export function groupByDay(logs: Log[]): Day[] {
 // Month is the default; Day is a switch away for anyone checking a rotation.
 export type Grouping = 'month' | 'day';
 
-export function monthLabel(ym: string, now: Date = new Date()): string {
+export function monthLabel(ym: string): string {
+  // Always with the year: a logbook is read across years, and "October" alone
+  // is how a misfiled 2024 flight hides in plain sight.
   const d = new Date(`${ym}-01T00:00:00Z`);
-  const year = d.getUTCFullYear() === now.getUTCFullYear() ? undefined : 'numeric';
-  return d.toLocaleDateString('en-GB', { month: 'long', year, timeZone: 'UTC' } as Intl.DateTimeFormatOptions);
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
 // Sectors grouped by calendar month, newest first, with the month's total.
@@ -104,6 +105,13 @@ export function groupByMonth(logs: Log[]): Day[] {
         return d !== 0 ? d : String(b.offBlocksTime || '').localeCompare(String(a.offBlocksTime || ''));
       }),
     }));
+}
+
+// "Fri 16" — the date each card carries in month view, where the group header
+// only says the month.
+export function shortDayLabel(date: string): string {
+  const d = new Date(`${String(date).slice(0, 10)}T00:00:00Z`);
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 export function groupBy(logs: Log[], grouping: Grouping): Day[] {

@@ -15,7 +15,8 @@ const axios = require('axios');
 const logger = require('../config/logger');
 
 const DATA_URL = 'https://davidmegginson.github.io/ourairports-data/airports.csv';
-const CACHE_FILE = '/tmp/cockpithire-airports.json';
+// v2: the cache shape changed (closed airports are now included).
+const CACHE_FILE = '/tmp/cockpithire-airports-v2.json';
 
 let byCode = null; // Map<CODE, {icao, iata, name, city, country, lat, lon}>
 let loading = null;
@@ -39,12 +40,36 @@ function splitCsvLine(line) {
   return out;
 }
 
+// ── Codes the public dataset misses or disagrees with ───────────────────────
+// OurAirports has no ALY record at all (including closed airports did not
+// bring one back), and its HEAX row carries Borg El Arab's IATA code (HBE) and
+// coordinates. A pilot writing ALY on an Air Cairo voyage report means
+// Alexandria, and the code has to resolve or the sector cannot be night-checked.
+//
+// Each override says where it came from, so it can be re-checked when the
+// upstream data changes. Overrides win over the dataset.
+const OVERRIDES = [
+  {
+    icao: 'HEAX', iata: 'ALY', name: 'Alexandria El Nouzha', city: 'Alexandria',
+    country: 'EG', lat: 31.184, lon: 29.949, closed: true,
+    // El Nouzha stopped taking scheduled traffic in 2011 (it moved to Borg El
+    // Arab, HBE). Marked closed so the scan review asks rather than assumes,
+    // and never so that the flight is refused.
+    source: 'owner decision 2026-10-22; OurAirports has no ALY',
+  },
+];
+
 function buildMap(rows) {
   const map = new Map();
   for (const r of rows) {
     for (const key of [r.icao, r.iata]) {
       if (key && !map.has(key)) map.set(key, r);
     }
+  }
+  // Applied last and unconditionally: an override exists because the dataset
+  // is wrong or silent about that code.
+  for (const o of OVERRIDES) {
+    for (const key of [o.icao, o.iata]) if (key) map.set(key, o);
   }
   return map;
 }
@@ -78,7 +103,12 @@ async function load() {
     const cCountry = col('iso_country'); const cCity = col('municipality');
     const cIata = col('iata_code'); const cIcao = col('icao_code');
 
-    const KEEP = new Set(['large_airport', 'medium_airport', 'small_airport', 'seaplane_base']);
+    // 'closed' is included deliberately. OurAirports marks an airport closed
+    // when it stops serving scheduled traffic, but the pilot still flew there,
+    // and the code still belongs in their logbook — Alexandria El Nouzha (ALY
+    // / HEAX) is the case that brought this up. We keep the record so the code
+    // resolves, and mark it so the review can ask rather than guess.
+    const KEEP = new Set(['large_airport', 'medium_airport', 'small_airport', 'seaplane_base', 'closed']);
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i]) continue;
@@ -95,6 +125,7 @@ async function load() {
         name: f[cName] || null,
         city: f[cCity] || null,
         country: f[cCountry] || null,
+        closed: f[cType] === 'closed',
         lat: Math.round(lat * 1000) / 1000,
         lon: Math.round(lon * 1000) / 1000,
       });
@@ -113,7 +144,8 @@ async function load() {
   return loading;
 }
 
-/** Resolve a raw logbook code (ICAO or IATA, any case) → airport record or null. */
+/** Resolve a raw logbook code (ICAO or IATA, any case) → airport record or null.
+ *  Closed airports resolve like any other; the record carries `closed: true`. */
 async function resolveAirport(code) {
   const map = await load();
   const c = String(code || '').trim().toUpperCase();

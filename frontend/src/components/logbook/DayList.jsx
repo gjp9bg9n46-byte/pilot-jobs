@@ -20,7 +20,13 @@ export default function DayList({ logs, timeFormat, grouping = 'month', onOpen }
     <div>
       {groups.map((g) => (
         <section key={g.date}>
-          <div className="lb-day"><span>{g.label}</span><span className="mono">{duration(g.hours, timeFormat)}</span></div>
+          <div className="lb-day">
+            <span>{g.label}</span>
+            <span className="mono">
+              {duration(g.hours, timeFormat)}
+              <span className="n">  ·  {g.flights.length} {g.flights.length === 1 ? 'flight' : 'flights'}</span>
+            </span>
+          </div>
           {g.flights.map((f) => (
             <FlightRow
               key={f.id}
@@ -28,6 +34,7 @@ export default function DayList({ logs, timeFormat, grouping = 'month', onOpen }
               timeFormat={timeFormat}
               overnightFrom={overnightReturnOf(f, logs)}
               overlap={overlaps.has(f.id) ? overlapLabel(overlaps.get(f.id)) : null}
+              showDate={grouping === 'month'}
               onOpen={onOpen}
             />
           ))}

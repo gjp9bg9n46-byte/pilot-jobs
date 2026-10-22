@@ -320,7 +320,9 @@ exports.saveScan = async (req, res, next) => {
         totalTime: hours,
         picTime: role === 'PIC' ? hours : 0,
         sicTime: role === 'SIC' ? hours : 0,
-        nightTime: s.night != null ? Math.round((s.night / 60) * 100) / 100 : 0,
+        // null, not 0: a sector we could not work the sun out for has an
+        // unknown night time, and 0 would be a claim we cannot make.
+        nightTime: s.night != null ? Math.round((s.night / 60) * 100) / 100 : null,
         // The crew's own N column is evidence; our sun calculation is a model
         // of it. Remember which one this is, so a later edit cannot quietly
         // replace what the crew wrote.

@@ -406,7 +406,8 @@ model FlightLog {
   instrumentActualTime Float  @default(0)
   instrumentSimTime    Float  @default(0)
   crossCountryTime     Float  @default(0)
-  nightTime            Float  @default(0)
+  // Nullable: unknown (no resolvable airport, nothing on the form) is not 0.
+  nightTime            Float? @default(0)
   // Where nightTime came from: "form" (the crew's own N column on a voyage
   // report) or "calculated" (the sun along the route). A figure the crew wrote
   // down is evidence; ours is a model of it, so a form value is never

@@ -8,6 +8,10 @@ const prisma = require('../config/database');
 const { ROLE_PRESETS, presetFor } = require('../services/logbookEntry');
 
 const TIME_FORMATS = ['hhmm', 'decimal'];
+// How the flight list is grouped. Month is what a pilot who has never chosen
+// gets ("how much did I fly in October" is the everyday question); an explicit
+// choice of Day is remembered, and the same setting drives web and app.
+const GROUPINGS = ['month', 'day'];
 
 exports.getPrefs = async (req, res, next) => {
   try {
@@ -18,6 +22,7 @@ exports.getPrefs = async (req, res, next) => {
     const prefs = pilot.logbookPrefs || {};
     res.json({
       timeFormat: TIME_FORMATS.includes(prefs.timeFormat) ? prefs.timeFormat : 'hhmm',
+      grouping: GROUPINGS.includes(prefs.grouping) ? prefs.grouping : 'month',
       rolePreset: presetFor(pilot),
       rolePresets: Object.entries(ROLE_PRESETS).map(([key, v]) => ({ key, ...v })),
       keepScanImages: !!prefs.keepScanImages,
@@ -40,6 +45,10 @@ exports.updatePrefs = async (req, res, next) => {
     if (body.timeFormat !== undefined) {
       if (!TIME_FORMATS.includes(body.timeFormat)) return res.status(422).json({ error: 'timeFormat must be hhmm or decimal.' });
       prefs.timeFormat = body.timeFormat;
+    }
+    if (body.grouping !== undefined) {
+      if (!GROUPINGS.includes(body.grouping)) return res.status(422).json({ error: 'grouping must be month or day.' });
+      prefs.grouping = body.grouping;
     }
     if (body.rolePreset !== undefined) {
       if (!ROLE_PRESETS[body.rolePreset]) return res.status(422).json({ error: 'Unknown role preset.' });

@@ -4,6 +4,9 @@
 .lb {
   --lb-green: #15803D; --lb-amber: #B45309; --lb-red: #B42318;
   --lb-amber-bg: #FFF8EC; --lb-amber-line: #F3DDB5; --lb-green-bg: #E7F5EC;
+  /* Questions to the pilot are navy, never amber: "look at this" must not read
+     as "something is wrong". Amber and red stay for real problems. */
+  --lb-ask: #003F88; --lb-ask-bg: #F4F8FD; --lb-ask-line: #D5E1F1; --lb-ask-field: #9DB6D8;
   font-family: var(--font-body);
 }
 .lb .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -32,6 +35,7 @@
 .lb-rec-note { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 12px; font-weight: 400; line-height: 1.4; }
 
 /* Day groups */
+.lb-day .n { font-weight: 400; color: var(--text-faint, #8592A3); }
 .lb-day { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: 20px 0 6px; }
 .lb-pair { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
 .lb-leg { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--border); font-size: 14px; width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; cursor: pointer; color: var(--text-primary); font-family: inherit; }
@@ -51,8 +55,8 @@
 .lb-grid4 > div:first-child { border-left: 0; }
 .lb-grid4 span { display: block; font-size: 10.5px; color: var(--text-faint); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .lb-grid4 b { font-size: 14.5px; color: var(--text-primary); }
-.lb-grid4 .q { background: var(--lb-amber-bg); }
-.lb-grid4 .q b { color: var(--lb-amber); border-bottom: 1.5px dashed var(--lb-amber); }
+.lb-grid4 .q { background: var(--lb-ask-bg); }
+.lb-grid4 .q b { color: var(--lb-ask); border-bottom: 1.5px dashed var(--lb-ask-field); }
 .lb-kv { display: grid; grid-template-columns: 1fr 1fr; }
 .lb-kv > div { padding: 8px 14px; font-size: 12.5px; display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid #F0F3F7; color: var(--text-primary); }
 .lb-kv > div:nth-child(-n+2) { border-top: 0; }
@@ -69,22 +73,22 @@
 .lb-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .lb-tabs button { font: 600 13px var(--font-body); padding: 7px 12px; border-radius: 8px; color: var(--text-secondary); border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
 .lb-tabs button.on { background: var(--navy-deep); color: #fff; border-color: var(--navy-deep); }
-.lb-tabs .warnDot { color: var(--lb-amber); font-weight: 700; }
+.lb-tabs .warnDot { color: var(--lb-ask); font-weight: 700; }
 .lb-gl { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); margin: 16px 0 8px; display: flex; justify-content: space-between; align-items: center; }
 .lb-fg { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px 12px; }
 .lb-f label { display: block; font-size: 11px; font-weight: 600; color: var(--text-faint); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 5px; }
 .lb-f input, .lb-f select { width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 14px; background: var(--surface); color: var(--text-primary); font-family: inherit; }
-.lb-f.q input { border-color: #E9B872; background: var(--lb-amber-bg); color: var(--lb-amber); font-weight: 600; }
+.lb-f.q input { border-color: var(--lb-ask-field); border-width: 1.5px; background: var(--lb-ask-bg); color: var(--text-primary); font-weight: 600; }
 .lb-f.calc div { height: 38px; border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; display: flex; align-items: center; font-size: 14px; background: #F7F9FC; color: var(--text-secondary); }
-.lb-f .why { font-size: 11.5px; color: var(--lb-amber); margin-top: 4px; line-height: 1.35; }
+.lb-f .why { font-size: 11.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.35; }
 .lb-f .rem { color: var(--text-faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
 .span2 { grid-column: span 2; } .span3 { grid-column: span 3; } .span6 { grid-column: span 6; }
 .lb-foot { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding: 14px 0 0; margin-top: 18px; gap: 12px; flex-wrap: wrap; }
 .lb-foot .s { font-size: 12.5px; color: var(--text-secondary); }
-.lb-warn { display: flex; gap: 9px; background: var(--lb-amber-bg); border: 1px solid var(--lb-amber-line); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45; color: #5B3A0A; margin-bottom: 12px; }
+.lb-warn { display: flex; gap: 9px; background: var(--lb-ask-bg); border: 1px solid var(--lb-ask-line); border-left: 3px solid var(--lb-ask); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45; color: var(--text-primary); margin-bottom: 12px; }
 .lb-dup { font-size: 11.5px; font-weight: 700; color: var(--text-faint); background: #EEF1F5; border-radius: 6px; padding: 3px 7px; }
 .lb-ok { font-size: 11.5px; font-weight: 700; color: var(--lb-green); background: var(--lb-green-bg); border-radius: 6px; padding: 3px 7px; }
-.lb-chk { font-size: 11.5px; font-weight: 700; color: var(--lb-amber); background: #FDF1DD; border-radius: 6px; padding: 3px 7px; }
+.lb-chk { font-size: 11.5px; font-weight: 700; color: var(--lb-ask); background: #DCE7F5; border-radius: 6px; padding: 3px 7px; }
 .lb-crop { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; margin-top: 8px; }
 .lb-crop img { display: block; }
 
@@ -104,8 +108,8 @@
 }
 
 /* The row strip shown next to flagged fields on the review screen. */
-.lb-crop { border: 1px solid var(--lb-amber-line); border-radius: 10px; overflow: hidden; background: var(--lb-amber-bg); margin: 14px 0 4px; }
-.lb-crop-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--lb-amber); padding: 8px 12px 6px; }
+.lb-crop { border: 1px solid var(--lb-ask-line); border-radius: 10px; overflow: hidden; background: var(--lb-ask-bg); margin: 14px 0 4px; }
+.lb-crop-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--lb-ask); padding: 8px 12px 6px; }
 .lb-crop img { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; background: #fff; }
 .lb-crop-wait { padding: 18px 12px; font-size: 12.5px; color: var(--text-faint); }
 
@@ -117,8 +121,8 @@
 /* A flagged date is a question, not a note: it has to be answered. */
 .lb-choice { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .lb-choice button { font: 600 12.5px var(--font-body); padding: 6px 10px; border-radius: 8px;
-  border: 1px solid #E9B872; background: #fff; color: var(--lb-amber); cursor: pointer; }
-.lb-choice button.on { background: var(--lb-amber); border-color: var(--lb-amber); color: #fff; }
+  border: 1px solid var(--lb-ask-line); background: #fff; color: var(--lb-ask); cursor: pointer; }
+.lb-choice button.on { background: var(--lb-ask); border-color: var(--lb-ask); color: #fff; }
 /* A sector that pushed back after midnight carries its own date. */
 .lb-nextday { color: var(--text-faint); font-weight: 500; }
 
@@ -147,6 +151,7 @@
 
 .lb-fc-meta { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .lb-fc-meta .t { color: var(--text-secondary); font-size: 12.5px; }
+.lb-fc-meta .d { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .lb-fc-meta .r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .lb-fc .night { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 12px; }
 .lb-fc .tag { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; border-radius: 6px; padding: 2px 7px; }
@@ -181,9 +186,17 @@
 .lb-group button.on { background: #0B1F3A; color: #fff; }
 
 /* A scan-review question: calm, specific, answerable in one click. */
-.lb-q { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 12px 14px; margin: 10px 0; background: var(--surface); }
-.lb-q .t { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.lb-q .b { margin: 3px 0 0; font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+.lb-q { border: 1px solid #D5E1F1; border-left: 3px solid var(--accent); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: #F4F8FD; }
+.lb-q .t { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); }
+.lb-q .b { margin: 4px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--text-secondary); }
 .lb-q .a { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .lb-q .a button { font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); }
 .lb-q .a button.main { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* The label of a field under question, so the eye finds it without colour
+   shouting at the pilot. */
+.lb-f.q > label { color: var(--lb-ask); }
+
+/* "…on MSC 960 · JED–ALY" — a link to the sector the question is on, because
+   the review shows one sector at a time. */
+.lb-jump { font: inherit; font-weight: 600; color: var(--lb-ask); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }

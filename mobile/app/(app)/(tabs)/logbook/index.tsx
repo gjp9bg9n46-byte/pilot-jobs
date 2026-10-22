@@ -130,7 +130,9 @@ function LogbookList() {
   const [addOpen, setAddOpen] = useState(false);
   // Month is the default: "how much did I fly in October" is the everyday
   // question; a day group is usually one or two sectors.
-  const [grouping, setGrouping] = useState<Grouping>('month');
+  // Month unless this pilot has chosen Day; the choice is stored in logbook
+  // prefs, so web and app agree and it survives a reinstall.
+  const [groupingOverride, setGroupingOverride] = useState<Grouping | null>(null);
   const qc = useQueryClient();
 
   // ONE call for prefs + scan quota + totals + this page (GET /logbook/bootstrap),
@@ -151,6 +153,15 @@ function LogbookList() {
   // Applied locally at once, then written; the bundle carries the stored value.
   const [timeFormatOverride, setTimeFormatOverride] = useState<TimeFormat | null>(null);
   const timeFormat: TimeFormat = timeFormatOverride ?? (data?.prefs?.timeFormat as TimeFormat) ?? 'hhmm';
+  const grouping: Grouping = groupingOverride ?? (data?.prefs?.grouping as Grouping) ?? 'month';
+  const setGrouping = (g: Grouping) => {
+    if (g === grouping) return;
+    tapLight();
+    setGroupingOverride(g);
+    api.put('/logbook/prefs', { grouping: g })
+      .then(() => qc.invalidateQueries({ queryKey: ['logbook'] }))
+      .catch(() => {});
+  };
   const setTimeFormat = (fmt: TimeFormat) => {
     if (fmt === timeFormat) return;
     tapLight();
@@ -324,12 +335,12 @@ function LogbookList() {
   // the sectors they head. Same shape on screen as the SectionList it replaces,
   // but only the visible rows are mounted — a 500-flight logbook scrolls at the
   // same cost as a 20-flight one.
-  type Row = { kind: 'day'; key: string; title: string; hours: number }
+  type Row = { kind: 'day'; key: string; title: string; hours: number; count: number }
            | { kind: 'leg'; key: string; log: Log; first: boolean; last: boolean };
   const rows: Row[] = useMemo(() => {
     const out: Row[] = [];
     for (const d of daySections) {
-      out.push({ kind: 'day', key: `d:${d.ym}`, title: d.title, hours: d.hours });
+      out.push({ kind: 'day', key: `d:${d.ym}`, title: d.title, hours: d.hours, count: d.data.length });
       d.data.forEach((log: Log, i: number) => {
         out.push({ kind: 'leg', key: log.id, log, first: i === 0, last: i === d.data.length - 1 });
       });
@@ -359,7 +370,10 @@ function LogbookList() {
             return (
               <View style={styles.dayHeader}>
                 <Text style={styles.dayLabel}>{item.title}</Text>
-                <Text style={styles.dayHours}>{duration(item.hours, timeFormat)}</Text>
+                <Text style={styles.dayHours}>
+                  {duration(item.hours, timeFormat)}
+                  <Text style={styles.dayCount}>  ·  {item.count} {item.count === 1 ? 'flight' : 'flights'}</Text>
+                </Text>
               </View>
             );
           }
@@ -370,6 +384,7 @@ function LogbookList() {
               timeFormat={timeFormat}
               overnightFrom={overnightReturnOf(log, logs)}
               overlap={overlaps.has(log.id) ? overlapLabel(overlaps.get(log.id)) : null}
+              showDate={grouping === 'month'}
               onPress={() => { stashFlight(log); router.push(`/logbook/flight/${log.id}`); }}
             />
           );
@@ -424,6 +439,7 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   recDrop: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },
   dayHeader: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18, marginBottom: 6 },
   dayLabel: { fontSize: 11.5, fontFamily: fontFamilies.bodyBold, letterSpacing: 0.9, textTransform: 'uppercase', color: pilot.faint },
+  dayCount: { fontFamily: fontFamilies.body, color: pilot.faint },
   dayHours: { fontSize: 12.5, fontFamily: fontFamilies.body, color: pilot.faint, fontVariant: ['tabular-nums'] },
   dayLeg: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pilot.surface, borderColor: pilot.line, borderWidth: 1, borderTopWidth: 0, paddingVertical: 12, paddingHorizontal: 14 },
   legFirst: { borderTopWidth: 1, borderTopLeftRadius: 12, borderTopRightRadius: 12 },

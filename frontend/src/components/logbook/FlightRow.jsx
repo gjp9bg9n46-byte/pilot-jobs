@@ -1,6 +1,6 @@
 import React from 'react';
 import { Moon, ArrowLeftRight } from 'lucide-react';
-import { duration, landsNextDay } from '../../lib/logbookFormat';
+import { duration, landsNextDay, shortDayLabel } from '../../lib/logbookFormat';
 
 const toMin = (s) => {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || ''));
@@ -34,8 +34,11 @@ export function trackPoints(log) {
  * Night is written as a duration — an hour of night is information, an icon on
  * its own is decoration.
  */
-export default function FlightRow({ log, timeFormat, overnightFrom, overlap, onOpen }) {
+export default function FlightRow({ log, timeFormat, overnightFrom, overlap, showDate, onOpen }) {
   const pts = trackPoints(log);
+  // null means we could not work it out (no resolvable airport, nothing on the
+  // form). That is not a day flight, and it shows as "—".
+  const nightUnknown = log.nightTime === null || log.nightTime === undefined;
   const night = Number(log.nightTime) || 0;
   const role = log.pilotFlying === true ? 'PF' : log.pilotFlying === false ? 'PM' : null;
   const type = log.displayType || log.aircraftType;
@@ -43,12 +46,15 @@ export default function FlightRow({ log, timeFormat, overnightFrom, overlap, onO
   return (
     <button type="button" className="lb-fc" onClick={() => onOpen(log)}>
       <span className="lb-fc-meta">
+        {showDate && <span className="d">{shortDayLabel(log.date)}</span>}
         <b className="mono">{log.flightNumber || '—'}</b>
         {type && <span className="t">{type}</span>}
         <span className="r">
-          {night > 0 && (
-            <span className="night"><Moon size={12} aria-hidden /><span className="mono">{duration(night, timeFormat)}</span></span>
-          )}
+          {nightUnknown
+            ? <span className="night"><Moon size={12} aria-hidden /><span className="mono">—</span></span>
+            : night > 0 && (
+              <span className="night"><Moon size={12} aria-hidden /><span className="mono">{duration(night, timeFormat)}</span></span>
+            )}
           {role && <span className={`tag ${role.toLowerCase()}`}>{role}</span>}
         </span>
       </span>

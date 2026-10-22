@@ -23,7 +23,13 @@ import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/them
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
 
-const AMBER = '#B45309';
+// A question to the pilot is not a warning. The calm style from the mockup:
+// a light navy tint, a 3px navy edge and an ⓘ, so "look at this" never reads
+// as "something is wrong". Amber and red are kept for real problems — an
+// expired licence or medical, or a save that failed.
+const ASK_BG = '#F4F8FD';
+const ASK_LINE = '#D5E1F1';
+const ASK_FIELD = '#9DB6D8';
 const RED = '#B42318';
 const GREEN = '#15803D';
 
@@ -118,7 +124,7 @@ export default function ScanVoyageReport() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         {header('Scan voyage report', () => router.back())}
         <ScrollView contentContainerStyle={styles.pad}>
-          {error ? <View style={styles.warn}><Ionicons name="alert-circle-outline" size={16} color={AMBER} /><Text style={styles.warnText}>{error}</Text></View> : null}
+          {error ? <View style={styles.err}><Ionicons name="alert-circle-outline" size={16} color={RED} /><Text style={styles.errText}>{error}</Text></View> : null}
           {busy ? (
             <View style={styles.reading}>
               <ActivityIndicator color={pilot.navy} />
@@ -221,7 +227,7 @@ export default function ScanVoyageReport() {
             the server's suggestion is one tap. */}
         {scan.header.flags?.date ? (
           <View style={styles.warn}>
-            <Ionicons name="alert-circle-outline" size={16} color={AMBER} />
+            <Ionicons name="information-circle-outline" size={16} color={pilot.navy} />
             <View style={{ flex: 1 }}>
               <Text style={styles.warnText}>{scan.header.flags.date.message}</Text>
               <View style={styles.dateRow}>
@@ -312,7 +318,10 @@ export default function ScanVoyageReport() {
                   tap away. Never a reason the save is refused. */}
               {openQuestions(i, s).map((q: Any) => (
                 <View key={q.id} style={styles.q}>
-                  <Text style={styles.qTitle}>{q.title}</Text>
+                  <View style={styles.qHead}>
+                    <Ionicons name="information-circle-outline" size={15} color={pilot.navy} />
+                    <Text style={styles.qTitle}>{q.title}</Text>
+                  </View>
                   <Text style={styles.qBody}>{q.body}</Text>
                   <View style={styles.qActions}>
                     {(q.actions || []).map((a: Any) => (
@@ -421,14 +430,17 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   readingText: { fontSize: fontSizes.base, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
   readingSub: { fontSize: 13, color: pilot.muted, fontFamily: fontFamilies.body },
 
-  warn: { flexDirection: 'row', gap: 9, backgroundColor: '#FFF8EC', borderWidth: 1, borderColor: '#F3DDB5', borderRadius: 10, padding: 11, marginBottom: 10 },
-  warnText: { flex: 1, fontSize: 12.5, lineHeight: 18, color: '#5B3A0A', fontFamily: fontFamilies.body },
+  warn: { flexDirection: 'row', gap: 9, backgroundColor: ASK_BG, borderWidth: 1, borderColor: ASK_LINE, borderLeftWidth: 3, borderLeftColor: pilot.navy, borderRadius: 10, padding: 11, marginBottom: 10 },
+  warnText: { flex: 1, fontSize: 12.5, lineHeight: 18, color: pilot.ink, fontFamily: fontFamilies.body },
   warnStrong: { fontFamily: fontFamilies.bodySemiBold },
+  // A failure, not a question: the scan did not come back, or the save failed.
+  err: { flexDirection: 'row', gap: 9, backgroundColor: '#FDEEEC', borderWidth: 1, borderColor: '#F4CFCB', borderRadius: 10, padding: 11, marginBottom: 10 },
+  errText: { flex: 1, fontSize: 12.5, lineHeight: 18, color: '#7A1C14', fontFamily: fontFamilies.body },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
-  dateInput: { flex: 1, height: 38, borderWidth: 1, borderColor: '#E9B872', borderRadius: 8, paddingHorizontal: 10, backgroundColor: '#fff', color: '#5B3A0A', fontFamily: fontFamilies.body, fontSize: 14 },
-  useBtn: { height: 38, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E9B872', alignItems: 'center', justifyContent: 'center' },
-  useBtnText: { color: AMBER, fontFamily: fontFamilies.bodySemiBold, fontSize: 12.5 },
-  useBtnOn: { backgroundColor: AMBER, borderColor: AMBER },
+  dateInput: { flex: 1, height: 38, borderWidth: 1.5, borderColor: ASK_FIELD, borderRadius: 8, paddingHorizontal: 10, backgroundColor: '#fff', color: pilot.ink, fontFamily: fontFamilies.body, fontSize: 14 },
+  useBtn: { height: 38, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: ASK_LINE, alignItems: 'center', justifyContent: 'center' },
+  useBtnText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: 12.5 },
+  useBtnOn: { backgroundColor: pilot.navy, borderColor: pilot.navy },
   useBtnTextOn: { color: '#fff' },
   keepBtn: { backgroundColor: '#fff' },
 
@@ -444,17 +456,17 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   route: { fontFamily: fontFamilies.display, fontSize: 19, color: pilot.ink },
   flSub: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 2 },
   ok: { fontSize: 11.5, fontFamily: fontFamilies.bodyBold, color: GREEN, backgroundColor: '#E7F5EC', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, overflow: 'hidden' },
-  chk: { fontSize: 11.5, fontFamily: fontFamilies.bodyBold, color: AMBER, backgroundColor: '#FDF1DD', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, overflow: 'hidden' },
+  chk: { fontSize: 11.5, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#DCE7F5', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, overflow: 'hidden' },
   dup: { fontSize: 11.5, fontFamily: fontFamilies.bodyBold, color: pilot.faint, backgroundColor: '#EEF1F5', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, overflow: 'hidden' },
 
   grid4: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: pilot.line },
   cell: { flex: 1, paddingVertical: 8, paddingHorizontal: 10, borderLeftWidth: 1, borderLeftColor: pilot.line },
-  cellQ: { backgroundColor: '#FFF8EC' },
+  cellQ: { backgroundColor: ASK_BG },
   cellLabel: { fontSize: 10.5, color: pilot.faint, fontFamily: fontFamilies.bodySemiBold, textTransform: 'uppercase', letterSpacing: 0.4 },
   cellValue: { fontSize: 14.5, color: pilot.ink, fontFamily: fontFamilies.body, fontVariant: ['tabular-nums'] },
-  cellValueQ: { color: AMBER, fontFamily: fontFamilies.bodySemiBold },
+  cellValueQ: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
   cellInput: { fontSize: 14.5, color: pilot.ink, fontFamily: fontFamilies.body, padding: 0, height: 22 },
-  cellInputQ: { color: AMBER },
+  cellInputQ: { color: pilot.navy, borderWidth: 1.5, borderColor: ASK_FIELD, borderRadius: 8, paddingHorizontal: 6, height: 30 },
 
   kv: { flexDirection: 'row', flexWrap: 'wrap' },
   kvCell: { width: '50%', flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7, paddingHorizontal: 14, borderTopWidth: 1, borderTopColor: '#F0F3F7' },
@@ -462,16 +474,21 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   kvValue: { fontSize: 12.5, color: pilot.ink, fontFamily: fontFamilies.bodySemiBold, fontVariant: ['tabular-nums'] },
 
   why: { padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: pilot.line, backgroundColor: '#FCFDFE' },
-  whyLine: { fontSize: 12.5, lineHeight: 18, color: AMBER, fontFamily: fontFamilies.body },
+  whyLine: { fontSize: 12.5, lineHeight: 18, color: pilot.muted, fontFamily: fontFamilies.body },
   pfRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
 
   compare: { fontSize: 11.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.faint, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
   page: { width: '100%', height: 190, borderRadius: 8, backgroundColor: '#F1EEE6' },
   note: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 14, lineHeight: 18 },
   // A question on the card it belongs to: calm, specific, answerable in a tap.
-  q: { marginTop: 10, borderTopWidth: 1, borderTopColor: '#EEF1F5', paddingTop: 10 },
-  qTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: 14, color: pilot.ink },
-  qBody: { marginTop: 3, fontFamily: fontFamilies.body, fontSize: 13, lineHeight: 18, color: pilot.muted },
+  q: {
+    margin: 12, marginTop: 0, padding: 10, paddingHorizontal: 12, borderRadius: 10,
+    backgroundColor: ASK_BG, borderWidth: 1, borderColor: ASK_LINE,
+    borderLeftWidth: 3, borderLeftColor: pilot.navy,
+  },
+  qHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  qTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: 13, color: pilot.navy },
+  qBody: { marginTop: 4, marginBottom: 8, fontFamily: fontFamilies.body, fontSize: 12.5, lineHeight: 17.5, color: pilot.muted },
   qActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   qBtn: { paddingHorizontal: 12, height: 34, borderRadius: 8, borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface, alignItems: 'center', justifyContent: 'center' },
   qBtnText: { fontFamily: fontFamilies.bodySemiBold, fontSize: 13, color: pilot.ink },

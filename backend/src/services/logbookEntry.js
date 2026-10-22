@@ -53,6 +53,9 @@ async function buildFlightRow(input, pilot) {
   // gave a figure, in which case that stands. It survives an edit to any other
   // field, including the date: the sun moves between years, what the crew wrote
   // does not.
+  // Unknown is not zero. When the crew wrote nothing and the sun cannot be
+  // worked out — an airport code we cannot resolve has no coordinates — night
+  // is stored as null and shown as "—", rather than asserting "no night".
   let nightHours = 0;
   let nightSource = null;
   if (Number.isFinite(Number(input.nightOverrideMinutes))) {
@@ -64,6 +67,7 @@ async function buildFlightRow(input, pilot) {
   } else if (date && departure && arrival && off && on) {
     const n = await nightMinutes({ date, departure, arrival, off, on });
     if (n) { nightHours = n.hours; nightSource = 'calculated'; }
+    else { nightHours = null; }   // no coordinates for one of the two codes
   }
 
   const role = input.role === 'PIC' || input.role === 'SIC' ? input.role : ROLE_PRESETS[presetFor(pilot)].role;

@@ -594,7 +594,16 @@ export default function Logbook() {
   // Preferences decide how every duration on this page is written.
   useEffect(() => { logbookApi.prefs().then(({ data }) => setPrefs(data)).catch(() => {}); }, []);
   const timeFormat = prefs?.timeFormat || 'hhmm';
-  const [grouping, setGrouping] = useState('month');
+  // Month unless this pilot has chosen Day. Stored in logbook prefs, so the
+  // choice is the same on the phone.
+  const [groupingOverride, setGroupingOverride] = useState(null);
+  const grouping = groupingOverride ?? prefs?.grouping ?? 'month';
+  const setGrouping = async (g) => {
+    if (g === grouping) return;
+    setGroupingOverride(g);
+    try { const { data } = await logbookApi.updatePrefs({ grouping: g }); setPrefs(data); }
+    catch { /* keep the optimistic choice */ }
+  };
   const setTimeFormat = async (fmt) => {
     setPrefs((p) => ({ ...(p || {}), timeFormat: fmt }));
     try { const { data } = await logbookApi.updatePrefs({ timeFormat: fmt }); setPrefs(data); } catch { /* keep the optimistic choice */ }

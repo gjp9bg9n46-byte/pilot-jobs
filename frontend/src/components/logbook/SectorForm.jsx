@@ -78,7 +78,7 @@ export default function SectorForm({ value, flags = {}, onChange, onFieldFocus, 
               <label>Night <span className="rem">· {nightNote || 'calculated'}</span></label>
               <div className="mono">{minutesToHHMM(night)}</div>
             </div>
-            {flags.night && <p className="why span6" style={{ margin: 0, color: 'var(--lb-amber)', fontSize: 12 }}>{flags.night.message}</p>}
+            {flags.night && <p className="why span6" style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 12 }}>{flags.night.message}</p>}
             {field('approach', 'Approach', { span: 'span3', placeholder: 'ILS 34L' })}
             {field('remarks', 'Remarks', { span: 'span3', placeholder: 'Optional' })}
           </div>

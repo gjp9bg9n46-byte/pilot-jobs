@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Camera, Check, Loader2, Upload } from 'lucide-react';
+import { AlertTriangle, Camera, Check, Info, Loader2, Upload } from 'lucide-react';
 import LightPage from '../components/primitives/LightPage';
 import Button from '../components/primitives/Button';
 import SectorForm from '../components/logbook/SectorForm';
@@ -218,7 +218,7 @@ export default function AddFlights() {
                       one click away — never a reason the save is refused. */}
                   {openQuestions(active, scan.sectors[active] || {}).map((q) => (
                     <div className="lb-q" key={q.id}>
-                      <p className="t">{q.title}</p>
+                      <p className="t"><Info size={14} aria-hidden /> {q.title}</p>
                       <p className="b">{q.body}</p>
                       <div className="a">
                         {(q.actions || []).map((a) => (
@@ -301,7 +301,25 @@ export default function AddFlights() {
                       {scan.header.flags?.date && !dateChoice
                         ? 'Choose which date these flights belong to before saving.'
                         : totalOpen > 0
-                          ? `${totalOpen} quick ${totalOpen === 1 ? 'question' : 'questions'} above. Everything else is ready.`
+                          // The review shows one sector at a time, so "above"
+                          // is only true when the open question is on the tab
+                          // you are looking at. Otherwise say which sector it
+                          // is on, and take the pilot there.
+                          ? (openQuestions(active, scan.sectors[active] || {}).length
+                            ? `${totalOpen} quick ${totalOpen === 1 ? 'question' : 'questions'} above. Everything else is ready.`
+                            : (() => {
+                              const i = scan.sectors.findIndex((sec, idx) => !sec.duplicate && openQuestions(idx, sec).length);
+                              const sec = scan.sectors[i] || {};
+                              const name = sec.flightNumber || `Sector ${i + 1}`;
+                              return (
+                                <>
+                                  {totalOpen} quick {totalOpen === 1 ? 'question' : 'questions'} on{' '}
+                                  <button type="button" className="lb-jump" onClick={() => setActive(i)}>
+                                    {name} · {sec.from}–{sec.to}
+                                  </button>. Everything else is ready.
+                                </>
+                              );
+                            })())
                         : <>Nothing is saved until you click Save.{' '}
                           {scan.sectors.filter((x) => x.duplicate).map((x) => `${x.flightNumber || 'A sector'} is already in your logbook (${x.duplicateReason}) and will be skipped.`).join(' ')}</>}
                     </span>

@@ -14,7 +14,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import PressableScale from '../PressableScale';
-import { duration, landsNextDay, TimeFormat } from '../../lib/logbookFormat';
+import { duration, landsNextDay, shortDayLabel, TimeFormat } from '../../lib/logbookFormat';
 import { ThemePalette, useThemedStyles } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/tokens';
 
@@ -49,16 +49,21 @@ export function trackPoints(log: Log) {
 }
 
 export default function FlightRow({
-  log, timeFormat, overnightFrom, overlap, onPress,
+  log, timeFormat, overnightFrom, overlap, showDate, onPress,
 }: {
   log: Log;
   timeFormat: TimeFormat;
   overnightFrom?: string | null;
   overlap?: string | null;
+  /** Month view: the group header only says the month, so the card carries its date. */
+  showDate?: boolean;
   onPress: () => void;
 }) {
   const styles = useThemedStyles(createStyles);
   const pts = trackPoints(log);
+  // null means we could not work it out (no resolvable airport, nothing on the
+  // form). That is not the same as a day flight, and it shows as "—".
+  const nightUnknown = log.nightTime === null || log.nightTime === undefined;
   const night = Number(log.nightTime) || 0;
   const role = log.pilotFlying === true ? 'PF' : log.pilotFlying === false ? 'PM' : null;
   const plus1 = landsNextDay(log.offBlocksTime, log.onBlocksTime);
@@ -67,12 +72,18 @@ export default function FlightRow({
     <PressableScale style={styles.card} onPress={onPress} accessibilityRole="button">
       {/* Flight number, type, night and role — the strip across the top. */}
       <View style={styles.meta}>
+        {showDate ? <Text style={styles.date}>{shortDayLabel(log.date)}</Text> : null}
         <Text style={styles.flightNo}>{log.flightNumber || '—'}</Text>
         {log.displayType || log.aircraftType ? (
           <Text style={styles.type}>{log.displayType || log.aircraftType}</Text>
         ) : null}
         <View style={styles.metaRight}>
-          {night > 0 ? (
+          {nightUnknown ? (
+            <View style={styles.night}>
+              <Ionicons name="moon-outline" size={12} color={styles.nightText.color as string} />
+              <Text style={styles.nightText}>—</Text>
+            </View>
+          ) : night > 0 ? (
             <View style={styles.night}>
               <Ionicons name="moon-outline" size={12} color={styles.nightText.color as string} />
               <Text style={styles.nightText}>{duration(night, timeFormat)}</Text>
@@ -131,6 +142,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
     borderRadius: 14, padding: 14, marginBottom: 10,
   },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  date: { fontFamily: fontFamilies.bodySemiBold, fontSize: 12, color: pilot.muted },
   flightNo: { fontFamily: fontFamilies.mono, fontSize: 13, fontWeight: '600', color: pilot.ink },
   type: { fontFamily: fontFamilies.body, fontSize: 12.5, color: pilot.muted },
   metaRight: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 },
