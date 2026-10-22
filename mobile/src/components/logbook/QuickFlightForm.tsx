@@ -113,10 +113,12 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
           {field('registration', 'Registration', { hint: prefs?.last?.registration ? 'remembered' : undefined })}
         </View>
         <View style={styles.row}>
-          {field('offBlocksTime', 'Out', { mono: true, placeholder: '07:26' })}
-          {field('takeoffTime', 'Off', { mono: true, placeholder: '07:39' })}
-          {field('landingTime', 'On', { mono: true, placeholder: '11:47' })}
-          {field('onBlocksTime', 'In', { mono: true, placeholder: '11:53' })}
+          {/* The format, never a sample time — an empty field showing "07:26"
+              reads as a value already entered. */}
+          {field('offBlocksTime', 'Out', { mono: true, placeholder: 'hh:mm' })}
+          {field('takeoffTime', 'Off', { mono: true, placeholder: 'hh:mm' })}
+          {field('landingTime', 'On', { mono: true, placeholder: 'hh:mm' })}
+          {field('onBlocksTime', 'In', { mono: true, placeholder: 'hh:mm' })}
         </View>
 
         <View style={styles.row}>

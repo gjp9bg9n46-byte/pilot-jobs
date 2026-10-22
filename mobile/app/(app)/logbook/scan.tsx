@@ -267,7 +267,7 @@ export default function ScanVoyageReport() {
                   onChangeText={(v) => setSector(i, { [k]: v })}
                   style={[styles.cellInput, flags[k] && styles.cellInputQ]}
                   keyboardType="numbers-and-punctuation"
-                  placeholder="--:--"
+                  placeholder="hh:mm"
                   placeholderTextColor={pilot.faint}
                 />
               ) : (

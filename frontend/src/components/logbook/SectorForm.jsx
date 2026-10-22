@@ -42,10 +42,14 @@ export default function SectorForm({ value, flags = {}, onChange, onFieldFocus, 
 
       <div className="lb-gl"><span>Times · UTC</span></div>
       <div className="lb-fg">
-        {field('out', 'Out', { mono: true, placeholder: '07:26' })}
-        {field('off', 'Off', { mono: true, placeholder: '07:39' })}
-        {field('on', 'On', { mono: true, placeholder: '11:47' })}
-        {field('in', 'In', { mono: true, placeholder: '11:53' })}
+        {/* A time-shaped placeholder reads as a value: an empty OUT showing
+            "07:26" looks filled in at a glance, and on a review screen that is
+            the one thing it must never look like. The placeholder states the
+            format instead. */}
+        {field('out', 'Out', { mono: true, placeholder: 'hh:mm' })}
+        {field('off', 'Off', { mono: true, placeholder: 'hh:mm' })}
+        {field('on', 'On', { mono: true, placeholder: 'hh:mm' })}
+        {field('in', 'In', { mono: true, placeholder: 'hh:mm' })}
         <div className="lb-f calc">
           <label>Block <span className="rem">· calc.</span></label>
           <div className="mono">{minutesToHHMM(block)}</div>

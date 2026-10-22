@@ -200,3 +200,6 @@
 /* "…on MSC 960 · JED–ALY" — a link to the sector the question is on, because
    the review shows one sector at a time. */
 .lb-jump { font: inherit; font-weight: 600; color: var(--lb-ask); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* A placeholder is a hint, never a value: grey, and stating the format. */
+.lb-f input::placeholder, .lb-f textarea::placeholder { color: var(--text-faint, #8592A3); opacity: 1; font-weight: 400; }
