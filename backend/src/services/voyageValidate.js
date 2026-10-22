@@ -60,6 +60,74 @@ function parseDate(v) {
 
 const flag = (level, message) => ({ level, message });
 
+// ── Questions ────────────────────────────────────────────────────────────────
+// A flag says a field looks off. A question says what we would like to know and
+// gives the pilot a way to answer it in one tap. Every question is optional:
+// answering is better data, ignoring it still saves the flight. (The page DATE
+// is the one exception, handled in the header — a wrong date silently files a
+// flight in the wrong month, so that one is answered explicitly.)
+function buildQuestions({ sect, flags, from, to, formNight, nightUsed }) {
+  const qs = [];
+
+  // An airport code we do not recognise, or one our list says is not in use.
+  for (const [field, code, resolved] of [['from', sect.from, from], ['to', sect.to, to]]) {
+    if (!code) continue;
+    if (!resolved) {
+      qs.push({
+        id: `${field}-unknown`, field,
+        title: `Is ${code} right?`,
+        body: `${code} is not in our airport list. Confirm it, or fix the code.`,
+        actions: [
+          { id: 'confirm', label: `Yes, ${code} is right` },
+          { id: 'edit', label: 'Change code', edits: field },
+        ],
+      });
+    } else if (resolved.closed) {
+      qs.push({
+        id: `${field}-closed`, field,
+        title: `Is ${code} right?`,
+        body: `We have ${resolved.name || code} (${resolved.icao || '—'}) listed as closed. Confirm it, or fix the code.`,
+        actions: [
+          { id: 'confirm', label: `Yes, ${code} is right` },
+          { id: 'edit', label: 'Change code', edits: field },
+        ],
+      });
+    }
+  }
+
+  // Only when the night box actually disagrees with the clock or could not be
+  // read. A day sector with an empty night box is not a question — it is a day
+  // sector, and asking about it every time would train the pilot to tap past
+  // every question without reading it.
+  if (flags.night) {
+    qs.push({
+      id: 'night', field: 'night',
+      title: 'Any night time on this leg?',
+      body: 'The night box on the form was hard to read. Add it, or leave it empty.',
+      actions: [
+        { id: 'edit', label: 'Add night time', edits: 'night' },
+        { id: 'confirm', label: 'Leave empty' },
+      ],
+    });
+  }
+
+  // A time we could not read at all — worth asking rather than filing a blank.
+  for (const k of ['out', 'off', 'on', 'in']) {
+    if (flags[k] && !sect[k]) {
+      qs.push({
+        id: `time-${k}`, field: k,
+        title: `What was ${k.toUpperCase()}?`,
+        body: `We could not read the ${k.toUpperCase()} time on the form. Add it, or save without it.`,
+        actions: [
+          { id: 'edit', label: `Add ${k.toUpperCase()}`, edits: k },
+          { id: 'confirm', label: 'Save without it' },
+        ],
+      });
+    }
+  }
+  return qs;
+}
+
 /**
  * @param {object} raw        what the extractor returned
  * @param {object} ctx        { pilot, now }
@@ -188,10 +256,15 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
       dayOffset: dayOffsets[sectorIndex] || 0,
     };
 
-    // Airports must exist. A code we cannot resolve is a red flag, not a guess.
+    // An airport we cannot resolve is a QUESTION, not a refusal. Our airport
+    // table is not the authority on where a pilot flew: a code missing from it
+    // is our gap, and refusing to save the flight over it loses the pilot's
+    // work. We ask, and we save either way.
     const [a, b] = await Promise.all([resolveAirport(sect.from), resolveAirport(sect.to)]);
-    if (!sect.from || !a) flags.from = flag('red', sect.from ? `${sect.from} is not an airport we know.` : 'No departure airport.');
-    if (!sect.to || !b) flags.to = flag('red', sect.to ? `${sect.to} is not an airport we know.` : 'No arrival airport.');
+    if (!sect.from) flags.from = flag('amber', 'No departure airport was read.');
+    else if (!a) flags.from = flag('amber', `${sect.from} is not in our airport list.`);
+    if (!sect.to) flags.to = flag('amber', 'No arrival airport was read.');
+    else if (!b) flags.to = flag('amber', `${sect.to} is not in our airport list.`);
     if (a && b && sect.from === sect.to) flags.to = flag('amber', 'Departure and arrival are the same.');
 
     // Times must run OUT → OFF → ON → IN, allowing one midnight crossing.
@@ -304,6 +377,9 @@ async function validateScan(raw, { pilot = {}, now = new Date(), uncertain = nul
       nightLanding,
       flags,
       needsCheck: Object.keys(flags).length > 0,
+      // Each thing worth asking, worded as a question with a way to answer it,
+      // so the review screen never says "check 2" without saying what.
+      questions: buildQuestions({ sect, flags, from: a, to: b, formNight, nightUsed }),
     });
   }
 

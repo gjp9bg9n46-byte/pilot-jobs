@@ -22,8 +22,21 @@ export default function TabsLayout() {
         tabBarActiveTintColor: pilot.navy,
         tabBarInactiveTintColor: pilot.muted,
         tabBarStyle: makeTabBarStyle(pilot),
-        tabBarItemStyle: { borderRadius: 26, marginHorizontal: 1 },
+        // The selected tab used to read as a square grey block inside a round
+        // bar, because the highlight filled the item to the bar's own edges.
+        // Vertical margin gives it even space all round, so it reads as a pill
+        // that belongs to the bar's shape at any text size.
+        tabBarItemStyle: { borderRadius: 20, marginVertical: 3, marginHorizontal: 3 },
         tabBarActiveBackgroundColor: mode === 'dark' ? 'rgba(111,169,224,0.16)' : 'rgba(0,63,136,0.08)',
+        // One badge, 18px with a white ring, tucked on the icon's corner —
+        // it was nearly as big as the icon it sat on.
+        tabBarBadgeStyle: {
+          minWidth: 18, height: 18, borderRadius: 9, lineHeight: 14,
+          fontSize: 10.5, fontFamily: fontFamilies.bodyBold,
+          backgroundColor: pilot.navy, color: '#fff',
+          borderWidth: 2, borderColor: pilot.surface,
+          transform: [{ translateX: -4 }, { translateY: 3 }],
+        },
         // allowFontScaling off + explicit lineHeight: long labels ("Logbook")
         // were truncated/descender-clipped when the phone's text size scaled
         // the label beyond its ~60px slot in the floating pill.
@@ -41,7 +54,6 @@ export default function TabsLayout() {
           // A#1 — the ONE badge in the app: new jobs since the last visit. Same
           // count, same timestamp as the dashboard's own line (newSinceLastVisit).
           tabBarBadge: newJobs > 0 ? (newJobs > 99 ? '99+' : newJobs) : undefined,
-          tabBarBadgeStyle: { backgroundColor: pilot.navy, fontFamily: fontFamilies.bodyBold, fontSize: 10 },
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />

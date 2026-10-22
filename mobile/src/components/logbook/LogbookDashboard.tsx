@@ -61,7 +61,10 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
   const fmtH = (n: number | null | undefined) => (n == null ? '—' : duration(Number(n), timeFormat));
   const hUnit = timeFormat === 'decimal' ? ' h' : '';
   if (!summary) return null;
-  const { totals, byType, milestone, limits, currency } = summary;
+  const { totals, byType, limits, currency } = summary;
+  // A payload without a milestone (an older backend, or a pilot with no hours
+  // yet) must not take the screen down — the card is skipped instead.
+  const milestone = summary.milestone || null;
 
   const cf = totals.carryForward || 0;
   const split = totals.picSicSplitValid;
@@ -72,15 +75,15 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
     ['Night', totals.night], ['IFR', totals.ifr], ['Landings', totals.landings],
   ] as [string, number][]).filter(([, v]) => v > 0);
 
-  const next = milestone.next;
-  const scale = next || milestone.current || 1;
+  const next = milestone ? milestone.next : null;
+  const scale = next || (milestone ? milestone.current : 0) || 1;
   const pos = (h: number) => Math.min(99.5, Math.max(0, (h / scale) * 100));
-  const youPct = Math.min(100, Math.max(0, (milestone.current / scale) * 100));
+  const youPct = Math.min(100, Math.max(0, ((milestone ? milestone.current : 0) / scale) * 100));
   const ticks = [
-    ...milestone.passed.map((p: Summary) => ({ hours: p.hours, top: group(String(p.hours)), bot: p.label, done: true, isNext: false })),
+    ...((milestone && milestone.passed) || []).map((p: Summary) => ({ hours: p.hours, top: group(String(p.hours)), bot: p.label, done: true, isNext: false })),
     ...(next ? [{ hours: next, top: group(String(next)), bot: 'Next', done: false, isNext: true }] : []),
   ];
-  const lastPassedWithDate = [...milestone.passed].reverse().find((p: Summary) => p.date);
+  const lastPassedWithDate = [...((milestone && milestone.passed) || [])].reverse().find((p: Summary) => p.date);
   const topType = byType[0]?.hours || 1;
 
   return (
@@ -121,6 +124,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
         </View>
 
         {/* 2 · NEXT MILESTONE */}
+        {milestone ? (
         <View style={[styles.section, styles.sectionDivider]}>
           <Text style={styles.label}>Next milestone</Text>
           {next ? (
@@ -154,6 +158,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
             </View>
           ) : null}
         </View>
+        ) : null}
 
         {/* 3 · HOURS BY TYPE (revealed) */}
         {open ? (

@@ -40,6 +40,7 @@ export default function ScanVoyageReport() {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<Any>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [answered, setAnswered] = useState<Record<string, boolean>>({});
   // 'suggestion' | 'keep' — a flagged date has to be answered before saving.
   const [dateChoice, setDateChoice] = useState<string | null>(null);
   // The straightened page, fetched with the session token, so an amber field can
@@ -186,8 +187,15 @@ export default function ScanVoyageReport() {
 
   // ── Review ────────────────────────────────────────────────────────────────
   const sectors: Any[] = scan.sectors || [];
-  const toCheck = sectors.filter((s) => s.needsCheck && !s.duplicate).length;
   const keeping = sectors.filter((s) => s.include !== false && !s.duplicate).length;
+  // Questions the pilot has answered, as `${sectorIndex}:${questionId}`. They
+  // are never a condition of saving — answering improves the record, ignoring
+  // it still files the flight.
+  const openQuestions = (i: number, sec: Any): Any[] =>
+    (sec.questions || []).filter((q: Any) => !answered[`${i}:${q.id}`]);
+  const totalOpen = sectors.reduce(
+    (n, sec, i) => n + (sec.duplicate || sec.include === false ? 0 : openQuestions(i, sec).length), 0,
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -241,16 +249,6 @@ export default function ScanVoyageReport() {
           </View>
         ) : null}
 
-        {toCheck > 0 ? (
-          <View style={styles.warn}>
-            <Ionicons name="warning-outline" size={16} color={AMBER} />
-            <Text style={styles.warnText}>
-              <Text style={styles.warnStrong}>{toCheck} {toCheck === 1 ? 'sector needs' : 'sectors need'} a look.</Text>
-              {' '}Tap a flight to compare the amber fields with the photo.
-            </Text>
-          </View>
-        ) : null}
-
         {sectors.map((s, i) => {
           const flags = s.flags || {};
           const open = expanded === i;
@@ -288,8 +286,8 @@ export default function ScanVoyageReport() {
                 </View>
                 {s.duplicate
                   ? <Text style={styles.dup}>Already logged</Text>
-                  : s.needsCheck
-                    ? <Text style={styles.chk}>Check {Object.keys(flags).length}</Text>
+                  : openQuestions(i, s).length
+                    ? <Text style={styles.chk}>{openQuestions(i, s).length} quick {openQuestions(i, s).length === 1 ? 'question' : 'questions'}</Text>
                     : <Text style={styles.ok}>Looks right</Text>}
               </Pressable>
 
@@ -309,6 +307,29 @@ export default function ScanVoyageReport() {
                   <Text style={styles.kvValue}>{s.myLandings || 0}{s.nightLanding ? ' night' : ''}</Text>
                 </View>
               </View>
+
+              {/* Each question on the card it belongs to, with the answer one
+                  tap away. Never a reason the save is refused. */}
+              {openQuestions(i, s).map((q: Any) => (
+                <View key={q.id} style={styles.q}>
+                  <Text style={styles.qTitle}>{q.title}</Text>
+                  <Text style={styles.qBody}>{q.body}</Text>
+                  <View style={styles.qActions}>
+                    {(q.actions || []).map((a: Any) => (
+                      <Pressable
+                        key={a.id}
+                        style={[styles.qBtn, a.id === 'confirm' && styles.qBtnMain]}
+                        onPress={() => {
+                          if (a.edits) { setExpanded(i); }
+                          setAnswered((prev) => ({ ...prev, [`${i}:${q.id}`]: true }));
+                        }}
+                      >
+                        <Text style={[styles.qBtnText, a.id === 'confirm' && styles.qBtnMainText]}>{a.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ))}
 
               {open ? (
                 <View style={styles.why}>
@@ -360,6 +381,12 @@ export default function ScanVoyageReport() {
       </ScrollView>
 
       <View style={styles.fixed}>
+        {totalOpen > 0 ? (
+          <Text style={styles.fixedNote}>
+            {totalOpen} quick {totalOpen === 1 ? 'question' : 'questions'} above. Everything else is ready.
+          </Text>
+        ) : null}
+        <View style={styles.fixedRow}>
         <Pressable style={styles.big} onPress={discard}><Text style={styles.bigText}>Discard</Text></Pressable>
         <Pressable
           style={[styles.big, styles.bigMain, (!keeping || saving || (!!scan.header.flags?.date && !dateChoice)) && { opacity: 0.6 }]}
@@ -370,6 +397,7 @@ export default function ScanVoyageReport() {
             {saving ? 'Saving…' : scan.header.flags?.date && !dateChoice ? 'Choose a date first' : `Save ${keeping} ${keeping === 1 ? 'flight' : 'flights'}`}
           </Text>
         </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -440,7 +468,19 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   compare: { fontSize: 11.5, fontFamily: fontFamilies.bodySemiBold, color: pilot.faint, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
   page: { width: '100%', height: 190, borderRadius: 8, backgroundColor: '#F1EEE6' },
   note: { fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body, marginTop: 14, lineHeight: 18 },
-  fixed: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 10, padding: 12, paddingBottom: 28, backgroundColor: pilot.surface, borderTopWidth: 1, borderTopColor: pilot.line },
+  // A question on the card it belongs to: calm, specific, answerable in a tap.
+  q: { marginTop: 10, borderTopWidth: 1, borderTopColor: '#EEF1F5', paddingTop: 10 },
+  qTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: 14, color: pilot.ink },
+  qBody: { marginTop: 3, fontFamily: fontFamilies.body, fontSize: 13, lineHeight: 18, color: pilot.muted },
+  qActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  qBtn: { paddingHorizontal: 12, height: 34, borderRadius: 8, borderWidth: 1, borderColor: pilot.line, backgroundColor: pilot.surface, alignItems: 'center', justifyContent: 'center' },
+  qBtnText: { fontFamily: fontFamilies.bodySemiBold, fontSize: 13, color: pilot.ink },
+  qBtnMain: { backgroundColor: pilot.navy, borderColor: pilot.navy },
+  qBtnMainText: { color: '#fff' },
+  fixedNote: { paddingHorizontal: 2, paddingBottom: 8, fontFamily: fontFamilies.body, fontSize: 12.5, color: pilot.muted },
+  fixedRow: { flexDirection: 'row', gap: 10 },
+
+  fixed: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'column', padding: 12, paddingBottom: 28, backgroundColor: pilot.surface, borderTopWidth: 1, borderTopColor: pilot.line },
 
   tick: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#E7F5EC', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 18 },
   doneH: { fontFamily: fontFamilies.display, fontSize: 26, color: pilot.ink, textAlign: 'center' },

@@ -112,11 +112,25 @@ test('a night figure far from the form is flagged, not silently replaced', async
   assert.equal(r.sectors[1].night, 180);
 });
 
-test('airports must exist; a misread code is red, not saved quietly', async () => {
+test('an airport we do not know is asked about, never refused', async () => {
+  // Our airport table is not the authority on where a pilot flew. A code we
+  // cannot resolve is surfaced as a question the pilot can answer in one tap,
+  // and the flight still saves — it is never dropped on the floor, and it is
+  // never red (red reads as "this cannot be saved").
   const raw = RAW();
   raw.sectors[0].to = 'XQX';
   const r = await validateScan(raw, { pilot: FO, now: NOW });
-  assert.equal(r.sectors[0].flags.to.level, 'red');
+  const s0 = r.sectors[0];
+  assert.equal(s0.flags.to.level, 'amber', 'an unknown code is amber, not red');
+  const q = (s0.questions || []).find((x) => x.field === 'to');
+  assert.ok(q, 'the pilot is asked about it');
+  assert.match(q.title, /Is XQX right\?/);
+  assert.deepEqual(q.actions.map((a) => a.id), ['confirm', 'edit'], 'confirm it or fix it');
+});
+
+test('a sector with everything readable asks nothing', async () => {
+  const r = await validateScan(RAW(), { pilot: FO, now: NOW });
+  assert.deepEqual(r.sectors[0].questions, [], 'no questions invented for a clean row');
 });
 
 test('dates in the future are red; dates over 60 days old are amber', async () => {

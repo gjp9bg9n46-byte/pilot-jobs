@@ -17,7 +17,7 @@ import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
 import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
-import { duration, findOverlaps, groupByDay, landsNextDay, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
+import { duration, findOverlaps, groupBy, Grouping, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
 import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
 import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
 import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
@@ -30,6 +30,7 @@ import { LogbookSkeleton } from '../../../../src/components/Skeleton';
 import { notifySuccess, tapLight } from '../../../../src/lib/haptics';
 import PressableScale from '../../../../src/components/PressableScale';
 import Segmented from '../../../../src/components/Segmented';
+import FlightRow from '../../../../src/components/logbook/FlightRow';
 import { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -127,6 +128,9 @@ function LogbookList() {
   const [page, setPage] = useState(Math.max(1, Number(params.page) || 1));
   const [cfOpenSignal, setCfOpenSignal] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
+  // Month is the default: "how much did I fly in October" is the everyday
+  // question; a day group is usually one or two sectors.
+  const [grouping, setGrouping] = useState<Grouping>('month');
   const qc = useQueryClient();
 
   // ONE call for prefs + scan quota + totals + this page (GET /logbook/bootstrap),
@@ -227,8 +231,8 @@ function LogbookList() {
   const overlaps = useMemo(() => findOverlaps(logs), [logs]);
 
   const daySections = useMemo(
-    () => groupByDay(logs).map((d) => ({ ym: d.date, title: d.label, hours: d.hours, data: d.flights })),
-    [logs],
+    () => groupBy(logs, grouping).map((d) => ({ ym: d.date, title: d.label, hours: d.hours, data: d.flights })),
+    [logs, grouping],
   );
 
   const ListHeader = (
@@ -240,13 +244,22 @@ function LogbookList() {
             {(summary?.totals?.flightCount ?? total)} flights{lastFlightStr ? ` · last ${lastFlightStr}` : ''}
           </Text>
         </View>
-        <Segmented
-          compact
-          style={{ minWidth: 148 }}
-          value={timeFormat}
-          onChange={(f) => setTimeFormat(f as TimeFormat)}
-          options={[{ value: 'hhmm', label: 'hh:mm' }, { value: 'decimal', label: 'decimal' }]}
-        />
+        <View style={{ gap: 6, alignItems: 'flex-end' }}>
+          <Segmented
+            compact
+            style={{ minWidth: 148 }}
+            value={timeFormat}
+            onChange={(f) => setTimeFormat(f as TimeFormat)}
+            options={[{ value: 'hhmm', label: 'hh:mm' }, { value: 'decimal', label: 'decimal' }]}
+          />
+          <Segmented
+            compact
+            style={{ minWidth: 148 }}
+            value={grouping}
+            onChange={(g) => setGrouping(g as Grouping)}
+            options={[{ value: 'month', label: 'Month' }, { value: 'day', label: 'Day' }]}
+          />
+        </View>
       </View>
 
       {/* Totals, then landings in the last 90 days and the day currency lapses */}
@@ -352,30 +365,13 @@ function LogbookList() {
           }
           const log = item.log;
           return (
-            <PressableScale
+            <FlightRow
+              log={log}
+              timeFormat={timeFormat}
+              overnightFrom={overnightReturnOf(log, logs)}
+              overlap={overlaps.has(log.id) ? overlapLabel(overlaps.get(log.id)) : null}
               onPress={() => { stashFlight(log); router.push(`/logbook/flight/${log.id}`); }}
-              style={[styles.dayLeg, item.first && styles.legFirst, item.last && styles.legLast]}
-            >
-              <View style={{ flex: 1 }}>
-                <View style={styles.legTop}>
-                  <Text style={styles.legRoute}>{log.departure || '—'} → {log.arrival || '—'}</Text>
-                  {/* Landed after midnight: one flight, one date, marked +1. */}
-                  {landsNextDay(log.offBlocksTime, log.onBlocksTime) ? <Text style={styles.plus1}>+1</Text> : null}
-                  {log.pilotFlying === true ? <Text style={styles.pf}>PF</Text> : null}
-                  {Number(log.nightTime) > 0 ? <Ionicons name="moon-outline" size={13} color={pilot.accentSoft} /> : null}
-                </View>
-                <Text style={styles.legSub}>
-                  {[log.flightNumber, log.displayType || log.aircraftType, log.registration].filter(Boolean).join(' · ') || 'No details'}
-                </Text>
-                {overnightReturnOf(log, logs) ? (
-                  <Text style={styles.legLink}>Return of overnight trip from {overnightReturnOf(log, logs)}</Text>
-                ) : null}
-                {overlaps.has(log.id) ? (
-                  <Text style={styles.legOverlap}>{overlapLabel(overlaps.get(log.id))}</Text>
-                ) : null}
-              </View>
-              <Text style={styles.legHours}>{duration(log.totalTime, timeFormat)}</Text>
-            </PressableScale>
+            />
           );
         }}
       />

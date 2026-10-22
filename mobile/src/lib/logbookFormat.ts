@@ -73,6 +73,43 @@ export function groupByDay(logs: Log[]): Day[] {
     }));
 }
 
+// ── Grouping ─────────────────────────────────────────────────────────────────
+// A logbook is read by month far more often than by day: "how much did I fly in
+// October" is the everyday question, and a day group is one or two sectors.
+// Month is the default; Day is a switch away for anyone checking a rotation.
+export type Grouping = 'month' | 'day';
+
+export function monthLabel(ym: string, now: Date = new Date()): string {
+  const d = new Date(`${ym}-01T00:00:00Z`);
+  const year = d.getUTCFullYear() === now.getUTCFullYear() ? undefined : 'numeric';
+  return d.toLocaleDateString('en-GB', { month: 'long', year, timeZone: 'UTC' } as Intl.DateTimeFormatOptions);
+}
+
+// Sectors grouped by calendar month, newest first, with the month's total.
+export function groupByMonth(logs: Log[]): Day[] {
+  const months = new Map<string, Log[]>();
+  for (const log of logs || []) {
+    const key = String(log.date).slice(0, 7);
+    if (!months.has(key)) months.set(key, []);
+    (months.get(key) as Log[]).push(log);
+  }
+  return [...months.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([ym, flights]) => ({
+      date: ym,
+      label: monthLabel(ym),
+      hours: flights.reduce((n: number, f: Log) => n + (Number(f.totalTime) || 0), 0),
+      flights: [...flights].sort((a, b) => {
+        const d = String(b.date).slice(0, 10).localeCompare(String(a.date).slice(0, 10));
+        return d !== 0 ? d : String(b.offBlocksTime || '').localeCompare(String(a.offBlocksTime || ''));
+      }),
+    }));
+}
+
+export function groupBy(logs: Log[], grouping: Grouping): Day[] {
+  return grouping === 'month' ? groupByMonth(logs) : groupByDay(logs);
+}
+
 // "Oldest drops 2 Dec" — the day the 90-day window loses its third landing.
 export function dropOffLabel(currentUntil?: string | null): string | null {
   if (!currentUntil) return null;
