@@ -1,7 +1,7 @@
 // The "+" on the Logbook: three ways in, scanning first because it is the
 // fastest. Straight from the mockup's first screen.
 import { useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SPRING, timing } from '../../theme/motion';
 import { tapMedium } from '../../lib/haptics';
@@ -49,6 +49,7 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
   // rather than a fixed slide — the one place in the app where weight should be
   // believable. The dim behind it is a plain fade, so only one thing moves.
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const shown = useSharedValue(0);
   useEffect(() => {
     if (visible) { tapMedium(); shown.value = withSpring(1, SPRING); }
@@ -64,7 +65,18 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
       <Animated.View style={[StyleSheet.absoluteFill, dimStyle]}>
         <Pressable style={styles.dim} onPress={onClose} />
       </Animated.View>
-      <Animated.View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing.sm) + layout.cardPad }, sheetStyle]}>
+      <Animated.View
+        style={[
+          styles.sheet,
+          {
+            paddingBottom: Math.max(insets.bottom, spacing.sm) + layout.cardPad,
+            // Never under the Dynamic Island or the status bar: the sheet can
+            // grow at most to the screen minus the top inset and a margin.
+            maxHeight: height - insets.top - layout.sectionGap,
+          },
+          sheetStyle,
+        ]}
+      >
         <View style={styles.grab} />
         <Text style={styles.h3}>Add a flight</Text>
         <Text style={styles.sub}>Every sector you flew today, in under a minute.</Text>
@@ -74,7 +86,7 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
         {scanEnabled ? option('scan', 'scan-outline', 'Scan voyage report',
           scansLeft != null && scansLeft <= 0
             ? 'No scans left today — enter the flight manually.'
-            : 'Take a photo. We read every sector — we ask about anything we could not read.',
+            : 'Take a photo. We read every sector, and ask you only about anything we\u2019re not sure of.',
           onScan, true, true) : null}
         {option('manual', 'create-outline', 'Enter manually',
           'Type the times yourself. Route, aircraft and crew are remembered from your last flight.', onManual, !scanEnabled)}
@@ -110,6 +122,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   optTitle: { fontSize: fontSizes.base, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
   tag: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#E3ECF8', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
-  beta: { fontSize: 10, fontFamily: fontFamilies.bodyBold, color: '#B45309', backgroundColor: '#FDF1DD', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden', textTransform: 'uppercase' },
+  // Navy on soft grey: BETA is a label, not a warning.
+  beta: { fontSize: 10, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#EEF2F7', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden', textTransform: 'uppercase' },
   optBody: { fontSize: 13, color: pilot.muted, lineHeight: 19, fontFamily: fontFamilies.body, marginTop: 2 },
 });

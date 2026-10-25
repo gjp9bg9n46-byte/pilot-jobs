@@ -111,6 +111,32 @@ function buildQuestions({ sect, flags, from, to, formNight, nightUsed }) {
     });
   }
 
+  // A reading that cannot be right. These used to be invisible: they carried a
+  // red flag, produced no question, so the card said "Looks right" while the
+  // server refused the save with "Some sectors still need fixing". Now they ask.
+  if (flags.in && flags.in.level === 'red') {
+    qs.push({
+      id: 'block-time', field: 'in',
+      title: 'Do these times look right?',
+      body: `${flags.in.message} Check OUT and IN against the form, or save them as they are.`,
+      actions: [
+        { id: 'edit', label: 'Fix the times', edits: 'in' },
+        { id: 'confirm', label: 'Save as they are' },
+      ],
+    });
+  }
+  if (flags.off && flags.off.level === 'red') {
+    qs.push({
+      id: 'airborne-time', field: 'off',
+      title: 'Do OFF and ON look right?',
+      body: `${flags.off.message} Check them against the form, or save them as they are.`,
+      actions: [
+        { id: 'edit', label: 'Fix the times', edits: 'off' },
+        { id: 'confirm', label: 'Save as they are' },
+      ],
+    });
+  }
+
   // A time we could not read at all — worth asking rather than filing a blank.
   for (const k of ['out', 'off', 'on', 'in']) {
     if (flags[k] && !sect[k]) {

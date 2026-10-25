@@ -288,7 +288,10 @@ test('full 2832 12-column shape: all real headers + auto-mappings + coerced valu
   for (const [f, h] of Object.entries(out.mapping)) fields[f] = out.rawRows[0][out.headers.indexOf(h)];
   const { coerced, errors } = coerceRow(fields);
   assert.deepStrictEqual(errors, []);
-  assert.strictEqual(coerced.registration, 'BUP');     // stored as-is (no SU- prefix)
+  // The roster prints the fleet by its last three letters; the aeroplane's
+  // mark is SU-BUP. Storing "BUP" filed a registration that does not exist,
+  // and the logbook then showed it on every row.
+  assert.strictEqual(coerced.registration, 'SU-BUP');
   assert.strictEqual(coerced.flightNumber, 'MS501');
   assert.strictEqual(coerced.departure, 'CAI');
   assert.strictEqual(coerced.arrival, 'DMM');

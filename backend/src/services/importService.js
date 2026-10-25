@@ -177,6 +177,18 @@ function parseTimeToHours(str) {
 
 // Convert raw string fields (after mapping) into typed FlightLog-shaped payload.
 // Returns { coerced, errors: string[] }
+
+// An airline roster prints its fleet by the last three letters ("BUU"); the
+// aircraft's actual mark is SU-BUU. We already treat `^(SU-?)?B[A-Z]{2}$` as an
+// Egyptian A320 when inferring the type (services/logbookSummary.js), so the
+// same knowledge completes the mark here instead of filing a registration that
+// does not exist. Anything else is stored exactly as written.
+const BARE_EGYPTIAN = /^B[A-Z]{2}$/;
+function completeRegistration(reg) {
+  const r = String(reg || '').toUpperCase().trim();
+  return BARE_EGYPTIAN.test(r) ? `SU-${r}` : r;
+}
+
 function coerceRow(fields) {
   const errors = [];
 
@@ -219,7 +231,7 @@ function coerceRow(fields) {
     date:            dateISO,
     flightNumber:    up(fields.flightNumber),
     aircraftType:    up(fields.aircraftType) || '',
-    registration:    up(fields.registration),
+    registration:    completeRegistration(up(fields.registration)),
     departure:       up(fields.departure),
     arrival:         up(fields.arrival),
     offBlocksTime,
@@ -571,6 +583,7 @@ function enrichColumns(headers, rawRows, mapping) {
 }
 
 module.exports = {
+  completeRegistration,
   detectMapping,
   parseCSV,
   coerceRow,

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { parseDescriptionBlocks } from '../../lib/jobDescription';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, HelpCircle, AlertTriangle, ExternalLink, Heart, Share2, Flag, ChevronDown, ChevronUp, ArrowLeft, ArrowRight } from 'lucide-react';
 import AirlineLogo from '../AirlineLogo';
@@ -213,7 +214,17 @@ export default function JobDetailPanel({ jobId, mobile = false, onBack, seo = fa
           {job.description && (
             <div className="sec">
               <div className="label">About the job</div>
-              <div className="desc" style={showDesc ? undefined : { maxHeight: 84, overflow: 'hidden' }}>{job.description}</div>
+              {/* Blocks, not one string: the source's line breaks and lists
+                  were being collapsed into a wall of text. */}
+              <div className="desc" style={showDesc ? undefined : { maxHeight: 84, overflow: 'hidden' }}>
+                {parseDescriptionBlocks(job.description).map((b, i) => (
+                  b.type === 'ul'
+                    ? <ul key={i} className="desc-ul">{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>
+                    : b.type === 'h'
+                      ? <h4 key={i} className="desc-h">{b.text}</h4>
+                      : <p key={i} className="desc-p">{b.text}</p>
+                ))}
+              </div>
               {job.description.length > 240 && <button className="more" onClick={() => setShowDesc((v) => !v)}>{showDesc ? <>Show less <ChevronUp size={13} style={{ verticalAlign: -2 }} /></> : <>Show full description <ChevronDown size={13} style={{ verticalAlign: -2 }} /></>}</button>}
             </div>
           )}

@@ -23,7 +23,9 @@
 
 .af-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-top: 8px; padding: 13px 14px; display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; cursor: pointer; font-family: inherit; color: inherit; }
 .af-card:hover { border-color: #CFD8E3; }
-.af-tile { height: 48px; min-width: 48px; max-width: 72px; border-radius: 8px; background: #EEF2F7; display: flex; align-items: center; justify-content: center; flex: none; padding: 0 8px; overflow: hidden; }
+/* ONE size for every tile, logo or initials, so the airline names line up
+   down the list. It used to size itself to its content (48–72px wide). */
+.af-tile { height: 48px; width: 64px; border-radius: 8px; background: #EEF2F7; display: flex; align-items: center; justify-content: center; flex: none; padding: 0 8px; overflow: hidden; }
 .af-tile img { max-height: 40px; max-width: 64px; object-fit: contain; display: block; }
 .af-tile .initials { font: 700 13px var(--font-body); letter-spacing: .04em; color: var(--accent); }
 .af-card .n { font-weight: 600; font-size: 15px; color: var(--text-primary); }
@@ -41,7 +43,7 @@
 
 .af-back { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 14px; font-weight: 500; background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
 .af-hero { display: flex; gap: 14px; align-items: center; margin-top: 14px; }
-.af-hero .af-tile { height: 64px; min-width: 64px; max-width: 120px; border-radius: 12px; }
+.af-hero .af-tile { height: 64px; width: 86px; border-radius: 12px; }
 .af-hero .af-tile img { max-height: 54px; max-width: 108px; }
 .af-hero h1 { font-family: var(--font-display); font-weight: 600; font-size: 26px; margin: 0; line-height: 1.1; color: var(--text-primary); }
 .af-hero .c { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }

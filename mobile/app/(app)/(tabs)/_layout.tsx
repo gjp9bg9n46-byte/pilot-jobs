@@ -4,12 +4,45 @@
 // _layout.tsx files); Dashboard, Alerts and CV Builder are single screens.
 // Airlines + Alerts live outside the tab bar (href:null) — Airlines is reached
 // from job cards + Settings; Alerts is folded into the new Dashboard.
+import { Pressable, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnread } from '../../../src/context/UnreadContext';
 import { makeTabBarStyle } from '../../../src/theme/tabBar';
 import { useTheme } from '../../../src/theme/ThemeContext';
 import { fontFamilies } from '../../../src/theme/tokens';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Any = any;
+
+// One pill, drawn here so the device and the browser cannot disagree:
+// radius = half its height, inset from the bar's edge on every side.
+const PILL_H = 44;
+function TabButton({ children, style, accessibilityState, ...rest }: Any) {
+  const { colors } = useTheme();
+  const focused = !!accessibilityState?.selected;
+  return (
+    <Pressable
+      {...rest}
+      accessibilityState={accessibilityState}
+      style={[style, { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 }]}
+    >
+      <View
+        style={{
+          height: PILL_H,
+          borderRadius: PILL_H / 2,
+          paddingHorizontal: 10,
+          alignSelf: 'stretch',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: focused ? colors.accentSoft ?? 'rgba(0,63,136,0.08)' : 'transparent',
+        }}
+      >
+        {children}
+      </View>
+    </Pressable>
+  );
+}
 
 export default function TabsLayout() {
   const { newJobs } = useUnread();
@@ -22,12 +55,13 @@ export default function TabsLayout() {
         tabBarActiveTintColor: pilot.navy,
         tabBarInactiveTintColor: pilot.muted,
         tabBarStyle: makeTabBarStyle(pilot),
-        // The selected tab used to read as a square grey block inside a round
-        // bar, because the highlight filled the item to the bar's own edges.
-        // Vertical margin gives it even space all round, so it reads as a pill
-        // that belongs to the bar's shape at any text size.
-        tabBarItemStyle: { borderRadius: 20, marginVertical: 3, marginHorizontal: 3 },
-        tabBarActiveBackgroundColor: mode === 'dark' ? 'rgba(111,169,224,0.16)' : 'rgba(0,63,136,0.08)',
+        // The highlight is drawn BY US, not by tabBarActiveBackgroundColor.
+        // That prop paints a react-navigation internal view which ignores the
+        // item's borderRadius on the native render — which is why the selected
+        // tab was still a square grey block on the device while looking like a
+        // pill on web. A custom tabBarButton is the only way to be sure the
+        // same shape ships on both.
+        tabBarButton: (props) => <TabButton {...props} />,
         // One badge, 18px with a white ring, tucked on the icon's corner —
         // it was nearly as big as the icon it sat on.
         tabBarBadgeStyle: {

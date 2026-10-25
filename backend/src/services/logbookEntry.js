@@ -12,6 +12,16 @@
 
 const { nightMinutes, isNightLanding, toMinutes } = require('./nightTime');
 
+// A reader — ours or a person's — writing the WORD "null" does not mean the
+// aeroplane was a NULL. These strings all mean "nothing was there", and one of
+// them reached the logbook as an aircraft type and then into the remembered
+// values, so every new flight offered "NULL" as its aircraft.
+const NOTHING = new Set(['null', 'undefined', 'nil', 'none', 'n/a', 'na', '-', '--', '?', 'unknown']);
+function cleanField(v) {
+  const t = String(v ?? '').trim();
+  return NOTHING.has(t.toLowerCase()) ? '' : t;
+}
+
 const ROLE_PRESETS = {
   airline_fo: { label: 'Airline First Officer', role: 'SIC' },
   airline_captain: { label: 'Airline Captain', role: 'PIC' },
@@ -82,7 +92,7 @@ async function buildFlightRow(input, pilot) {
   return {
     date,
     flightNumber: input.flightNumber || null,
-    aircraftType: String(input.aircraftType || '').toUpperCase().trim() || '',
+    aircraftType: cleanField(input.aircraftType).toUpperCase(),
     registration: String(input.registration || '').toUpperCase().trim() || null,
     departure,
     arrival,
@@ -112,4 +122,5 @@ async function buildFlightRow(input, pilot) {
   };
 }
 
-module.exports = { buildFlightRow, spanMinutes, presetFor, ROLE_PRESETS };
+module.exports = {
+  cleanField, buildFlightRow, spanMinutes, presetFor, ROLE_PRESETS };

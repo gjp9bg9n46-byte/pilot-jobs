@@ -39,6 +39,13 @@ const NOT_MAPPED = {
   GCAA: 'UAE (GCAA) — CAR-FCL is JAR-derived and probably mirrors FCL.060, but the IR exemption wording is unverified.',
 };
 
+// What the pilot reads. The note above is for us; this is for them, and it
+// says what we do rather than what we lack.
+const AUTHORITY_NAME = { ECAA: 'Egypt (ECAA)', GCAA: 'the UAE (GCAA)' };
+const unmappedNote = (key) => (key
+  ? `Night currency rules for ${AUTHORITY_NAME[key] || key.replace('_', ' ')} aren't set up yet, so we show your total landings only.`
+  : 'Your licence authority is not set, so we show your total landings only.');
+
 // Free-text authority → table key. Everything else is unmapped.
 function normalizeAuthority(raw) {
   const s = String(raw || '').trim().toLowerCase();
@@ -81,9 +88,7 @@ function recencyRuleFor(certs = [], now = new Date()) {
     return {
       authority: key, authorityLabel: key ? (NOT_MAPPED[key] ? key.replace('_', ' ') : key) : null,
       authorityRaw: raw, mapped: false, base: 3, nightApplies: false, nightRequired: null, hasIr,
-      nightNote: key
-        ? `Night recency is not mapped for ${key.replace('_', ' ')}, so it is shown for information only.`
-        : 'Your licence authority is not set, so only the 90-day landing total is checked.',
+      nightNote: unmappedNote(key),
       ref: null, note: NOT_MAPPED[key] || null,
     };
   }

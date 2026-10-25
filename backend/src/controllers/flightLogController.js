@@ -3,7 +3,7 @@ const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
 const { parseCSV, detectMapping, coerceRow, extractKeyFields, enrichColumns } = require('../services/importService');
 const { buildLogbookSummary, displayTypeFor } = require('../services/logbookSummary');
-const { buildFlightRow } = require('../services/logbookEntry');
+const { buildFlightRow, cleanField } = require('../services/logbookEntry');
 
 const IMPORT_ROW_LIMIT = 5000;
 
@@ -103,7 +103,7 @@ async function rememberLast(pilot, row) {
     data: {
       logbookPrefs: {
         ...prefs,
-        lastAircraftType: row.aircraftType || prefs.lastAircraftType || null,
+        lastAircraftType: cleanField(row.aircraftType) || cleanField(prefs.lastAircraftType) || null,
         lastRegistration: row.registration || prefs.lastRegistration || null,
         lastCommander: row.picName || prefs.lastCommander || null,
       },

@@ -41,9 +41,16 @@ export function LogoTile({ logoUrl, iataCode, name, size = 48 }: {
   const initials = (iataCode && iataCode.slice(0, 3).toUpperCase())
     || String(name || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '—';
   return (
-    <View style={[styles.tile, { height: size, minWidth: size, maxWidth: size * 1.5, borderRadius: size > 56 ? 12 : 8 }]}>
+    // ONE size for every tile, logo or initials. It used to size itself to its
+    // content (minWidth 48, maxWidth 72), so a card with a wide logo pushed its
+    // airline name further right than the card above it.
+    <View style={[styles.tile, { width: Math.round(size * 1.33), height: size, borderRadius: size > 56 ? 12 : 8 }]}>
       {logoUrl
-        ? <ExpoImage source={{ uri: proxied(logoUrl) }} contentFit="contain" cachePolicy="memory-disk" transition={150} style={{ width: size * 1.33, height: size * 0.84 }} />
+        ? <ExpoImage
+            source={{ uri: proxied(logoUrl) }}
+            contentFit="contain" cachePolicy="memory-disk" transition={150}
+            style={{ width: '100%', height: '100%' }}
+          />
         : <Text style={styles.initials}>{initials}</Text>}
     </View>
   );

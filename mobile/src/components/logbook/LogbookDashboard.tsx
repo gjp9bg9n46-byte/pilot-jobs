@@ -15,6 +15,7 @@ import { duration, TimeFormat } from '../../lib/logbookFormat';
 type Summary = Record<string, any>;
 
 const SIC = '#7FA3CF';
+const OTHER = '#C7D3E2';   // neither PIC nor SIC: dual, simulator, imported without a role
 const FAINT = '#8592A3';
 const TRACK_BG = '#E3E8EF';
 
@@ -68,13 +69,21 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
 
   const cf = totals.carryForward || 0;
   const split = totals.picSicSplitValid;
-  const picPct = split && (totals.pic + totals.sic) > 0 ? (totals.pic / (totals.pic + totals.sic)) * 100 : 0;
+  // The bar shows all three parts against the TOTAL, so it adds up to what the
+  // card says above it.
+  const barBase = Math.max(totals.total, totals.pic + totals.sic) || 1;
+  const picPct = split ? (totals.pic / barBase) * 100 : 0;
+  const sicPct = split ? (totals.sic / barBase) * 100 : 0;
+  const otherPct = split ? Math.max(0, 100 - picPct - sicPct) : 0;
 
   const cats: [string, number][] = ([
     ['Multi-engine', totals.multiEngine], ['Turbine', totals.turbine],
     ['Night', totals.night], ['IFR', totals.ifr], ['Landings', totals.landings],
   ] as [string, number][]).filter(([, v]) => v > 0);
 
+  // Rounded to the minute before comparing: a float total minus two float
+  // parts leaves a few seconds of noise that would show as "Other 0:00".
+  const other = Math.max(0, Math.round((totals.total - totals.pic - totals.sic) * 60) / 60);
   const next = milestone ? milestone.next : null;
   const scale = next || (milestone ? milestone.current : 0) || 1;
   const pos = (h: number) => Math.min(99.5, Math.max(0, (h / scale) * 100));
@@ -105,12 +114,27 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
             <>
               <View style={styles.split}>
                 <View style={{ width: `${picPct}%`, backgroundColor: pilot.navy }} />
-                <View style={{ width: `${100 - picPct}%`, backgroundColor: SIC }} />
+                <View style={{ width: `${sicPct}%`, backgroundColor: SIC }} />
+                {otherPct > 0 ? <View style={{ width: `${otherPct}%`, backgroundColor: OTHER }} /> : null}
               </View>
               <View style={styles.legend}>
                 <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: pilot.navy }]} /><Text style={styles.legendText}>PIC <Text style={styles.legendVal}>{fmtH(totals.pic)}</Text></Text></View>
                 <View style={styles.legendItem}><View style={[styles.dot, { backgroundColor: SIC }]} /><Text style={styles.legendText}>SIC <Text style={styles.legendVal}>{fmtH(totals.sic)}</Text></Text></View>
+                {/* Whatever is left over. PIC + SIC did not add up to the total
+                    and the difference was simply missing from the page, which
+                    makes a logbook look wrong even when it is right. */}
+                {other > 0 ? (
+                  <View style={styles.legendItem}>
+                    <View style={[styles.dot, { backgroundColor: OTHER }]} />
+                    <Text style={styles.legendText}>Other <Text style={styles.legendVal}>{fmtH(other)}</Text></Text>
+                  </View>
+                ) : null}
               </View>
+              {other > 0 ? (
+                <Text style={styles.otherNote}>
+                  Other is time logged with no PIC or SIC split — dual, simulator or rows imported without a role.
+                </Text>
+              ) : null}
             </>
           ) : null}
 
@@ -211,16 +235,9 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
           </View>
         ) : (
           <>
-            {/* The requirement: 3 take-offs/landings in 90 days, day or night
-                alike. The night leg is listed separately and only counts as a
-                shortfall where the authority imposes it. */}
-            <CurrencyLine
-              role="Landings" styles={styles} currency={currency}
-              data={{
-                landings: currency.landings ?? ((currency.day?.landings || 0) + (currency.night?.landings || 0)),
-                required: currency.required ?? 3,
-                currentUntil: currency.currentUntil ?? currency.day?.currentUntil,
-              }} />
+            {/* The landings line used to live here too, word for word the
+                same as the strip at the top of the page. One of them had to
+                go, and the strip is the one a pilot sees first. */}
             <CurrencyLine role="Night" data={currency.night} styles={styles} currency={currency}
               applies={currency.rule ? currency.rule.nightApplies : false} />
             {currency.rule?.nightNote ? (
@@ -312,6 +329,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center' },
   dot: { width: 8, height: 8, borderRadius: 2, marginRight: 6 },
   legendText: { fontSize: 12.5, color: pilot.muted },
+  otherNote: { marginTop: 6, fontSize: 11.5, lineHeight: 16, color: pilot.faint, fontFamily: fontFamilies.body },
   legendVal: { fontFamily: fontFamilies.mono, color: pilot.ink },
 
   conds: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: pilot.line, borderStyle: 'dashed', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

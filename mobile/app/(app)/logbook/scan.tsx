@@ -5,7 +5,7 @@
 // The native document scanner only exists in a real build; in Expo Go the
 // camera, the gallery and a PDF all work, which is why capture offers three
 // doors rather than one.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
@@ -47,6 +47,11 @@ export default function ScanVoyageReport() {
   const [result, setResult] = useState<Any>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [answered, setAnswered] = useState<Record<string, boolean>>({});
+  // The page date is the ONLY thing that blocks a save: a wrong date files the
+  // flight in the wrong month silently. Everything else is a question.
+  const scroller = useRef<ScrollView | null>(null);
+  const [dateY, setDateY] = useState(0);
+  const scrollToDate = () => scroller.current?.scrollTo({ y: Math.max(0, dateY - 80), animated: true });
   // 'suggestion' | 'keep' — a flagged date has to be answered before saving.
   const [dateChoice, setDateChoice] = useState<string | null>(null);
   // The straightened page, fetched with the session token, so an amber field can
@@ -194,6 +199,7 @@ export default function ScanVoyageReport() {
   // ── Review ────────────────────────────────────────────────────────────────
   const sectors: Any[] = scan.sectors || [];
   const keeping = sectors.filter((s) => s.include !== false && !s.duplicate).length;
+  const dateOpen = !!scan.header.flags?.date && !dateChoice;
   // Questions the pilot has answered, as `${sectorIndex}:${questionId}`. They
   // are never a condition of saving — answering improves the record, ignoring
   // it still files the flight.
@@ -206,7 +212,7 @@ export default function ScanVoyageReport() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       {header(`Check ${sectors.length} ${sectors.length === 1 ? 'flight' : 'flights'}`, discard)}
-      <ScrollView contentContainerStyle={[styles.pad, { paddingBottom: 120 }]}>
+      <ScrollView ref={scroller} contentContainerStyle={[styles.pad, { paddingBottom: 120 }]}>
         <View style={styles.found}>
           {photo ? <Image source={{ uri: photo }} style={styles.thumb} /> : <View style={styles.thumb} />}
           <View style={{ flex: 1 }}>
@@ -226,7 +232,7 @@ export default function ScanVoyageReport() {
             flight lands two years down the logbook. It is editable here, and
             the server's suggestion is one tap. */}
         {scan.header.flags?.date ? (
-          <View style={styles.warn}>
+          <View style={styles.warn} onLayout={(e) => setDateY(e.nativeEvent.layout.y)}>
             <Ionicons name="information-circle-outline" size={16} color={pilot.navy} />
             <View style={{ flex: 1 }}>
               <Text style={styles.warnText}>{scan.header.flags.date.message}</Text>
@@ -390,7 +396,15 @@ export default function ScanVoyageReport() {
       </ScrollView>
 
       <View style={styles.fixed}>
-        {totalOpen > 0 ? (
+        {/* What is still open, named, and tappable — never a red "needs
+            fixing" with nothing to act on. Silent when nothing is open. */}
+        {dateOpen ? (
+          <Pressable onPress={scrollToDate}>
+            <Text style={styles.fixedNote}>
+              1 quick question: <Text style={styles.fixedLink}>page date</Text>
+            </Text>
+          </Pressable>
+        ) : totalOpen > 0 ? (
           <Text style={styles.fixedNote}>
             {totalOpen} quick {totalOpen === 1 ? 'question' : 'questions'} above. Everything else is ready.
           </Text>
@@ -403,7 +417,7 @@ export default function ScanVoyageReport() {
           onPress={save}
         >
           <Text style={styles.bigMainText}>
-            {saving ? 'Saving…' : scan.header.flags?.date && !dateChoice ? 'Choose a date first' : `Save ${keeping} ${keeping === 1 ? 'flight' : 'flights'}`}
+            {saving ? 'Saving…' : dateOpen ? 'Answer the date question' : `Save ${keeping} ${keeping === 1 ? 'flight' : 'flights'}`}
           </Text>
         </Pressable>
         </View>
@@ -494,6 +508,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   qBtnText: { fontFamily: fontFamilies.bodySemiBold, fontSize: 13, color: pilot.ink },
   qBtnMain: { backgroundColor: pilot.navy, borderColor: pilot.navy },
   qBtnMainText: { color: '#fff' },
+  fixedLink: { fontFamily: fontFamilies.bodySemiBold, color: pilot.navy, textDecorationLine: 'underline' },
   fixedNote: { paddingHorizontal: 2, paddingBottom: 8, fontFamily: fontFamilies.body, fontSize: 12.5, color: pilot.muted },
   fixedRow: { flexDirection: 'row', gap: 10 },
 

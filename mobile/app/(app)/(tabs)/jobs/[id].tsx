@@ -354,6 +354,8 @@ export default function JobDetail() {
                     <View key={j} style={styles.bulletRow}><Text style={styles.bulletDot}>•</Text><Text style={styles.bulletText}>{it}</Text></View>
                   ))}
                 </View>
+              ) : b.type === 'h' ? (
+                <Text key={i} style={styles.descHeading}>{b.text}</Text>
               ) : (
                 <Text key={i} style={styles.paraText}>{b.text}</Text>
               ))}
@@ -442,6 +444,9 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   reqPilotAdd: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, textDecorationLine: 'underline' },
 
   bodyText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24 },
+  // "Key responsibilities", "Essential Requirements" and the like, so a long
+  // posting reads as sections instead of one block.
+  descHeading: { fontFamily: fontFamilies.bodySemiBold, fontSize: 14.5, color: pilot.ink, marginTop: 14, marginBottom: 4 },
   paraText: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 24, marginBottom: 10 },
   excerptNote: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, fontStyle: 'italic', marginBottom: 10 },
   viewFullLink: { alignSelf: 'flex-start', marginTop: 12, paddingVertical: 9, paddingHorizontal: 16, borderWidth: 1, borderColor: pilot.navy, borderRadius: 6, backgroundColor: 'rgba(0,63,136,0.04)' },

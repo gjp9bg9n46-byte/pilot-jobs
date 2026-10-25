@@ -75,7 +75,9 @@ exports.createScan = async (req, res, next) => {
     // No type on the form and none inferable from the registration: fall back to
     // the aircraft this pilot last flew, marked as a guess for them to confirm.
     const prefs = prefsOf(pilot);
-    if (!checked.header.aircraftType && prefs.lastAircraftType) {
+    checked.header.aircraftType = cleanField(checked.header.aircraftType);
+    checked.sectors.forEach((s) => { s.aircraftType = cleanField(s.aircraftType); });
+    if (!checked.header.aircraftType && cleanField(prefs.lastAircraftType)) {
       checked.header.aircraftType = prefs.lastAircraftType;
       checked.header.typeInferred = true;
       checked.header.flags.aircraftType = { level: 'amber', message: 'Taken from your last flight — check it.' };
@@ -292,9 +294,15 @@ exports.saveScan = async (req, res, next) => {
         sectors: freshlyChecked.sectors,
       });
     }
-    const blocked = keep.filter((s) => Object.values(s.flags).some((f) => f.level === 'red'));
-    if (blocked.length) {
-      return res.status(422).json({ error: 'Some sectors still need fixing.', sectors: rechecked.sectors });
+    // A sector whose times look wrong is NOT refused. The review asks about it
+    // on the card it belongs to, and the pilot — who is holding the paper —
+    // decides. Refusing here produced the worst version of this: every card
+    // saying "Looks right" above a red "Some sectors still need fixing", with
+    // nothing to act on. What we do instead is record that it was saved with a
+    // known oddity, so it can be found later.
+    const odd = keep.filter((s) => Object.values(s.flags).some((f) => f.level === 'red'));
+    if (odd.length) {
+      logger.info(`scan ${scan.id}: saving ${odd.length} sector(s) the checks flagged red — the pilot confirmed them`);
     }
     if (!keep.length) return res.status(400).json({ error: 'Nothing to save.' });
 
@@ -347,7 +355,7 @@ exports.saveScan = async (req, res, next) => {
       data: {
         logbookPrefs: {
           ...prefs,
-          lastAircraftType: last.aircraftType || prefs.lastAircraftType || null,
+          lastAircraftType: cleanField(last.aircraftType) || cleanField(prefs.lastAircraftType) || null,
           lastRegistration: last.registration || prefs.lastRegistration || null,
           lastCommander: header.commander || prefs.lastCommander || null,
         },

@@ -330,7 +330,10 @@ function ProfileView() {
             const st = item ? readinessText(item) : { cls: 'g' as const, txt: `Valid until ${formatDate(m.expiryDate)}` };
             return (
               <Row key={m.id} onPress={openEdit('medical', m.id)}>
-                <View style={styles.rowMain}><Text style={styles.rowN}>{medicalLabel(m.medicalClass)}</Text><Text style={styles.rowD}>Valid until {formatDate(m.expiryDate)}</Text></View>
+                {/* The expiry belongs in the status chip on the right. It was
+                    printed here as well, so every medical row said "Valid
+                    until 26 Aug 2027" twice. */}
+                <View style={styles.rowMain}><Text style={styles.rowN}>{medicalLabel(m.medicalClass)}</Text></View>
                 <St cls={st.cls}>{st.txt}</St>
               </Row>
             );

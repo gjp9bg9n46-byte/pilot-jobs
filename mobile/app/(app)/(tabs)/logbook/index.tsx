@@ -16,13 +16,13 @@ import api from '../../../../src/lib/api';
 import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
 import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
-import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
+import { timeToMinutes } from '../../../../src/lib/logbook';
 import { duration, findOverlaps, groupBy, Grouping, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
 import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
 import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
 import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
-import { useTabBarClearance } from '../../../../src/theme/tabBar';
+import { useFabClearance } from '../../../../src/theme/tabBar';
 import { FlashList } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLogbook } from '../../../../src/hooks/queries';
@@ -121,7 +121,7 @@ function FlightCard({ log, onEdit, onClone, onDelete }: {
 
 function LogbookList() {
   // The + floats above the tab bar, so the list must clear both.
-  const tabBarClearance = useTabBarClearance(72);
+  const tabBarClearance = useFabClearance();
   const pilot = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -141,7 +141,31 @@ function LogbookList() {
   // replaced each cost a round trip, and the page one re-ran on every focus
   // with a spinner over data we already had.
   const { data, isPending, isFetching, refetch, error: queryError } = useLogbook(page);
-  const logs: Log[] = useMemo(() => data?.flights?.logs ?? [], [data]);
+  // Infinite scroll: each page is appended to what is already on screen, so
+  // the groups keep growing as the pilot scrolls instead of being replaced by
+  // page 2. Keyed by flight id, so a refetch of page 1 cannot duplicate rows.
+  const [loaded, setLoaded] = useState<Map<number, Log[]>>(new Map());
+  useEffect(() => {
+    const pageLogs: Log[] = data?.flights?.logs ?? [];
+    if (!data) return;
+    setLoaded((prev) => {
+      const next = new Map(prev);
+      next.set(page, pageLogs);
+      return next;
+    });
+  }, [data, page]);
+  const logs: Log[] = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Log[] = [];
+    for (const p of [...loaded.keys()].sort((a, b) => a - b)) {
+      for (const l of loaded.get(p) || []) {
+        if (seen.has(l.id)) continue;
+        seen.add(l.id);
+        out.push(l);
+      }
+    }
+    return out.length ? out : (data?.flights?.logs ?? []);
+  }, [loaded, data]);
   const total: number = data?.flights?.total ?? 0;
   const summary = data?.summary ?? null;
   const scansLeft: number | null = data?.scanQuota?.left ?? null;
@@ -181,15 +205,12 @@ function LogbookList() {
     ? new Date(summary.totals.lastFlightDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
 
-  const goToPage = (p: number) => {
-    const clamped = Math.min(Math.max(1, p), totalPages);
-    setPage(clamped);
-    router.setParams(clamped === 1 ? { page: undefined } : { page: String(clamped) });
-  };
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     tapLight();
+    // Start the list again rather than refreshing page 7 of an infinite scroll.
+    setLoaded(new Map());
+    setPage(1);
     await refetch();
     setRefreshing(false);
   }, [refetch]);
@@ -326,18 +347,15 @@ function LogbookList() {
     </View>
   );
 
-  const ListFooter = totalPages > 1 ? (
-    <View style={styles.pagination}>
-      <Text style={styles.pageCounter}>Showing {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + logs.length} of {total} flights</Text>
-      <View style={styles.pageBtns}>
-        <PageBtn label="‹" disabled={page <= 1} onPress={() => goToPage(page - 1)} />
-        {pageWindow(page, totalPages).map((p, i) => p === '…'
-          ? <Text key={`e${i}`} style={styles.ellipsis}>…</Text>
-          : <PageBtn key={p} label={String(p)} active={p === page} onPress={() => goToPage(p)} />)}
-        <PageBtn label="›" disabled={page >= totalPages} onPress={() => goToPage(page + 1)} />
-      </View>
+  const loadedCount = logs.length;
+  const hasMore = loadedCount < total;
+  const ListFooter = (
+    <View style={{ paddingVertical: layout.sectionGap, alignItems: 'center' }}>
+      {hasMore
+        ? <Text style={styles.empty}>{isFetching ? 'Loading more…' : `${loadedCount} of ${total} flights`}</Text>
+        : <Text style={styles.empty}>{total} flight{total === 1 ? '' : 's'} · that is everything</Text>}
     </View>
-  ) : null;
+  );
 
   const ListEmpty = (error && !loading)
     ? <Text style={styles.empty}>Could not load your logbook.{'\n'}{error}{'\n'}Pull to refresh to try again.</Text>
@@ -376,6 +394,8 @@ function LogbookList() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
         ListHeaderComponent={ListHeader}
         ListFooterComponent={ListFooter}
+        onEndReachedThreshold={0.6}
+        onEndReached={() => { if (hasMore && !isFetching) setPage((p) => p + 1); }}
         ListEmptyComponent={ListEmpty}
         renderItem={({ item }) => {
           if (item.kind === 'day') {
@@ -419,14 +439,6 @@ function LogbookList() {
   );
 }
 
-function PageBtn({ label, active, disabled, onPress }: { label: string; active?: boolean; disabled?: boolean; onPress: () => void }) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <Pressable onPress={disabled ? undefined : onPress} style={[styles.pageBtn, active && styles.pageBtnActive, disabled && styles.pageBtnDisabled]}>
-      <Text style={[styles.pageBtnText, active && styles.pageBtnTextActive]}>{label}</Text>
-    </Pressable>
-  );
-}
 
 const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); return StyleSheet.create({
   // ── The rebuilt list (mockup): header, totals, recency, day groups, FAB ──

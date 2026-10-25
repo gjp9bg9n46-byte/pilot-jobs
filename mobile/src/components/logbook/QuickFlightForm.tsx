@@ -70,6 +70,17 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
     } finally { setSaving(false); }
   };
 
+  // A disabled button that does not say why is a dead end. This is what the
+  // button reads when it cannot be pressed.
+  // What is actually required stays what it was — date and route. Times are
+  // still optional on purpose (a sim detail or a block-time-only entry is a
+  // real thing a pilot logs), so they are not listed here. Say the word and
+  // OUT/IN become required too; it is one line.
+  const missing = !form.date ? 'Add the date'
+    : !form.departure ? 'Add where you flew from'
+      : !form.arrival ? 'Add where you flew to'
+        : null;
+
   const field = (k: string, label: string, opts: { hint?: string; mono?: boolean; placeholder?: string; flex?: number } = {}) => (
     <View style={[styles.f, { flex: opts.flex ?? 1 }]} key={k}>
       <Text style={styles.label}>{label}{opts.hint ? <Text style={styles.hint}> · {opts.hint}</Text> : null}</Text>
@@ -106,8 +117,10 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
           </View>
         ) : null}
 
-        <View style={styles.row}>{field('date', 'Date', { placeholder: 'YYYY-MM-DD' })}{field('flightNumber', 'Flight no.', { placeholder: 'MSC 2926' })}</View>
-        <View style={styles.row}>{field('departure', 'From', { placeholder: 'CAI' })}{field('arrival', 'To', { placeholder: 'HRG' })}</View>
+        {/* "MSC 2926" and "CAI" in grey read as a flight already filled in.
+            A hint has to look like a hint: "e.g." in front of it. */}
+        <View style={styles.row}>{field('date', 'Date', { placeholder: 'YYYY-MM-DD' })}{field('flightNumber', 'Flight no.', { placeholder: 'e.g. MSC 123' })}</View>
+        <View style={styles.row}>{field('departure', 'From', { placeholder: 'e.g. CAI' })}{field('arrival', 'To', { placeholder: 'e.g. HRG' })}</View>
         <View style={styles.row}>
           {field('aircraftType', 'Aircraft', { hint: prefs?.last?.aircraftType ? 'remembered' : undefined })}
           {field('registration', 'Registration', { hint: prefs?.last?.registration ? 'remembered' : undefined })}
@@ -159,10 +172,10 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
         <Pressable style={styles.btn} onPress={() => router.back()}><Text style={styles.btnText}>Cancel</Text></Pressable>
         <Pressable
           style={[styles.btn, styles.btnMain, (saving || !form.date || !form.departure || !form.arrival) && { opacity: 0.6 }]}
-          disabled={saving || !form.date || !form.departure || !form.arrival}
+          disabled={saving || !!missing}
           onPress={save}
         >
-          <Text style={styles.btnMainText}>{saving ? 'Saving…' : 'Save flight'}</Text>
+          <Text style={styles.btnMainText}>{saving ? 'Saving…' : missing || 'Save flight'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
