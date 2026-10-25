@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import api from '../../../src/lib/api';
-import { admin, fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
+import { admin, fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
 
 const TABS = ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'] as const;
 type Tab = typeof TABS[number];
@@ -147,7 +147,7 @@ export default function AdminEmployers() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <FlatList
         data={visible}
         keyExtractor={(e) => e.id}
@@ -230,7 +230,7 @@ function ActBtn({ label, kind, onPress, disabled, accessibilityLabel }: { label:
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: admin.bg },
-  content: { padding: spacing.xl, paddingBottom: 40 },
+  content: { padding: layout.screenX, paddingBottom: 40 },
   center: { paddingVertical: 60, alignItems: 'center' },
   h1: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.xl, color: admin.ink, marginBottom: 4 },
   sub: { color: admin.muted, fontSize: fontSizes.sm, marginBottom: 16, fontFamily: fontFamilies.body },

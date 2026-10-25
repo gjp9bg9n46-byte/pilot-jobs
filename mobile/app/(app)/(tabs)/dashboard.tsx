@@ -22,7 +22,7 @@ import { keys, useAirlineLogos, useDashboard } from '../../../src/hooks/queries'
 import { DashboardSkeleton } from '../../../src/components/Skeleton';
 import { tapLight } from '../../../src/lib/haptics';
 import { useUnread } from '../../../src/context/UnreadContext';
-import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
+import { fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
 import { hours } from '../../../src/lib/format';
 import { useTabBarClearance } from '../../../src/theme/tabBar';
@@ -320,7 +320,7 @@ function Toggle({ label, sub, on, last, styles, pilot }: { label: string; sub?: 
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingTop: spacing.lg, paddingBottom: 116 },
+  content: { padding: layout.screenX, paddingTop: spacing.lg, paddingBottom: 116 },
   center: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 20, gap: 10 },
   emptyTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.xl, color: pilot.ink, textAlign: 'center' },
   dim: { fontSize: fontSizes.base, color: pilot.muted, fontFamily: fontFamilies.body, lineHeight: 21 },

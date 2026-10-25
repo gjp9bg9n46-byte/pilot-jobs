@@ -10,7 +10,7 @@ import api from '../../../src/lib/api';
 import { useAuth, Employer } from '../../../src/context/AuthContext';
 import VerifyEmailBanner from '../../../src/components/VerifyEmailBanner';
 import { EmployerHeader, JobStatusBadge } from '../../../src/components/employer/EmployerChrome';
-import { employer as emp, fontFamilies, fontSizes, semantic, spacing } from '../../../src/theme/tokens';
+import { employer as emp, fontFamilies, fontSizes, semantic, spacing, layout } from '../../../src/theme/tokens';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Job = Record<string, any>;
@@ -118,7 +118,7 @@ export default function EmployerDashboard() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: emp.bg },
-  content: { padding: spacing.xl, paddingBottom: 40 },
+  content: { padding: layout.screenX, paddingBottom: 40 },
   muted: { color: emp.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.base },
   toast: { backgroundColor: semantic.successBg, borderWidth: 1, borderColor: '#BBF7D0', borderRadius: 6, padding: 12, marginBottom: 16 },
   toastText: { color: semantic.success, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm },

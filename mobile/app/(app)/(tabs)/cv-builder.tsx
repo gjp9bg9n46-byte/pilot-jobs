@@ -19,7 +19,7 @@ import api, { WEB_URL } from '../../../src/lib/api';
 import { cvSheetHtml } from '../../../src/cv/sheetHtml';
 import SheetView from '../../../src/cv/SheetView';
 import { useTabBarClearance } from '../../../src/theme/tabBar';
-import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
+import { fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
 import { useCvDocument } from '../../../src/hooks/queries';
 import { CvSkeleton } from '../../../src/components/Skeleton';
@@ -274,7 +274,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   loading: { color: pilot.muted, fontFamily: fontFamilies.body },
   err: { color: pilot.ink, fontFamily: fontFamilies.body, textAlign: 'center' },
-  pad: { paddingHorizontal: spacing.xl, paddingTop: 14 },
+  pad: { paddingHorizontal: layout.screenX, paddingTop: 14 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, backgroundColor: pilot.cream },
   h1: { flex: 1, fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink },
   headActions: { flexDirection: 'row', gap: 8 },

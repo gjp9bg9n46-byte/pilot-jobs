@@ -21,7 +21,7 @@ import api from '../../../../src/lib/api';
 import { TextField, SelectField, PrimaryButton, Sheet } from '../../../../src/components/ui';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { buildCompleteness, completenessSubtitle, CompletenessItem } from '../../../../src/lib/completeness';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useTheme, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
@@ -419,7 +419,7 @@ export default function SettingsScreen() {
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingBottom: 48 },
+  content: { padding: layout.screenX, paddingBottom: 48 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 20 },

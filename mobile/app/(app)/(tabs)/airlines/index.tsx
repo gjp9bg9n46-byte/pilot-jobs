@@ -11,7 +11,7 @@ import api from '../../../../src/lib/api';
 import { HiringPill, LogoTile } from '../../../../src/components/airlines/AirlineBits';
 import { shortFleet } from '../../../../src/lib/airlineFacts';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
-import { fontFamilies, spacing } from '../../../../src/theme/tokens';
+import { fontFamilies, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 import { FlashList } from '@shopify/flash-list';
 import { useAirlines } from '../../../../src/hooks/queries';
@@ -142,7 +142,7 @@ function AirlinesList() {
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingTop: 10 },
+  content: { padding: layout.screenX, paddingTop: 10 },
   h1: { fontFamily: fontFamilies.display, fontSize: 30, color: pilot.ink },
   sub: { fontSize: 13.5, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 2 },
 

@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../src/lib/api';
 import { useAuth } from '../../../src/context/AuthContext';
-import { admin, fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
+import { admin, fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
 
 type Stats = {
   actionQueues: { pendingContributions: number; pendingEmployers: number };
@@ -72,7 +72,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: admin.bg },
-  content: { padding: spacing.xl, paddingBottom: 40 },
+  content: { padding: layout.screenX, paddingBottom: 40 },
   center: { paddingVertical: 60, alignItems: 'center' },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 8 },
   h1: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.xl, color: admin.ink },

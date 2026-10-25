@@ -18,7 +18,7 @@ export default function EmployerStatus() {
   if (!e) return null;
   const copy = COPY[e.status] || COPY.REJECTED;
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <View style={styles.wrap}>
         <View style={styles.card}>
           <StatusBadge status={e.status} />

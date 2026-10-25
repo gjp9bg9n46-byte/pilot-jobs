@@ -20,7 +20,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as XLSX from 'xlsx';
 import { isAxiosError } from 'axios';
 import api from '../../../src/lib/api';
-import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, semantic, spacing, layout } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
 
 const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
@@ -165,7 +165,7 @@ export default function ImportFlights() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()}><Ionicons name="close" size={22} color={pilot.ink} /></Pressable>
         <Text style={styles.topTitle}>{step === 'done' ? 'Import Complete' : 'Import Flights'}</Text>
@@ -249,7 +249,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: pilot.line },
   topTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.md, color: pilot.ink },
-  content: { padding: spacing.xl, paddingBottom: 60, flexGrow: 1 },
+  content: { padding: layout.screenX, paddingBottom: 60, flexGrow: 1 },
   sourceWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 80 },
   sourceText: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.md, color: pilot.ink, marginTop: 6 },
   sourceHint: { fontFamily: fontFamilies.body, fontSize: fontSizes.sm, color: pilot.muted, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },

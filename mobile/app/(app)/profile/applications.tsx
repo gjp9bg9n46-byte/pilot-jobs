@@ -42,7 +42,7 @@ export default function Applications() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}><Ionicons name="close" size={22} color={pilot.ink} /></Pressable>
         <Text style={styles.topTitle}>My Applications</Text>

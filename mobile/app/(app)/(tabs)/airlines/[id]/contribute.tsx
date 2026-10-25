@@ -16,7 +16,7 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import api from '../../../../../src/lib/api';
 import AircraftCombobox from '../../../../../src/components/AircraftCombobox';
 import { PrimaryButton, SecondaryButton, SelectField, TextField } from '../../../../../src/components/ui';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../../../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../../src/theme/ThemeContext';
 
 type Opt = [string, string];
@@ -346,7 +346,7 @@ export default function AirlineContribute() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Pressable onPress={() => router.back()} style={styles.backRow}>
@@ -494,7 +494,7 @@ export default function AirlineContribute() {
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  content: { padding: spacing.xl, paddingBottom: 48 },
+  content: { padding: layout.screenX, paddingBottom: 48 },
   backRow: { marginBottom: 16 },
   back: { color: pilot.muted, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm },
   title: { fontFamily: fontFamilies.display, fontSize: fontSizes['2xl'], color: pilot.ink, letterSpacing: -0.2, marginBottom: 4 },

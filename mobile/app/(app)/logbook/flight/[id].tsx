@@ -9,7 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import { getPendingFlight, setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { landsNextDay, minutesToHHMM, spanMinutes } from '../../../../src/lib/logbookFormat';
-import { fontFamilies, fontSizes, spacing } from '../../../../src/theme/tokens';
+import RouteMap from '../../../../src/components/logbook/RouteMap';
+import { fontFamilies, fontSizes, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,7 +34,7 @@ export default function FlightDetail() {
 
   if (!flight) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={[]}>
         <View style={styles.bar}>
           <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}><Ionicons name="chevron-back" size={22} color={pilot.ink} /></Pressable>
           <Text style={styles.barTitle}>Flight</Text>
@@ -88,7 +89,7 @@ export default function FlightDetail() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <View style={styles.bar}>
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}><Ionicons name="chevron-back" size={22} color={pilot.ink} /></Pressable>
         <Text style={styles.barTitle}>Flight</Text>
@@ -106,6 +107,11 @@ export default function FlightDetail() {
         <Text style={styles.sub}>
           {[date, flight.flightNumber, flight.displayType || flight.aircraftType, flight.registration].filter(Boolean).join(' · ')}
         </Text>
+
+        {/* This sector's own route. Drawn only when both ends can be placed. */}
+        {flight.departure && flight.arrival ? (
+          <RouteMap sectors={[{ from: flight.departure, to: flight.arrival }]} height={150} />
+        ) : null}
 
         <View style={styles.card}>
           <View style={styles.grid4}>
@@ -161,7 +167,7 @@ export default function FlightDetail() {
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  pad: { padding: spacing.xl, paddingBottom: 60 },
+  pad: { padding: layout.screenX, paddingBottom: 60 },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: pilot.line, backgroundColor: pilot.surface },
   back: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   barTitle: { fontSize: 16, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },

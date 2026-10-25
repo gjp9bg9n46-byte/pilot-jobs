@@ -21,7 +21,7 @@ import { isAxiosError } from 'axios';
 import api from '../../../src/lib/api';
 import { ErrorBanner, PrimaryButton, SelectField, TextField } from '../../../src/components/ui';
 import { formatDate } from '../../../src/lib/profileLabels';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
 
 const EDUCATION_OPTIONS: [string, string][] = [
@@ -111,7 +111,7 @@ export default function ProfileEdit() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()}><Text style={styles.cancel}>Cancel</Text></Pressable>
         <Text style={styles.topTitle}>Edit Profile</Text>
@@ -182,7 +182,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: pilot.line },
   cancel: { color: pilot.navy, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.base },
   topTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.md, color: pilot.ink },
-  content: { padding: spacing.xl, paddingBottom: 60 },
+  content: { padding: layout.screenX, paddingBottom: 60 },
   subhead: { fontSize: 11, fontFamily: fontFamilies.bodyBold, color: pilot.muted, letterSpacing: 0.8, marginTop: 24, marginBottom: 12 },
   fieldLabel: { fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm, color: pilot.ink, marginBottom: 6 },
   dateField: { borderWidth: 1, borderColor: pilot.line, borderRadius: 6, paddingVertical: 12, paddingHorizontal: 14, backgroundColor: pilot.surface },

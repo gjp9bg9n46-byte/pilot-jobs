@@ -17,7 +17,7 @@ import { DateField, ErrorBanner, PrimaryButton, TextField } from './ui';
 import AircraftCombobox from './AircraftCombobox';
 import { blockTimeFromTimes } from '../lib/logbook';
 import { computeNightHours, nightComputable } from '../lib/night';
-import { fontFamilies, fontSizes, pilot, spacing } from '../theme/tokens';
+import { fontFamilies, fontSizes, pilot, spacing, layout } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
 export type Leg = Record<string, string>;
@@ -235,7 +235,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: pilot.line },
   cancel: { color: pilot.navy, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.base },
   topTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.md, color: pilot.ink },
-  content: { padding: spacing.xl, paddingBottom: 60 },
+  content: { padding: layout.screenX, paddingBottom: 60 },
   section: { fontFamily: fontFamilies.display, fontSize: fontSizes.lg, color: pilot.ink, marginBottom: 12 },
   subhead: { fontFamily: fontFamilies.display, fontSize: fontSizes.base, color: pilot.ink, marginTop: 14, marginBottom: 12 },
   fieldLabel: { fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm, color: pilot.ink, marginBottom: 6 },

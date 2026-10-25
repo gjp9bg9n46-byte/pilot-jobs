@@ -17,7 +17,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import api, { API_URL, getToken } from '../../../src/lib/api';
 import { notifySuccess } from '../../../src/lib/haptics';
 import { minutesToHHMM, spanMinutes } from '../../../src/lib/logbookFormat';
-import { fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
+import { fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -121,7 +121,7 @@ export default function ScanVoyageReport() {
   if (stage === 'capture' || stage === 'reading') {
     const busy = stage === 'reading';
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={[]}>
         {header('Scan voyage report', () => router.back())}
         <ScrollView contentContainerStyle={styles.pad}>
           {error ? <View style={styles.err}><Ionicons name="alert-circle-outline" size={16} color={RED} /><Text style={styles.errText}>{error}</Text></View> : null}
@@ -167,7 +167,7 @@ export default function ScanVoyageReport() {
   // ── Done ──────────────────────────────────────────────────────────────────
   if (stage === 'done') {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={[]}>
         <ScrollView contentContainerStyle={[styles.pad, { paddingTop: 50 }]}>
           <View style={styles.tick}><Ionicons name="checkmark" size={34} color={GREEN} /></View>
           <Text style={styles.doneH}>{result.saved} {result.saved === 1 ? 'flight' : 'flights'} added</Text>
@@ -204,7 +204,7 @@ export default function ScanVoyageReport() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       {header(`Check ${sectors.length} ${sectors.length === 1 ? 'flight' : 'flights'}`, discard)}
       <ScrollView contentContainerStyle={[styles.pad, { paddingBottom: 120 }]}>
         <View style={styles.found}>
@@ -414,7 +414,7 @@ export default function ScanVoyageReport() {
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  pad: { padding: spacing.xl },
+  pad: { padding: layout.screenX },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: pilot.line, backgroundColor: pilot.surface },
   back: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   barTitle: { fontSize: 16, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },

@@ -9,7 +9,7 @@ import api from '../../../src/lib/api';
 import { useAuth, Employer } from '../../../src/context/AuthContext';
 import { ErrorBanner, PrimaryButton, SelectField, TextField } from '../../../src/components/ui';
 import { StatusBadge } from '../../../src/components/employer/EmployerChrome';
-import { employer as emp, fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
+import { employer as emp, fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
 
 const COMPANY_TYPES: [string, string][] = [['AIRLINE', 'Airline'], ['CHARTER', 'Charter'], ['CARGO', 'Cargo'], ['EMS', 'EMS / Air Ambulance'], ['FLIGHT_SCHOOL', 'Flight School'], ['CORPORATE', 'Corporate / Business Aviation'], ['RECRUITER', 'Recruiter / Agency'], ['OTHER', 'Other']];
 const DESC_MAX = 5000;
@@ -76,7 +76,7 @@ export default function EmployerProfile() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()}><Text style={styles.back}>← Dashboard</Text></Pressable>
         <Text style={styles.topTitle}>Edit Profile</Text>
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: emp.line, backgroundColor: emp.surface },
   back: { color: emp.muted, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm },
   topTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: emp.ink },
-  content: { padding: spacing.xl, paddingBottom: 60 },
+  content: { padding: layout.screenX, paddingBottom: 60 },
   row2: { flexDirection: 'row', gap: 12 },
   hint: { color: emp.muted, fontSize: fontSizes.xs, fontFamily: fontFamilies.body, marginTop: 5 },
   verified: { color: '#166534', fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm, marginTop: 8 },

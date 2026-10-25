@@ -10,7 +10,7 @@ import { isAxiosError } from 'axios';
 import api from '../../lib/api';
 import { Checkbox, ErrorBanner, PrimaryButton, SelectField, TextField } from '../ui';
 import AircraftCombobox from '../AircraftCombobox';
-import { employer as emp, fontFamilies, fontSizes, spacing } from '../../theme/tokens';
+import { employer as emp, fontFamilies, fontSizes, spacing, layout } from '../../theme/tokens';
 
 const ROLES: [string, string][] = [['', '—'], ['CAPTAIN', 'Captain'], ['FIRST_OFFICER', 'First Officer'], ['INSTRUCTOR', 'Instructor']];
 const CONTRACT_TYPES: [string, string][] = [['', '—'], ['PERMANENT', 'Permanent'], ['CONTRACT', 'Fixed-term / Contract'], ['FREELANCE', 'Freelance / Agency'], ['PART_TIME', 'Part-time']];
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: emp.line, backgroundColor: emp.surface },
   back: { color: emp.muted, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm },
   topTitle: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.md, color: emp.ink },
-  content: { padding: spacing.xl, paddingBottom: 60 },
+  content: { padding: layout.screenX, paddingBottom: 60 },
   section: { fontSize: fontSizes.sm, fontFamily: fontFamilies.bodyBold, color: emp.navy, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 22, marginBottom: 12 },
   row2: { flexDirection: 'row', gap: 12 },
   label: { color: emp.muted, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.sm, marginBottom: 8 },

@@ -10,7 +10,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import api from '../../../src/lib/api';
-import { admin, fontFamilies, fontSizes, spacing } from '../../../src/theme/tokens';
+import { admin, fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
 
 const FIELD_LABELS: Record<string, string> = {
   headquarters: 'Headquarters', description: 'Description', bases: 'Bases', fleet: 'Fleet',
@@ -193,7 +193,7 @@ export default function AdminModeration() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <FlatList
         data={data.items}
         keyExtractor={(i) => i.id}
@@ -227,7 +227,7 @@ export default function AdminModeration() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: admin.bg },
-  content: { padding: spacing.xl, paddingBottom: 40 },
+  content: { padding: layout.screenX, paddingBottom: 40 },
   center: { paddingVertical: 60, alignItems: 'center' },
   h1: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.xl, color: admin.ink },
   pendingCount: { fontSize: fontSizes.md, fontFamily: fontFamilies.bodySemiBold, color: admin.queue },

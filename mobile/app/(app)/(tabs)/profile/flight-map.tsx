@@ -9,7 +9,7 @@ import api from '../../../../src/lib/api';
 import FlightMap from '../../../../src/components/FlightMap';
 import { FlightDashboard } from './index';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
-import { fontFamilies, fontSizes, spacing } from '../../../../src/theme/tokens';
+import { fontFamilies, fontSizes, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 export default function FlightMapScreen() {
@@ -48,7 +48,7 @@ export default function FlightMapScreen() {
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl }, // bottom padding comes from useTabBarClearance()
+  content: { padding: layout.screenX }, // bottom padding comes from useTabBarClearance()
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, alignItems: 'center', justifyContent: 'center' },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['2xl'], color: pilot.ink },

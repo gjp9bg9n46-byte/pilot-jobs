@@ -114,6 +114,28 @@ export const spacing = {
   '3xl': 48,
 } as const;
 
+// ── Layout ───────────────────────────────────────────────────────────────────
+// The spacing scale above says what sizes exist; this says which one each job
+// gets. Screens were mixing 24 and 16 for their own side padding and 10, 12 and
+// 14 between cards, which is what made the app look unconsidered. Use these
+// names, not numbers: if a value needs to change it changes in one place.
+export const layout = {
+  /** Every screen's left/right padding. */
+  screenX: spacing.lg,        // 16
+  /** First element below the header. */
+  screenTop: spacing.md,      // 12
+  /** Inside a card. */
+  cardPad: spacing.lg,        // 16
+  /** Between cards in a list. */
+  cardGap: spacing.md,        // 12
+  /** Between one section of a screen and the next. */
+  sectionGap: spacing.xl,     // 24
+  /** Between a label and its field, or two lines of one thing. */
+  rowGap: spacing.sm,         // 8
+  /** The app header. */
+  headerHeight: 56,
+} as const;
+
 export const radii = {
   sm: 6,
   md: 8,
@@ -131,6 +153,7 @@ export const theme = {
   fontFamilies,
   fontSizes,
   spacing,
+  layout,
   radii,
 } as const;
 

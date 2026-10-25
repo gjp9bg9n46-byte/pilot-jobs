@@ -20,7 +20,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../../../../src/lib/api';
 import { PrimaryButton } from '../../../../src/components/ui';
 import { getPushPermissionStatus, registerForPush, type PushStatus } from '../../../../src/lib/push';
-import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, semantic, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
@@ -136,7 +136,7 @@ export default function NotificationsSettings() {
     : 'Enable push notifications';
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} hitSlop={8}><Text style={styles.back}>← Back</Text></Pressable>
         <Text style={styles.topTitle}>Notifications</Text>
@@ -226,7 +226,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: pilot.line },
   back: { color: pilot.navy, fontFamily: fontFamilies.bodyMedium, fontSize: fontSizes.base },
   topTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.md, color: pilot.ink },
-  content: { padding: spacing.xl, paddingBottom: 48 },
+  content: { padding: layout.screenX, paddingBottom: 48 },
   sub: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.body, marginBottom: 20 },
   masterCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line, borderRadius: 10, padding: 16, marginBottom: 14 },
   masterTitle: { fontSize: fontSizes.base, color: pilot.ink, fontFamily: fontFamilies.bodyBold },

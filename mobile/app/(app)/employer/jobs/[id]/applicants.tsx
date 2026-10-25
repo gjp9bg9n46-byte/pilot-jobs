@@ -123,7 +123,7 @@ export default function Applicants() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()}><Text style={styles.back}>← Dashboard</Text></Pressable>
         <Text style={styles.topTitle} numberOfLines={1}>Applicants</Text>
@@ -169,7 +169,7 @@ export default function Applicants() {
       {/* Applicant detail (full-screen modal — web uses a side drawer) */}
       <Modal visible={!!openApp} animationType="slide" onRequestClose={() => setOpenId(null)} presentationStyle="pageSheet">
         {openApp ? (
-          <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <SafeAreaView style={styles.safe} edges={['bottom']}>
             <View style={styles.topBar}>
               <View style={{ width: 40 }} />
               <Text style={styles.topTitle}>Applicant</Text>

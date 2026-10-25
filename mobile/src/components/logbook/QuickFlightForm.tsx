@@ -15,7 +15,7 @@ import { notifySuccess } from '../../lib/haptics';
 import api from '../../lib/api';
 import { getPendingFlight, clearPendingFlight } from '../../lib/pendingFlight';
 import { minutesToHHMM, spanMinutes } from '../../lib/logbookFormat';
-import { fontFamilies, fontSizes, spacing } from '../../theme/tokens';
+import { fontFamilies, fontSizes, spacing, layout } from '../../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,7 +171,7 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  pad: { padding: spacing.xl, paddingBottom: 120 },
+  pad: { padding: layout.screenX, paddingBottom: 120 },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: pilot.line, backgroundColor: pilot.surface },
   back: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   barTitle: { fontSize: 16, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },

@@ -21,7 +21,7 @@ import AirlineLogo from '../../../../src/components/AirlineLogo';
 import { fetchAirlineMap, resolveAirline } from '../../../../src/lib/airlineLookup';
 import { jobRequirements, parseDescriptionBlocks } from '../../../../src/lib/jobRequirements';
 import { displayTitle, locationName } from '../../../../src/lib/displayNames';
-import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../../../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, semantic, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 const SEM = { green: '#166534', amber: '#92400E', red: '#991B1B' };
@@ -401,7 +401,7 @@ export default function JobDetail() {
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingBottom: 20 },
+  content: { padding: layout.screenX, paddingBottom: 20 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   loadingText: { color: pilot.navy, fontFamily: fontFamilies.body },
   backRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },

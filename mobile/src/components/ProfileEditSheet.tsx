@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../lib/api';
 import { DateField, FieldLabel, SelectField, TextField, Checkbox } from './ui';
 import AircraftCombobox from './AircraftCombobox';
-import { fontFamilies, fontSizes, spacing } from '../theme/tokens';
+import { fontFamilies, fontSizes, spacing, layout } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -389,7 +389,7 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   sheet: { backgroundColor: pilot.surface, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: '92%', paddingTop: 8 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: pilot.line },
   title: { fontFamily: fontFamilies.display, fontSize: 19, color: pilot.ink, fontWeight: '600' },
-  body: { paddingHorizontal: spacing.xl, paddingVertical: 16 },
+  body: { paddingHorizontal: layout.screenX, paddingVertical: 16 },
   note: { fontSize: fontSizes.xs, color: pilot.muted, fontFamily: fontFamilies.body, lineHeight: 17 },
 
   input: { borderWidth: 1, borderColor: pilot.line, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 13, fontFamily: fontFamilies.body, fontSize: fontSizes.md, color: pilot.ink, backgroundColor: pilot.surface },

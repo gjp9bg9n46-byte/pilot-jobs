@@ -20,7 +20,7 @@ import { pageWindow, timeToMinutes } from '../../../../src/lib/logbook';
 import { duration, findOverlaps, groupBy, Grouping, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
 import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
 import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 import { FlashList } from '@shopify/flash-list';
@@ -31,6 +31,7 @@ import { notifySuccess, tapLight } from '../../../../src/lib/haptics';
 import PressableScale from '../../../../src/components/PressableScale';
 import Segmented from '../../../../src/components/Segmented';
 import FlightRow from '../../../../src/components/logbook/FlightRow';
+import RouteMap from '../../../../src/components/logbook/RouteMap';
 import { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -309,6 +310,17 @@ function LogbookList() {
       {/* Hours dashboard (real data from /logbook/summary) */}
       <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} timeFormat={timeFormat} />
 
+      {/* Where this page of flights went. Follows the list: change page or
+          switch Month/Day and the map follows. Below the hours, because
+          currency is the number a pilot needs first. */}
+      {logs.length ? (
+        <RouteMap
+          sectors={logs.map((f: Log) => ({ from: f.departure, to: f.arrival }))}
+          height={170}
+          label="Where you flew"
+        />
+      ) : null}
+
       {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
       <CarryForwardPanel openSignal={cfOpenSignal} onSaved={() => { void refetch(); }} />
     </View>
@@ -455,7 +467,7 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   fab: { position: 'absolute', right: 20, bottom: 104, width: 58, height: 58, borderRadius: 29, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center', shadowColor: '#003F88', shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
 
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingBottom: 116 /* clears floating tab bar */ },
+  content: { padding: layout.screenX, paddingBottom: 116 /* clears floating tab bar */ },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 20 },
 

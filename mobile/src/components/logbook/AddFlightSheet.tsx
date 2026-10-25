@@ -6,7 +6,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } fr
 import { SPRING, timing } from '../../theme/motion';
 import { tapMedium } from '../../lib/haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { fontFamilies, fontSizes, spacing } from '../../theme/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { fontFamilies, fontSizes, layout, spacing } from '../../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../theme/ThemeContext';
 
 type Props = {
@@ -47,6 +48,7 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
   // The sheet is thrown up under the thumb, so it settles on a damped spring
   // rather than a fixed slide — the one place in the app where weight should be
   // believable. The dim behind it is a plain fade, so only one thing moves.
+  const insets = useSafeAreaInsets();
   const shown = useSharedValue(0);
   useEffect(() => {
     if (visible) { tapMedium(); shown.value = withSpring(1, SPRING); }
@@ -62,19 +64,23 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
       <Animated.View style={[StyleSheet.absoluteFill, dimStyle]}>
         <Pressable style={styles.dim} onPress={onClose} />
       </Animated.View>
-      <Animated.View style={[styles.sheet, sheetStyle]}>
+      <Animated.View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing.sm) + layout.cardPad }, sheetStyle]}>
         <View style={styles.grab} />
         <Text style={styles.h3}>Add a flight</Text>
         <Text style={styles.sub}>Every sector you flew today, in under a minute.</Text>
+        {/* One gap value between the options, and none after the last — the
+            sheet's own bottom padding closes it. */}
+        <View style={styles.options}>
         {scanEnabled ? option('scan', 'scan-outline', 'Scan voyage report',
           scansLeft != null && scansLeft <= 0
             ? 'No scans left today — enter the flight manually.'
-            : 'Take a photo. We read every sector — check the amber fields against it before saving.',
+            : 'Take a photo. We read every sector — we ask about anything we could not read.',
           onScan, true, true) : null}
         {option('manual', 'create-outline', 'Enter manually',
           'Type the times yourself. Route, aircraft and crew are remembered from your last flight.', onManual, !scanEnabled)}
         {option('import', 'download-outline', 'Import a file',
           "ForeFlight, LogTen or a CSV from your airline's system.", onImport)}
+        </View>
       </Animated.View>
     </Modal>
   );
@@ -82,13 +88,24 @@ export default function AddFlightSheet({ visible, onClose, onScan, onManual, onI
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   dim: { flex: 1, backgroundColor: 'rgba(11,31,58,0.45)' },
-  sheet: { backgroundColor: pilot.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.xl, paddingBottom: 38 },
-  grab: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#D5DCE5', alignSelf: 'center', marginBottom: 14 },
+  // The sheet sizes itself to its three options: screen padding all round, the
+  // home-indicator inset below (not a guessed 38), and one gap value between
+  // cards. It used to end in a band of empty space under the last option.
+  sheet: {
+    backgroundColor: pilot.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: layout.screenX, paddingTop: layout.screenX,
+  },
+  grab: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#D5DCE5', alignSelf: 'center', marginBottom: layout.cardGap },
   h3: { fontFamily: fontFamilies.display, fontSize: 22, fontWeight: '600', color: pilot.ink },
-  sub: { fontSize: 13.5, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 4, marginBottom: 16 },
-  opt: { flexDirection: 'row', gap: 14, alignItems: 'flex-start', borderWidth: 1, borderColor: pilot.line, borderRadius: 12, padding: 14, marginBottom: 10 },
+  sub: { fontSize: 13.5, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: spacing.xs, marginBottom: layout.cardPad },
+  opt: {
+    flexDirection: 'row', gap: layout.cardGap, alignItems: 'center',
+    borderWidth: 1, borderColor: pilot.line, borderRadius: 12,
+    padding: layout.cardPad,
+  },
+  options: { gap: layout.cardGap },
   optMain: { borderColor: pilot.navy, backgroundColor: '#F4F8FD' },
-  ic: { width: 42, height: 42, borderRadius: 10, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center' },
+  ic: { width: 40, height: 40, borderRadius: 10, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center' },
   icSoft: { backgroundColor: '#EEF2F7' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   optTitle: { fontSize: fontSizes.base, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },

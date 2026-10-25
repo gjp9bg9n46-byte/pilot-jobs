@@ -13,7 +13,7 @@ import {
   aircraftTotal, contractLabel, fleetRows, missingFacts, parseStages, readPay, upgradeLabel,
 } from '../../../../src/lib/airlineFacts';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
-import { fontFamilies, spacing } from '../../../../src/theme/tokens';
+import { fontFamilies, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,10 +42,10 @@ export default function AirlineFactFile() {
   );
 
   if (gone) {
-    return <SafeAreaView style={styles.safe} edges={['top']}>{header}<Text style={styles.empty}>That airline is no longer listed.</Text></SafeAreaView>;
+    return <SafeAreaView style={styles.safe} edges={[]}>{header}<Text style={styles.empty}>That airline is no longer listed.</Text></SafeAreaView>;
   }
   if (!airline) {
-    return <SafeAreaView style={styles.safe} edges={['top']}>{header}<ActivityIndicator color={pilot.navy} style={{ marginTop: 30 }} /></SafeAreaView>;
+    return <SafeAreaView style={styles.safe} edges={[]}>{header}<ActivityIndicator color={pilot.navy} style={{ marginTop: 30 }} /></SafeAreaView>;
   }
 
   const fd = airline.fieldDates || {};
@@ -72,7 +72,7 @@ export default function AirlineFactFile() {
   ].filter(Boolean) as { v: string; l: string }[];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       {header}
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: clearance }]} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
@@ -231,7 +231,7 @@ function Row({ k, v, d, styles }: { k: string; v: string; d: string | null; styl
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingTop: 4 },
+  content: { padding: layout.screenX, paddingTop: 4 },
   bar: { paddingHorizontal: 12, paddingVertical: 8 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   backText: { color: pilot.navy, fontSize: 14, fontFamily: fontFamilies.body },

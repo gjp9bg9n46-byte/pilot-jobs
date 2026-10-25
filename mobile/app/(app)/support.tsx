@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TextField } from '../../src/components/ui';
 import { WEB_URL } from '../../src/lib/api';
-import { fontFamilies, fontSizes, pilot, spacing } from '../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../src/theme/ThemeContext';
 
 type Faq = { cat: string; q: string; a: string };
@@ -135,7 +135,7 @@ export default function SupportScreen() {
 
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
-  content: { padding: spacing.xl, paddingBottom: 48 },
+  content: { padding: layout.screenX, paddingBottom: 48 },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 20 },
 
