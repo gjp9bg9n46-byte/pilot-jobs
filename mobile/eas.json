@@ -18,13 +18,7 @@
     },
     "production": {
       "channel": "production",
-      "autoIncrement": true,
-      "env": {
-        // TestFlight builds show a Details line on the error-boundary screen,
-        // so a caught error can be read off the device. Drop this from an App
-        // Store profile when there is one.
-        "EXPO_PUBLIC_ERROR_DETAILS": "1"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {

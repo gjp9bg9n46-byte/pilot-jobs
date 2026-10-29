@@ -22,10 +22,17 @@ import api from '../lib/api';
 import { ThemePalette, useThemedStyles } from '../theme/ThemeContext';
 import { fontFamilies, fontSizes, spacing } from '../theme/tokens';
 
-// Details are for the people testing the app, not for pilots. Set in the
-// production (TestFlight) build profile; drop it from an App Store profile.
-export const SHOW_ERROR_DETAILS =
-  __DEV__ || process.env.EXPO_PUBLIC_ERROR_DETAILS === '1';
+// Details are for the people testing the app, not for pilots.
+//
+// Read from the update channel, which EAS bakes into the build and which is
+// readable at runtime. A build-time EXPO_PUBLIC_ flag was tried first and did
+// not survive: two exports with and without it came out byte-identical, so the
+// line would never have appeared. This is checkable from the bundle.
+//
+// Every build today ships on the `production` channel, to TestFlight. Give the
+// App Store profile its own channel — `appstore` — and this turns itself off.
+const UPDATE_CHANNEL = (Updates as { channel?: string | null }).channel ?? null;
+export const SHOW_ERROR_DETAILS = __DEV__ || UPDATE_CHANNEL !== 'appstore';
 
 function buildLabel(): string {
   const v = Constants.expoConfig?.version || '?';
