@@ -72,6 +72,18 @@ export function useCvDocument() {
 }
 
 // ── Logbook (one bundled call: prefs + quota + summary + page) ────────────────
+// A bundle whose every part failed is a failure, not an empty screen. React
+// Query stores whatever a queryFn RESOLVES to as a success, and the persister
+// writes successes to disk — so one bad moment on a hotel wi-fi used to leave
+// `{prefs: null, summary: null, flights: null}` cached for a week, rehydrated
+// on every launch, with the screen rendering nothing and no way to clear it.
+// Throwing keeps the query in an error state, which leaves the last good data
+// in place and retries.
+function allNull(bundle: Record<string, unknown>): boolean {
+  const vs = Object.values(bundle);
+  return vs.length > 0 && vs.every((v) => v == null);
+}
+
 export function useLogbook(page: number) {
   return useQuery({
     queryKey: keys.logbook(page),
@@ -87,7 +99,9 @@ export function useLogbook(page: number) {
           get<Any>('/logbook/summary').catch(() => null),
           get<Any>('/flight-logs', { page, limit: 20 }).catch(() => null),
         ]);
-        return { prefs, scanQuota, summary, flights };
+        const bundle = { prefs, scanQuota, summary, flights };
+        if (allNull(bundle)) throw new Error('Could not reach the logbook');
+        return bundle;
       }
     },
   });
@@ -109,7 +123,9 @@ export function useProfileOverview() {
           get<Any>('/jobs/applications').catch(() => null),
           get<Any>('/cv/document').catch(() => null),
         ]);
-        return { profile, readiness, logbook, applications, cv };
+        const bundle = { profile, readiness, logbook, applications, cv };
+        if (allNull(bundle)) throw new Error('Could not reach your profile');
+        return bundle;
       }
     },
   });

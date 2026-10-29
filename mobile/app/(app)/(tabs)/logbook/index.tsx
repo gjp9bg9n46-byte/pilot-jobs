@@ -201,9 +201,19 @@ function LogbookList() {
   useFocusEffect(useCallback(() => { void refetch(); }, [refetch]));
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const lastFlightStr = summary?.totals?.lastFlightDate
-    ? new Date(summary.totals.lastFlightDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    : null;
+  // Hermes' Intl is not the browser's: a bad date or a locale it cannot serve
+  // throws here, and this one line sits above the whole tab.
+  const lastFlightStr = useMemo(() => {
+    const d = summary?.totals?.lastFlightDate;
+    if (!d) return null;
+    const dt = new Date(`${d}T00:00:00`);
+    if (Number.isNaN(dt.getTime())) return null;
+    try {
+      return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return `${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`;
+    }
+  }, [summary]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -296,22 +306,28 @@ function LogbookList() {
       </View>
 
       {/* Totals, then landings in the last 90 days and the day currency lapses */}
+      {/* `summary` can arrive without `totals` — an older payload still in the
+          on-device cache, or a bundle where only some of it answered. Reading
+          summary.totals.total on that shape threw, and the whole tab became
+          the error boundary. Each number stands on its own. */}
       {summary ? (
         <>
-          <View style={styles.tot}>
-            <View style={styles.totCard}>
-              <Text style={styles.totNum}>{duration(summary.totals.total, timeFormat)}</Text>
-              <Text style={styles.totLabel}>Total</Text>
+          {summary.totals ? (
+            <View style={styles.tot}>
+              <View style={styles.totCard}>
+                <Text style={styles.totNum}>{duration(summary.totals.total ?? 0, timeFormat)}</Text>
+                <Text style={styles.totLabel}>Total</Text>
+              </View>
+              <View style={styles.totCard}>
+                <Text style={styles.totNum}>{duration(Math.max(summary.totals.pic ?? 0, summary.totals.sic ?? 0), timeFormat)}</Text>
+                <Text style={styles.totLabel}>{(summary.totals.pic ?? 0) > (summary.totals.sic ?? 0) ? 'PIC' : 'SIC'}</Text>
+              </View>
+              <View style={styles.totCard}>
+                <Text style={styles.totNum}>{duration(summary.totals.night ?? 0, timeFormat)}</Text>
+                <Text style={styles.totLabel}>Night</Text>
+              </View>
             </View>
-            <View style={styles.totCard}>
-              <Text style={styles.totNum}>{duration(Math.max(summary.totals.pic, summary.totals.sic), timeFormat)}</Text>
-              <Text style={styles.totLabel}>{summary.totals.pic > summary.totals.sic ? 'PIC' : 'SIC'}</Text>
-            </View>
-            <View style={styles.totCard}>
-              <Text style={styles.totNum}>{duration(summary.totals.night, timeFormat)}</Text>
-              <Text style={styles.totLabel}>Night</Text>
-            </View>
-          </View>
+          ) : null}
           {summary.currency && (summary.currency.landingsLogged || summary.currency.flightsInWindow > 0) ? (() => {
             const r = recencyLine(summary.currency);
             if (!r) return null;

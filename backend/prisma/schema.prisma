@@ -840,6 +840,32 @@ model EmailVerificationToken {
 // Per-day client-version request tally — for measuring new-vs-legacy app share
 // before retiring any legacy response field / the fitGroup shim. Flushed from an
 // in-memory counter (~60s) so it survives redeploys. Read via /api/admin/app-versions.
+// A render error the app caught in its own error boundary. The screen shows a
+// message and keeps working; this is how the error itself reaches us, because
+// a caught error produces no crash report and TestFlight shows nothing.
+// Trimmed hard on the way in: a message, a stack and a component stack, no
+// payloads, so nothing a pilot typed can land here.
+model ClientError {
+  id        String   @id @default(uuid())
+  pilotId   String   @default("")     // "" when it happened signed out — not null,
+                                      // because Postgres treats NULLs as distinct
+                                      // and the upsert below would never match
+  platform  String                    // 'ios' | 'android' | 'web'
+  appVersion String?                  // e.g. '1.0.0 (6)'
+  runtime   String?                   // EAS update id / runtime version
+  screen    String                    // the boundary's label: 'Logbook', 'Jobs', …
+  name      String?                   // error constructor name
+  message   String                    // trimmed to 500
+  stack     String?                   // trimmed to 4000
+  componentStack String?              // trimmed to 4000
+  count     Int      @default(1)      // same fingerprint seen again
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([pilotId, screen, message])
+  @@index([lastSeenAt])
+}
+
 model AppVersionStat {
   id      String @id @default(uuid())
   day     String // 'YYYY-MM-DD' (UTC)

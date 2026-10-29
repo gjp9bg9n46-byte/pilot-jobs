@@ -68,6 +68,7 @@ app.use('/api/airlines', require('./routes/airlines'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/admin',   require('./routes/admin'));
 app.use('/api/employers', require('./routes/employers'));
+app.use('/api/app', require('./routes/clientErrors'));
 
 // Logo proxy — the mobile app's native image loader gets 403'd by Wikimedia's
 // non-browser-client blocking (browsers pass, apps don't). We fetch the image

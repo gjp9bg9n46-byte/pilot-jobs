@@ -40,4 +40,8 @@ export const persister = createAsyncStoragePersister({
 });
 
 // Bump when a payload shape changes so stale shapes are dropped, not rendered.
-export const CACHE_BUSTER = '2026-10-20.1';
+// 2026-10-29: the logbook payload and screen changed across builds 4–6
+// (bootstrap bundling, the new flight row, Month/Day grouping, the route map)
+// without this moving, so a device could rehydrate a build-3 shape into
+// build-6 code. Bump it with the shape, not with the release.
+export const CACHE_BUSTER = '2026-10-29.1';
