@@ -22,6 +22,7 @@ const VISIT_GAP_MS = 30 * 60 * 1000;
 const NEW_JOBS_SELECT = {
   id: true, title: true, titleEn: true, company: true, country: true,
   role: true, createdAt: true,
+  isCampaign: true,   // matchJob needs it to tell a campaign from a vacancy
   reqCertificates: true, reqAuthorities: true, reqAircraftTypes: true, aircraftTypes: true, reqTypeRatings: true,
   reqMedicalClass: true, reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true,
   reqMinTurbineHours: true, reqMinInstrumentHours: true, reqMinCrossCountryHours: true,

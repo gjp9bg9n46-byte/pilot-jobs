@@ -291,7 +291,13 @@ function JobRow({ job, onView, styles, pilot, air }: { job: Any; onView: () => v
             <Text style={[styles.pct, { color: meta.color }]}>{m.pct}%<Text style={styles.pctSuffix}> match</Text></Text>
             {m.stated > 0 ? <Text style={styles.metLine}>{m.met} of {m.stated} met</Text> : null}
           </View>
-        ) : <Text style={styles.notStated}>{m?.status === 'NO_REQUIREMENTS' ? 'No requirements stated' : 'Not stated'}</Text>}
+        ) : (
+          <Text style={styles.notStated}>
+            {m?.status === 'CAMPAIGN' ? 'General recruitment'
+              : m?.status === 'NO_REQUIREMENTS' ? 'No requirements stated'
+                : 'Not stated'}
+          </Text>
+        )}
         <Pressable onPress={onView} style={[styles.viewBtn, isQualify && styles.viewBtnPrimary]}>
           <Text style={[styles.viewBtnText, isQualify && { color: '#fff' }]}>View</Text>
         </Pressable>

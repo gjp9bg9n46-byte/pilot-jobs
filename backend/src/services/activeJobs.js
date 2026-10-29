@@ -15,6 +15,7 @@ const prisma = require('../config/database');
 // Everything the shared matcher reads (the two omitted columns are selected
 // explicitly, which overrides the client-level omit).
 const MATCH_SELECT = {
+  isCampaign: true,   // matchJob needs it to tell a campaign from a vacancy
   id: true, title: true, titleEn: true, company: true, location: true, country: true,
   role: true, sourceType: true, applyUrl: true, postedAt: true, createdAt: true, status: true,
   salaryMin: true, salaryMax: true,

@@ -22,6 +22,8 @@ const prisma = require(path.join(BACKEND, 'src/config/database'));
 const bundles = require(path.join(BACKEND, 'src/controllers/bundleController'));
 const profileController = require(path.join(BACKEND, 'src/controllers/profileController'));
 const flightLogController = require(path.join(BACKEND, 'src/controllers/flightLogController'));
+const jobController = require(path.join(BACKEND, 'src/controllers/jobController'));
+const airlineController = require(path.join(BACKEND, 'src/controllers/airlineController'));
 
 function call(handler, req) {
   return new Promise((resolve, reject) => {
@@ -53,6 +55,22 @@ function call(handler, req) {
   write('bootstrap.json', bootstrap);
   write('airports.json', airports);
   write('flight.json', flight);
+  // The Jobs tab, the Airlines tab and one job's own page. The jobs list has
+  // to include the standing campaign row — a match shape with no percentage,
+  // which is what took the tab down.
+  // The whole list, not page 1: the campaign row sorts LAST, so a 20-row page
+  // would not contain the case that broke the tab.
+  const jobs = await call(jobController.getJobs, { pilot, query: { page: '1', limit: '400' } });
+  const airlines = await call(airlineController.listAirlines ?? airlineController.getAirlines, { pilot, query: { page: '1', limit: '20' } });
+  const campaign = (jobs.jobs || []).find((j) => j.isCampaign) || (jobs.jobs || [])[0];
+  const job = campaign
+    ? await call(jobController.getJob, { pilot, params: { id: campaign.id } })
+    : null;
+  write('jobs.json', jobs);
+  write('airlines.json', airlines);
+  write('job.json', job);
+  console.log(`  campaign row in the list: ${(jobs.jobs || []).some((j) => j.isCampaign) ? 'yes' : 'NO — the fixture misses the case that broke'}`);
+
   write('rest.json', {
     carryForward,
     me: { id: pilot.id, firstName: pilot.firstName, lastName: pilot.lastName, role: pilot.role, email: 'test@example.invalid' },

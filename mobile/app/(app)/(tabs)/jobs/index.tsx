@@ -59,6 +59,10 @@ const FIT_GROUPS: { key: string; label: string; hint: string }[] = [
   { key: 'other', label: 'Everything else', hint: '' },
   // Recruitment days are not vacancies: no requirements, no match, last.
   { key: 'event', label: 'Events', hint: 'recruitment days, not vacancies' },
+  // Nor is a standing campaign — the row an airline's rewritten generic ads
+  // collapse into. It has no rank and no requirements, so no percentage, and
+  // it sits below everything a pilot can actually apply for.
+  { key: 'campaign', label: 'General recruitment', hint: 'not a specific vacancy' },
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -177,7 +181,10 @@ function JobsBrowse() {
       for (let i = 0; i < ra.length; i += 1) if (ra[i] !== rb[i]) return ra[i] - rb[i];
       return 0;
     };
-    const ordered = [...filtered].sort(byRank);
+    // A null entry in the array is not a job; it must cost that row, not the
+    // list. (GET /jobs once 500'd on a campaign row and the app showed the
+    // server's message — this is the belt to that braces.)
+    const ordered = [...filtered].filter(Boolean).sort(byRank);
     const showGroups = sort === 'best' && ordered.some((j) => j.match);
     if (!showGroups) return ordered.map((job) => ({ type: 'job' as const, job, key: job.id }));
     // Flatten groups into one list so a single FlashList renders headers + rows.
@@ -188,8 +195,13 @@ function JobsBrowse() {
       out.push({ type: 'head', label: g.label, hint: g.hint, count: inGroup.length, key: `h-${g.key}` });
       for (const job of inGroup) out.push({ type: 'job', job, key: job.id });
     }
-    // Jobs with no match object at all (logged-out shape) still get listed.
-    for (const job of ordered.filter((j) => !j.match)) out.push({ type: 'job', job, key: job.id });
+    // Anything the groups above did not claim — a row with no match at all
+    // (the logged-out shape), or a fitGroup from a newer server this build has
+    // never heard of — is still listed rather than silently dropped.
+    const claimed = new Set(FIT_GROUPS.map((g) => g.key));
+    for (const job of ordered.filter((j) => !j.match || !claimed.has(j.match.fitGroup))) {
+      out.push({ type: 'job', job, key: job.id });
+    }
     return out;
   }, [filtered, sort]);
 

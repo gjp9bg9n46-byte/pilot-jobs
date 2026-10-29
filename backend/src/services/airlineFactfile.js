@@ -41,6 +41,7 @@ function employerKeyOf(job, resolver) {
 
 const JOB_FIELDS = {
   id: true, company: true, title: true, titleEn: true, role: true, location: true, country: true,
+  isCampaign: true,   // matchJob needs it to tell a campaign from a vacancy
   reqMinTotalHours: true, reqMinPicHours: true, reqCertificates: true, reqTypeRatings: true,
   reqAircraftTypes: true, reqAuthorities: true, reqEnglishLevel: true, reqMedicalClass: true,
   reqWorkAuthorization: true, reqEducation: true, reqMinMultiEngineHours: true,

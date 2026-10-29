@@ -343,9 +343,27 @@ function hoursReq(key, label, reqVal, pilotVal, known) {
 
 // Evaluate every requirement the JOB states, against the pilot context.
 // Returns { requirements, counts, fitGroup, unmetKeys, blocker }.
+// Returned for a standing campaign. A frozen object, because every caller
+// gets the same one.
+const CAMPAIGN_MATCH = Object.freeze({
+  requirements: [], counts: { met: 0, unmet: 0, unknown: 0 }, known: 0,
+  stated: 0, met: 0, notMet: 0, addCount: 0,
+  pct: null, status: 'CAMPAIGN', shortfall: null,
+  category: { jobCategory: null, gate: 'n/a', label: null, advisory: null },
+  unmetKeys: [], unknownKeys: [], blocker: null, fitGroup: 'campaign',
+});
+
 function matchJob(job, ctx) {
   const reqs = [];
   const push = (r) => { if (r) reqs.push(r); };
+
+  // ── Standing recruitment CAMPAIGN: the row an airline's rewritten generic
+  //    ads collapse into. No rank, no fleet, no requirements, so there is
+  //    nothing to match — and it must never read as a vacancy a pilot
+  //    qualifies for. Guarded HERE rather than at each call site: alerts,
+  //    the airline counts, profile readiness and the job list all run through
+  //    this function, and one of them forgetting is a bug on a phone. ──
+  if (job && job.isCampaign) return CAMPAIGN_MATCH;
 
   // ── Recruitment EVENT (change C#1): not a vacancy → excluded from matching.
   //    No requirements, no %, parked under its own status so lists can drop it. ──
@@ -625,6 +643,7 @@ function titleCaseWord(s) {
 }
 
 module.exports = {
+  CAMPAIGN_MATCH,
   regionForCountry, defaultRegionForPilot, REGIONS,
   buildMatchContext, contextFromPilot, matchJob, medicalLabel, workAuthLabel,
   jobAircraftCategory, jobInstructorKind, normCategory, jobIsEvent, jobEligibility,

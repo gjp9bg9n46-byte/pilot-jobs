@@ -177,6 +177,9 @@ export function matchPill(match) {
   if (!match) return null;
   const status = match.status;
   if (status === 'EVENT') return { text: 'Event', tone: 'grey', color: TONE_COLOR.grey };
+  // A standing recruitment campaign is a door to knock on, not a vacancy to
+  // score. It carries no percentage, so say what it is rather than nothing.
+  if (status === 'CAMPAIGN') return { text: 'General recruitment', tone: 'grey', color: TONE_COLOR.grey };
   if (status === 'NO_REQUIREMENTS' || status === 'WRONG_CATEGORY') return null;
   const base = MATCH_STATUS_META[status] || { label: '', tone: 'grey' };
   const pct = typeof match.pct === 'number' ? match.pct : null;

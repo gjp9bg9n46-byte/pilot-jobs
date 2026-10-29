@@ -75,4 +75,7 @@ export const persister = createAsyncStoragePersister({
 // the entry was also still inside its 24-hour staleTime.
 //
 // Bump this in the SAME commit as any change to what a queryFn returns.
-export const CACHE_BUSTER = '2026-10-30.1';
+// 2026-10-30.2: the jobs payload gained a campaign fitGroup and every job now
+// carries a match object. A cached list from before that holds rows whose
+// match is null, which older grouping code dereferenced.
+export const CACHE_BUSTER = '2026-10-30.2';

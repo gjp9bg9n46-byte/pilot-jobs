@@ -425,7 +425,7 @@ exports.getJobs = async (req, res, next) => {
       region: regionForCountry(j.country),
       // A standing campaign has no rank, no fleet and no requirements, so a
       // percentage against it would be a number about nothing.
-      match: ctx && !j.isCampaign ? matchJob(j, ctx) : null,
+      match: ctx ? matchJob(j, ctx) : null,
     }));
 
     // Region tab counts — over the current filters EXCLUDING the region tab itself.
@@ -444,8 +444,16 @@ exports.getJobs = async (req, res, next) => {
     const emptyProfile = !!ctx && !ctx.matchable;
 
     // Fit-group counts over the region-filtered view (drives the header + groups).
-    const fitGroupCounts = { qualify: 0, incomplete: 0, oneShort: 0, few: 0, other: 0, event: 0 };
-    if (matchable) for (const m of view) fitGroupCounts[m.match.fitGroup] += 1;
+    const fitGroupCounts = { qualify: 0, incomplete: 0, oneShort: 0, few: 0, other: 0, event: 0, campaign: 0 };
+    // `m.match` is null for every row when the pilot is signed out, and the
+    // tally must survive a group it has never heard of rather than throwing
+    // and taking the whole endpoint with it.
+    if (matchable) {
+      for (const m of view) {
+        const g = m.match?.fitGroup;
+        if (g && Object.prototype.hasOwnProperty.call(fitGroupCounts, g)) fitGroupCounts[g] += 1;
+      }
+    }
 
     // Profile nudge for the "Complete your profile to check" (incomplete) group:
     // the profile fields whose absence blocks the MOST incomplete jobs, top 3.
@@ -459,7 +467,7 @@ exports.getJobs = async (req, res, next) => {
       };
       const tally = {};
       for (const m of view) {
-        if (m.match.fitGroup !== 'incomplete') continue;
+        if (m.match?.fitGroup !== 'incomplete') continue;
         for (const k of (m.match.unknownKeys || [])) tally[k] = (tally[k] || 0) + 1;
       }
       const top = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 3)
@@ -486,7 +494,8 @@ exports.getJobs = async (req, res, next) => {
     if (effectiveSort === 'best' && matchable) {
       // No match (a standing campaign) ranks below every fit group rather than
       // throwing on a null — and that is also where it belongs.
-      const rank = { qualify: 0, incomplete: 1, oneShort: 2, few: 3, other: 4 };
+      // A campaign is not a vacancy, so it sits below every fit group.
+      const rank = { qualify: 0, incomplete: 1, oneShort: 2, few: 3, other: 4, campaign: 6 };
       const rankOf = (m) => (m.match ? rank[m.match.fitGroup] ?? 4 : 5);
       view = view.map((m, i) => ({ m, i })).sort((a, b) => (rankOf(a.m) - rankOf(b.m)) || (a.i - b.i)).map((x) => x.m);
     }
@@ -618,7 +627,7 @@ exports.getJob = async (req, res, next) => {
         // just for matching (NOT merged into the serialized response, so shape is
         // unchanged). matchJob reads reqTypeRatings (type) + aircraftTypes (category).
         const mx = await prisma.job.findUnique({ where: { id: job.id }, select: { aircraftTypes: true, reqTypeRatings: true } });
-        if (!job.isCampaign) match = matchJob({ ...job, ...(mx || {}) }, ctx);
+        match = matchJob({ ...job, ...(mx || {}) }, ctx);
         const family = new Set((job.reqAircraftTypes || []).map((t) => String(t).toUpperCase()));
         const cands = await prisma.job.findMany({
           where: { status: 'ACTIVE', id: { not: job.id } },

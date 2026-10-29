@@ -40,6 +40,9 @@ function stubs() {
   const airports = read('airports.json');
   const rest = read('rest.json');
   const flight = read('flight.json');
+  const jobs = read('jobs.json');
+  const airlines = read('airlines.json');
+  const job = read('job.json');
   return {
     '/api/logbook/bootstrap': bootstrap,
     '/api/logbook/prefs': bootstrap.prefs,
@@ -55,11 +58,15 @@ function stubs() {
     '/api/jobs/alerts/unread-count': { count: 0 },
     // prefetchTabs warms these on every cold start; unstubbed they are noise
     // that drowns the signal this script exists to show.
-    '/api/jobs': { jobs: [], total: 0, page: 1, pages: 1, regionCounts: {} },
+    '/api/jobs': jobs,
+    '/api/airlines': airlines,
+    // Airline logos are proxied per row; they are images, not screens.
+    '/api/logo': {},
     '/api/cv/document': { document: null },
     '/api/airlines/logos': { items: [] },
     '/api/dashboard': { newJobs: 0 },
     __flight: flight,
+    __job: job,
   };
 }
 
@@ -159,7 +166,10 @@ async function run() {
       if (/^\/api\/flight-logs\/[^/]+$/.test(u.pathname)) {
         return req.respond({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(S.__flight) });
       }
-      const k = Object.keys(S).find((x) => x !== '__flight' && u.pathname.startsWith(x));
+      if (/^\/api\/jobs\/[0-9a-f-]{8,}$/.test(u.pathname)) {
+        return req.respond({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(S.__job) });
+      }
+      const k = Object.keys(S).find((x) => !x.startsWith('__') && u.pathname.startsWith(x));
       if (!k) {
         runtime.push(`unstubbed ${req.method()} ${u.pathname}`);
         return req.respond({ status: 404, headers: CORS, contentType: 'application/json', body: '{}' });
@@ -182,6 +192,12 @@ async function run() {
       { name: 'full map', path: '/logbook/map', must: [/airports?/i] },
       { name: 'flight detail', path: `/logbook/flight/${S.__flight.id}`, must: [/Block/i] },
       { name: 'scan', path: '/logbook/scan', must: [] },
+      // The three the campaign row took down. The list has to reach the
+      // bottom, because that is where a campaign sorts.
+      { name: 'Jobs list', path: '/jobs', must: [/job|vacanc/i] },
+      { name: 'Jobs · bottom', path: '/jobs', must: [/General recruitment/i], scroll: 60000 },
+      { name: 'Airlines', path: '/airlines', must: [/airline/i] },
+      { name: 'job detail', path: `/jobs/${S.__job?.id || S.__job?.job?.id}`, must: [/apply|requirement|recruitment/i] },
     ];
 
     for (const sc of screens) {
@@ -189,13 +205,31 @@ async function run() {
       await page.goto(`${BASE}${sc.path}`, { waitUntil: 'networkidle2', timeout: 180000 }).catch(() => {});
       await new Promise((r) => setTimeout(r, 3500));
       if (sc.scroll) {
-        await page.evaluate((y) => {
-          const el = [...document.querySelectorAll('div')]
-            .filter((n) => n.scrollHeight > n.clientHeight + 40)
-            .sort((a, b) => b.scrollHeight - a.scrollHeight)[0];
-          if (el) el.scrollTop = y; else window.scrollTo(0, y);
-        }, sc.scroll);
-        await new Promise((r) => setTimeout(r, 2000));
+        // A virtualised list only renders what is near the viewport, so one
+        // jump to a big offset lands nowhere. Step down until what we are
+        // looking for appears, or the list stops growing.
+        const want = (sc.must || [])[0];
+        let lastTop = -1;
+        for (let step = 0; step < 60; step += 1) {
+          const top = await page.evaluate((y) => {
+            const el = [...document.querySelectorAll('div')]
+              .filter((n) => n.scrollHeight > n.clientHeight + 40)
+              .sort((a, b) => b.scrollHeight - a.scrollHeight)[0];
+            if (!el) { window.scrollBy(0, y); return -1; }
+            el.scrollTop = Math.min(el.scrollTop + y, el.scrollHeight);
+            el.dispatchEvent(new Event('scroll', { bubbles: true }));
+            return el.scrollTop;
+          }, Math.min(sc.scroll, 2500));
+          await new Promise((r) => setTimeout(r, 400));
+          if (want) {
+            const found = await page.evaluate((src, flags) => new RegExp(src, flags).test(document.body.innerText),
+              want.source, want.flags);
+            if (found) break;
+          }
+          if (top === lastTop) break;
+          lastTop = top;
+        }
+        await new Promise((r) => setTimeout(r, 1200));
       }
       const text = await page.evaluate(() => document.body.innerText).catch(() => '');
       const bad = FORBIDDEN.filter((f) => f.re.test(text));
