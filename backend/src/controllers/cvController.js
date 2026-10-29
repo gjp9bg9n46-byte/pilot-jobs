@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { aircraftBreakdown } = require('../services/logbookSummary');
 const { imageSize } = require('image-size');
 
 // HEIC/HEIF (iPhone/Mac default) is accepted too — Uploadcare converts it to
@@ -105,13 +106,9 @@ exports.getCvData = async (req, res, next) => {
           landingsDay: true, landingsNight: true,
         },
       }),
-      prisma.flightLog.groupBy({
-        by: ['aircraftType'],
-        where: { pilotId, aircraftType: { not: '' } },
-        _sum: { totalTime: true },
-        orderBy: { _sum: { totalTime: 'desc' } },
-        take: 20,
-      }),
+      // Resolved types, not the raw column: a logbook imported without an
+      // aircraft column still flew A320s, and the CV has to say so.
+      aircraftBreakdown(pilotId),
       prisma.flightLog.aggregate({
         where: { pilotId, date: { gte: d90 } },
         _sum: { totalTime: true, landingsDay: true, landingsNight: true },
@@ -166,7 +163,7 @@ exports.getCvData = async (req, res, next) => {
       rtw,
       totals,
       recency,
-      aircraftTypes: aircraftRows.map(r => ({ type: r.aircraftType, hours: r._sum.totalTime ?? 0 })),
+      aircraftTypes: aircraftRows.map((r) => ({ type: r.type, hours: r.hours })),
       // education + languages come from the profile tables (source of truth); the
       // rest (summary/skills/other/accentColor/photo + legacy copies) from CvData.
       cv: {

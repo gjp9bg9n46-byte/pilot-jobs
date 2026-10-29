@@ -246,6 +246,35 @@ async function buildLogbookSummary(pilotId) {
   return { totals, byType, milestone, limits, currency, months };
 }
 
+/**
+ * Hours per aircraft type, resolving the type the SAME way the logbook does:
+ * the stored type wins, otherwise it is inferred from the registration.
+ *
+ * The CV used to group by the stored column and skip the empty ones, so a
+ * logbook imported without a type column — 501 of this pilot's 503 flights —
+ * showed as 50 hours on type instead of 1,564. One function now answers the
+ * question for the "Types, limits" card and the CV alike.
+ */
+async function aircraftBreakdown(pilotId, { limit = 20 } = {}) {
+  const logs = await prisma.flightLog.findMany({
+    where: { pilotId },
+    select: { aircraftType: true, registration: true, totalTime: true, offBlocksTime: true, onBlocksTime: true },
+  });
+  const byType = new Map();
+  for (const log of logs) {
+    const { type } = resolveType(log);
+    if (!type) continue;
+    const cur = byType.get(type) || { type, hours: 0, flights: 0 };
+    cur.hours += blockHours(log);
+    cur.flights += 1;
+    byType.set(type, cur);
+  }
+  return [...byType.values()]
+    .map((t) => ({ ...t, hours: round1(t.hours) }))
+    .sort((a, b) => b.hours - a.hours)
+    .slice(0, limit);
+}
+
 // ── Canonical derived totals (single source for matching + the summary) ────────
 // The full derivation runs once from the loaded flights (block time from off/on-
 // blocks; multi-engine/turbine credited from the resolved aircraft type when the
@@ -375,6 +404,7 @@ function displayTypeFor(log) {
 }
 
 module.exports = {
+  aircraftBreakdown,
   buildLogbookSummary,
   getMatchTotals,
   recomputeDerivedTotals,
