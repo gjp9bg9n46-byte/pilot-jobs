@@ -75,9 +75,16 @@ export function useAirportCoords() {
   });
 }
 
+export type MapScope = 'all' | 'view';
+
 export default function RouteMap({
-  sectors, height = 190, label, explorable = true,
-}: { sectors: Sector[]; height?: number; label?: string; explorable?: boolean }) {
+  sectors, height = 190, label, explorable = true, scope, onScopeChange,
+}: {
+  sectors: Sector[]; height?: number; label?: string; explorable?: boolean;
+  /** 'all' draws every route ever flown; 'view' follows the page on screen. */
+  scope?: MapScope;
+  onScopeChange?: (s: MapScope) => void;
+}) {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { data: air } = useAirportCoords();
@@ -96,7 +103,10 @@ export default function RouteMap({
     return () => { alive = false; };
   }, []);
 
-  // Which airports are on screen, how many flights touched each, and the legs.
+  // All time, or the page on screen. All-time comes from the server as a list
+  // of routes with how often each was flown; "this view" is the sectors the
+  // list is currently showing, which is all the card ever drew before.
+  const allTime = scope !== 'view' && !!air?.routes?.length;
   const { points, legs, skipped } = useMemo(() => {
     // `select` above always hands over a Map. This guard is for the one case
     // it cannot cover: a build whose cache was written before that change.
@@ -105,10 +115,13 @@ export default function RouteMap({
     const seen = new Map<string, { a: Airport; count: number }>();
     const ls: { a: Airport; b: Airport }[] = [];
     let miss = 0;
-    for (const s of sectors || []) {
-      const A = at(s.from);
-      const B = at(s.to);
-      for (const [code, ap] of [[s.from, A], [s.to, B]] as [string, Airport | undefined][]) {
+    const pairs: [string | null | undefined, string | null | undefined][] = allTime
+      ? (air?.routes || []).map((r) => [r.from, r.to])
+      : (sectors || []).map((s) => [s.from, s.to]);
+    for (const [from, to] of pairs) {
+      const A = at(from);
+      const B = at(to);
+      for (const [code, ap] of [[from, A], [to, B]] as [string, Airport | undefined][]) {
         if (!code) continue;
         if (!ap) { miss += 1; continue; }
         const key = ap.code;
@@ -119,7 +132,7 @@ export default function RouteMap({
       if (A && B) ls.push({ a: A, b: B });
     }
     return { points: [...seen.values()], legs: ls, skipped: miss };
-  }, [sectors, coords]);
+  }, [sectors, coords, air, allTime]);
 
   const projected = useMemo(() => {
     if (!width || !points.length) return null;
@@ -145,13 +158,42 @@ export default function RouteMap({
 
   const open = () => {
     if (!explorable || !points.length) return;
-    setPendingMap(sectors || [], label || 'Where you flew');
+    setPendingMap(sectors || [], label || 'Where you flew', allTime ? 'all' : 'view');
     router.push('/logbook/map');
   };
 
-  const card = (
+  // The header is NOT inside the pressable: a button inside a button is
+  // invalid on web and swallows the inner tap. Only the map and its footer
+  // open the full screen; the scope toggle sits beside them.
+  const head = (
+    <View style={styles.head}>
+      {label ? <Text style={styles.label}>{label}</Text> : <View />}
+      {onScopeChange && air?.routes?.length ? (
+        <View style={styles.scope}>
+          {(['all', 'view'] as MapScope[]).map((sc) => {
+            const on = (scope ?? 'all') === sc;
+            return (
+              <Pressable
+                key={sc}
+                onPress={() => onScopeChange(sc)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                style={[styles.scopeBtn, on && styles.scopeBtnOn]}
+              >
+                <Text style={[styles.scopeText, on && styles.scopeTextOn]}>
+                  {sc === 'all' ? 'All time' : 'This view'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const plot = (
     <>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={[styles.frame, { height }]} pointerEvents="none">
         {width > 0 && projected ? (
           <Svg width={width} height={height}>
@@ -173,6 +215,7 @@ export default function RouteMap({
       <View style={styles.foot}>
         <Text style={styles.hint}>
           {points.length} airport{points.length === 1 ? '' : 's'}
+          {allTime ? ' · all time' : ' · this view'}
           {skipped > 0 ? ` · ${skipped} without coordinates not shown` : ''}
         </Text>
         {explorable && points.length ? (
@@ -185,19 +228,22 @@ export default function RouteMap({
     </>
   );
 
-  return explorable && points.length ? (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={open}
+  return (
+    <View
+      style={styles.card}
       onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width - layout.cardPad * 2))}
-      accessibilityRole="button"
-      accessibilityLabel={`${label || 'Where you flew'}, ${points.length} airports. Opens the full map.`}
     >
-      {card}
-    </Pressable>
-  ) : (
-    <View style={styles.card} onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width - layout.cardPad * 2))}>
-      {card}
+      {head}
+      {explorable && points.length ? (
+        <Pressable
+          onPress={open}
+          style={({ pressed }) => (pressed ? styles.cardPressed : undefined)}
+          accessibilityRole="button"
+          accessibilityLabel={`${label || 'Where you flew'}, ${points.length} airports. Opens the full map.`}
+        >
+          {plot}
+        </Pressable>
+      ) : plot}
     </View>
   );
 }
@@ -209,9 +255,15 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   },
   label: {
     fontSize: 11, fontFamily: fontFamilies.bodySemiBold, color: pilot.faint,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: layout.rowGap,
+    textTransform: 'uppercase', letterSpacing: 0.5,
   },
   cardPressed: { opacity: 0.85 },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, marginBottom: layout.rowGap },
+  scope: { flexDirection: 'row', backgroundColor: pilot.cream, borderRadius: 8, padding: 2, borderWidth: 1, borderColor: pilot.line },
+  scopeBtn: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6 },
+  scopeBtnOn: { backgroundColor: pilot.navy },
+  scopeText: { fontSize: 11.5, fontFamily: fontFamilies.bodyMedium, color: pilot.muted },
+  scopeTextOn: { color: '#fff', fontFamily: fontFamilies.bodySemiBold },
   frame: { borderRadius: 10, overflow: 'hidden', backgroundColor: '#F4F7FB' },
   foot: { marginTop: layout.rowGap, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   hint: { flex: 1, fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },

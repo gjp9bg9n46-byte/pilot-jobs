@@ -33,7 +33,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { TIMING_BASE } from '../../../../src/theme/motion';
 import Segmented from '../../../../src/components/Segmented';
 import FlightRow from '../../../../src/components/logbook/FlightRow';
-import RouteMap from '../../../../src/components/logbook/RouteMap';
+import RouteMap, { type MapScope } from '../../../../src/components/logbook/RouteMap';
 import ErrorBoundary, { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,6 +138,8 @@ function LogbookList() {
   const [groupingOverride, setGroupingOverride] = useState<Grouping | null>(null);
   // The ⓘ beside the recency strip: the lines it shows, or null when closed.
   const [recencyInfo, setRecencyInfo] = useState<string[] | null>(null);
+  // Applied at once, then written — the same pattern as hh:mm and Month/Day.
+  const [mapScopeOverride, setMapScopeOverride] = useState<MapScope | null>(null);
 
   // The + button floats over the content, so padding at the bottom only buys
   // the LAST row its clearance — the milestone bubble and the map were still
@@ -219,6 +221,16 @@ function LogbookList() {
   const [timeFormatOverride, setTimeFormatOverride] = useState<TimeFormat | null>(null);
   const timeFormat: TimeFormat = timeFormatOverride ?? (data?.prefs?.timeFormat as TimeFormat) ?? 'hhmm';
   const grouping: Grouping = groupingOverride ?? (data?.prefs?.grouping as Grouping) ?? 'month';
+  // All time by default: a pilot's map is their career, not page 1 of a list.
+  const mapScope: MapScope = mapScopeOverride ?? (data?.prefs?.mapScope as MapScope) ?? 'all';
+  const setMapScope = (sc: MapScope) => {
+    if (sc === mapScope) return;
+    tapLight();
+    setMapScopeOverride(sc);
+    api.put('/logbook/prefs', { mapScope: sc })
+      .then(() => qc.invalidateQueries({ queryKey: ['logbook'] }))
+      .catch(() => {});
+  };
   const setGrouping = (g: Grouping) => {
     if (g === grouping) return;
     tapLight();
@@ -416,6 +428,8 @@ function LogbookList() {
             sectors={logs.map((f: Log) => ({ from: f.departure, to: f.arrival }))}
             height={170}
             label="Where you flew"
+            scope={mapScope}
+            onScopeChange={setMapScope}
           />
         </ErrorBoundary>
       ) : null}

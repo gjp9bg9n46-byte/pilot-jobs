@@ -19,7 +19,7 @@ export default function FullScreenMapFallback() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { height } = useWindowDimensions();
-  const { sectors, label } = useMemo(() => getPendingMap(), []);
+  const { sectors, label, scope } = useMemo(() => getPendingMap(), []);
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.bar}>
@@ -32,7 +32,7 @@ export default function FullScreenMapFallback() {
       {/* explorable={false}: this IS the explored view. The native screen
           opens on every route ever flown; the SVG one still draws the page's
           sectors, which is what this component takes. */}
-      <RouteMap sectors={sectors} height={Math.max(320, height - 180)} explorable={false} />
+      <RouteMap sectors={sectors} height={Math.max(320, height - 180)} explorable={false} scope={scope} />
     </SafeAreaView>
   );
 }

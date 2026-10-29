@@ -9,7 +9,8 @@
 // refreshing state — never a full-screen loader over data we already have.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryCache, QueryClient } from '@tanstack/react-query';
+import { describeJsonProblem, findUnJsonSafe } from './jsonSafe';
 
 // staleTime: how long a cached answer is served without a background refetch.
 // gcTime: how long it survives unused in memory. Both are generous because this
@@ -20,7 +21,30 @@ export const STALE = {
   long: 24 * 60 * 60 * 1000, // airline logos — a table that changes monthly
 };
 
+// Everything in this cache is written to disk with JSON.stringify and read
+// back with JSON.parse. A value that does not survive that round trip works
+// on the launch that fetched it and breaks on every launch after — a Map
+// rehydrated as `{}` with no `.get` took the Logbook tab down twice before
+// the cause was visible. This catches the whole class the moment a query
+// resolves, in development, where the author can still see it.
+//
+// Development only: in a release build it costs nothing, and the lint rule
+// in eslint.config.js is what guards the shipped code.
+const queryCache = new QueryCache({
+  onSuccess: __DEV__ ? (data, query) => {
+    const problem = findUnJsonSafe(data);
+    if (!problem) return;
+    // eslint-disable-next-line no-console
+    console.error(
+      `[query cache] ${describeJsonProblem(query.queryHash, problem)}\n`
+      + 'It will not survive a restart. Keep plain JSON in the query and build '
+      + 'the value in `select`, which runs after rehydration and is not persisted.',
+    );
+  } : undefined,
+});
+
 export const queryClient = new QueryClient({
+  queryCache,
   defaultOptions: {
     queries: {
       staleTime: STALE.short,

@@ -8,11 +8,15 @@ export type MapSector = { from?: string | null; to?: string | null };
 
 let sectors: MapSector[] = [];
 let label = 'Where you flew';
+// Whichever scope the card was showing when it was tapped, so the full map
+// opens on the same flying rather than silently switching to something else.
+let scope: 'all' | 'view' = 'all';
 
-export function setPendingMap(next: MapSector[], title = 'Where you flew') {
+export function setPendingMap(next: MapSector[], title = 'Where you flew', sc: 'all' | 'view' = 'all') {
   sectors = next;
   label = title;
+  scope = sc;
 }
-export function getPendingMap(): { sectors: MapSector[]; label: string } {
-  return { sectors, label };
+export function getPendingMap(): { sectors: MapSector[]; label: string; scope: 'all' | 'view' } {
+  return { sectors, label, scope };
 }

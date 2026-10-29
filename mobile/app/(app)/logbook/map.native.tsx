@@ -82,7 +82,7 @@ export default function FullScreenMap() {
   const router = useRouter();
   const { data: air } = useAirportCoords();
   const coords = air?.byCode;
-  const { sectors, label } = useMemo(() => getPendingMap(), []);
+  const { sectors, label, scope } = useMemo(() => getPendingMap(), []);
   const mapRef = useRef<MapView | null>(null);
   const [region, setRegion] = useState<Region | null>(null);
   const [picked, setPicked] = useState<Cluster | null>(null);
@@ -112,11 +112,11 @@ export default function FullScreenMap() {
         else legMap.set(key, { a: A, b: B, count });
       }
     };
-    const routes = air?.routes || [];
+    const routes = scope === 'view' ? [] : (air?.routes || []);
     if (routes.length) for (const r of routes) add(at(r.from), at(r.to), r.count);
     else for (const s of (sectors || []) as Sector[]) add(at(s.from), at(s.to));
     return { points: [...seen.values()], legs: [...legMap.values()] };
-  }, [sectors, coords, air]);
+  }, [sectors, coords, air, scope]);
 
   const clusters = useMemo(() => clusterise(points, region), [points, region]);
 
@@ -186,7 +186,7 @@ export default function FullScreenMap() {
           <Ionicons name="close" size={22} color={NAVY} />
         </Pressable>
         <View style={styles.titlePill}>
-          <Text style={styles.title}>{air?.routes?.length ? 'Everywhere you have flown' : label}</Text>
+          <Text style={styles.title}>{scope !== 'view' && air?.routes?.length ? 'Everywhere you have flown' : label}</Text>
         </View>
         <Pressable style={styles.close} onPress={fitAll} accessibilityRole="button" accessibilityLabel="Fit every airport">
           <Ionicons name="scan-outline" size={20} color={NAVY} />

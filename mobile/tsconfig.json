@@ -2,5 +2,10 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  // Tests are run by `npm test` (node --test, which strips types rather than
+  // compiling them) and never shipped, so they are not part of the app's
+  // type-check. Keeping them in would mean pulling @types/node into a React
+  // Native project, where it quietly redefines timers and globals.
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "dist", "node_modules"]
 }

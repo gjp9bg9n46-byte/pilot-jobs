@@ -12,6 +12,10 @@ const TIME_FORMATS = ['hhmm', 'decimal'];
 // gets ("how much did I fly in October" is the everyday question); an explicit
 // choice of Day is remembered, and the same setting drives web and app.
 const GROUPINGS = ['month', 'day'];
+// What the "Where you flew" card draws. A pilot's map is their career, so
+// all-time is the default; "this view" follows whichever page and grouping
+// the list is showing, which is what the card used to do and nothing else.
+const MAP_SCOPES = ['all', 'view'];
 
 exports.getPrefs = async (req, res, next) => {
   try {
@@ -23,6 +27,7 @@ exports.getPrefs = async (req, res, next) => {
     res.json({
       timeFormat: TIME_FORMATS.includes(prefs.timeFormat) ? prefs.timeFormat : 'hhmm',
       grouping: GROUPINGS.includes(prefs.grouping) ? prefs.grouping : 'month',
+      mapScope: MAP_SCOPES.includes(prefs.mapScope) ? prefs.mapScope : 'all',
       rolePreset: presetFor(pilot),
       rolePresets: Object.entries(ROLE_PRESETS).map(([key, v]) => ({ key, ...v })),
       keepScanImages: !!prefs.keepScanImages,
@@ -45,6 +50,10 @@ exports.updatePrefs = async (req, res, next) => {
     if (body.timeFormat !== undefined) {
       if (!TIME_FORMATS.includes(body.timeFormat)) return res.status(422).json({ error: 'timeFormat must be hhmm or decimal.' });
       prefs.timeFormat = body.timeFormat;
+    }
+    if (body.mapScope !== undefined) {
+      if (!MAP_SCOPES.includes(body.mapScope)) return res.status(422).json({ error: 'mapScope must be all or view.' });
+      prefs.mapScope = body.mapScope;
     }
     if (body.grouping !== undefined) {
       if (!GROUPINGS.includes(body.grouping)) return res.status(422).json({ error: 'grouping must be month or day.' });
