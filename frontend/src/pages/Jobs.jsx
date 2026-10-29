@@ -369,6 +369,11 @@ export default function Jobs() {
 
   // Filter panel state — seeded from the URL on mount
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // The airline fact file's "see the jobs" button arrives as ?company=. It used
+  // to be a client-side text search, which is why the card said 11 and this
+  // list showed 13 — it now goes to the API, which resolves the airline the
+  // same way the card counts it.
+  const [companyFilter] = useState(() => searchParams.get('company') || '');
   const [authority, setAuthority] = useState(() => searchParams.get('authority') || '');
   const [aircraftType, setAircraftType] = useState(() => searchParams.get('aircraft') || '');
   const [role, setRole] = useState(() => searchParams.get('role') || '');
@@ -485,6 +490,7 @@ export default function Jobs() {
     setError(null);
     try {
       const params = { limit: 1000 };
+      if (companyFilter) params.company = companyFilter;
       if (authority) params.authority = authority;
       if (debAircraftType) params.aircraft = debAircraftType;
       if (role) params.role = role;
@@ -522,7 +528,7 @@ export default function Jobs() {
     } finally {
       setLoading(false);
     }
-  }, [authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort, hoursMin, hoursMax, maxReqHours, region]);
+  }, [companyFilter, authority, debAircraftType, role, contractType, postedWithin, debMinSalary, visaOnly, ntrOnly, qualifiedOnly, sort, hoursMin, hoursMax, maxReqHours, region]);
 
   // Resolve the default region tab BEFORE the first fetch — no double fetch, no
   // wrong-region flicker. Logged-out or an explicit ?region= is ready immediately;

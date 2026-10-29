@@ -47,7 +47,7 @@ const { normalize, hasAnyRequirement, extractRequirementsBlock, takeUnmappedSour
 const { filterAviationJobs, isAviationJob, isNotHiringNotice, isStrongPilotTitle } = require('./filters');
 const { classifySourceType } = require('./sourceType');
 const { sendEmail } = require('../services/emailService');
-const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates, collapseAggregatorPriority, collapseByIdentity } = require('./dedup');
+const { collapseXSourceDuplicates, collapseSameAdAcrossLocations, collapseAggregatorDuplicates, collapseAggregatorPriority, collapseByIdentity, collapseBurst } = require('./dedup');
 const { matchJobToAllPilots } = require('../services/matchingService');
 const { identityForInsert } = require('../services/jobIdentityStore');
 
@@ -733,6 +733,17 @@ async function runAllEmployers(employers, opts = {}) {
     // clusters only, never recruiter-only on a soft base. LOG-ONLY until
     // IDENTITY_DEDUP_APPLY=1 (staged rollout); per-source merge counts always logged.
     try { const apply = process.env.IDENTITY_DEDUP_APPLY === '1'; const d = await collapseByIdentity({ dryRun: !apply }); logger.info({ msg: `per-scrape identity dedup${apply ? '' : ' [LOG-ONLY]'}`, applied: apply, clustersMerged: d.clustersMerged, rowsHidden: d.rowsHidden, leftForReview: d.reviewGroups, dupesMergedBySource: d.perSource }); } catch (err) { logger.error({ err: err.message, msg: 'identity-dedup failed' }); }
+
+    // The burst rule, last: whatever the passes above left, collapse one
+    // airline's reworded reposts of one rank on one feed inside a week. Every
+    // member still has to clear mergeBlocked() against the row that survives,
+    // so a 737 ad cannot be absorbed by an A320 one. Shadow until
+    // BURST_DEDUP_APPLY=1, the same gate the identity pass uses.
+    try {
+      const apply = process.env.BURST_DEDUP_APPLY === '1';
+      const b = await collapseBurst({ dryRun: !apply });
+      logger.info({ msg: `per-scrape burst dedup${apply ? '' : ' [LOG-ONLY]'}`, applied: apply, clustersMerged: b.clustersMerged, rowsHidden: b.rowsHidden, heldByGuard: b.blocked, guards: b.blockedReasons });
+    } catch (err) { logger.error({ err: err.message, msg: 'burst-dedup failed' }); }
     try { await revalidateActiveJobs(employers); } catch (err) { logger.error({ err: err.message, msg: 'revalidation sweep failed' }); }
     try { await expirePastDue(); } catch (err) { logger.error({ err: err.message, msg: 'expiry sweep failed' }); }
     try {

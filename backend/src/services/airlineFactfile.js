@@ -14,30 +14,56 @@
 const prisma = require('../config/database');
 const { matchJob } = require('./jobMatch');
 const { getMatchContext } = require('./matchContextCache');
+const { makeResolver, identityOf, companyKey } = require('../scrapers/jobIdentity');
 
 const norm = (s) => String(s || '').trim().toLowerCase();
 
-// Jobs are tied to airlines by company name — the same join the fact file's
-// requirements already use.
+/**
+ * Which airline a job belongs to, for counting.
+ *
+ * Matching the company column letter for letter was not enough: Emirates'
+ * vacancies are filed under "Emirates", "Emirates Airline Mexico" and under a
+ * recruiter's name with Emirates in the title. The card counted 11, a pilot
+ * searching the Jobs list saw 13, and both were describing the same airline.
+ * The identity resolver already folds those together for dedup, so the counts
+ * use it too and the two numbers cannot drift apart again.
+ */
+async function employerResolver() {
+  const airlines = await prisma.airline.findMany({ select: { name: true, country: true, headquarters: true, bases: true } });
+  return makeResolver(airlines);
+}
+
+/** The airline key a job counts towards, or null when nothing resolves. */
+function employerKeyOf(job, resolver) {
+  const ident = identityOf(job, resolver);
+  return ident.employer?.name ? companyKey(ident.employer.name) : null;
+}
+
+const JOB_FIELDS = {
+  id: true, company: true, title: true, titleEn: true, role: true, location: true, country: true,
+  reqMinTotalHours: true, reqMinPicHours: true, reqCertificates: true, reqTypeRatings: true,
+  reqAircraftTypes: true, reqAuthorities: true, reqEnglishLevel: true, reqMedicalClass: true,
+  reqWorkAuthorization: true, reqEducation: true, reqMinMultiEngineHours: true,
+  reqMinTurbineHours: true, reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
+};
+
+// Keyed by the airline NAME as passed in (lower-cased), so callers keep the
+// lookup they already use; the bucketing underneath is by resolved identity.
 async function activeJobsFor(names) {
-  const wanted = new Set(names.map(norm).filter(Boolean));
+  const wanted = new Map();                       // resolved key → name as asked for
+  for (const n of names) { const k = companyKey(n); if (k) wanted.set(k, norm(n)); }
   if (!wanted.size) return new Map();
-  const jobs = await prisma.job.findMany({
-    where: { status: 'ACTIVE', mergedInto: null },
-    select: {
-      id: true, company: true, title: true, role: true, location: true, country: true,
-      reqMinTotalHours: true, reqMinPicHours: true, reqCertificates: true, reqTypeRatings: true,
-      reqAircraftTypes: true, reqAuthorities: true, reqEnglishLevel: true, reqMedicalClass: true,
-      reqWorkAuthorization: true, reqEducation: true, reqMinMultiEngineHours: true,
-      reqMinTurbineHours: true, reqMinInstrumentHours: true, reqMinCrossCountryHours: true,
-    },
-  });
+  const [jobs, resolver] = await Promise.all([
+    prisma.job.findMany({ where: { status: 'ACTIVE', mergedInto: null }, select: JOB_FIELDS }),
+    employerResolver(),
+  ]);
   const byCompany = new Map();
   for (const j of jobs) {
-    const key = norm(j.company);
-    if (!wanted.has(key)) continue;
-    if (!byCompany.has(key)) byCompany.set(key, []);
-    byCompany.get(key).push(j);
+    const key = employerKeyOf(j, resolver);
+    const asked = key && wanted.get(key);
+    if (!asked) continue;
+    if (!byCompany.has(asked)) byCompany.set(asked, []);
+    byCompany.get(asked).push(j);
   }
   return byCompany;
 }
@@ -136,4 +162,5 @@ function requirementChecks(derived, ctx) {
   return rows;
 }
 
-module.exports = { jobStatsFor, requirementChecks, activeJobsFor };
+module.exports = {
+  employerResolver, employerKeyOf, jobStatsFor, requirementChecks, activeJobsFor };

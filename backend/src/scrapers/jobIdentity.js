@@ -54,6 +54,15 @@ function rankOf(title) {
   if (/\b(senior\s+first\s+officers?|sfo)\b/.test(t)) return 'SFO';
   if (/\b(first\s+officers?|1st\s+officers?|f\/o|co[- ]?pilots?)\b/.test(t)) return 'FO';
   if (/\bsecond\s+officers?\b/.test(t)) return 'SO';
+  // Jobs that are not line flying, each its own bucket. Without these they all
+  // fell into PILOT, and "Chief Pilot" could merge with "Commercial Pilot"
+  // (owner, 2026-10-25). Checked before the captain grades on purpose: a Base
+  // Chief Pilot is a chief pilot post, not a captain vacancy.
+  if (/\bchief\s+pilot\b/.test(t)) return 'CHIEF_PILOT';
+  if (/\b(test\s+pilot|flight\s+test)\b/.test(t)) return 'TEST_PILOT';
+  if (/\bsupervisory\b/.test(t)) return 'SUPERVISORY_PILOT';
+  if (/\b(sales\s+(support\s+)?pilot|demonstration\s+pilot|demo\s+pilot)\b/.test(t)) return 'SALES_PILOT';
+  if (/\bferry\s+pilot\b/.test(t)) return 'FERRY_PILOT';
   const senior = /\bsenior\b/.test(t);
   if (/\b(captains?|commanders?)\b/.test(t)) return senior ? 'SENIOR_CPT' : 'CPT';
   return senior ? 'SENIOR_PILOT' : 'PILOT'; // "Senior Commercial Pilot" ≠ "Commercial Pilot"

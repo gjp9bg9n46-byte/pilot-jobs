@@ -18,7 +18,7 @@
 
 const prisma = require('../config/database');
 const logger = require('../config/logger');
-const { identityOf, makeResolver, shouldAutoMerge, rankOf, typesOf, subBrandOf, diceSimilarity, variantOf } = require('./jobIdentity');
+const { identityOf, makeResolver, shouldAutoMerge, rankOf, typesOf, subBrandOf, diceSimilarity, variantOf, isRecruiter, companyKey } = require('./jobIdentity');
 // Category + instructor/examiner come from the MATCHER, not a second copy of
 // the rules — these are the same classifiers the pilot-facing match uses.
 const { jobAircraftCategory, jobInstructorKind } = require('../services/jobMatch');
@@ -843,6 +843,101 @@ async function collapseByIdentity({ dryRun = true } = {}) {
   return { clustersMerged, rowsHidden, reviewGroups, perSource };
 }
 
+
+// ── The burst rule ──────────────────────────────────────────────────────────
+// An aggregator reposts one vacancy over and over under reworded titles, and
+// the passes above only catch the pairs that LOOK alike. This one catches the
+// rest by their shape: the same airline advertising the same rank on the same
+// feed inside one week is one campaign, not five jobs.
+//
+// Deliberately narrow — every one of these has to hold:
+//   airline  resolved to a real airline (never a recruiter, never "Confidential")
+//   rank     the same normalised rank (CPT ≠ SFO ≠ FO ≠ CADET ≠ INSTRUCTOR …)
+//   kind     flying ≠ ground/simulator — a sim instructor is not a line pilot
+//   feed     the same source, so two independent sightings are never collapsed
+//   window   postedAt within 7 days of the cluster's first row
+// and then mergeBlocked() still has to agree, member by member against the
+// canonical. That is what stops "A320 Captain" absorbing "Boeing 737 Captains"
+// and "Accelerated Command" absorbing "Direct Entry Pilot".
+//
+// One disagreeing row costs that row, not the cluster.
+const BURST_WINDOW_DAYS = 7;
+const GROUND_RE = /\b(synthetic|simulator|sim|ground|classroom|desk|office|training\s+centre|training\s+center)\b/;
+function burstKind(title) {
+  return GROUND_RE.test(fold(String(title || '')).toLowerCase()) ? 'ground' : 'flying';
+}
+
+async function collapseBurst({ dryRun = true, windowDays = BURST_WINDOW_DAYS } = {}) {
+  const airlines = await prisma.airline.findMany({ select: { name: true, country: true, headquarters: true, bases: true } });
+  const resolver = makeResolver(airlines);
+  const jobs = await prisma.job.findMany({
+    where: { status: 'ACTIVE', mergedInto: null },
+    select: { id: true, title: true, titleEn: true, company: true, location: true, country: true, sourcePlatform: true, sourceType: true, applyUrl: true, description: true, descriptionEn: true, postedAt: true },
+    orderBy: { postedAt: 'asc' },
+  });
+
+  const groups = new Map();
+  let skippedEmployer = 0;
+  for (const j of jobs) {
+    const title = j.titleEn || j.title || '';
+    const ident = identityOf(j, resolver);
+    // Real airlines only. A recruiter or a "Confidential" byline can carry two
+    // genuinely different clients' vacancies under one name.
+    if (isRecruiter(j.company) || ident.employer.via === 'company-asis') { skippedEmployer++; continue; }
+    const key = [companyKey(ident.employer.name), ident.rank, burstKind(title), j.sourcePlatform || '-'].join('|');
+    j._ident = ident; j._emp = ident.employer; j._burstTitle = title;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(j);
+  }
+
+  const ms = windowDays * 24 * 60 * 60 * 1000;
+  let clustersMerged = 0; let rowsHidden = 0; let blocked = 0;
+  const perSource = {}; const blockedReasons = {};
+
+  for (const [, rows] of groups) {
+    if (rows.length < 2) continue;
+    // Walk in date order; a row outside the running window opens a new cluster.
+    let bucket = [rows[0]];
+    const flush = async () => {
+      if (bucket.length < 2) return;
+      const canon = canonicalByIdentity(bucket);
+      const keep = [];
+      for (const d of bucket) {
+        if (d.id === canon.id) continue;
+        const why = mergeBlocked(canon._burstTitle, d._burstTitle, canon.company, d.company);
+        if (why) { blocked++; blockedReasons[why.split(' ')[0]] = (blockedReasons[why.split(' ')[0]] || 0) + 1; continue; }
+        keep.push(d);
+      }
+      if (!keep.length) return;
+      clustersMerged++;
+      for (const d of keep) {
+        rowsHidden++;
+        perSource[d.sourcePlatform || '?'] = (perSource[d.sourcePlatform || '?'] || 0) + 1;
+        if (!dryRun) {
+          await prisma.job.update({ where: { id: d.id }, data: { mergedInto: canon.id, status: 'EXPIRED' } });
+          for (;;) {
+            const chained = await prisma.job.findMany({ where: { mergedInto: d.id }, select: { id: true }, take: 5000 });
+            if (!chained.length) break;
+            await prisma.job.updateMany({ where: { id: { in: chained.map((c) => c.id) } }, data: { mergedInto: canon.id } });
+            if (chained.length < 5000) break;
+          }
+        }
+      }
+    };
+    for (const r of rows.slice(1)) {
+      if (new Date(r.postedAt) - new Date(bucket[0].postedAt) <= ms) bucket.push(r);
+      else { await flush(); bucket = [r]; }
+    }
+    await flush();
+  }
+
+  logger.info({
+    msg: dryRun ? 'burst dedup SHADOW (no writes)' : 'burst dedup applied',
+    clustersMerged, rowsHidden, blocked, blockedReasons, perSource, skippedEmployer, windowDays,
+  });
+  return { clustersMerged, rowsHidden, blocked, blockedReasons, perSource, skippedEmployer };
+}
+
 // Re-run the aviation classifier over EXISTING live jobs (intake only screens new
 // rows). Reversible hide (EXPIRED + REMOVED, sticky via runner keepInactive).
 async function reScreenNonAviation({ dryRun = true } = {}) {
@@ -857,4 +952,4 @@ async function reScreenNonAviation({ dryRun = true } = {}) {
   return { hidden, perSource };
 }
 
-module.exports = { mergeBlocked, modelTokens, unrelatedTitles, stripPlaces, variantClash, categoryClash, instructorKindClash, statedCategory, collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };
+module.exports = { collapseBurst, burstKind, BURST_WINDOW_DAYS, mergeBlocked, modelTokens, unrelatedTitles, stripPlaces, variantClash, categoryClash, instructorKindClash, statedCategory, collapseXSourceDuplicates, collapseSameAdAcrossLocations, pickCanonical, collapseAggregatorDuplicates, collapseAggregatorPriority, aggregatorPriority, titleCore, cityCore, collapseByIdentity, reScreenNonAviation };

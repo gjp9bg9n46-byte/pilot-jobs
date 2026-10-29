@@ -242,6 +242,7 @@ exports.getJobs = async (req, res, next) => {
       qualifiedOnly,
       visa,
       typeRating,
+      company,
     } = req.query;
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -405,8 +406,21 @@ exports.getJobs = async (req, res, next) => {
     ]);
     _mark('fetch');
 
+    // ?company= — the airline fact file's "see the jobs" button. Resolved the
+    // same way the Airlines card counts, so the number on the card and the
+    // length of this list are the same number. Only done when asked for: it is
+    // a pass over the candidates and every other request would pay for it.
+    let scoped = candidates;
+    if (company) {
+      const { employerResolver, employerKeyOf } = require('../services/airlineFactfile');
+      const { companyKey } = require('../scrapers/jobIdentity');
+      const want = companyKey(company);
+      const resolver = await employerResolver();
+      scoped = want ? candidates.filter((j) => employerKeyOf(j, resolver) === want) : candidates;
+    }
+
     // Attach region + (when logged in) match to every candidate.
-    const matched = candidates.map((j) => ({
+    const matched = scoped.map((j) => ({
       job: j,
       region: regionForCountry(j.country),
       // A standing campaign has no rank, no fleet and no requirements, so a

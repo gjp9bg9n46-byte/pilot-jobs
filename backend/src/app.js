@@ -413,6 +413,35 @@ cron.schedule('10 4 * * 1', () => withCronRun('stuck-403', async () => {
   return { count: r.count };
 }));
 
+// Weekly (Mon 04:30 UTC): what duplication is left in the live feed.
+// Read-only by default — it runs both dedup passes in shadow and reports what
+// they WOULD do, so the number is visible before anything is hidden. Set
+// BURST_DEDUP_APPLY=1 to let the scrape act on it instead of only reporting.
+cron.schedule('30 4 * * 1', () => withCronRun('duplicates-report', async () => {
+  const { collapseBurst, collapseByIdentity } = require('./scrapers/dedup');
+  const prismaC = require('./config/database');
+  const visible = await prismaC.job.count({ where: { status: 'ACTIVE', mergedInto: null } });
+  const burst = await collapseBurst({ dryRun: true });
+  const identity = await collapseByIdentity({ dryRun: true });
+  const wouldHide = burst.rowsHidden + identity.rowsHidden;
+  logger.info(
+    `Duplicates report: ${visible} visible vacancies; burst would hide ${burst.rowsHidden} `
+    + `in ${burst.clustersMerged} clusters (${burst.blocked} held by a guard), `
+    + `identity would hide ${identity.rowsHidden} in ${identity.clustersMerged}`,
+  );
+  return {
+    visible,
+    wouldHide,
+    burstRows: burst.rowsHidden,
+    burstClusters: burst.clustersMerged,
+    burstHeldByGuard: burst.blocked,
+    burstGuards: burst.blockedReasons,
+    burstPerSource: burst.perSource,
+    identityRows: identity.rowsHidden,
+    identityClusters: identity.clustersMerged,
+  };
+}));
+
 // Nightly (04:20 UTC): recompute every pilot's derived flight totals and fix any
 // that drifted from the stored value (a missed recompute hook, a manual edit, a
 // logic change). Keeps the denormalised Pilot.derivedTotals honest.
