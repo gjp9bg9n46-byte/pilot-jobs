@@ -14,8 +14,10 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import api, { API_URL, getToken } from '../../../src/lib/api';
 import { notifySuccess } from '../../../src/lib/haptics';
+import { reportClientError } from '../../../src/components/ErrorBoundary';
 import { minutesToHHMM, spanMinutes } from '../../../src/lib/logbookFormat';
 import { fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
@@ -61,12 +63,43 @@ export default function ScanVoyageReport() {
 
   useEffect(() => { api.get('/logbook/scan-quota').then(({ data }) => setQuota(data)).catch(() => {}); }, []);
 
+  // ── Everything leaves this phone as a JPEG ────────────────────────────────
+  // An iPhone photographs in HEIF with an HEVC payload, and the server's image
+  // library reads the container but has no HEVC decoder — which reached a
+  // pilot as "Support for this compression format has not been built in:
+  // HEVC (libde265)". The server can decode it now, but it should not have to:
+  // converting here is cheaper, smaller to upload, and the same code path
+  // whatever the source. The long edge is capped at 2000 because that is what
+  // the server resizes to anyway, so the extra pixels only cost upload time.
+  //
+  // A PDF is passed through untouched: it is already upright and text-bearing.
+  const toJpeg = useCallback(async (uri: string, type: string) => {
+    if (!type.startsWith('image/')) return { uri, type };
+    try {
+      const out = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 2000 } }],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      return { uri: out.uri, type: 'image/jpeg' };
+    } catch (err) {
+      // Conversion failing is not fatal — the server takes HEIC too. Send the
+      // original and let it try.
+      reportClientError(err as Error, null, 'Scan · convert');
+      return { uri, type };
+    }
+  }, []);
+
   const send = useCallback(async (uri: string, name: string, type: string) => {
     setStage('reading'); setError(null); setPhoto(type.startsWith('image/') ? uri : null);
+    const sendable = await toJpeg(uri, type);
+    const fileName = sendable.type === 'image/jpeg' && !/\.jpe?g$/i.test(name)
+      ? `${name.replace(/\.[^.]+$/, '')}.jpg`
+      : name;
     const body = new FormData();
     // React Native's FormData takes the file by reference — the bytes never
     // pass through JS, so a 10 MB photo costs nothing here.
-    body.append('file', { uri, name, type } as unknown as Blob);
+    body.append('file', { uri: sendable.uri, name: fileName, type: sendable.type } as unknown as Blob);
     try {
       const { data } = await api.post('/logbook/scan', body, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -75,10 +108,11 @@ export default function ScanVoyageReport() {
       setScan(data);
       setStage('review');
     } catch (e: Any) {
-      setError(e?.response?.data?.error || "Couldn't read this photo — try again or enter manually.");
+      // The server's own wording when it has one; never a library's.
+      setError(e?.response?.data?.error || "We couldn't read this photo. Try taking it again with the camera.");
       setStage('capture');
     }
-  }, []);
+  }, [toJpeg]);
 
   const fromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();

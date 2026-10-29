@@ -31,6 +31,11 @@ const SCAN_ENABLED = String(process.env.SCAN_ENABLED || '').toLowerCase() === 't
 const OFF = { error: 'Scanning is not available yet. Enter the flight manually for now.', code: 'DISABLED' };
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
 const UNREADABLE = "Couldn't read this photo — try again or enter manually.";
+// Shown when the FILE cannot be decoded at all — a format the server has no
+// decoder for, a truncated upload, something that is not really an image. A
+// pilot cannot act on "Support for this compression format has not been built
+// in: HEVC (libde265)", and that is what reached one.
+const UNDECODABLE = "We couldn't read this photo. Try taking it again with the camera.";
 
 const prefsOf = (pilot) => (pilot && pilot.logbookPrefs) || {};
 
@@ -58,7 +63,21 @@ exports.createScan = async (req, res, next) => {
       select: { id: true, role: true, staffNumber: true, logbookPrefs: true, firstName: true, lastName: true },
     });
 
-    const prep = await prepareScanImage(file.buffer, file.mimetype);
+    // Decoding happens BEFORE the model is called and before any scan row
+    // exists, so a photo we cannot open costs the pilot nothing — no row, no
+    // quota. The raw library error goes to the log, never to the screen.
+    let prep;
+    try {
+      prep = await prepareScanImage(file.buffer, file.mimetype);
+    } catch (err) {
+      logger.warn('scan image could not be decoded', {
+        pilotId: req.pilot.id,
+        mimeType: file.mimetype,
+        bytes: file.buffer.length,
+        err: String(err && err.message).slice(0, 500),
+      });
+      return res.status(415).json({ error: UNDECODABLE, code: 'UNDECODABLE' });
+    }
     let extracted;
     try {
       // Two readings of the page, plus a close re-read of any row whose own

@@ -17,6 +17,34 @@
 
 const sharp = require('sharp');
 
+// ── HEIC from an iPhone ─────────────────────────────────────────────────────
+// Every photo an iPhone takes is HEIF with an HEVC payload. sharp's prebuilt
+// binary understands the HEIF container — metadata reads fine — but carries no
+// HEVC decoder, so the actual decode dies with "Support for this compression
+// format has not been built in: HEVC (libde265)" and a run of "source: bad
+// seek" lines. heic-convert decodes HEVC in pure JS, with no native build to
+// get right on the host, and it is only ever reached when sharp has failed.
+// Loaded lazily so the common JPEG path does not pay for it.
+let heicConvert = null;
+function heicDecoder() {
+  if (!heicConvert) heicConvert = require('heic-convert');
+  return heicConvert;
+}
+
+/** Anything sharp cannot decode but we can: today, HEIC/HEIF. */
+async function toDecodable(buffer) {
+  try {
+    // A real decode, not metadata: the container reads even when the codec
+    // inside it does not, which is exactly how this reached a pilot.
+    await sharp(buffer).rotate().toBuffer();
+    return buffer;
+  } catch (err) {
+    const looksHeif = /heif|heic|hevc|bad seek|compression format/i.test(String(err && err.message));
+    if (!looksHeif) throw err;
+    return Buffer.from(await heicDecoder()({ buffer, format: 'JPEG', quality: 0.92 }));
+  }
+}
+
 const MAX_SIDE = 2000;
 const PROBE_WIDTH = 600;           // skew search runs on this width, not the full photo
 const MAX_SKEW_DEG = 12;
@@ -80,8 +108,10 @@ async function prepareScanImage(buffer, mimeType) {
   if (String(mimeType || '').includes('pdf')) {
     return { buffer, mimeType: 'application/pdf', skewDeg: 0, width: null, height: null };
   }
-  // EXIF first: a sideways photo must be upright before skew means anything.
-  const upright = await sharp(buffer).rotate().toBuffer();
+  // HEIC first, or nothing below can read the pixels.
+  const decodable = await toDecodable(buffer);
+  // EXIF next: a sideways photo must be upright before skew means anything.
+  const upright = await sharp(decodable).rotate().toBuffer();
   let skew = 0;
   try { skew = await estimateSkew(upright); } catch (_) { skew = 0; }
   let pipe = sharp(upright);
@@ -100,4 +130,4 @@ async function prepareScanImage(buffer, mimeType) {
   };
 }
 
-module.exports = { prepareScanImage, estimateSkew };
+module.exports = { prepareScanImage, estimateSkew, toDecodable };

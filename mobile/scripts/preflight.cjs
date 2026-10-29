@@ -116,6 +116,20 @@ async function run() {
     console.error(`No fixtures at ${FIX}. Run: node scripts/fixtures.cjs`);
     process.exit(2);
   }
+  // Before anything renders: can this JS even be an update? A native module
+  // added since the last build would throw on load inside the binary people
+  // already have, and nothing below would notice, because this machine has
+  // the module installed.
+  const nativeCheck = require('child_process').spawnSync(
+    process.execPath, [path.join(__dirname, 'native-modules.cjs')], { encoding: 'utf8' },
+  );
+  process.stdout.write(nativeCheck.stdout || '');
+  if (nativeCheck.status !== 0) {
+    process.stderr.write(nativeCheck.stderr || '');
+    console.error('\npreflight stops here: ship a BUILD, not an update.');
+    process.exit(1);
+  }
+
   const S = stubs();
   const buster = /CACHE_BUSTER = '([^']+)'/.exec(
     fs.readFileSync(path.join(__dirname, '../src/lib/queryClient.ts'), 'utf8'),
