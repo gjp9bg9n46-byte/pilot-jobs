@@ -510,6 +510,12 @@ model Job {
   sourceType           String?    // apply-destination class: 'direct_ats' | 'operator_direct' | 'aggregator' | null. Classified at ingest from applyUrl; drives dedup canonical ranking. Does NOT gate ingestion.
   externalId           String?    // stable posting ID from source — used for upsert dedup
   mergedInto           String?    // self-ref to canonical Job.id when cross-source dedup collapses this row
+  // A standing recruitment campaign, not a vacancy: the row the airline's
+  // rewritten generic ads collapse into ("Pilot recruitment (general)"). It
+  // has no rank, no fleet and no requirements, so a match percentage against
+  // it would be meaningless — it carries none, and it sorts below every real
+  // vacancy in every order.
+  isCampaign           Boolean    @default(false)
 
   // Employer-posted jobs (first-party). Null for scraped jobs.
   postedByEmployerId   String?

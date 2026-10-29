@@ -86,6 +86,7 @@ function deriveApplyTrust(j) {
 // need, and nothing heavy (no description/descriptionEn). Keep in sync with matchJob.
 const CANDIDATE_SELECT = {
   id: true, title: true, titleEn: true, company: true, country: true, sourceType: true, postedAt: true, role: true,
+  isCampaign: true,
   salaryMax: true, salaryMin: true, expiresAt: true,
   reqCertificates: true, reqAuthorities: true, reqAircraftTypes: true, reqMedicalClass: true,
   reqMinTotalHours: true, reqMinPicHours: true, reqMinMultiEngineHours: true, reqMinTurbineHours: true,
@@ -378,6 +379,9 @@ exports.getJobs = async (req, res, next) => {
         // a new sourceType value must be checked against it.
         orderBy = [{ sourceType: { sort: 'desc', nulls: 'last' } }, { postedAt: 'desc' }];
     }
+    // Whatever the pilot sorted by, a standing campaign comes after the real
+    // vacancies: it is a door to knock on, not a job to apply for.
+    orderBy = [{ isCampaign: 'asc' }, ...(Array.isArray(orderBy) ? orderBy : [orderBy])];
 
     // Fetch the full candidate set (all non-region, non-fit filters applied at the
     // DB) — match, region grouping, fit-group filtering and "best" sort all run in
@@ -405,7 +409,9 @@ exports.getJobs = async (req, res, next) => {
     const matched = candidates.map((j) => ({
       job: j,
       region: regionForCountry(j.country),
-      match: ctx ? matchJob(j, ctx) : null,
+      // A standing campaign has no rank, no fleet and no requirements, so a
+      // percentage against it would be a number about nothing.
+      match: ctx && !j.isCampaign ? matchJob(j, ctx) : null,
     }));
 
     // Region tab counts — over the current filters EXCLUDING the region tab itself.
@@ -456,14 +462,19 @@ exports.getJobs = async (req, res, next) => {
     }
 
     // qualifiedOnly === "true" means strict fitGroup "qualify".
-    if (qualifiedOnly === 'true' && matchable) view = view.filter((m) => m.match.status === 'QUALIFY');
+    // A campaign carries no match, so it can never qualify — and `m.match` is
+    // null for it, which this line would have thrown on.
+    if (qualifiedOnly === 'true' && matchable) view = view.filter((m) => m.match?.status === 'QUALIFY');
 
     // "best" (default when matchable): qualify → incomplete → oneShort → few → other,
     // base orderBy (direct-first, newest) preserved within each group via stable sort.
     const effectiveSort = req.query.sort || (matchable ? 'best' : 'newest');
     if (effectiveSort === 'best' && matchable) {
+      // No match (a standing campaign) ranks below every fit group rather than
+      // throwing on a null — and that is also where it belongs.
       const rank = { qualify: 0, incomplete: 1, oneShort: 2, few: 3, other: 4 };
-      view = view.map((m, i) => ({ m, i })).sort((a, b) => (rank[a.m.match.fitGroup] - rank[b.m.match.fitGroup]) || (a.i - b.i)).map((x) => x.m);
+      const rankOf = (m) => (m.match ? rank[m.match.fitGroup] ?? 4 : 5);
+      view = view.map((m, i) => ({ m, i })).sort((a, b) => (rankOf(a.m) - rankOf(b.m)) || (a.i - b.i)).map((x) => x.m);
     }
 
     const total = view.length;
@@ -593,7 +604,7 @@ exports.getJob = async (req, res, next) => {
         // just for matching (NOT merged into the serialized response, so shape is
         // unchanged). matchJob reads reqTypeRatings (type) + aircraftTypes (category).
         const mx = await prisma.job.findUnique({ where: { id: job.id }, select: { aircraftTypes: true, reqTypeRatings: true } });
-        match = matchJob({ ...job, ...(mx || {}) }, ctx);
+        if (!job.isCampaign) match = matchJob({ ...job, ...(mx || {}) }, ctx);
         const family = new Set((job.reqAircraftTypes || []).map((t) => String(t).toUpperCase()));
         const cands = await prisma.job.findMany({
           where: { status: 'ACTIVE', id: { not: job.id } },
