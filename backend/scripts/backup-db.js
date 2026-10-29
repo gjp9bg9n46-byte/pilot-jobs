@@ -5,7 +5,9 @@
  * Run BEFORE any schema change, especially destructive ones:
  *   node scripts/backup-db.js
  *
- * Output: backups/YYYY-MM-DD-HHMMSS.sql  (directory is git-ignored)
+ * Output: ~/cockpithire-backups/YYYY-MM-DD-HHMMSS.sql — OUTSIDE the repo on
+ *         purpose: a dump holds every pilot's real data, and one committed by
+ *         accident stays in the history for good.
  *
  * Requires pg_dump to be installed locally (ships with PostgreSQL client tools).
  * On macOS:  brew install libpq && brew link --force libpq
@@ -34,7 +36,7 @@ const pass   = parsed.password;
 
 // Timestamped output file
 const ts      = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '-').slice(0, 19);
-const outDir  = path.join(__dirname, '..', 'backups');
+const outDir  = process.env.BACKUP_DIR || path.join(require('os').homedir(), 'cockpithire-backups');
 const outFile = path.join(outDir, `${ts}.sql`);
 
 fs.mkdirSync(outDir, { recursive: true });

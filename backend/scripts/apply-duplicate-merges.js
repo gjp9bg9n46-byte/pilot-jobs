@@ -7,6 +7,9 @@
 // surviving vacancy, and goes EXPIRED so it leaves the feed. Undoing a batch is
 // therefore `mergedInto = NULL, status = 'ACTIVE'` on the listed ids.
 //
+// Take a fresh pg_dump first, into ~/cockpithire-backups/ — never inside the
+// repo.
+//
 //   node scripts/apply-duplicate-merges.js <doc.md>            # dry run
 //   node scripts/apply-duplicate-merges.js <doc.md> --apply
 const fs = require('fs');

@@ -46,3 +46,11 @@ yarn-error.log*
 frontend/dist-test/
 frontend/test-*.pdf
 backend/data/wikipedia-html-cache/
+
+# Database dumps — NEVER in the repo. They hold every pilot's real data, and a
+# dump committed once stays in the history for good. They live in
+# ~/cockpithire-backups/ instead.
+backups/
+*.dump
+*.sql
+!backend/prisma/migrations/**/*.sql
