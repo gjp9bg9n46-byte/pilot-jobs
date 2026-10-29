@@ -68,4 +68,11 @@ export const persister = createAsyncStoragePersister({
 // (bootstrap bundling, the new flight row, Month/Day grouping, the route map)
 // without this moving, so a device could rehydrate a build-3 shape into
 // build-6 code. Bump it with the shape, not with the release.
-export const CACHE_BUSTER = '2026-10-29.1';
+// 2026-10-30: the airports query changed shape (a Map became {airports,
+// routes}) and this did NOT move, so every device kept the old entry — which
+// was the Map serialised to {} — and the new `select` read no airports from
+// it. The map said "0 airports · 200 without coordinates" for a day, because
+// the entry was also still inside its 24-hour staleTime.
+//
+// Bump this in the SAME commit as any change to what a queryFn returns.
+export const CACHE_BUSTER = '2026-10-30.1';

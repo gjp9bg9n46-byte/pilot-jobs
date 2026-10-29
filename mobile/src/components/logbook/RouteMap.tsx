@@ -53,26 +53,46 @@ type Airport = {
  * fresh each time from data that survives a round trip through JSON.
  */
 export function useAirportCoords() {
-  return useQuery({
+  const q = useQuery({
     queryKey: ['profile', 'airports'],
-    staleTime: 24 * 60 * 60 * 1000,
+    // This is derived from the pilot's own logbook, so it changes the moment
+    // they add a flight. A day was far too long: a shape change rode out a
+    // whole day of staleness on every device before anything refetched.
+    staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<AirportsPayload> => {
       const { data } = await api.get('/profile/airports');
       return { airports: data.airports || [], routes: data.routes || [] };
     },
     select: (payload: AirportsPayload) => {
+      // An older cache can hold a shape this code cannot read. Saying so is
+      // the point: returning an empty Map made the map claim "0 airports ·
+      // 200 without coordinates", which is a lie about the pilot's flying.
+      // `null` means "nothing usable yet" and the card simply waits.
+      if (!payload || !Array.isArray(payload.airports)) return null;
       const map = new Map<string, Airport>();
-      // An array is what we expect; anything else came from an older cache.
-      const list = Array.isArray(payload?.airports) ? payload.airports : [];
+      const list = payload.airports;
       for (const a of list) {
         if (!Number.isFinite(a.lat) || !Number.isFinite(a.lon)) continue;   // never 0,0
         for (const k of [a.code, a.icao, a.iata]) {
           if (k) map.set(String(k).toUpperCase(), a);
         }
       }
-      return { byCode: map, routes: Array.isArray(payload?.routes) ? payload.routes : [] };
+      return { byCode: map, routes: Array.isArray(payload.routes) ? payload.routes : [] };
     },
   });
+
+  // A cached entry this code cannot read is not "no data yet", it is data
+  // that will never become readable — and because the persister rehydrates
+  // it with a fresh timestamp, nothing would refetch it until staleTime ran
+  // out. Ask once, immediately, which turns any future shape change into a
+  // blink instead of a broken screen.
+  const unreadable = q.data === null && q.isSuccess;
+  const { refetch, isFetching } = q;
+  useEffect(() => {
+    if (unreadable && !isFetching) void refetch();
+  }, [unreadable, isFetching, refetch]);
+
+  return q;
 }
 
 export type MapScope = 'all' | 'view';
@@ -106,6 +126,7 @@ export default function RouteMap({
   // All time, or the page on screen. All-time comes from the server as a list
   // of routes with how often each was flown; "this view" is the sectors the
   // list is currently showing, which is all the card ever drew before.
+  const loaded = !!air?.byCode;
   const allTime = scope !== 'view' && !!air?.routes?.length;
   const { points, legs, skipped } = useMemo(() => {
     // `select` above always hands over a Map. This guard is for the one case
@@ -214,9 +235,15 @@ export default function RouteMap({
 
       <View style={styles.foot}>
         <Text style={styles.hint}>
-          {points.length} airport{points.length === 1 ? '' : 's'}
-          {allTime ? ' · all time' : ' · this view'}
-          {skipped > 0 ? ` · ${skipped} without coordinates not shown` : ''}
+          {!loaded
+            ? 'Loading your airports…'
+            : points.length === 0 && skipped > 0
+              // Every code missed, which means the lookup is empty, not that
+              // the pilot flew to two hundred unplaceable airports.
+              ? 'Airports could not be loaded'
+              : `${points.length} airport${points.length === 1 ? '' : 's'}`
+                + (allTime ? ' · all time' : ' · this view')
+                + (skipped > 0 ? ` · ${skipped} without coordinates not shown` : '')}
         </Text>
         {explorable && points.length ? (
           <View style={styles.explore}>

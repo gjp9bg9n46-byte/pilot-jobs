@@ -100,7 +100,6 @@ function normalizeUSAJob(item) {
     role:           inferRole(title),
     contractType:   null,
     region:         'Americas',
-    reqWorkAuthorization: 'US',    // all federal jobs require US work authorization
     ...parseSalary(d.PositionRemuneration),
     ...reqs,
     // Work auth overrides extractRequirements result — federal jobs are always US

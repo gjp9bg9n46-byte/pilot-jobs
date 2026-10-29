@@ -163,32 +163,30 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
           </div>
         )}
 
-        {/* 5 · CURRENCY */}
-        <div className="lb-card">
-          <div className="label">Currency · last 90 days</div>
-          <ul className="lb-cur">
-            {!currency.landingsLogged ? (
+        {/* 5 · CURRENCY — only when it has something the strip does not.
+            The landings line said exactly what the strip at the top of the
+            page says, and the authority note is behind the strip's ⓘ. That
+            left a titled card repeating itself. It is shown now only when
+            there are no landings to work from, or where the night leg is a
+            REQUIREMENT for this pilot's authority — the one thing the strip
+            cannot carry on its own. Same rule as the app. */}
+        {!currency.landingsLogged ? (
+          <div className="lb-card">
+            <div className="label">Currency · last 90 days</div>
+            <ul className="lb-cur">
               <li><span className="lb-ic neutral">·</span><div className="m">Add landings to your flights to track currency</div></li>
-            ) : (
-              <>
-                {/* The requirement: 3 take-offs/landings in 90 days, day or
-                    night alike. The night leg is listed separately and only
-                    counts as a shortfall where the authority imposes it. */}
-                <CurrencyLine
-                  role="Landings" data={{ landings: currency.landings ?? ((currency.day?.landings || 0) + (currency.night?.landings || 0)), required: currency.required ?? 3, currentUntil: currency.currentUntil ?? currency.day?.currentUntil }}
-                  incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
-                <CurrencyLine
-                  role="Night" data={currency.night} applies={currency.rule ? currency.rule.nightApplies : false}
-                  incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
-                {/* The authority note used to be printed here AND in the
-                    strip at the top of the page, word for word. It belongs to
-                    the strip, behind its ⓘ. `rule.note` was printed here too —
-                    our own working note about a rule we have not verified, in
-                    front of the pilot. The server no longer sends it. */}
-              </>
-            )}
-          </ul>
-        </div>
+            </ul>
+          </div>
+        ) : currency.rule?.nightApplies ? (
+          <div className="lb-card">
+            <div className="label">Currency · last 90 days</div>
+            <ul className="lb-cur">
+              <CurrencyLine
+                role="Night" data={currency.night} applies
+                incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
+            </ul>
+          </div>
+        ) : null}
       </div>
     </div>
   );

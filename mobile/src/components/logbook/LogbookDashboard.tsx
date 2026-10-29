@@ -225,28 +225,28 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
         </Pressable>
       </View>
 
-      {/* 5 · CURRENCY (always visible) */}
-      <View style={[styles.card, styles.currencyCard]}>
-        <Text style={styles.label}>Currency · last 90 days</Text>
-        {!currency.landingsLogged ? (
+      {/* 5 · CURRENCY — only when it has something the strip does not.
+          The landings line and the authority note both moved to the strip at
+          the top of the page (the note behind its ⓘ), which left a titled
+          card holding one bulleted line about night landings — and that line
+          is in the ⓘ too. A card with nothing of its own to say is noise, so
+          it is shown only where the night leg is a REQUIREMENT for this
+          pilot's authority, which is the one case the strip cannot carry on
+          its own. */}
+      {!currency.landingsLogged ? (
+        <View style={[styles.card, styles.currencyCard]}>
+          <Text style={styles.label}>Currency · last 90 days</Text>
           <View style={styles.curLine}>
             <View style={[styles.curIc, { backgroundColor: TRACK_BG }]}><Text style={{ color: FAINT, fontSize: 11 }}>·</Text></View>
             <Text style={[styles.curText, { color: pilot.muted }]}>Add landings to your flights to track currency</Text>
           </View>
-        ) : (
-          <>
-            {/* The landings line used to live here too, word for word the
-                same as the strip at the top of the page. One of them had to
-                go, and the strip is the one a pilot sees first. */}
-            <CurrencyLine role="Night" data={currency.night} styles={styles} currency={currency}
-              applies={currency.rule ? currency.rule.nightApplies : false} />
-            {/* The authority note belongs to the strip at the top, behind
-                its ⓘ — printing it twice is what made this card long.
-                `rule.note` was printed here too: our own working note about a
-                rule we have not verified. The server no longer sends it. */}
-          </>
-        )}
-      </View>
+        </View>
+      ) : currency.rule?.nightApplies ? (
+        <View style={[styles.card, styles.currencyCard]}>
+          <Text style={styles.label}>Currency · last 90 days</Text>
+          <CurrencyLine role="Night" data={currency.night} styles={styles} currency={currency} applies />
+        </View>
+      ) : null}
     </View>
   );
 }

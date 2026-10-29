@@ -18,6 +18,10 @@ const { readPage, uprightCopy, cropRow } = require('../services/voyageReconcile'
 const { findOverlaps, overlapMessage } = require('../services/logbookOverlap');
 const { validateScan } = require('../services/voyageValidate');
 const { recomputeDerivedTotals } = require('../services/logbookSummary');
+// Used to normalise the aircraft type a scan reads ('NULL', '-', 'n/a' → '').
+// It was called in four places here and imported in none, which is a
+// ReferenceError the moment the screen opens.
+const { cleanField } = require('../services/logbookEntry');
 
 const DAILY_LIMIT = Number(process.env.SCAN_DAILY_LIMIT || 30);
 // Scanning ships dark: the endpoints exist, the UI hides, and nothing calls the

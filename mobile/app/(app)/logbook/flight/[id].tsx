@@ -50,7 +50,19 @@ export default function FlightDetail() {
     ?? (flight.totalTime > 0 ? Math.round(flight.totalTime * 60) : null);
   const airborne = spanMinutes(flight.takeoffTime, flight.landingTime);
   const role = (flight.picTime || 0) > 0 ? 'PIC' : 'SIC';
+  const roleHours = role === 'PIC' ? (flight.picTime || 0) : (flight.sicTime || 0);
+  // An imported row often carries a block and no PIC/SIC split at all. Saying
+  // "SIC auto 0:00" asserts the pilot logged none, which is a claim about
+  // their hours that nothing in the row supports.
+  const splitMissing = roleHours === 0 && (flight.totalTime || 0) > 0;
   const landings = (flight.landingsDay || 0) + (flight.landingsNight || 0);
+  // 0 landings is an answer only when the source recorded landings at all.
+  // On an import that had no landings column it is simply unknown.
+  const landingsKnown = flight.landingsRecorded === true || landings > 0;
+  // Imports wrote a literal "0" into remarks on hundreds of rows. It is not
+  // a remark.
+  const remarks = String(flight.remarks ?? '').trim();
+  const hasRemarks = remarks !== '' && remarks !== '0';
   const date = new Date(`${String(flight.date).slice(0, 10)}T00:00:00Z`)
     .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -127,7 +139,11 @@ export default function FlightDetail() {
             {kv('Block', minutesToHHMM(block))}
             {kv('Airborne', minutesToHHMM(airborne))}
             {kv('Night', flight.nightTime == null ? '\u2014' : minutesToHHMM(Math.round(flight.nightTime * 60)), flight.nightSource === 'form' ? 'from the form' : 'calc.')}
-            {kv(role, minutesToHHMM(Math.round(((role === 'PIC' ? flight.picTime : flight.sicTime) || 0) * 60)), 'auto')}
+            {kv(
+              role,
+              splitMissing ? '\u2014' : minutesToHHMM(Math.round(roleHours * 60)),
+              splitMissing ? 'not recorded on this row' : 'auto',
+            )}
           </View>
         </View>
 
@@ -136,9 +152,9 @@ export default function FlightDetail() {
             {kv('Role', role === 'PIC' ? 'Captain' : 'First Officer')}
             {kv('Duty', flight.pilotFlying === true ? 'Pilot flying' : flight.pilotFlying === false ? 'Monitoring' : '—')}
             {kv('Commander', flight.picName || '—')}
-            {kv('Landings', landings ? `${landings}${flight.landingsNight ? ' night' : ' day'}` : '0')}
+            {kv('Landings', landingsKnown ? `${landings}${flight.landingsNight ? ' night' : ' day'}` : '\u2014')}
             {kv('Approach', flight.approach || '—')}
-            {kv('Remarks', flight.remarks || '—')}
+            {kv('Remarks', hasRemarks ? remarks : '\u2014')}
           </View>
         </View>
 
