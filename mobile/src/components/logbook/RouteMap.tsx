@@ -32,21 +32,45 @@ const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
 let geoCache: any = null;
 
 export type Sector = { from?: string | null; to?: string | null };
-type Airport = { code: string; name?: string | null; city?: string | null; lat: number; lon: number };
+export type Route = { from: string; to: string; count: number };
+type AirportsPayload = { airports: Airport[]; routes: Route[] };
+type Airport = {
+  code: string; name?: string | null; city?: string | null; lat: number; lon: number;
+  // The server also sends the ICAO and IATA forms; a sector may name either.
+  icao?: string | null; iata?: string | null;
+};
 
-/** Every airport in this pilot's logbook, with coordinates. Cached. */
+/**
+ * Every airport in this pilot's logbook, with coordinates.
+ *
+ * The query holds a plain ARRAY, never the Map. The cache is written to disk
+ * with JSON.stringify, and a Map serialises to `{}` — so the first launch
+ * worked and every launch after it rehydrated an object with no `.get`, and
+ * the memo below died on `coords.get(...)` with "undefined is not a function".
+ * That took the whole Logbook tab down in builds 6 and 7.
+ *
+ * `select` runs after rehydration and is not persisted, so the Map is built
+ * fresh each time from data that survives a round trip through JSON.
+ */
 export function useAirportCoords() {
   return useQuery({
     queryKey: ['profile', 'airports'],
     staleTime: 24 * 60 * 60 * 1000,
-    queryFn: async () => {
+    queryFn: async (): Promise<AirportsPayload> => {
       const { data } = await api.get('/profile/airports');
+      return { airports: data.airports || [], routes: data.routes || [] };
+    },
+    select: (payload: AirportsPayload) => {
       const map = new Map<string, Airport>();
-      for (const a of data.airports || []) {
+      // An array is what we expect; anything else came from an older cache.
+      const list = Array.isArray(payload?.airports) ? payload.airports : [];
+      for (const a of list) {
         if (!Number.isFinite(a.lat) || !Number.isFinite(a.lon)) continue;   // never 0,0
-        for (const k of [a.code, a.icao, a.iata]) if (k) map.set(String(k).toUpperCase(), a);
+        for (const k of [a.code, a.icao, a.iata]) {
+          if (k) map.set(String(k).toUpperCase(), a);
+        }
       }
-      return map;
+      return { byCode: map, routes: Array.isArray(payload?.routes) ? payload.routes : [] };
     },
   });
 }
@@ -56,7 +80,8 @@ export default function RouteMap({
 }: { sectors: Sector[]; height?: number; label?: string; explorable?: boolean }) {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { data: coords } = useAirportCoords();
+  const { data: air } = useAirportCoords();
+  const coords = air?.byCode;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [world, setWorld] = useState<any>(geoCache);
   const [width, setWidth] = useState(0);
@@ -73,12 +98,16 @@ export default function RouteMap({
 
   // Which airports are on screen, how many flights touched each, and the legs.
   const { points, legs, skipped } = useMemo(() => {
+    // `select` above always hands over a Map. This guard is for the one case
+    // it cannot cover: a build whose cache was written before that change.
+    const at = (code?: string | null) =>
+      (code && coords instanceof Map ? coords.get(String(code).toUpperCase()) : undefined);
     const seen = new Map<string, { a: Airport; count: number }>();
     const ls: { a: Airport; b: Airport }[] = [];
     let miss = 0;
     for (const s of sectors || []) {
-      const A = s.from && coords?.get(String(s.from).toUpperCase());
-      const B = s.to && coords?.get(String(s.to).toUpperCase());
+      const A = at(s.from);
+      const B = at(s.to);
       for (const [code, ap] of [[s.from, A], [s.to, B]] as [string, Airport | undefined][]) {
         if (!code) continue;
         if (!ap) { miss += 1; continue; }

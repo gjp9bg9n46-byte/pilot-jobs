@@ -34,7 +34,7 @@ import { TIMING_BASE } from '../../../../src/theme/motion';
 import Segmented from '../../../../src/components/Segmented';
 import FlightRow from '../../../../src/components/logbook/FlightRow';
 import RouteMap from '../../../../src/components/logbook/RouteMap';
-import { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
+import ErrorBoundary, { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Log = Record<string, any>;
@@ -400,12 +400,24 @@ function LogbookList() {
       {/* Where this page of flights went. Follows the list: change page or
           switch Month/Day and the map follows. Below the hours, because
           currency is the number a pilot needs first. */}
+      {/* The map gets its own boundary. It has taken the whole Logbook tab
+          down twice; a card that cannot draw should cost the pilot the card. */}
       {logs.length ? (
-        <RouteMap
-          sectors={logs.map((f: Log) => ({ from: f.departure, to: f.arrival }))}
-          height={170}
-          label="Where you flew"
-        />
+        <ErrorBoundary
+          label="Logbook map"
+          fallback={(retry) => (
+            <Pressable style={styles.mapDown} onPress={retry} accessibilityRole="button">
+              <Text style={styles.mapDownTitle}>Map unavailable</Text>
+              <Text style={styles.mapDownBody}>Your flights are all here — only the map could not be drawn. Tap to try again.</Text>
+            </Pressable>
+          )}
+        >
+          <RouteMap
+            sectors={logs.map((f: Log) => ({ from: f.departure, to: f.arrival }))}
+            height={170}
+            label="Where you flew"
+          />
+        </ErrorBoundary>
       ) : null}
 
       {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
@@ -540,6 +552,12 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   dotWarn: { backgroundColor: '#B45309' },
   dotGrey: { backgroundColor: pilot.faint },
   recText: { flex: 1, fontSize: 13, color: pilot.ink, fontFamily: fontFamilies.body },
+  mapDown: {
+    backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line,
+    borderRadius: 14, padding: layout.cardPad, marginBottom: 12, gap: 4,
+  },
+  mapDownTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base, color: pilot.ink },
+  mapDownBody: { fontFamily: fontFamilies.body, fontSize: fontSizes.sm, lineHeight: 19, color: pilot.muted },
   infoBackdrop: { flex: 1, backgroundColor: 'rgba(15,27,45,0.45)', justifyContent: 'flex-end' },
   infoSheet: { backgroundColor: pilot.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.xl, gap: 12 },
   infoTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.xl, color: pilot.ink },

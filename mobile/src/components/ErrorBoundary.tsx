@@ -72,7 +72,17 @@ export async function reportClientError(
   }
 }
 
-type Props = { children: React.ReactNode; label?: string };
+type Props = {
+  children: React.ReactNode;
+  label?: string;
+  /**
+   * A small stand-in for a single card, instead of the full-screen message.
+   * One card failing should cost that card, not the screen it sits on — the
+   * route map took the whole Logbook tab down twice before this existed. The
+   * error is still reported either way.
+   */
+  fallback?: (retry: () => void, error: Error) => React.ReactNode;
+};
 type State = {
   error: Error | null;
   componentStack: string | null;
@@ -120,6 +130,7 @@ class Boundary extends React.Component<Props & { styles: Fallback }, State> {
     if (!error) return <React.Fragment key={attempt}>{this.props.children}</React.Fragment>;
     const styles = this.props.styles;
     const triedAlready = caught > 1;
+    if (this.props.fallback) return <>{this.props.fallback(this.retry, error)}</>;
     return (
       <View style={styles.wrap}>
         <Text style={styles.title}>Something went wrong</Text>
@@ -164,9 +175,9 @@ class Boundary extends React.Component<Props & { styles: Fallback }, State> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Fallback = any;
 
-export default function ErrorBoundary({ children, label }: Props) {
+export default function ErrorBoundary({ children, label, fallback }: Props) {
   const styles = useThemedStyles(createStyles);
-  return <Boundary label={label} styles={styles}>{children}</Boundary>;
+  return <Boundary label={label} styles={styles} fallback={fallback}>{children}</Boundary>;
 }
 
 /** Wrap a screen component so a render error shows the fallback, not a crash. */

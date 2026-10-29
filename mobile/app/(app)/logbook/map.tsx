@@ -29,7 +29,9 @@ export default function FullScreenMapFallback() {
         <Text style={styles.title}>{label}</Text>
         <View style={{ width: 40 }} />
       </View>
-      {/* explorable={false}: this IS the explored view. */}
+      {/* explorable={false}: this IS the explored view. The native screen
+          opens on every route ever flown; the SVG one still draws the page's
+          sectors, which is what this component takes. */}
       <RouteMap sectors={sectors} height={Math.max(320, height - 180)} explorable={false} />
     </SafeAreaView>
   );

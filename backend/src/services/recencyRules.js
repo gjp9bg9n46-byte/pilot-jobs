@@ -27,7 +27,10 @@ const RULES = {
     // The FAA night leg counts full-stop landings only, and CockpitHire does not
     // record whether a landing was to a full stop — so the night figure is a
     // ceiling, not a verdict. Said out loud rather than quietly assumed.
-    note: 'FAA night recency counts full-stop landings; CockpitHire does not record full-stop landings, so treat the night figure as indicative.',
+    // Said to the pilot, not about us: what the rule asks for, and what our
+    // number can and cannot tell them about it. The old wording ("CockpitHire
+    // does not record full-stop landings…") described our database.
+    nightCaveat: 'The FAA night rule counts full-stop landings. Your logbook records landings, not whether they were to a full stop, so treat the night figure as a maximum.',
   },
 };
 
@@ -101,7 +104,10 @@ function recencyRuleFor(certs = [], now = new Date()) {
     nightNote: exempt
       ? `You hold instrument privileges, so ${rule.label} does not require a night landing (${rule.ref}). The night count is information only.`
       : (rule.nightApplies
-        ? `${rule.label} requires ${rule.nightRequired === 1 ? 'one of the three' : `${rule.nightRequired} of them`} to be at night to carry passengers at night (${rule.ref}).`
+        ? [
+          `${rule.label} requires ${rule.nightRequired === 1 ? 'one of the three' : `${rule.nightRequired} of them`} to be at night to carry passengers at night (${rule.ref}).`,
+          rule.nightCaveat,
+        ].filter(Boolean).join(' ')
         : null),
     ref: rule.ref,
     note: rule.note || null,

@@ -132,7 +132,7 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
               </View>
               {other > 0 ? (
                 <Text style={styles.otherNote}>
-                  Other is time logged with no PIC or SIC split — dual, simulator or rows imported without a role.
+                  Other is flying with no PIC or SIC against it — dual, simulator, or flights that came in without a role.
                 </Text>
               ) : null}
             </>

@@ -80,36 +80,43 @@ function clusterise(points: { a: Airport; count: number }[], region: Region | nu
 export default function FullScreenMap() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { data: coords } = useAirportCoords();
+  const { data: air } = useAirportCoords();
+  const coords = air?.byCode;
   const { sectors, label } = useMemo(() => getPendingMap(), []);
   const mapRef = useRef<MapView | null>(null);
   const [region, setRegion] = useState<Region | null>(null);
   const [picked, setPicked] = useState<Cluster | null>(null);
 
-  // Airports actually flown, how many flights touched each, and the legs. A
-  // leg flown more than once is drawn stronger, so a regular route reads as one.
+  // The full map opens on EVERYTHING the pilot has flown, not on the page of
+  // the logbook that happened to be on screen — the card is the view of the
+  // page, this is the view of the career. The server sends every route with
+  // how often it was flown; the page's sectors are only a fallback for an
+  // older backend that does not send them.
   const { points, legs } = useMemo(() => {
+    const at = (code?: string | null) =>
+      (code && coords instanceof Map ? coords.get(String(code).toUpperCase()) : undefined);
     const seen = new Map<string, { a: Airport; count: number }>();
     const legMap = new Map<string, Leg>();
-    for (const s of (sectors || []) as Sector[]) {
-      const A = s.from && coords?.get(String(s.from).toUpperCase());
-      const B = s.to && coords?.get(String(s.to).toUpperCase());
+    const add = (A?: Airport, B?: Airport, count = 1) => {
       for (const ap of [A, B]) {
         if (!ap) continue;
         const cur = seen.get(ap.code) || { a: ap, count: 0 };
-        cur.count += 1;
+        cur.count += count;
         seen.set(ap.code, cur);
       }
       if (A && B && A.code !== B.code) {
-        // One route, whichever way round it was flown that day.
+        // One route, whichever way round it was flown.
         const key = [A.code, B.code].sort().join('-');
         const cur = legMap.get(key);
-        if (cur) cur.count += 1;
-        else legMap.set(key, { a: A, b: B, count: 1 });
+        if (cur) cur.count += count;
+        else legMap.set(key, { a: A, b: B, count });
       }
-    }
+    };
+    const routes = air?.routes || [];
+    if (routes.length) for (const r of routes) add(at(r.from), at(r.to), r.count);
+    else for (const s of (sectors || []) as Sector[]) add(at(s.from), at(s.to));
     return { points: [...seen.values()], legs: [...legMap.values()] };
-  }, [sectors, coords]);
+  }, [sectors, coords, air]);
 
   const clusters = useMemo(() => clusterise(points, region), [points, region]);
 
@@ -178,7 +185,9 @@ export default function FullScreenMap() {
         <Pressable style={styles.close} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close the map">
           <Ionicons name="close" size={22} color={NAVY} />
         </Pressable>
-        <View style={styles.titlePill}><Text style={styles.title}>{label}</Text></View>
+        <View style={styles.titlePill}>
+          <Text style={styles.title}>{air?.routes?.length ? 'Everywhere you have flown' : label}</Text>
+        </View>
         <Pressable style={styles.close} onPress={fitAll} accessibilityRole="button" accessibilityLabel="Fit every airport">
           <Ionicons name="scan-outline" size={20} color={NAVY} />
         </Pressable>

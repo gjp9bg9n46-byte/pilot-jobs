@@ -31,7 +31,12 @@ test('EASA: an EXPIRED IR on a CPL does not remove it', () => {
 test('FAA: no instrument-rating exemption — the night leg applies to an ATP', () => {
   const r = recencyRuleFor([cert('ATPL', 'FAA')]);
   assert.equal(r.nightApplies, true);
-  assert.match(r.note, /full-stop/);
+  // The full-stop caveat is part of what the PILOT reads now. It used to sit
+  // in `note`, which is our own working field and was being printed to them
+  // verbatim; `note` no longer leaves the server at all.
+  assert.match(r.nightNote, /full-stop/);
+  assert.match(r.nightNote, /treat the night figure as a maximum/);
+  assert.ok(!/CockpitHire/.test(r.nightNote), 'say what the rule asks, not what our database holds');
 });
 
 test('unmapped authority never asserts a night requirement', () => {

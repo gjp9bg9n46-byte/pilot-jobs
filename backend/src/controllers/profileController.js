@@ -98,7 +98,24 @@ exports.getAirports = async (req, res, next) => {
     }
     airports.sort((a, b) => b.count - a.count);
 
-    res.json({ airports, unresolved, totalFlights: flights.length, uniqueAirports: agg.size });
+    // Every route ever flown, with how often. The map card follows whichever
+    // page of the logbook is on screen; the full-screen map opens on all of
+    // it, and this is the only place that knows the pairs. One row per route
+    // whichever way round it was flown — CAI→HRG and HRG→CAI are one line on
+    // a map. ~60 airports give a few hundred routes at most.
+    const routeAgg = new Map();
+    for (const f of flights) {
+      const from = String(f.departure || '').trim().toUpperCase();
+      const to = String(f.arrival || '').trim().toUpperCase();
+      if (!from || !to || from === to) continue;
+      const key = [from, to].sort().join('>');
+      const cur = routeAgg.get(key);
+      if (cur) cur.count += 1;
+      else routeAgg.set(key, { from, to, count: 1 });
+    }
+    const routes = [...routeAgg.values()].sort((x, y) => y.count - x.count);
+
+    res.json({ airports, routes, unresolved, totalFlights: flights.length, uniqueAirports: agg.size });
   } catch (err) {
     next(err);
   }
