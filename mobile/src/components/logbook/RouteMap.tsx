@@ -8,21 +8,22 @@
 // drawn at 0,0, which would put a pin in the Atlantic off Ghana and make the
 // map lie.
 //
-// Gestures: pinch to zoom, TWO fingers to pan. One finger is left to the page,
-// so the map never traps a scroll. Both worklets are pure arithmetic and the
-// only hop to JS is through runOnJS — the rule from the SIGABRT fix.
+// The card is a thumbnail, not an instrument: small navy dots, the routes, and
+// a tap that opens the real map full screen (app/(app)/logbook/map.tsx, Apple
+// Maps). It used to carry its own pinch-and-pan, which fought the page scroll
+// and could never show enough to be worth the fight.
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, G, Path } from 'react-native-svg';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 // @ts-ignore — pure-JS lib, no bundled types
 import { geoMercator, geoPath } from 'd3-geo';
 // @ts-ignore — pure-JS lib, no bundled types
 import { feature } from 'topojson-client';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { TIMING_BASE } from '../../theme/motion';
+import { setPendingMap } from '../../lib/pendingMap';
 import { fontFamilies, layout, spacing } from '../../theme/tokens';
 import { ThemePalette, useThemedStyles } from '../../theme/ThemeContext';
 
@@ -51,14 +52,14 @@ export function useAirportCoords() {
 }
 
 export default function RouteMap({
-  sectors, height = 190, label,
-}: { sectors: Sector[]; height?: number; label?: string }) {
+  sectors, height = 190, label, explorable = true,
+}: { sectors: Sector[]; height?: number; label?: string; explorable?: boolean }) {
   const styles = useThemedStyles(createStyles);
+  const router = useRouter();
   const { data: coords } = useAirportCoords();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [world, setWorld] = useState<any>(geoCache);
   const [width, setWidth] = useState(0);
-  const [picked, setPicked] = useState<string | null>(null);
 
   useEffect(() => {
     if (geoCache) return;
@@ -113,86 +114,61 @@ export default function RouteMap({
     };
   }, [width, height, points, legs, world]);
 
-  // Pinch to zoom; two fingers to pan. One finger belongs to the page.
-  const scale = useSharedValue(1);
-  const saved = useSharedValue(1);
-  const tx = useSharedValue(0);
-  const ty = useSharedValue(0);
-  const sx = useSharedValue(0);
-  const sy = useSharedValue(0);
-  const pinch = Gesture.Pinch()
-    .onUpdate((e) => { scale.value = Math.min(6, Math.max(1, saved.value * e.scale)); })
-    .onEnd(() => { saved.value = scale.value; });
-  const pan = Gesture.Pan()
-    .minPointers(2)
-    .onUpdate((e) => { tx.value = sx.value + e.translationX; ty.value = sy.value + e.translationY; })
-    .onEnd(() => { sx.value = tx.value; sy.value = ty.value; });
-  const doubleTap = Gesture.Tap().numberOfTaps(2).onEnd(() => {
-    scale.value = withTiming(1, TIMING_BASE); saved.value = 1;
-    tx.value = withTiming(0, TIMING_BASE); ty.value = withTiming(0, TIMING_BASE);
-    sx.value = 0; sy.value = 0;
-    runOnJS(setPicked)(null);
-  });
-  const gesture = Gesture.Simultaneous(pinch, pan, doubleTap);
-  const mapStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
-  }));
+  const open = () => {
+    if (!explorable || !points.length) return;
+    setPendingMap(sectors || [], label || 'Where you flew');
+    router.push('/logbook/map');
+  };
 
-  const chosen = picked ? points.find((p) => p.a.code === picked) : null;
-
-  return (
-    <View style={styles.card} onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width))}>
+  const card = (
+    <>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.frame, { height }]}>
-        <GestureDetector gesture={gesture}>
-          <Animated.View style={[{ width: '100%', height }, mapStyle]}>
-            {width > 0 && projected ? (
-              <Svg width={width} height={height}>
-                {projected.land ? <Path d={projected.land} fill="#E8EEF6" stroke="#D5DEE9" strokeWidth={0.5} /> : null}
-                <G>
-                  {projected.lines.map((l, i) => (
-                    <Path key={`l${i}`} d={`M${l.a[0]},${l.a[1]} L${l.b[0]},${l.b[1]}`} stroke="#003F88" strokeWidth={1.2} strokeOpacity={0.55} fill="none" />
-                  ))}
-                  {projected.pins.map((p) => (
-                    <Circle
-                      key={p.a.code}
-                      cx={p.xy[0]} cy={p.xy[1]}
-                      r={Math.min(7, 3 + Math.log2(p.count + 1))}
-                      fill={picked === p.a.code ? '#003F88' : '#fff'}
-                      stroke="#003F88" strokeWidth={1.6}
-                    />
-                  ))}
-                </G>
-              </Svg>
-            ) : null}
-            {/* Tap targets sit over the pins, not on them: an SVG circle is a
-                few pixels across, and a finger is not. */}
-            {projected ? projected.pins.map((p) => (
-              <Pressable
-                key={`t${p.a.code}`}
-                accessibilityRole="button"
-                accessibilityLabel={`${p.a.code}, ${p.count} flights`}
-                onPress={() => setPicked(picked === p.a.code ? null : p.a.code)}
-                style={{ position: 'absolute', left: p.xy[0] - 22, top: p.xy[1] - 22, width: 44, height: 44 }}
-              />
-            )) : null}
-          </Animated.View>
-        </GestureDetector>
+      <View style={[styles.frame, { height }]} pointerEvents="none">
+        {width > 0 && projected ? (
+          <Svg width={width} height={height}>
+            {projected.land ? <Path d={projected.land} fill="#E8EEF6" stroke="#D5DEE9" strokeWidth={0.5} /> : null}
+            <G>
+              {projected.lines.map((l, i) => (
+                <Path key={`l${i}`} d={`M${l.a[0]},${l.a[1]} L${l.b[0]},${l.b[1]}`} stroke="#003F88" strokeWidth={1} strokeOpacity={0.4} fill="none" />
+              ))}
+              {/* Small filled dots. The hollow rings this used to draw grew
+                  with the flight count and swallowed the map at a glance. */}
+              {projected.pins.map((p) => (
+                <Circle key={p.a.code} cx={p.xy[0]} cy={p.xy[1]} r={2.6} fill="#003F88" />
+              ))}
+            </G>
+          </Svg>
+        ) : null}
       </View>
 
-      {chosen ? (
-        <Pressable style={styles.pick} onPress={() => setPicked(null)}>
-          <Text style={styles.pickCode}>{chosen.a.code}</Text>
-          <Text style={styles.pickName} numberOfLines={1}>
-            {chosen.a.city || chosen.a.name || ''} · {chosen.count} {chosen.count === 1 ? 'flight' : 'flights'}
-          </Text>
-        </Pressable>
-      ) : (
+      <View style={styles.foot}>
         <Text style={styles.hint}>
-          {points.length} airport{points.length === 1 ? '' : 's'} · tap a pin
+          {points.length} airport{points.length === 1 ? '' : 's'}
           {skipped > 0 ? ` · ${skipped} without coordinates not shown` : ''}
         </Text>
-      )}
+        {explorable && points.length ? (
+          <View style={styles.explore}>
+            <Text style={styles.exploreText}>Tap to explore</Text>
+            <Ionicons name="chevron-forward" size={13} color="#003F88" />
+          </View>
+        ) : null}
+      </View>
+    </>
+  );
+
+  return explorable && points.length ? (
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={open}
+      onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width - layout.cardPad * 2))}
+      accessibilityRole="button"
+      accessibilityLabel={`${label || 'Where you flew'}, ${points.length} airports. Opens the full map.`}
+    >
+      {card}
+    </Pressable>
+  ) : (
+    <View style={styles.card} onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width - layout.cardPad * 2))}>
+      {card}
     </View>
   );
 }
@@ -206,9 +182,10 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
     fontSize: 11, fontFamily: fontFamilies.bodySemiBold, color: pilot.faint,
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: layout.rowGap,
   },
+  cardPressed: { opacity: 0.85 },
   frame: { borderRadius: 10, overflow: 'hidden', backgroundColor: '#F4F7FB' },
-  hint: { marginTop: layout.rowGap, fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },
-  pick: { marginTop: layout.rowGap, flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  pickCode: { fontFamily: fontFamilies.mono, fontSize: 14, color: pilot.ink },
-  pickName: { flex: 1, fontSize: 12.5, color: pilot.muted, fontFamily: fontFamilies.body },
+  foot: { marginTop: layout.rowGap, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  hint: { flex: 1, fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },
+  explore: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  exploreText: { fontSize: 12.5, color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
 });

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ChevronDown, ChevronRight, ChevronUp,
-  Pencil, Copy, Trash2, Upload, CheckCircle2,
+  Pencil, Copy, Trash2, Upload, CheckCircle2, Info,
 } from 'lucide-react';
 import SunCalc from 'suncalc';
 import { flightLogApi, profileApi, logbookApi } from '../services/api';
@@ -228,6 +228,45 @@ function TimeField({ value, onChange, label }) {
       error={err || undefined}
       label={<>{label}<span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>HH:MM UTC</span></>}
     />
+  );
+}
+
+// The ⓘ beside the recency strip. Click to open, click anywhere to close.
+function RecencyInfo({ lines }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = () => setOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [open]);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        type="button"
+        aria-label="About your recency"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'var(--text-secondary)', fontSize: 14 }}
+      >
+        <Info size={15} />
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', top: 22, right: 0, zIndex: 20, width: 290,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+            boxShadow: '0 10px 28px rgba(15,27,45,0.16)', padding: '10px 12px',
+            display: 'flex', flexDirection: 'column', gap: 6,
+            fontSize: 12.5, lineHeight: 1.45, color: 'var(--text-secondary)', fontWeight: 400,
+          }}
+        >
+          {lines.map((l) => <span key={l}>{l}</span>)}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -878,10 +917,11 @@ export default function Logbook() {
             return (
               <div className="lb-rec">
                 <span className={`dot${r.tone === 'ok' ? '' : r.tone === 'unknown' ? ' grey' : ' warn'}`} />
-                <span>
-                  <b>{r.text}</b>
-                  {r.note ? <small className="lb-rec-note">{r.note}</small> : null}
-                </span>
+                <b>{r.text}</b>
+                {/* The night count and what we do about an unmapped authority
+                    are true but not urgent, so they sit behind this rather
+                    than making the strip three lines deep. */}
+                {r.info?.length ? <RecencyInfo lines={r.info} /> : null}
               </div>
             );
           })()}

@@ -5,9 +5,9 @@
 //   duration over a dashed navy track, and a foot row of pills (flight no,
 //   type, registration) + actions (edit / clone / delete).
 // - 20 cards per page with ellipsis pagination, ?page= URL state.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Pressable, RefreshControl, StyleSheet, Text, View,
+  Alert, Modal, Pressable, RefreshControl, StyleSheet, Text, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -29,6 +29,8 @@ import { useLogbook } from '../../../../src/hooks/queries';
 import { LogbookSkeleton } from '../../../../src/components/Skeleton';
 import { notifySuccess, tapLight } from '../../../../src/lib/haptics';
 import PressableScale from '../../../../src/components/PressableScale';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { TIMING_BASE } from '../../../../src/theme/motion';
 import Segmented from '../../../../src/components/Segmented';
 import FlightRow from '../../../../src/components/logbook/FlightRow';
 import RouteMap from '../../../../src/components/logbook/RouteMap';
@@ -134,6 +136,44 @@ function LogbookList() {
   // Month unless this pilot has chosen Day; the choice is stored in logbook
   // prefs, so web and app agree and it survives a reinstall.
   const [groupingOverride, setGroupingOverride] = useState<Grouping | null>(null);
+  // The ⓘ beside the recency strip: the lines it shows, or null when closed.
+  const [recencyInfo, setRecencyInfo] = useState<string[] | null>(null);
+
+  // The + button floats over the content, so padding at the bottom only buys
+  // the LAST row its clearance — the milestone bubble and the map were still
+  // covered as they scrolled past it. It now steps aside while the list is
+  // moving and comes back when it stops. Driven from the JS thread into a
+  // shared value; the worklet is arithmetic only, which is the rule that
+  // keeps us off the SIGABRT from build 2.
+  const fabHidden = useSharedValue(0);
+  const fabStyle = useAnimatedStyle(() => {
+    const v = fabHidden.get();
+    return {
+      opacity: 1 - v * 0.85,
+      transform: [{ translateY: v * 90 }, { scale: 1 - v * 0.25 }],
+    };
+  });
+  // Where it should be is tracked here, not read back off the shared value:
+  // mid-animation that value is an interpolated number, so comparing it
+  // against 0 or 1 would miss almost every time.
+  const fabAway = useRef(false);
+  const lastY = useRef(0);
+  const moveFab = useCallback((away: boolean) => {
+    if (fabAway.current === away) return;
+    fabAway.current = away;
+    fabHidden.set(withTiming(away ? 1 : 0, TIMING_BASE));
+  }, [fabHidden]);
+  const onScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const y = e.nativeEvent.contentOffset.y;
+    // Down, or anywhere past the top: out of the way, and it STAYS out of the
+    // way. Bringing it back when the list settled was no better than leaving
+    // it there — a pilot stops scrolling precisely to read the thing it was
+    // covering. It returns when they scroll back up, or reach the top.
+    if (y <= 4) moveFab(false);
+    else if (y > lastY.current + 4) moveFab(true);
+    else if (y < lastY.current - 18) moveFab(false);
+    lastY.current = y;
+  }, [moveFab]);
   const qc = useQueryClient();
 
   // ONE call for prefs + scan quota + totals + this page (GET /logbook/bootstrap),
@@ -334,10 +374,20 @@ function LogbookList() {
             return (
               <View style={styles.rec}>
                 <View style={[styles.dot, r.tone === 'short' && styles.dotWarn, r.tone === 'unknown' && styles.dotGrey]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.recText}><Text style={styles.recStrong}>{r.text}</Text></Text>
-                  {r.note ? <Text style={styles.recNote}>{r.note}</Text> : null}
-                </View>
+                <Text style={styles.recText} numberOfLines={1}><Text style={styles.recStrong}>{r.text}</Text></Text>
+                {/* Everything else true about recency — the night count, and
+                    what we do about an authority we have not mapped — sits
+                    behind this. The strip stays one line. */}
+                {r.info?.length ? (
+                  <Pressable
+                    onPress={() => { tapLight(); setRecencyInfo(r.info); }}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel="About your recency"
+                  >
+                    <Ionicons name="information-circle-outline" size={18} color={pilot.muted} />
+                  </Pressable>
+                ) : null}
               </View>
             );
           })() : null}
@@ -405,11 +455,13 @@ function LogbookList() {
         data={rows}
         keyExtractor={(r) => r.key}
         getItemType={(r) => r.kind}
-        contentContainerStyle={{ paddingBottom: tabBarClearance, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}
+        contentContainerStyle={{ paddingBottom: tabBarClearance, paddingHorizontal: spacing.lg, paddingTop: spacing.xl }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
         ListHeaderComponent={ListHeader}
         ListFooterComponent={ListFooter}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         onEndReachedThreshold={0.6}
         onEndReached={() => { if (hasMore && !isFetching) setPage((p) => p + 1); }}
         ListEmptyComponent={ListEmpty}
@@ -438,9 +490,24 @@ function LogbookList() {
           );
         }}
       />
-      <Pressable style={styles.fab} onPress={() => setAddOpen(true)} accessibilityLabel="Add a flight">
-        <Ionicons name="add" size={26} color="#fff" />
-      </Pressable>
+      <Animated.View style={[styles.fab, fabStyle]} pointerEvents="box-none">
+        <Pressable style={styles.fabHit} onPress={() => setAddOpen(true)} accessibilityLabel="Add a flight">
+          <Ionicons name="add" size={26} color="#fff" />
+        </Pressable>
+      </Animated.View>
+
+      {/* What the ⓘ beside the recency strip opens. */}
+      <Modal visible={!!recencyInfo} transparent animationType="fade" onRequestClose={() => setRecencyInfo(null)}>
+        <Pressable style={styles.infoBackdrop} onPress={() => setRecencyInfo(null)}>
+          <Pressable style={styles.infoSheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.infoTitle}>Your recency</Text>
+            {(recencyInfo || []).map((line) => <Text key={line} style={styles.infoLine}>{line}</Text>)}
+            <Pressable style={styles.infoClose} onPress={() => setRecencyInfo(null)} accessibilityRole="button">
+              <Text style={styles.infoCloseText}>Close</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <AddFlightSheet
         visible={addOpen}
@@ -473,6 +540,12 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   dotWarn: { backgroundColor: '#B45309' },
   dotGrey: { backgroundColor: pilot.faint },
   recText: { flex: 1, fontSize: 13, color: pilot.ink, fontFamily: fontFamilies.body },
+  infoBackdrop: { flex: 1, backgroundColor: 'rgba(15,27,45,0.45)', justifyContent: 'flex-end' },
+  infoSheet: { backgroundColor: pilot.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.xl, gap: 12 },
+  infoTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.xl, color: pilot.ink },
+  infoLine: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, lineHeight: 21, color: pilot.muted },
+  infoClose: { alignSelf: 'flex-end', paddingHorizontal: 18, height: 44, borderRadius: 10, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center' },
+  infoCloseText: { color: '#fff', fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base },
   recStrong: { fontFamily: fontFamilies.bodySemiBold },
   // Why the night leg does or doesn't apply — stated, never implied.
   recNote: { marginTop: 2, fontSize: 12, lineHeight: 16, color: pilot.muted, fontFamily: fontFamilies.body },
@@ -492,11 +565,14 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   plus1: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.muted, backgroundColor: '#EEF1F5', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },
   legHours: { fontSize: 14, fontFamily: fontFamilies.body, color: pilot.ink, fontVariant: ['tabular-nums'] },
   pf: { fontSize: 10.5, fontFamily: fontFamilies.bodyBold, color: pilot.navy, backgroundColor: '#E3ECF8', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
-  fab: { position: 'absolute', right: 20, bottom: 104, width: 58, height: 58, borderRadius: 29, backgroundColor: pilot.navy, alignItems: 'center', justifyContent: 'center', shadowColor: '#003F88', shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
+  fab: { position: 'absolute', right: 20, bottom: 104, width: 58, height: 58, borderRadius: 29, backgroundColor: pilot.navy, shadowColor: '#003F88', shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
+  fabHit: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
 
   safe: { flex: 1, backgroundColor: pilot.cream },
   content: { padding: layout.screenX, paddingBottom: 116 /* clears floating tab bar */ },
-  h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
+  // An explicit line height: the display face's ascenders are taller than the
+  // box React Native gives a 32pt line, and the top of "Logbook" was clipped.
+  h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], lineHeight: 40, color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 20 },
 
   totalsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },

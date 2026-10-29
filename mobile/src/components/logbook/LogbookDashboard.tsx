@@ -240,18 +240,10 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
                 go, and the strip is the one a pilot sees first. */}
             <CurrencyLine role="Night" data={currency.night} styles={styles} currency={currency}
               applies={currency.rule ? currency.rule.nightApplies : false} />
-            {currency.rule?.nightNote ? (
-              <View style={styles.curLine}>
-                <View style={[styles.curIc, { backgroundColor: TRACK_BG }]}><Text style={{ color: FAINT, fontSize: 11 }}>·</Text></View>
-                <Text style={[styles.curText, { color: pilot.muted }]}>{currency.rule.nightNote}</Text>
-              </View>
-            ) : null}
-            {currency.rule?.note ? (
-              <View style={styles.curLine}>
-                <View style={[styles.curIc, { backgroundColor: TRACK_BG }]}><Text style={{ color: FAINT, fontSize: 11 }}>·</Text></View>
-                <Text style={[styles.curText, { color: pilot.muted }]}>{currency.rule.note}</Text>
-              </View>
-            ) : null}
+            {/* The authority note belongs to the strip at the top, behind
+                its ⓘ — printing it twice is what made this card long.
+                `rule.note` was printed here too: our own working note about a
+                rule we have not verified. The server no longer sends it. */}
           </>
         )}
       </View>

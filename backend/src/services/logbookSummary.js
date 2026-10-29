@@ -221,8 +221,14 @@ async function buildLogbookSummary(pilotId) {
   // does not, the night figure is information, never a shortfall.
   const rule = recencyRuleFor(certs);
   const allLdgDates = [...dayLdgDates, ...nightLdgDates];
+  // `rule.note` is our own working note about a rule we have not verified
+  // ("ECAR Part 61 is FAA-derived … unverified"). recencyRules says in so many
+  // words that it is for us and nightNote is for the pilot — but it was being
+  // serialised, and both dashboards printed it under the pilot's landings.
+  // Dropped here rather than in two clients, so no third one can leak it.
+  const { note: _internalRuleNote, ...pilotRule } = rule;
   const currency = {
-    rule,
+    rule: pilotRule,
     landings: allLdgDates.length,
     required: rule.base,
     currentUntil: currentUntil(allLdgDates),

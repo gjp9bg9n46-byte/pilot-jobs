@@ -27,6 +27,8 @@
 .lb-tot b { display: block; font-family: var(--font-display); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 .lb-tot span { font-size: 11.5px; color: var(--text-faint); }
 
+/* The ⓘ sits at the far right of the strip, which is one line by design. */
+.lb-rec > b { flex: 1; min-width: 0; }
 .lb-rec { display: flex; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; margin-top: 10px; font-size: 13.5px; color: var(--text-primary); }
 .lb-rec .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lb-green); flex: none; }
 .lb-rec .dot.warn { background: var(--lb-amber); }

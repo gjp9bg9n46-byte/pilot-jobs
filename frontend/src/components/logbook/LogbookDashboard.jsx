@@ -180,12 +180,11 @@ export default function LogbookDashboard({ summary, onEditCarryForward, timeForm
                 <CurrencyLine
                   role="Night" data={currency.night} applies={currency.rule ? currency.rule.nightApplies : false}
                   incomplete={currency.incomplete} without={currency.flightsWithoutLandings} inWindow={currency.flightsInWindow} />
-                {currency.rule?.nightNote && (
-                  <li><span className="lb-ic neutral">·</span><div className="m">{currency.rule.nightNote}</div></li>
-                )}
-                {currency.rule?.note && (
-                  <li><span className="lb-ic neutral">·</span><div className="m">{currency.rule.note}</div></li>
-                )}
+                {/* The authority note used to be printed here AND in the
+                    strip at the top of the page, word for word. It belongs to
+                    the strip, behind its ⓘ. `rule.note` was printed here too —
+                    our own working note about a rule we have not verified, in
+                    front of the pilot. The server no longer sends it. */}
               </>
             )}
           </ul>

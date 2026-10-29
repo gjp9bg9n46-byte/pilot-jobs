@@ -233,23 +233,27 @@ export function recencyLine(currency) {
   const nightOk = nightCount >= nightNeed;
   const totalOk = total >= required;
   const until = currency.currentUntil || currency.day?.currentUntil || null;
+  const plural = (n) => `${n} landing${n === 1 ? '' : 's'}`;
+
+  // Everything that is true but not urgent goes behind the ⓘ. The strip gets
+  // one line — the verdict and the date it runs out — because that is what a
+  // pilot checks, and four clauses in a row stopped being read.
+  const info = [`${plural(nightCount)} at night in the last 90 days`];
+  if (rule.nightNote) info.push(rule.nightNote);
 
   // Landings missing from the window: the count is a floor, not a verdict.
   if (currency.incomplete && !totalOk) {
     return {
       tone: 'unknown',
-      text: `Landings not recorded for ${currency.flightsWithoutLandings} of your last ${currency.flightsInWindow} flights — recency can't be worked out`,
-      note: null,
+      text: `Recency can't be worked out — ${currency.flightsWithoutLandings} of your last ${currency.flightsInWindow} flights have no landings recorded`,
+      info,
     };
   }
 
-  const nightInfo = `${nightCount} at night`;
   // Current = the requirement is met, and the night leg too where it applies.
-  const current = totalOk && (!rule.nightApplies || nightOk);
-  if (current) {
-    const parts = [`${total} landing${total === 1 ? '' : 's'} in the last 90 days`, nightInfo];
-    if (until) parts.push(`until ${dropOffLabel(until)}`);
-    return { tone: 'ok', text: `Current · ${parts.join(' · ')}`, note: rule.nightNote || null };
+  if (totalOk && (!rule.nightApplies || nightOk)) {
+    const head = until ? `Current until ${dropOffLabel(until)}` : 'Current';
+    return { tone: 'ok', text: `${head} · ${plural(total)} in 90 days`, info };
   }
 
   const needs = [];
@@ -258,12 +262,12 @@ export function recencyLine(currency) {
   // "3 of 3" would be a lie when the three are flown and only the night leg is
   // outstanding, so the head states the count plainly in that case.
   const head = totalOk
-    ? `${total} landing${total === 1 ? '' : 's'} in the last 90 days`
-    : `${total} of ${required} landings in the last 90 days`;
+    ? `${plural(total)} in 90 days`
+    : `${total} of ${required} landings in 90 days`;
   return {
     tone: 'short',
-    text: `${head} · ${nightInfo}${needs.length ? ` · ${needs.join(' · ')} needed` : ''}`,
-    note: rule.nightNote || null,
+    text: `${head}${needs.length ? ` · ${needs.join(' · ')} needed` : ''}`,
+    info,
   };
 }
 
