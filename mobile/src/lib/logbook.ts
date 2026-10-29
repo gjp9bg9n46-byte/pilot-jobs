@@ -101,3 +101,47 @@ export function formatLogDate(d: string | Date): string {
   const dd = String(dt.getDate()).padStart(2, '0');
   return `${dd} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()}`;
 }
+
+// ── What a flight needs before it can be saved ───────────────────────────────
+// Mirrors frontend/src/lib/logbookFormat.js. A pilot copying an old paper page
+// often has the block time written down and nothing else — no OUT, no IN.
+// Demanding the four times would mean inventing three of them.
+
+/** "1:30", "1.5", "1,5" → 1.5 hours. null when it is not a time at all. */
+export function parseBlockHours(raw: string | number | null | undefined): number | null {
+  const s = String(raw ?? '').trim().replace(',', '.');
+  if (!s) return null;
+  const hhmm = /^(\d{1,3}):([0-5]\d)$/.exec(s);
+  if (hhmm) return parseFloat((Number(hhmm[1]) + Number(hhmm[2]) / 60).toFixed(2));
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(s)) return null;
+  const n = parseFloat(s);
+  return Number.isFinite(n) && n > 0 ? parseFloat(n.toFixed(2)) : null;
+}
+
+/** What is still missing from one leg, in the words the Save button uses. */
+export function missingForSave(
+  { date, aircraftType, out, in: inn, blockTyped }:
+  { date?: string; aircraftType?: string; out?: string; in?: string; blockTyped?: string },
+): string[] {
+  const missing: string[] = [];
+  if (!date) missing.push('a date');
+  if (!String(aircraftType || '').trim()) missing.push('an aircraft type');
+  if (blockTimeFromTimes(out, inn) === null && parseBlockHours(blockTyped) === null) {
+    const haveOut = timeToMinutes(out) !== null;
+    const haveIn = timeToMinutes(inn) !== null;
+    if (haveOut && !haveIn) missing.push('an in time (or a block time)');
+    else if (haveIn && !haveOut) missing.push('an out time (or a block time)');
+    else missing.push('out and in times, or a block time');
+  }
+  return missing;
+}
+
+/**
+ * "Add a date" — the reason a disabled Save gives. One thing at a time: four
+ * items in one sentence is a wall, and the next blank is the only one the
+ * pilot can act on anyway. It advances as the form fills.
+ */
+export function missingSentence(missing: string[], legNumber = 0): string {
+  if (!missing.length) return '';
+  return `${legNumber ? `Leg ${legNumber}: a` : 'A'}dd ${missing[0]}`;
+}

@@ -15,7 +15,7 @@ import { isAxiosError } from 'axios';
 import api from '../lib/api';
 import { DateField, ErrorBanner, PrimaryButton, TextField } from './ui';
 import AircraftCombobox from './AircraftCombobox';
-import { blockTimeFromTimes } from '../lib/logbook';
+import { blockTimeFromTimes, missingForSave, missingSentence, parseBlockHours } from '../lib/logbook';
 import { computeNightHours, nightComputable } from '../lib/night';
 import { fontFamilies, fontSizes, pilot, spacing, layout } from '../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
@@ -26,6 +26,9 @@ export const EMPTY_LEG: Leg = {
   picName: '', sicName: '', picTime: '', sicTime: '', multiEngineTime: '', turbineTime: '', jetTime: '',
   crossCountryTime: '', instrumentActualTime: '', instrumentSimTime: '', nightManual: '',
   landingsDay: '', landingsNight: '', remarks: '',
+  // Typed straight in, for a page copied out of a paper logbook that records
+  // the block time and none of the four clock times.
+  blockTyped: '',
 };
 const maskTime = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 4); return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`; };
 const nf = (v: string) => parseFloat(String(v)) || 0;
@@ -44,6 +47,7 @@ export function legFromLog(log: Record<string, any>): Leg {
     jetTime: log.jetTime != null ? String(log.jetTime) : '', crossCountryTime: log.crossCountryTime != null ? String(log.crossCountryTime) : '',
     instrumentActualTime: log.instrumentActualTime != null ? String(log.instrumentActualTime) : '', instrumentSimTime: log.instrumentSimTime != null ? String(log.instrumentSimTime) : '',
     nightManual: log.nightTime != null ? String(log.nightTime) : '',
+    blockTyped: (!log.offBlocksTime || !log.onBlocksTime) && log.totalTime > 0 ? String(log.totalTime) : '',
     landingsDay: log.landingsDay != null ? String(log.landingsDay) : '', landingsNight: log.landingsNight != null ? String(log.landingsNight) : '',
     remarks: str(log.remarks),
   };
@@ -78,34 +82,50 @@ export default function FlightForm({ mode, editId, title, initialDate, initialAi
   const removeLeg = (i: number) => setLegs((prev) => prev.filter((_, idx) => idx !== i));
 
   const derived = useMemo(() => legs.map((leg) => {
-    const block = blockTimeFromTimes(leg.offBlocksTime, leg.onBlocksTime);
+    const fromTimes = blockTimeFromTimes(leg.offBlocksTime, leg.onBlocksTime);
+    const block = fromTimes !== null ? fromTimes : parseBlockHours(leg.blockTyped);
     const computable = nightComputable(date, leg.takeoffTime, leg.landingTime, leg.departure, leg.arrival);
     const computedNight = computable ? computeNightHours(date, leg.takeoffTime, leg.landingTime, leg.departure, leg.arrival) : null;
-    const dayHours = block !== null && computedNight !== null ? parseFloat(Math.max(0, block - computedNight).toFixed(2)) : null;
-    return { block, computable, computedNight, dayHours };
+    // Night is unknown, not zero: with only a block time there is nothing to
+    // compute it from, so it stays null and reads "—".
+    const typedNight = leg.nightManual === '' || leg.nightManual == null ? null : (parseFloat(leg.nightManual) || 0);
+    const night = computedNight !== null ? computedNight : typedNight;
+    const dayHours = block !== null && night !== null ? parseFloat(Math.max(0, block - night).toFixed(2)) : null;
+    return { fromTimes, block, computable, computedNight, night, dayHours };
   }), [legs, date]);
+
+  // Why Save is off, in the same words for every leg. Empty = nothing missing.
+  const blockers = useMemo(
+    () => legs.map((leg) => missingForSave({ date, aircraftType, out: leg.offBlocksTime, in: leg.onBlocksTime, blockTyped: leg.blockTyped })),
+    [legs, date, aircraftType],
+  );
+  const firstBlocked = blockers.findIndex((m) => m.length);
+  const saveReason = firstBlocked === -1 ? '' : missingSentence(blockers[firstBlocked], legs.length > 1 ? firstBlocked + 1 : 0);
 
   const onSave = async () => {
     setBanner('');
-    if (!date || !aircraftType.trim()) return setBanner('Date and aircraft type are required.');
-    for (let i = 0; i < legs.length; i++) {
-      if (derived[i].block === null) return setBanner(`${single ? '' : `Leg ${i + 1}: `}off-blocks and on-blocks times are required.`);
-    }
+    if (saveReason) return setBanner(saveReason);
     setSaving(true);
     try {
       const payloads = legs.map((leg, i) => {
         const d = derived[i];
-        const nightHours = d.computedNight !== null ? d.computedNight : nf(leg.nightManual);
+        // An empty box is not an answer: an unflown OFF/ON goes up as null, not
+        // as "", so the row shows "—" rather than a blank that reads as zero.
+        const orNull = (v: string) => (String(v ?? '').trim() === '' ? null : v);
         return {
           date: new Date(date).toISOString(),
           flightNumber: leg.flightNumber, aircraftType: aircraftType.trim().toUpperCase(), registration: registration.trim(),
           departure: leg.departure, arrival: leg.arrival,
-          offBlocksTime: leg.offBlocksTime, takeoffTime: leg.takeoffTime, landingTime: leg.landingTime, onBlocksTime: leg.onBlocksTime,
+          offBlocksTime: orNull(leg.offBlocksTime), takeoffTime: orNull(leg.takeoffTime),
+          landingTime: orNull(leg.landingTime), onBlocksTime: orNull(leg.onBlocksTime),
           picName: leg.picName, sicName: leg.sicName,
           totalTime: d.block ?? 0,
           picTime: nf(leg.picTime), sicTime: nf(leg.sicTime), multiEngineTime: nf(leg.multiEngineTime), turbineTime: nf(leg.turbineTime), jetTime: nf(leg.jetTime),
           instrumentActualTime: nf(leg.instrumentActualTime), instrumentSimTime: nf(leg.instrumentSimTime), crossCountryTime: nf(leg.crossCountryTime),
-          nightTime: nightHours,
+          // Sent only when the pilot typed it; with the route and the clock
+          // times the server works it out, and otherwise it stays unknown.
+          nightTime: d.computedNight !== null ? undefined : d.night,
+          nightSource: d.computedNight === null && d.night !== null ? 'form' : undefined,
           landingsDay: ni(leg.landingsDay), landingsNight: ni(leg.landingsNight),
           remarks: leg.remarks,
         };
@@ -149,7 +169,9 @@ export default function FlightForm({ mode, editId, title, initialDate, initialAi
             <Pressable style={styles.addLegBtn} onPress={addLeg}><Text style={styles.addLegText}>+ Add another leg</Text></Pressable>
           ) : null}
 
-          <PrimaryButton label={saveLabel} loading={saving} onPress={onSave} />
+          <PrimaryButton label={saveLabel} loading={saving} disabled={!!saveReason} onPress={onSave} />
+          {/* A disabled button that says nothing is a dead end. */}
+          {saveReason ? <Text style={styles.saveReason}>{saveReason}</Text> : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -158,7 +180,7 @@ export default function FlightForm({ mode, editId, title, initialDate, initialAi
 
 function LegCard({ index, single, leg, derived, onField, onRemove }: {
   index: number; single: boolean; leg: Leg;
-  derived: { block: number | null; computable: boolean; computedNight: number | null; dayHours: number | null };
+  derived: { fromTimes: number | null; block: number | null; computable: boolean; computedNight: number | null; night: number | null; dayHours: number | null };
   onField: (k: string, v: string) => void; onRemove?: () => void;
 }) {
   const styles = useThemedStyles(createStyles);
@@ -181,19 +203,27 @@ function LegCard({ index, single, leg, derived, onField, onRemove }: {
         <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="To" placeholder="EGLL" value={str(leg.arrival)} onChangeText={(t) => onField('arrival', t)} autoCapitalize="characters" /></View></View>
       </View>
 
-      <Text style={styles.subhead}>Block &amp; Flight Times (UTC)</Text>
+      <Text style={styles.subhead}>Block &amp; Flight Times (UTC) <Text style={styles.hint}>either out and in, or a block time</Text></Text>
       <View style={styles.row}>
-        <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="Off Blocks *" placeholder="HH:MM" value={str(leg.offBlocksTime)} onChangeText={(t) => onField('offBlocksTime', maskTime(t))} keyboardType="number-pad" /></View></View>
-        <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="Takeoff" placeholder="HH:MM" value={str(leg.takeoffTime)} onChangeText={(t) => onField('takeoffTime', maskTime(t))} keyboardType="number-pad" /></View></View>
+        <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="Out (off blocks)" placeholder="hh:mm" value={str(leg.offBlocksTime)} onChangeText={(t) => onField('offBlocksTime', maskTime(t))} keyboardType="number-pad" /></View></View>
+        <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="Takeoff" placeholder="hh:mm" value={str(leg.takeoffTime)} onChangeText={(t) => onField('takeoffTime', maskTime(t))} keyboardType="number-pad" /></View></View>
       </View>
       <View style={styles.row}>
-        <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="Landing" placeholder="HH:MM" value={str(leg.landingTime)} onChangeText={(t) => onField('landingTime', maskTime(t))} keyboardType="number-pad" /></View></View>
-        <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="On Blocks *" placeholder="HH:MM" value={str(leg.onBlocksTime)} onChangeText={(t) => onField('onBlocksTime', maskTime(t))} keyboardType="number-pad" /></View></View>
+        <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="Landing" placeholder="hh:mm" value={str(leg.landingTime)} onChangeText={(t) => onField('landingTime', maskTime(t))} keyboardType="number-pad" /></View></View>
+        <View style={{ flex: 1 }}><View style={{ marginBottom: 14 }}><TextField label="In (on blocks)" placeholder="hh:mm" value={str(leg.onBlocksTime)} onChangeText={(t) => onField('onBlocksTime', maskTime(t))} keyboardType="number-pad" /></View></View>
       </View>
-      <Text style={styles.fieldLabel}>Block Time <Text style={styles.hint}>auto</Text></Text>
-      <View style={[styles.readOnly, derived.block !== null && styles.readOnlyBlue]}>
-        <Text style={[styles.readOnlyText, derived.block !== null && styles.readOnlyBlueText]}>{derived.block !== null ? `${derived.block.toFixed(2)} hrs` : 'Enter off / on blocks'}</Text>
-      </View>
+      {/* Derived while out and in are both there; typeable the rest of the
+          time, so a paper page that records only the block time still goes in. */}
+      {derived.fromTimes !== null ? (
+        <>
+          <Text style={styles.fieldLabel}>Block Time <Text style={styles.hint}>from out / in</Text></Text>
+          <View style={[styles.readOnly, styles.readOnlyBlue]}>
+            <Text style={[styles.readOnlyText, styles.readOnlyBlueText]}>{derived.fromTimes.toFixed(2)} hrs</Text>
+          </View>
+        </>
+      ) : (
+        <TextField label="Block Time" required hint="hh:mm or 1.5" placeholder="hh:mm" value={str(leg.blockTyped)} onChangeText={(t) => onField('blockTyped', t)} keyboardType="numbers-and-punctuation" />
+      )}
 
       <Text style={styles.subhead}>Night / Day Time</Text>
       {derived.computedNight !== null ? (
@@ -209,7 +239,13 @@ function LegCard({ index, single, leg, derived, onField, onRemove }: {
         </View>
       ) : (
         <>
-          <View style={{ marginBottom: 6 }}><TextField label="Night Time" hint="manual entry" value={str(leg.nightManual)} onChangeText={(t) => onField('nightManual', t)} keyboardType="decimal-pad" /></View>
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}><TextField label="Night Time" hint="leave blank if unknown" value={str(leg.nightManual)} onChangeText={(t) => onField('nightManual', t)} keyboardType="decimal-pad" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fieldLabel}>Night recorded as</Text>
+              <View style={styles.readOnly}><Text style={styles.readOnlyText}>{derived.night !== null ? `${derived.night.toFixed(2)} hrs` : '—'}</Text></View>
+            </View>
+          </View>
           <Text style={styles.nightHelp}>{airportsEntered ? 'Airport not in database — enter night time manually. Auto-calc requires departure and arrival ICAO codes.' : 'Fill in takeoff, landing, departure (From), and arrival (To) ICAO codes to auto-calculate.'}</Text>
         </>
       )}
@@ -252,5 +288,6 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   readOnlyBlue: { borderColor: 'rgba(0,63,136,0.35)' },
   readOnlyBlueText: { color: pilot.navy, fontFamily: fontFamilies.bodyBold },
   addLegBtn: { borderWidth: 1, borderStyle: 'dashed', borderColor: pilot.navy, borderRadius: 10, paddingVertical: 12, alignItems: 'center', backgroundColor: 'rgba(0,63,136,0.04)', marginBottom: 8 },
+  saveReason: { marginTop: 8, textAlign: 'center', color: pilot.muted, fontSize: fontSizes.sm, fontFamily: fontFamilies.body },
   addLegText: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.base },
 });

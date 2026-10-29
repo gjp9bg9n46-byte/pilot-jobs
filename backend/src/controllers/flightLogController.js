@@ -112,6 +112,11 @@ async function rememberLast(pilot, row) {
 }
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+// An empty box is not an answer. A flight entered as a block time alone has no
+// OFF, no ON and no night, and each of those is stored as null rather than as
+// "" or 0, so the logbook shows "—" instead of asserting a value.
+const orNull = (v) => (v === '' || v == null ? null : v);
+const numOrNull = (v) => (v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v));
 
 // Creates multiple legs in one request, all sharing a dutyId so they group as one operating day.
 exports.bulkCreate = async (req, res, next) => {
@@ -135,12 +140,14 @@ exports.bulkCreate = async (req, res, next) => {
         prisma.flightLog.create({
           data: {
             date, aircraftType, registration, departure, arrival,
-            offBlocksTime, takeoffTime, landingTime, onBlocksTime,
+            offBlocksTime: orNull(offBlocksTime), takeoffTime: orNull(takeoffTime),
+            landingTime: orNull(landingTime), onBlocksTime: orNull(onBlocksTime),
             flightNumber, picName, sicName,
             totalTime, picTime, sicTime,
             multiEngineTime, turbineTime, jetTime,
             instrumentTime, instrumentActualTime, instrumentSimTime,
-            crossCountryTime, nightTime,
+            crossCountryTime, nightTime: numOrNull(nightTime),
+            nightSource: numOrNull(nightTime) == null ? null : 'form',
             landingsDay, landingsNight, remarks,
             pilotId: req.pilot.id, source: 'MANUAL', dutyId,
           },

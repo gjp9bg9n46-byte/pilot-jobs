@@ -66,12 +66,19 @@ async function buildFlightRow(input, pilot) {
   // Unknown is not zero. When the crew wrote nothing and the sun cannot be
   // worked out — an airport code we cannot resolve has no coordinates — night
   // is stored as null and shown as "—", rather than asserting "no night".
-  let nightHours = 0;
+  // Starts unknown. A flight entered as a block time alone — no OFF, no ON,
+  // no route — gives nothing to work from, and "0 hours of night" is a claim
+  // about the flight that nobody made.
+  let nightHours = null;
   let nightSource = null;
   if (Number.isFinite(Number(input.nightOverrideMinutes))) {
     nightHours = Math.round((Number(input.nightOverrideMinutes) / 60) * 100) / 100;
     nightSource = 'form';
-  } else if (input.nightSource === 'form' && Number.isFinite(Number(input.nightTime))) {
+  } else if (input.nightSource !== 'calculated' && input.nightTime !== '' && input.nightTime != null && Number.isFinite(Number(input.nightTime))) {
+    // A figure the pilot typed. It used to count only when the client also sent
+    // nightSource: 'form', which the web form never did — so every night time
+    // typed on the web was dropped. A row we worked out ourselves still says
+    // 'calculated' and is still recalculated, date change and all.
     nightHours = Number(input.nightTime);
     nightSource = 'form';
   } else if (date && departure && arrival && off && on) {
@@ -114,7 +121,7 @@ async function buildFlightRow(input, pilot) {
     _derived: {
       blockMinutes: blockMin,
       airborneMinutes: airborneMin,
-      nightMinutes: Math.round(nightHours * 60),
+      nightMinutes: nightHours == null ? null : Math.round(nightHours * 60),
       nightSource,
       role,
       nightLanding: night,

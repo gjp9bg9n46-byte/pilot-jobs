@@ -7,6 +7,7 @@ import SectorForm from '../components/logbook/SectorForm';
 import RowCrop from '../components/logbook/RowCrop';
 import ImportModal from '../components/ImportModal';
 import { logbookApi, flightLogApi } from '../services/api';
+import { missingForSave, missingSentence, parseBlockHours } from '../lib/logbookFormat';
 import '../components/logbook/logbook.css';
 
 /**
@@ -41,7 +42,8 @@ export default function AddFlights() {
   const [dateChoice, setDateChoice] = useState(null);
   const [manual, setManual] = useState({
     date: '', flightNumber: '', from: '', to: '', aircraftType: '', registration: '',
-    out: '', off: '', on: '', in: '', pilotFlying: null, landings: '', commander: '', approach: '', remarks: '',
+    out: '', off: '', on: '', in: '', blockTyped: '',
+    pilotFlying: null, landings: '', commander: '', approach: '', remarks: '',
     ...(prefill || {}),
   });
 
@@ -101,10 +103,35 @@ export default function AddFlights() {
     } finally { setBusy(false); }
   };
 
+  // Why Save is off. A flight needs its date, its aeroplane, its two airports,
+  // and either OUT and IN or a block time typed straight in — a page copied out
+  // of a paper logbook often has the block time and none of the clock times, and
+  // asking for all four would mean inventing three of them.
+  const manualMissing = (() => {
+    const m = missingForSave({
+      date: manual.date, aircraftType: manual.aircraftType,
+      out: manual.out, in: manual.in, blockTyped: manual.blockTyped,
+    });
+    const times = m.pop();                                  // keep the times last
+    if (!String(manual.from || '').trim()) m.push('a departure airport');
+    if (!String(manual.to || '').trim()) m.push('an arrival airport');
+    if (times && /time/.test(times)) m.push(times); else if (times) m.unshift(times);
+    return m;
+  })();
+  const manualReason = missingSentence(manualMissing);
+
   const saveManual = async () => {
     setBusy(true); setError(null);
     try {
-      await flightLogApi.create({ ...manual, landings: manual.landings === '' ? undefined : Number(manual.landings) });
+      const { blockTyped, ...row } = manual;
+      const typed = parseBlockHours(blockTyped);
+      await flightLogApi.create({
+        ...row,
+        landings: manual.landings === '' ? undefined : Number(manual.landings),
+        // Only when there is no OUT/IN to work it out from; otherwise the
+        // server does the arithmetic as it always has.
+        ...(typed !== null && !(manual.out && manual.in) ? { totalTime: typed } : {}),
+      });
       navigate('/logbook');
     } catch (e) {
       setError(e?.response?.data?.error || 'Could not save that flight.');
@@ -357,10 +384,14 @@ export default function AddFlights() {
             </div>
             <SectorForm value={manual} onChange={setManual} night={null} nightNote="calculated on save" />
             <div className="lb-foot">
-              <span className="s">Block and night are worked out from your times.</span>
+              {/* A disabled Save that says nothing is a dead end. */}
+              <span className="s">{manualReason
+                || (parseBlockHours(manual.blockTyped) !== null && !(manual.out && manual.in)
+                  ? 'Saved with the block time you typed. Night is left blank.'
+                  : 'Block and night are worked out from your times.')}</span>
               <div style={{ display: 'flex', gap: 10 }}>
                 <Button variant="secondary" onClick={() => navigate('/logbook')}>Cancel</Button>
-                <Button onClick={saveManual} disabled={busy || !manual.date || !manual.from || !manual.to}>{busy ? 'Saving…' : 'Save flight'}</Button>
+                <Button onClick={saveManual} disabled={busy || !!manualReason} title={manualReason || undefined}>{busy ? 'Saving…' : 'Save flight'}</Button>
               </div>
             </div>
           </div>

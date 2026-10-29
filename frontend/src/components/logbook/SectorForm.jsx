@@ -1,17 +1,20 @@
 import React from 'react';
-import { spanMinutes, minutesToHHMM } from '../../lib/logbookFormat';
+import { spanMinutes, minutesToHHMM, parseBlockHours } from '../../lib/logbookFormat';
 
 /**
  * One sector, in the layout the mockup uses on the desktop "Add flights" page.
  *
  * The same form serves manual entry and a scan review: `flags` comes from the
  * server for a scanned sector (amber = please look) and is empty for a typed
- * one. Block, airborne and night are never inputs — they are shown as derived
- * values, and the server derives them again when saving.
+ * one. Airborne and night are never inputs — they are shown as derived values,
+ * and the server derives them again when saving. Block follows OUT and IN when
+ * both are there; when they are not, it can be typed, because a page copied out
+ * of a paper logbook often records the block time and nothing else.
  */
 export default function SectorForm({ value, flags = {}, onChange, onFieldFocus, night, nightNote, compact = false }) {
   const set = (k) => (e) => onChange({ ...value, [k]: e.target.value });
-  const block = spanMinutes(value.out, value.in);
+  const blockFromTimes = spanMinutes(value.out, value.in);
+  const typedBlock = parseBlockHours(value.blockTyped);
   const airborne = spanMinutes(value.off, value.on);
 
   const field = (k, label, extra = {}) => (
@@ -50,14 +53,23 @@ export default function SectorForm({ value, flags = {}, onChange, onFieldFocus, 
         {field('off', 'Off', { mono: true, placeholder: 'hh:mm' })}
         {field('on', 'On', { mono: true, placeholder: 'hh:mm' })}
         {field('in', 'In', { mono: true, placeholder: 'hh:mm' })}
-        <div className="lb-f calc">
-          <label>Block <span className="rem">· calc.</span></label>
-          <div className="mono">{minutesToHHMM(block)}</div>
-        </div>
+        {blockFromTimes !== null
+          ? (
+            <div className="lb-f calc">
+              <label>Block <span className="rem">· calc.</span></label>
+              <div className="mono">{minutesToHHMM(blockFromTimes)}</div>
+            </div>
+          )
+          : field('blockTyped', 'Block', { mono: true, placeholder: 'hh:mm', hint: 'or 1.5' })}
         <div className="lb-f calc">
           <label>Airborne <span className="rem">· calc.</span></label>
           <div className="mono">{minutesToHHMM(airborne)}</div>
         </div>
+        {typedBlock !== null && blockFromTimes === null && (
+          <p className="why span6" style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 12 }}>
+            Saved as {minutesToHHMM(Math.round(typedBlock * 60))} of block. Off, on and night stay blank — there is nothing here to work them out from.
+          </p>
+        )}
       </div>
 
       {!compact && (

@@ -12,7 +12,10 @@ import { landsNextDay, minutesToHHMM, overlapLabel, spanMinutes } from '../../li
  */
 export default function FlightDetail({ flight, overlap, onClose, onEdit, onReturnTrip, onNextLeg, onDuplicate, onDelete }) {
   if (!flight) return null;
-  const block = spanMinutes(flight.offBlocksTime, flight.onBlocksTime);
+  // A flight typed in as a block time alone has no OUT and no IN to span, so
+  // the figure it was saved with is the block.
+  const block = spanMinutes(flight.offBlocksTime, flight.onBlocksTime)
+    ?? (flight.totalTime > 0 ? Math.round(flight.totalTime * 60) : null);
   const airborne = spanMinutes(flight.takeoffTime, flight.landingTime);
   const landings = (flight.landingsDay || 0) + (flight.landingsNight || 0);
   const role = (flight.picTime || 0) > 0 ? 'PIC' : 'SIC';
@@ -49,7 +52,7 @@ export default function FlightDetail({ flight, overlap, onClose, onEdit, onRetur
           <div className="lb-kv">
             {kv('Block', minutesToHHMM(block))}
             {kv('Airborne', minutesToHHMM(airborne))}
-            {kv('Night', minutesToHHMM(Math.round((flight.nightTime || 0) * 60)), 'calc.')}
+            {kv('Night', flight.nightTime == null ? '\u2014' : minutesToHHMM(Math.round(flight.nightTime * 60)), flight.nightSource === 'form' ? 'from the form' : 'calc.')}
             {kv(role, minutesToHHMM(Math.round(((role === 'PIC' ? flight.picTime : flight.sicTime) || 0) * 60)), 'auto')}
           </div>
         </div>

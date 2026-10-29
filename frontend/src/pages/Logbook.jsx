@@ -15,7 +15,7 @@ import LogbookDashboard from '../components/logbook/LogbookDashboard';
 import FlightList from '../components/logbook/FlightList';
 import DayList from '../components/logbook/DayList';
 import FlightDetail from '../components/logbook/FlightDetail';
-import { duration, findOverlaps, recencyLine } from '../lib/logbookFormat';
+import { duration, findOverlaps, recencyLine, parseBlockHours, missingForSave, missingSentence } from '../lib/logbookFormat';
 import '../components/logbook/logbook.css';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -158,6 +158,9 @@ const EMPTY_FORM = {
   crossCountryTime: '', nightTime: '',
   landingsDay: '', landingsNight: '',
   remarks: '',
+  // Typed straight in, for a page copied out of a paper logbook that records
+  // the block time and none of the four clock times.
+  blockTyped: '',
 };
 
 function formFromLog(log) {
@@ -189,6 +192,9 @@ function formFromLog(log) {
     landingsNight: log.landingsNight != null ? String(log.landingsNight) : '',
     remarks: log.remarks || '',
     _legacyTotal: log.totalTime != null ? String(log.totalTime) : '0',
+    // An existing flight with no OUT/IN still has its block time; show it where
+    // it can be edited rather than as an empty box.
+    blockTyped: (!log.offBlocksTime || !log.onBlocksTime) && log.totalTime > 0 ? String(log.totalTime) : '',
   };
 }
 
@@ -251,15 +257,20 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
 
   // Derived per-leg values — recomputed only when leg data changes
   const derivedLegs = useMemo(() => legs.map((leg) => {
-    const blockTime = blockTimeFromTimes(leg.offBlocksTime, leg.onBlocksTime);
+    const fromTimes = blockTimeFromTimes(leg.offBlocksTime, leg.onBlocksTime);
+    const typed = parseBlockHours(leg.blockTyped);
+    const blockTime = fromTimes !== null ? fromTimes : typed;
     const computedNight = (leg.takeoffTime && leg.landingTime && leg.departure && leg.arrival && leg.date)
       ? computeNightHours(leg.date, leg.takeoffTime, leg.landingTime, leg.departure, leg.arrival)
       : null;
-    const nightHours = computedNight !== null ? computedNight : (parseFloat(leg.nightTime) || 0);
-    const dayHours = blockTime !== null
+    // Night is unknown, not zero. With only a block time there is nothing to
+    // compute it from and nothing typed, so it stays null and reads "—".
+    const typedNight = leg.nightTime === '' || leg.nightTime == null ? null : (parseFloat(leg.nightTime) || 0);
+    const nightHours = computedNight !== null ? computedNight : typedNight;
+    const dayHours = blockTime !== null && nightHours !== null
       ? parseFloat(Math.max(0, blockTime - nightHours).toFixed(2))
       : null;
-    return { blockTime, computedNight, nightHours, dayHours };
+    return { fromTimes, blockTime, computedNight, nightHours, dayHours };
   }), [legs]);
 
   const buildPayload = (leg, derived) => {
@@ -272,11 +283,15 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
       landingsDay, landingsNight,
       ...rest
     } = leg;
+    const { blockTyped, ...restNoBlock } = rest;
     const totalTime = derived.blockTime !== null
       ? derived.blockTime
       : (parseFloat(_legacyTotal) || 0);
+    const orNull = (v) => (String(v ?? '').trim() === '' ? null : v);
     return {
-      ...rest,
+      ...restNoBlock,
+      offBlocksTime: orNull(leg.offBlocksTime), takeoffTime: orNull(leg.takeoffTime),
+      landingTime: orNull(leg.landingTime), onBlocksTime: orNull(leg.onBlocksTime),
       registration: tailPrefix ? `${tailPrefix}${leg.registration}` : leg.registration,
       date: new Date(leg.date).toISOString(),
       totalTime,
@@ -289,23 +304,27 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
       instrumentActualTime: parseFloat(instrumentActualTime) || 0,
       instrumentSimTime:    parseFloat(instrumentSimTime)    || 0,
       crossCountryTime:     parseFloat(crossCountryTime)     || 0,
-      nightTime:            derived.nightHours,
+      // Only sent when the pilot typed it; when the route and the clock
+      // times are there the server works it out, and when neither applies it
+      // stays null — unknown, shown as "—".
+      nightTime:            derived.computedNight !== null ? undefined : derived.nightHours,
+      nightSource:          derived.computedNight === null && derived.nightHours !== null ? 'form' : undefined,
       landingsDay:          parseInt(landingsDay)            || 0,
       landingsNight:        parseInt(landingsNight)          || 0,
     };
   };
 
+  // Why Save is off, in the same words for every leg. Empty = nothing missing.
+  const blockers = useMemo(() => legs.map((leg) => missingForSave({
+    date: leg.date, aircraftType: leg.aircraftType,
+    out: leg.offBlocksTime, in: leg.onBlocksTime, blockTyped: leg.blockTyped,
+  })), [legs]);
+  const firstBlocked = blockers.findIndex((m) => m.length);
+  const saveReason = firstBlocked === -1 ? ''
+    : missingSentence(blockers[firstBlocked], legs.length > 1 ? firstBlocked + 1 : 0);
+
   const handleSave = async () => {
-    for (let i = 0; i < legs.length; i++) {
-      const leg = legs[i];
-      const d = derivedLegs[i];
-      if (!leg.date || !leg.aircraftType) {
-        return setError(`Leg ${i + 1}: date and aircraft type are required.`);
-      }
-      if (d.blockTime === null && !(parseFloat(leg._legacyTotal) > 0)) {
-        return setError(`Leg ${i + 1}: off-blocks and on-blocks times are required.`);
-      }
-    }
+    if (saveReason) return setError(saveReason);
     setSaving(true);
     try {
       const payloads = legs.map((leg, i) => buildPayload(leg, derivedLegs[i]));
@@ -381,18 +400,31 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                 <Field value={leg.sicName} onChange={set('sicName')} label="Second in Command" hint="e.g. F/O Smith" />
               </div>
 
-              <div style={css.sectionTitle}>Block &amp; Flight Times (UTC)</div>
+              <div style={css.sectionTitle}>
+                Block &amp; Flight Times (UTC)
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 8 }}>either out and in, or a block time</span>
+              </div>
               <div style={css.formGrid}>
-                <TimeField value={leg.offBlocksTime} onChange={set('offBlocksTime')} label="Off Blocks *" />
+                <TimeField value={leg.offBlocksTime} onChange={set('offBlocksTime')} label="Out (off blocks)" />
                 <TimeField value={leg.takeoffTime} onChange={set('takeoffTime')} label="Takeoff" />
                 <TimeField value={leg.landingTime} onChange={set('landingTime')} label="Landing" />
-                <TimeField value={leg.onBlocksTime} onChange={set('onBlocksTime')} label="On Blocks *" />
-                <div>
-                  <label style={css.label}>Block Time<span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>auto-computed</span></label>
-                  <div style={derived.blockTime !== null ? css.readOnlyBlue : css.readOnlyField}>
-                    {derived.blockTime !== null ? `${derived.blockTime.toFixed(2)} hrs` : 'Enter off / on blocks'}
+                <TimeField value={leg.onBlocksTime} onChange={set('onBlocksTime')} label="In (on blocks)" />
+                {/* Derived while OUT and IN are both there; typeable the rest
+                    of the time, so a paper page that records only the block
+                    time can still be entered. */}
+                {derived.fromTimes !== null ? (
+                  <div>
+                    <label style={css.label}>Block Time<span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>from out / in</span></label>
+                    <div style={css.readOnlyBlue}>{derived.fromTimes.toFixed(2)} hrs</div>
                   </div>
-                </div>
+                ) : (
+                  <Field
+                    value={leg.blockTyped}
+                    onChange={set('blockTyped')}
+                    label="Block Time *"
+                    hint="hh:mm or 1.5 — needed when out / in are blank"
+                  />
+                )}
               </div>
 
               <div style={css.sectionTitle}>Night / Day Time</div>
@@ -412,7 +444,11 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
                   </>
                 ) : (
                   <>
-                    <Field value={leg.nightTime} onChange={set('nightTime')} label="Night Time" hint="manual entry" type="number" min="0" />
+                    <Field value={leg.nightTime} onChange={set('nightTime')} label="Night Time" hint="leave blank if unknown" type="number" min="0" />
+                    <div>
+                      <label style={css.label}>Night recorded as</label>
+                      <div style={css.readOnlyField}>{derived.nightHours !== null ? `${derived.nightHours.toFixed(2)} hrs` : '—'}</div>
+                    </div>
                     {airportsEntered && !airportsKnown && (
                       <div style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--text-secondary)', marginTop: -8, padding: '6px 10px', background: 'var(--bg)', borderRadius: 6 }}>
                         Airport not in database — enter night time manually. Auto-calc requires departure and arrival ICAO codes.
@@ -481,9 +517,13 @@ function AddFlightModal({ onClose, onSave, onSaveBulk, initial, title }) {
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : legs.length > 1 ? `Save ${legs.length} Legs` : 'Save Flight'}
-          </Button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+            <Button onClick={handleSave} disabled={saving || !!saveReason} title={saveReason || undefined}>
+              {saving ? 'Saving...' : legs.length > 1 ? `Save ${legs.length} Legs` : 'Save Flight'}
+            </Button>
+            {/* A disabled button that says nothing is a dead end. */}
+            {saveReason && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{saveReason}</div>}
+          </div>
         </div>
     </Modal>
   );

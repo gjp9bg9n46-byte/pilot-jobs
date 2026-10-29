@@ -4,8 +4,10 @@
 // the block counts as SIC or PIC and keeps the form to the fields an airline
 // pilot actually fills: date, flight number, route, aircraft, the four times,
 // who was flying, landings and the commander. Everything else lives under
-// "More fields". Block and night are never typed — the server derives both from
-// the times, and the value shown here is the same arithmetic.
+// "More fields". Block follows OUT and IN; when they are blank it can be typed
+// straight in, because a page copied out of a paper logbook often records the
+// block time and nothing else. Night is never typed here — the server works it
+// out from the times, and stays blank when there is nothing to work from.
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +17,7 @@ import { notifySuccess } from '../../lib/haptics';
 import api from '../../lib/api';
 import { getPendingFlight, clearPendingFlight } from '../../lib/pendingFlight';
 import { minutesToHHMM, spanMinutes } from '../../lib/logbookFormat';
+import { missingForSave, missingSentence, parseBlockHours } from '../../lib/logbook';
 import { fontFamilies, fontSizes, spacing, layout } from '../../theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../theme/ThemeContext';
 
@@ -23,7 +26,7 @@ type Any = any;
 
 const BLANK = {
   date: '', flightNumber: '', departure: '', arrival: '', aircraftType: '', registration: '',
-  offBlocksTime: '', takeoffTime: '', landingTime: '', onBlocksTime: '',
+  offBlocksTime: '', takeoffTime: '', landingTime: '', onBlocksTime: '', blockTyped: '',
   pilotFlying: false, landings: '', picName: '', approach: '', remarks: '',
 };
 
@@ -54,14 +57,19 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
   }, []);
 
   const set = (k: string) => (v: string) => setForm((f: Any) => ({ ...f, [k]: v }));
-  const block = spanMinutes(form.offBlocksTime, form.onBlocksTime);
+  const blockFromTimes = spanMinutes(form.offBlocksTime, form.onBlocksTime);
+  const typedBlock = parseBlockHours(form.blockTyped);
 
   const save = async () => {
     setSaving(true); setError(null);
     try {
+      const { blockTyped, ...row } = form;
       await api.post('/flight-logs', {
-        ...form,
+        ...row,
         landings: form.landings === '' ? undefined : Number(form.landings),
+        // Only when there is no OUT/IN to work it out from; otherwise the
+        // server does the arithmetic as it always has.
+        ...(typedBlock !== null && blockFromTimes === null ? { totalTime: typedBlock } : {}),
       });
       notifySuccess();
       router.replace('/logbook');
@@ -71,15 +79,19 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
   };
 
   // A disabled button that does not say why is a dead end. This is what the
-  // button reads when it cannot be pressed.
-  // What is actually required stays what it was — date and route. Times are
-  // still optional on purpose (a sim detail or a block-time-only entry is a
-  // real thing a pilot logs), so they are not listed here. Say the word and
-  // OUT/IN become required too; it is one line.
-  const missing = !form.date ? 'Add the date'
-    : !form.departure ? 'Add where you flew from'
-      : !form.arrival ? 'Add where you flew to'
-        : null;
+  // button reads when it cannot be pressed: the date, the aeroplane, both
+  // airports, and either OUT and IN or a block time typed straight in.
+  const missing = useMemo(() => {
+    const m = missingForSave({
+      date: form.date, aircraftType: form.aircraftType,
+      out: form.offBlocksTime, in: form.onBlocksTime, blockTyped: form.blockTyped,
+    });
+    const times = m.pop();                                  // keep the times last
+    if (!String(form.departure || '').trim()) m.push('where you flew from');
+    if (!String(form.arrival || '').trim()) m.push('where you flew to');
+    if (times) m.push(times);
+    return missingSentence(m) || null;
+  }, [form]);
 
   const field = (k: string, label: string, opts: { hint?: string; mono?: boolean; placeholder?: string; flex?: number } = {}) => (
     <View style={[styles.f, { flex: opts.flex ?? 1 }]} key={k}>
@@ -135,15 +147,24 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
         </View>
 
         <View style={styles.row}>
-          <View style={[styles.f, styles.calc]}>
-            <Text style={styles.label}>Block <Text style={styles.hint}>· calc.</Text></Text>
-            <Text style={styles.calcValue}>{minutesToHHMM(block)}</Text>
-          </View>
+          {/* Derived while out and in are both there; typeable the rest of the
+              time, so a paper page recording only the block still goes in. */}
+          {blockFromTimes !== null ? (
+            <View style={[styles.f, styles.calc]}>
+              <Text style={styles.label}>Block <Text style={styles.hint}>· calc.</Text></Text>
+              <Text style={styles.calcValue}>{minutesToHHMM(blockFromTimes)}</Text>
+            </View>
+          ) : field('blockTyped', 'Block', { mono: true, placeholder: 'hh:mm', hint: 'or 1.5' })}
           <View style={[styles.f, styles.calc]}>
             <Text style={styles.label}>Night <Text style={styles.hint}>· on save</Text></Text>
-            <Text style={styles.calcValue}>from the sun</Text>
+            <Text style={styles.calcValue}>{blockFromTimes === null && typedBlock !== null ? '—' : 'from the sun'}</Text>
           </View>
         </View>
+        {blockFromTimes === null && typedBlock !== null ? (
+          <Text style={styles.blockNote}>
+            Saved as {minutesToHHMM(Math.round(typedBlock * 60))} of block. Off, on and night stay blank — there is nothing here to work them out from.
+          </Text>
+        ) : null}
 
         <View style={styles.row}>
           <View style={[styles.f, styles.toggle]}>
@@ -185,6 +206,7 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
 const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: pilot.cream },
   pad: { padding: layout.screenX, paddingBottom: 120 },
+  blockNote: { color: pilot.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.xs, marginTop: -4, marginBottom: 10 },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: pilot.line, backgroundColor: pilot.surface },
   back: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   barTitle: { fontSize: 16, fontFamily: fontFamilies.bodySemiBold, color: pilot.ink },
