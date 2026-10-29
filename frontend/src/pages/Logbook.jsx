@@ -12,6 +12,7 @@ import AIRPORTS from '../data/airports.json';
 import ImportModal from '../components/ImportModal';
 import AircraftCombobox from '../components/AircraftCombobox';
 import LogbookDashboard from '../components/logbook/LogbookDashboard';
+import RouteMapCard from '../components/logbook/RouteMapCard';
 import FlightList from '../components/logbook/FlightList';
 import DayList from '../components/logbook/DayList';
 import FlightDetail from '../components/logbook/FlightDetail';
@@ -677,6 +678,17 @@ export default function Logbook() {
   // choice is the same on the phone.
   const [groupingOverride, setGroupingOverride] = useState(null);
   const grouping = groupingOverride ?? prefs?.grouping ?? 'month';
+  // Which flying the map draws — all time, or whatever the list is showing.
+  // All time by default, and the same stored preference the app reads, so a
+  // pilot who chooses on one sees it on the other.
+  const [mapScopeOverride, setMapScopeOverride] = useState(null);
+  const mapScope = mapScopeOverride ?? prefs?.mapScope ?? 'all';
+  const setMapScope = async (sc) => {
+    if (sc === mapScope) return;
+    setMapScopeOverride(sc);
+    try { const { data } = await logbookApi.updatePrefs({ mapScope: sc }); setPrefs(data); }
+    catch { /* keep the optimistic choice */ }
+  };
   const setGrouping = async (g) => {
     if (g === grouping) return;
     setGroupingOverride(g);
@@ -940,6 +952,12 @@ export default function Logbook() {
       ) : (
         <div style={{ marginBottom: 22 }}>
           <LogbookDashboard summary={summary} onEditCarryForward={openCarryForwardEditor} timeFormat={timeFormat} />
+          {/* Where you flew — the app's card, same scopes, same preference. */}
+          <RouteMapCard
+            sectors={dataset.map((f) => ({ from: f.departure, to: f.arrival }))}
+            scope={mapScope}
+            onScopeChange={setMapScope}
+          />
         </div>
       )}
 
