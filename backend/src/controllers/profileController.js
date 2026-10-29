@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const prisma = require('../config/database');
+const { impliedCategory, normalizeType, CATEGORIES } = require('../services/ratingCategory');
 
 // ── Preference key mapping ──────────────────────────────────────────────────
 // The client (web + mobile) speaks friendly keys; the PilotPreference table uses
@@ -127,6 +128,16 @@ exports.updateCertificate = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// The category has to agree with the type. Where the type settles it (SEP,
+// A320, C172…) that answer wins over whatever the client sent — the form used
+// to send "Multi-Engine" for every rating. Where the type does not settle it,
+// the pilot's own choice stands.
+function resolveRatingCategory(aircraftType, sent, fallback = 'Multi-Engine') {
+  const implied = impliedCategory(aircraftType);
+  if (implied) return implied;
+  return CATEGORIES.includes(sent) ? sent : (CATEGORIES.includes(fallback) ? fallback : 'Multi-Engine');
+}
+
 exports.updateRating = async (req, res, next) => {
   try {
     const existing = await prisma.pilotRating.findFirst({ where: { id: req.params.id, pilotId: req.pilot.id } });
@@ -144,8 +155,12 @@ exports.updateRating = async (req, res, next) => {
     const rating = await prisma.pilotRating.update({
       where: { id: req.params.id },
       data: {
-        ...(aircraftType !== undefined ? { aircraftType: String(aircraftType).trim().toUpperCase() } : {}),
-        ...(category !== undefined ? { category } : {}),
+        ...(aircraftType !== undefined ? { aircraftType: normalizeType(aircraftType) } : {}),
+        // Recomputed whenever either side changes, so an edit cannot leave a
+        // C172 filed as multi-engine.
+        ...(aircraftType !== undefined || category !== undefined
+          ? { category: resolveRatingCategory(aircraftType !== undefined ? aircraftType : existing.aircraftType, category, existing.category) }
+          : {}),
         ...(issuingAuthority !== undefined ? { issuingAuthority: normAuthorityIn(issuingAuthority) || existing.issuingAuthority } : {}),
         ...(expiryDate !== undefined ? { expiryDate: parseDate(expiryDate) } : {}),
         ...(hoursOnType !== undefined ? { hoursOnType: hoursOnType === '' || hoursOnType == null ? null : Number(hoursOnType) } : {}),
@@ -381,9 +396,15 @@ exports.addRating = async (req, res, next) => {
     }
     issuingAuthority = normAuthorityIn(issuingAuthority) || issuingAuthority;
 
-    const aircraftType = req.body.aircraftType?.trim().toUpperCase() ?? req.body.aircraftType;
+    const aircraftType = req.body.aircraftType == null ? req.body.aircraftType : normalizeType(req.body.aircraftType);
     const rating = await prisma.pilotRating.create({
-      data: { ...req.body, pilotId: req.pilot.id, issuingAuthority, aircraftType },
+      data: {
+        ...req.body,
+        pilotId: req.pilot.id,
+        issuingAuthority,
+        aircraftType,
+        category: resolveRatingCategory(aircraftType, req.body.category),
+      },
     });
     res.status(201).json(rating);
   } catch (err) {

@@ -8,6 +8,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../lib/api';
+import { impliedCategory, isClassRating, surfaceOf, withSurface } from '../lib/ratingCategory';
 import { DateField, FieldLabel, SelectField, TextField, Checkbox } from './ui';
 import AircraftCombobox from './AircraftCombobox';
 import { fontFamilies, fontSizes, spacing, layout } from '../theme/tokens';
@@ -156,7 +157,13 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }: { 
     if (kind === 'personal') f = { firstName: profile?.firstName || '', lastName: profile?.lastName || '', role: profile?.role || '', city: profile?.city || '', country: canonCountry(profile?.country), nationalities: pilotNationalities(profile), phone: profile?.phone || '', staffNumber: profile?.staffNumber || '', education: profile?.education || '' };
     else if (kind === 'prefs') { const p = profile?.preferences || {}; f = { preferredCountries: (p.preferredCountries || []).join(', '), preferredAircraft: (p.preferredAircraft || []).join(', '), preferredContractTypes: (p.preferredContractTypes || []).join(', '), willingToRelocate: !!profile?.willingToRelocate }; }
     else if (kind === 'licence') { const std = LIC_TYPES.some(([v]) => v === cert?.type); f = { type: cert ? (std ? cert.type : 'Other') : '', typeOther: cert && !std ? cert.type : '', issuingAuthority: cert?.issuingAuthority || '', certificateNumber: cert?.certificateNumber || '', issueDate: isoDay(cert?.issueDate), expiryDate: isoDay(cert?.expiryDate) }; }
-    else if (kind === 'rating') f = { aircraft: properCase(rating?.aircraftType || ''), licenceId: rating?.licenceId || '', lineCheckDate: isoDay(rating?.lineCheckDate) };
+    else if (kind === 'rating') f = {
+      aircraft: properCase(rating?.aircraftType || ''),
+      // The category the record holds, unless its type says otherwise.
+      category: impliedCategory(rating?.aircraftType) || rating?.category || 'Multi-Engine',
+      surface: surfaceOf(rating?.aircraftType) || 'land',
+      licenceId: rating?.licenceId || '', lineCheckDate: isoDay(rating?.lineCheckDate),
+    };
     else if (kind === 'medical') f = { medicalClass: med?.medicalClass || 'CLASS_1', issuingAuthority: med?.issuingAuthority || '', issueDate: isoDay(med?.issueDate), expiryDate: isoDay(med?.expiryDate) };
     else if (kind === 'training') f = { type: trn?.type || '', provider: trn?.provider || '', completedAt: isoDay(trn?.completedAt), expiresAt: isoDay(trn?.expiresAt) };
     else if (kind === 'elp') f = { level: elpRec?.englishLevel || 'Level 4', issuingAuthority: elpRec?.issuingAuthority || '', expiryDate: isoDay(elpRec?.expiryDate) };
@@ -168,6 +175,14 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }: { 
 
   const dirty = useMemo(() => JSON.stringify(form) !== initial.current, [form]);
   const set = (k: string, v: any) => setForm((s: Any) => ({ ...s, [k]: v }));
+  // Changing the aircraft answers "single or multi?" and, for a class rating,
+  // which surface — without locking either: both stay editable.
+  const setAircraft = (v: string) => setForm((s: Any) => ({
+    ...s,
+    aircraft: v,
+    ...(impliedCategory(v) ? { category: impliedCategory(v) } : {}),
+    ...(surfaceOf(v) ? { surface: surfaceOf(v) } : {}),
+  }));
   const removable = (['licence', 'rating', 'medical', 'training', 'rtw'].includes(kind) && !!id) || (kind === 'elp' && !!elpRec);
 
   const authSel = (v: string) => { const n = String(v || '').trim(); return (!n || ['unknown', 'icao'].includes(n.toLowerCase())) ? '' : (AUTHORITIES.some(([a]) => a === n) ? n : 'Other'); };
@@ -234,8 +249,12 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }: { 
         if (id) await api.patch(`/profile/certificates/${id}`, body); else await api.post('/profile/certificates', { type, ...body });
       } else if (kind === 'rating') {
         const body: Any = { licenceId: form.licenceId || null, lineCheckDate: toISO(form.lineCheckDate) };
-        if (!id || form.aircraft !== orig.aircraft) body.aircraftType = String(form.aircraft).trim();
-        if (id) await api.patch(`/profile/ratings/${id}`, body); else await api.post('/profile/ratings', { category: 'Type', ...body, aircraftType: String(form.aircraft).trim() });
+        const typed = withSurface(String(form.aircraft).trim(), String(form.surface || 'land'));
+        const category = impliedCategory(typed) || String(form.category || 'Multi-Engine');
+        if (!id || form.aircraft !== orig.aircraft || form.surface !== orig.surface) body.aircraftType = typed;
+        if (!id || form.category !== orig.category || body.aircraftType) body.category = category;
+        if (id) await api.patch(`/profile/ratings/${id}`, body);
+        else await api.post('/profile/ratings', { ...body, aircraftType: typed, category });
       } else if (kind === 'medical') {
         const body = { medicalClass: form.medicalClass, issuingAuthority: form.issuingAuthority || 'unknown', issueDate: toISO(form.issueDate), expiryDate: toISO(form.expiryDate) };
         if (id) await api.patch(`/profile/medicals/${id}`, body); else await api.post('/profile/medicals', body);
@@ -306,7 +325,27 @@ export default function ProfileEditSheet({ edit, profile, onClose, onSaved }: { 
               </>)}
 
               {kind === 'rating' && (<>
-                <View><FieldLabel label="Aircraft" /><AircraftCombobox value={form.aircraft} onChange={(v) => set('aircraft', v)} />{errs.aircraft ? <Text style={styles.fieldErr}>{errs.aircraft}</Text> : null}</View>
+                <View><FieldLabel label="Aircraft" /><AircraftCombobox value={form.aircraft} onChange={(v) => setAircraft(v)} />{errs.aircraft ? <Text style={styles.fieldErr}>{errs.aircraft}</Text> : null}</View>
+                {/* The type usually answers this (A320 → multi, C172 → single)
+                    and then the control just shows the answer; where it does
+                    not, the pilot picks. It used to be "Multi-Engine" for
+                    everything, so a Cessna 172 was filed as multi-engine. */}
+                <SelectField
+                  label={impliedCategory(form.aircraft) ? 'Category · from the type' : 'Category'}
+                  value={String(form.category || 'Multi-Engine')}
+                  options={[['Single-Engine', 'Single-Engine'], ['Multi-Engine', 'Multi-Engine']]}
+                  onSelect={(v) => set('category', v)}
+                />
+                {/* A class rating is flown from land or water and they are two
+                    different ratings. A type rating has no such split. */}
+                {isClassRating(form.aircraft) ? (
+                  <SelectField
+                    label="Operated from"
+                    value={String(form.surface || 'land')}
+                    options={[['land', 'Land'], ['sea', 'Sea']]}
+                    onSelect={(v) => set('surface', v)}
+                  />
+                ) : null}
                 <SelectField label="Under licence" value={form.licenceId} options={licenceOpts} placeholder="Not linked" onSelect={(v) => set('licenceId', v)} />
                 <DateField label="Line check date" value={form.lineCheckDate} onChange={(v) => set('lineCheckDate', v)} />
               </>)}

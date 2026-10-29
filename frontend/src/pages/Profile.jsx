@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { profileApi } from '../services/api';
 import AircraftCombobox from '../components/AircraftCombobox';
+import { impliedCategory, isClassRating, surfaceOf, withSurface, normalizeType } from '../lib/ratingCategory';
 import FlightMap from '../components/FlightMap';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -119,6 +120,12 @@ function ExpiryBadge({ dateStr }) {
   if (days < 90) return <span style={{ color: SEM.amber, fontSize: 12, fontWeight: 600 }}> · Expires in {days}d</span>;
   return null;
 }
+
+const RATING_CATEGORIES = [
+  { value: 'Single-Engine', label: 'Single-Engine' },
+  { value: 'Multi-Engine', label: 'Multi-Engine' },
+];
+const RATING_SURFACES = [{ value: 'land', label: 'Land' }, { value: 'sea', label: 'Sea' }];
 
 function SelectOptions({ options }) {
   return options.map((o) => (
@@ -477,22 +484,39 @@ function MedicalCard({ profile, setProfile, confirmDelete }) {
 function TypeRatingsCard({ profile, setProfile, confirmDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [aircraftType, setAircraftType] = useState('');
+  const [category, setCategory] = useState('Multi-Engine');
+  const [surface, setSurface] = useState('land');
   const [hoursOnType, setHoursOnType] = useState('');
   const [typeErr, setTypeErr] = useState(false);
+
+  // The type usually answers "single or multi?" on its own (A320, C172, SEP),
+  // and then picking it fills the control in. It used to be "Multi-Engine" for
+  // every rating, so a Cessna 172 was filed as multi-engine.
+  const onAircraft = (v) => {
+    setAircraftType(v);
+    if (typeErr) setTypeErr(false);
+    const implied = impliedCategory(v);
+    if (implied) setCategory(implied);
+    const s = surfaceOf(v);
+    if (s) setSurface(s);
+  };
   const { saving, savedAt, error, run } = useSave();
 
   const handleAdd = () => {
     if (!aircraftType.trim()) { setTypeErr(true); return; }
     setTypeErr(false);
     run(async () => {
+      const typed = normalizeType(withSurface(aircraftType.trim(), surface));
       const { data } = await profileApi.addRating({
-        aircraftType: aircraftType.toUpperCase(),
-        category: 'Multi-Engine',
+        aircraftType: typed,
+        category: impliedCategory(typed) || category,
         hoursOnType: parseFloat(hoursOnType) || 0,
       });
       setProfile((p) => ({ ...p, ratings: [...(p.ratings || []), data] }));
       setShowForm(false);
       setAircraftType('');
+      setCategory('Multi-Engine');
+      setSurface('land');
       setHoursOnType('');
     });
   };
@@ -516,8 +540,11 @@ function TypeRatingsCard({ profile, setProfile, confirmDelete }) {
               {r.aircraftType}
               {r.issuingAuthority && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> — {r.issuingAuthority}</span>}
             </div>
-            {(r.capacity || r.hoursOnType > 0) && (
+            {(r.category || r.capacity || r.hoursOnType > 0) && (
               <div style={css.itemSub}>
+                {/* Shown so a wrong category is visible rather than buried. */}
+                {r.category && <span>{r.category}</span>}
+                {r.category && (r.capacity || r.hoursOnType > 0) && <span> · </span>}
                 {r.capacity && <span>{r.capacity}</span>}
                 {r.capacity && r.hoursOnType > 0 && <span> · </span>}
                 {r.hoursOnType > 0 && <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{r.hoursOnType.toLocaleString()} hrs on type</span>}
@@ -543,10 +570,27 @@ function TypeRatingsCard({ profile, setProfile, confirmDelete }) {
             <div style={css.formRow}>
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Aircraft type</label>
-                <AircraftCombobox value={aircraftType} onChange={(v) => { setAircraftType(v); if (typeErr) setTypeErr(false); }} inputStyle={typeErr ? { borderColor: SEM.red } : undefined} />
+                <AircraftCombobox value={aircraftType} onChange={onAircraft} inputStyle={typeErr ? { borderColor: SEM.red } : undefined} />
                 {typeErr && <div style={css.fieldErr}>Required</div>}
               </div>
               <Input label="Hours on Type" type="number" min="0" step="0.1" value={hoursOnType} onChange={(e) => setHoursOnType(e.target.value)} placeholder="0.0" />
+            </div>
+            <div style={css.formRow}>
+              <Input
+                as="select"
+                label={impliedCategory(aircraftType) ? 'Category \u00b7 from the type' : 'Category'}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <SelectOptions options={RATING_CATEGORIES} />
+              </Input>
+              {/* A class rating is flown from land or from water and the two
+                  are different ratings. A type rating has no such split. */}
+              {isClassRating(aircraftType) ? (
+                <Input as="select" label="Operated from" value={surface} onChange={(e) => setSurface(e.target.value)}>
+                  <SelectOptions options={RATING_SURFACES} />
+                </Input>
+              ) : <div />}
             </div>
             <div style={formActions}>
               <Button variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
