@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ComposableMap, Geographies, Geography, Line, Marker, ZoomableGroup } from 'react-simple-maps';
 import { ChevronRight, X } from 'lucide-react';
 import { useAirports } from '../../lib/useAirports';
@@ -29,7 +29,9 @@ const isTouch = () => typeof window !== 'undefined'
 
 /** The airports and legs to draw, for the chosen scope. */
 function useFlown(sectors, { byCode, routes }, scope) {
-  const allTime = scope !== 'view' && routes.length > 0;
+  // All-time only when a caller ASKS for it. Defaulting to it turned a
+  // single sector's map into the whole career on the app's flight page.
+  const allTime = scope === 'all' && routes.length > 0;
   return useMemo(() => {
     const at = (code) => (code ? byCode.get(String(code).toUpperCase()) : undefined);
     const seen = new Map();
@@ -67,14 +69,23 @@ function fitFor(points) {
 }
 
 function Plot({
-  points, legs, height, interactive, zoom, center, onMove, picked, onPick,
+  points, legs, height, width, interactive, zoom, center, onMove, picked, onPick, pinLabels = false,
 }) {
+  // ComposableMap's viewBox is 800 wide however wide the card is, so anything
+  // drawn at a pixel size shrinks by cardWidth/800 on screen — the code chips
+  // came out at two fifths of their size in a 358px card. `k` undoes that, so
+  // a chip is the same size here as the one the app draws.
+  const k = (800 / (width || 800)) / zoom;
   // Filling the window, the thumbnail's near-white coastlines disappear. The
   // explored view gets a little more contrast so the land reads as land.
   const land = interactive
     ? { fill: '#E3EBF5', stroke: '#C4D2E4' }
     : { fill: '#E8EEF6', stroke: '#D5DEE9' };
-  const strokeFor = (c) => (c > 1 ? 'rgba(0,63,136,0.55)' : 'rgba(0,63,136,0.22)');
+  // On a career map a once-flown route is deliberately faint against the
+  // regular ones. On ONE sector there is nothing to be faint against, and
+  // the line is the point.
+  const strokeFor = (c) => (pinLabels ? 'rgba(0,63,136,0.6)'
+    : c > 1 ? 'rgba(0,63,136,0.55)' : 'rgba(0,63,136,0.22)');
   const body = (
     <>
       <Geographies geography={GEO_URL}>
@@ -95,7 +106,7 @@ function Plot({
           from={[l.a.lon, l.a.lat]}
           to={[l.b.lon, l.b.lat]}
           stroke={strokeFor(l.count)}
-          strokeWidth={(l.count > 1 ? 1.4 : 0.9) / zoom}
+          strokeWidth={pinLabels ? 1.6 * k : (l.count > 1 ? 1.4 : 0.9) / zoom}
           strokeLinecap="round"
         />
       ))}
@@ -112,13 +123,34 @@ function Plot({
                 small however far out the map is. */}
             {interactive && <circle r={10 / zoom} fill="transparent" />}
             <circle
-              r={(on ? 4.5 : 2.8) / zoom}
+              r={pinLabels ? 4 * k : (on ? 4.5 : 2.8) / zoom}
               fill={NAVY}
               stroke="#fff"
               strokeWidth={(on ? 1.6 : 0.9) / zoom}
             >
               <title>{`${p.a.code} · ${p.a.city || p.a.name || ''} · ${p.count} flight${p.count === 1 ? '' : 's'}`}</title>
             </circle>
+            {/* The code beside its dot, as a chip — the same thing the app
+                draws. Only ever for one sector: on a career's worth of
+                airports the labels would cover the map. */}
+            {pinLabels && (
+              <g transform={`translate(${9 * k} ${-1 * k})`}>
+                <rect
+                  x={0} y={-9 * k} rx={5 * k}
+                  width={34 * k} height={18 * k}
+                  fill="#fff" stroke="var(--border)" strokeWidth={1 * k}
+                />
+                <text
+                  x={17 * k} y={4 * k} textAnchor="middle"
+                  style={{
+                    fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                    fontWeight: 600, fontSize: 11 * k, fill: 'var(--text-primary)',
+                  }}
+                >
+                  {p.a.code}
+                </text>
+              </g>
+            )}
           </Marker>
         );
       })}
@@ -143,10 +175,25 @@ function Plot({
   );
 }
 
-export default function RouteMapCard({ sectors, scope = 'all', onScopeChange }) {
+export default function RouteMapCard({
+  sectors, scope = 'all', onScopeChange, label = 'Where you flew', note, pinLabels = false,
+}) {
   const air = useAirports();
   const { points, legs, skipped, allTime } = useFlown(sectors, air, scope);
   const [open, setOpen] = useState(false);
+  // The thumbnail's real width, so the SVG can use CSS pixels as its units.
+  const frameRef = useRef(null);
+  const [frameW, setFrameW] = useState(0);
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return undefined;
+    const measure = () => setFrameW(Math.round(el.clientWidth));
+    measure();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    if (ro) ro.observe(el);
+    window.addEventListener('resize', measure);
+    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
 
   // Nothing to draw once the airports are in and none of them placed.
   if (air.byCode.size > 0 && !points.length) return null;
@@ -155,7 +202,8 @@ export default function RouteMapCard({ sectors, scope = 'all', onScopeChange }) 
     <>
       <div className="lb-card lb-map">
         <div className="lb-map-head">
-          <span className="lb-gl-t">Where you flew</span>
+          <span className="lb-gl-t">{label}</span>
+          {note && <span className="lb-map-note mono">{note}</span>}
           {onScopeChange && air.routes.length > 0 && (
             <div className="lb-seg lb-seg-sm">
               <button type="button" className={allTime ? 'on' : ''} aria-pressed={allTime} onClick={() => onScopeChange('all')}>All time</button>
@@ -170,13 +218,19 @@ export default function RouteMapCard({ sectors, scope = 'all', onScopeChange }) 
           onClick={() => setOpen(true)}
           aria-label={`Where you flew, ${points.length} airports. Opens the full map.`}
         >
-          <div className="lb-map-frame">
-            <Plot {...fitFor(points)} points={points} legs={legs} height={170} interactive={false} picked={null} onPick={() => {}} />
+          <div className="lb-map-frame" ref={frameRef}>
+            <Plot
+              {...fitFor(points)}
+              points={points} legs={legs} height={170} width={frameW}
+              interactive={false} picked={null} onPick={() => {}} pinLabels={pinLabels}
+            />
           </div>
           <div className="lb-map-foot">
             <span className="s">
               {points.length} airport{points.length === 1 ? '' : 's'}
-              {allTime ? ' · all time' : ' · this view'}
+              {/* Only where the scope can be chosen; on one sector "this
+                  view" answers a question nobody asked. */}
+              {onScopeChange ? (allTime ? ' · all time' : ' · this view') : ''}
               {skipped > 0 ? ` · ${skipped} without coordinates not shown` : ''}
             </span>
             <span className="lb-map-cta">{isTouch() ? 'Tap' : 'Click'} to explore <ChevronRight size={13} /></span>
@@ -188,7 +242,7 @@ export default function RouteMapCard({ sectors, scope = 'all', onScopeChange }) 
         <FullMap
           points={points}
           legs={legs}
-          title={allTime ? 'Everywhere you have flown' : 'Where you flew · this view'}
+          title={allTime ? 'Everywhere you have flown' : label}
           onClose={() => setOpen(false)}
         />
       )}

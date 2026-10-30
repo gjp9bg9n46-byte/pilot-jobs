@@ -1,8 +1,9 @@
 import React from 'react';
 import { ArrowRight, Repeat, X } from 'lucide-react';
 import Button from '../primitives/Button';
-import { duration, landsNextDay, minutesToHHMM, overlapLabel, routeNames, spanMinutes } from '../../lib/logbookFormat';
+import { duration, greatCircleNm, landsNextDay, minutesToHHMM, overlapLabel, routeNames, spanMinutes } from '../../lib/logbookFormat';
 import { useAirports } from '../../lib/useAirports';
+import RouteMapCard from './RouteMapCard';
 
 /**
  * One flight, as the mockup's detail screen: the four times across the top,
@@ -25,10 +26,14 @@ export default function FlightDetail({ flight, overlap, timeFormat = 'hhmm', onC
   // The two ends, named where we can name them. An airport we cannot name
   // contributes only its code — nothing here is invented.
   const at = (code) => (code ? air.byCode.get(String(code).toUpperCase()) : undefined);
+  const depAp = at(flight.departure);
+  const arrAp = at(flight.arrival);
   const names = routeNames(
-    { airport: at(flight.departure), code: flight.departure },
-    { airport: at(flight.arrival), code: flight.arrival },
+    { airport: depAp, code: flight.departure },
+    { airport: arrAp, code: flight.arrival },
   );
+  // Hidden when either end has no coordinates, rather than guessed at.
+  const distanceNm = greatCircleNm(depAp, arrAp);
   const date = new Date(`${String(flight.date).slice(0, 10)}T00:00:00Z`)
     .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -64,6 +69,18 @@ export default function FlightDetail({ flight, overlap, timeFormat = 'hhmm', onC
             {date}{flight.flightNumber ? ` · ${flight.flightNumber}` : ''}{flight.displayType || flight.aircraftType ? ` · ${flight.displayType || flight.aircraftType}` : ''}{flight.registration ? ` · ${flight.registration}` : ''}
           </div>
         </div>
+
+        {/* This sector's own route — the app's card, same design, same
+            single-sector scope. */}
+        {flight.departure && flight.arrival && (
+          <RouteMapCard
+            sectors={[{ from: flight.departure, to: flight.arrival }]}
+            scope="view"
+            label="Route"
+            note={distanceNm != null ? `${distanceNm.toLocaleString()} nm great circle` : undefined}
+            pinLabels
+          />
+        )}
 
         <div className="lb-card">
           <div className="lb-grid4">
