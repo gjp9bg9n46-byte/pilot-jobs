@@ -125,9 +125,14 @@ async function run() {
   );
   process.stdout.write(nativeCheck.stdout || '');
   if (nativeCheck.status !== 0) {
-    process.stderr.write(nativeCheck.stderr || '');
-    console.error('\npreflight stops here: ship a BUILD, not an update.');
-    process.exit(1);
+    if (!process.argv.includes('--build')) {
+      process.stderr.write(nativeCheck.stderr || '');
+      console.error('\npreflight stops here: ship a BUILD, not an update.');
+      process.exit(1);
+    }
+    // --build: a new binary WILL contain them, so this is information, not a
+    // failure. Re-record the list once the build is cut.
+    console.log('  (--build: a new binary will contain these)\n');
   }
 
   const S = stubs();
