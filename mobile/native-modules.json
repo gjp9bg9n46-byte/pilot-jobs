@@ -1,7 +1,7 @@
 {
-  "recordedAt": "2026-10-29T00:00:00.000Z",
+  "recordedAt": "2026-10-30T11:57:56.132Z",
   "version": "1.0.0",
-  "buildNumber": "7",
+  "buildNumber": "8",
   "modules": [
     "@react-native-async-storage/async-storage",
     "@react-native-community/datetimepicker",
@@ -12,6 +12,7 @@
     "expo-font",
     "expo-haptics",
     "expo-image",
+    "expo-image-manipulator",
     "expo-image-picker",
     "expo-linking",
     "expo-notifications",
