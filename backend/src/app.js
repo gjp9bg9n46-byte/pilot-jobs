@@ -193,6 +193,18 @@ app.get('/health/requirements-coverage', async (req, res) => {
         .map(([src, s]) => [src, { ...s, coveragePct: pct(s.covered, s.total) }])
     );
 
+    // Extraction health, reported next to the number it moves. A stalled
+    // extractor shows up here first — coverage drifts down as new rows arrive
+    // with regex-only requirements and never get upgraded — so the cause and
+    // the symptom belong in one response.
+    const [ext] = await prisma.$queryRawUnsafe(`
+      SELECT max("requirementsExtractedAt") AS last,
+             count(*) FILTER (WHERE status='ACTIVE' AND "mergedInto" IS NULL
+               AND "requirementsExtractedAt" IS NULL AND char_length(description) >= 400)::int AS backlog
+      FROM "Job"`);
+    const lastExtract = ext?.last ? new Date(ext.last) : null;
+    const extractAgeH = lastExtract ? Math.round((Date.now() - lastExtract.getTime()) / 36e5) : null;
+
     res.json({
       ok: true,
       coveragePct: pct(covered, total),   // ← the launch gate number
@@ -200,6 +212,15 @@ app.get('/health/requirements-coverage', async (req, res) => {
       covered,
       buckets: bucket,
       definition: 'covered = verbatim requirements block OR ≥3 structured fields OR honest "not listed" fallback; uncovered = a thin 1–2-field synthesis',
+      extraction: {
+        hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+        lastExtractedAt: lastExtract ? lastExtract.toISOString() : null,
+        hoursSinceLastExtract: extractAgeH,
+        backlog: ext?.backlog ?? null,
+        // The scrape cron extracts 25 per run, 4 runs a day: anything past a
+        // day with a non-empty backlog means it is not running.
+        healthy: (ext?.backlog ?? 0) === 0 || (extractAgeH != null && extractAgeH <= 24),
+      },
       perSource: perSourceOut,
     });
   } catch (err) {
@@ -293,10 +314,28 @@ cron.schedule(`0 */${intervalHours} * * *`, () => withCronRun('scrape', async ()
   }
   // LLM structured requirement extraction over the (now full) descriptions —
   // replaces regex junk. Once per job; no-ops without ANTHROPIC_API_KEY.
+  //
+  // The counts below are the keys extractRequirementsLLM actually returns. They
+  // used to be `r.updated ?? r.processed`, neither of which that function has
+  // ever returned, so llmExtracted was permanently undefined — which is how an
+  // expired API key stopped extraction for six days without a single cron
+  // record showing it. A health number nobody can read is not a health number.
   try {
     const { extractRequirementsLLM } = require('../scripts/extract-requirements-llm');
     const r = await extractRequirementsLLM({ limit: 25 });
-    if (r && typeof r === 'object') counts.llmExtracted = r.updated ?? r.processed ?? undefined;
+    if (r && typeof r === 'object') {
+      counts.llmConsidered = r.considered;
+      counts.llmExtracted = r.extracted;
+      counts.llmFailed = r.failed;
+      // Considered rows but extracted none → the key, the model or the quota.
+      // Loud, because the symptom downstream (requirement coverage drifting
+      // below the launch gate) takes days to notice and days more to trace.
+      if (r.considered > 0 && r.extracted === 0) {
+        logger.error({ msg: 'REQ-LLM STALLED: rows were waiting and none were extracted',
+          considered: r.considered, failed: r.failed,
+          hasKey: !!process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5' });
+      }
+    }
   } catch (err) {
     logger.error(`LLM requirement extraction failed: ${err.message}`);
   }

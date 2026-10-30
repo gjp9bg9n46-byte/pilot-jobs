@@ -27,7 +27,7 @@ const { fetchUSAJobs } = require('./sources/usajobs');
 const { fetchAdzuna } = require('./sources/adzuna');
 const { fetchJooble } = require('./sources/jooble');
 const { fetchCareerjet } = require('./sources/careerjet');
-const { fetchWhatJobs } = require('./sources/whatjobs');
+const { fetchWhatJobs, lastSweepReport } = require('./sources/whatjobs');
 const { fetchTaleo } = require('./sources/taleo');
 const { fetchAviationJobSearch } = require('./sources/aviationjobsearch');
 const { fetchIcims } = require('./sources/icims');
@@ -173,27 +173,91 @@ async function upsertJob(job, { preserveMerge = false, keepInactive = false } = 
 
 // ─── Mark jobs absent from this run as inactive ───────────────────────────────
 
-async function markStaleInactive(sourcePlatform, company, seenExternalIds) {
-  if (!seenExternalIds.length) return 0;
-  const now = new Date();
-  const { count } = await prisma.job.updateMany({
-    where: {
-      sourcePlatform,
-      // Aggregate sources (Adzuna, Jooble, USAJobs, AJS…) store the REAL
-      // employer name on each job, so filtering by the config's label
-      // ('Adzuna (Europe)') would match nothing and stale jobs would live
-      // forever. For those, company is passed as null → match by source only.
-      ...(company ? { company } : {}),
-      status: 'ACTIVE',
-      externalId: { notIn: seenExternalIds },
+/**
+ * Sources whose feed is a SAMPLE, not a complete listing.
+ *
+ * An ATS (Lever, Greenhouse, Workday, iCIMS…) answers "every opening we have",
+ * so a row missing from one fetch has genuinely been taken down and expiring it
+ * immediately is right — that is how a filled vacancy leaves the board within
+ * hours.
+ *
+ * A keyword aggregator answers something quite different: "page 1-2 of what
+ * matches these words for this publisher, right now". Ask twice and you get
+ * overlapping but different sets — ranking shifts, a market goes quiet for an
+ * hour, a posting sits on page 3 this time. Treating absence from one such
+ * sample as removal is what produced the churn this fix exists for: in the week
+ * before it, 858 Careerjet and 329 WhatJobs rows were expired within twelve
+ * hours of being seen alive, against 0 for Greenhouse and 1 for iCIMS.
+ *
+ * For these sources, absence starts a clock instead of ending the row. Dead
+ * listings still leave, by three other routes that check the posting itself
+ * rather than guessing from a sample: the nightly liveness checker (HEAD/GET on
+ * the apply URL, 3 strikes), the aggregator freshness cap at ingest, and the
+ * 14-day unseen backstop.
+ */
+const SAMPLED_SOURCES = new Set(['WHATJOBS', 'ADZUNA', 'CAREERJET', 'JOOBLE', 'AVIATIONJOBSEARCH', 'REED']);
+
+/** Hours a sampled source's row may go unseen before it expires (12 cycles). */
+const unseenGraceHours = () => Math.max(0, parseInt(process.env.AGGREGATOR_UNSEEN_GRACE_HOURS || '72', 10));
+
+/**
+ * The expiry rule, as data. Pure, so the decisions below can be tested without
+ * a database — which matters, because the bug this replaces was a rule nobody
+ * could inspect, running four times a day against live rows.
+ *
+ * @param {string}   sourcePlatform
+ * @param {?string}  company                null for aggregate sources
+ * @param {string[]} seenExternalIds
+ * @param {object}   [opts]
+ * @param {string[]} [opts.protectCountries] countries whose fetch FAILED this
+ *   run — their rows are left alone entirely, because a country that did not
+ *   answer has told us nothing about its jobs.
+ * @param {Date}     [opts.now]
+ * @param {number}   [opts.graceHours]       overrides the env default
+ */
+function staleWhere(sourcePlatform, company, seenExternalIds, opts = {}) {
+  const now = opts.now || new Date();
+  const { protectCountries = [] } = opts;
+  const sampled = SAMPLED_SOURCES.has(sourcePlatform);
+  const graceHours = sampled ? (opts.graceHours ?? unseenGraceHours()) : 0;
+  const graceCutoff = new Date(now.getTime() - graceHours * 3600 * 1000);
+
+  return {
+    sourcePlatform,
+    // Aggregate sources (Adzuna, Jooble, USAJobs, AJS…) store the REAL
+    // employer name on each job, so filtering by the config's label
+    // ('Adzuna (Europe)') would match nothing and stale jobs would live
+    // forever. For those, company is passed as null → match by source only.
+    ...(company ? { company } : {}),
+    status: 'ACTIVE',
+    externalId: { notIn: seenExternalIds },
+    // A country whose fetch failed this run must not have its rows aged.
+    ...(protectCountries.length ? { country: { notIn: protectCountries } } : {}),
+    AND: [
       // Don't expire jobs whose Workday expiresAt is still in the future
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { lte: now } },
-      ],
-    },
-    data: { status: 'EXPIRED' },
-  });
+      { OR: [{ expiresAt: null }, { expiresAt: { lte: now } }] },
+      // Sampled sources only: absent for one run is not gone. lastSeenAt is
+      // authoritative; rows predating the field fall back to updatedAt, which
+      // every re-see refreshes.
+      ...(graceHours > 0
+        ? [{ OR: [
+            { lastSeenAt: { lt: graceCutoff } },
+            { lastSeenAt: null, updatedAt: { lt: graceCutoff } },
+          ] }]
+        : []),
+    ],
+  };
+}
+
+async function markStaleInactive(sourcePlatform, company, seenExternalIds, opts = {}) {
+  if (!seenExternalIds.length) return 0;
+  const where = staleWhere(sourcePlatform, company, seenExternalIds, opts);
+  const { count } = await prisma.job.updateMany({ where, data: { status: 'EXPIRED' } });
+  if (SAMPLED_SOURCES.has(sourcePlatform)) {
+    logger.info({ source: sourcePlatform, expired: count, graceHours: opts.graceHours ?? unseenGraceHours(),
+      protectedCountries: (opts.protectCountries || []).length || undefined,
+      msg: 'sampled-source expiry (grace window applied)' });
+  }
   return count;
 }
 
@@ -396,11 +460,25 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
         }
       }
 
-      // Expire jobs that weren't in this run's listing
+      // Expire jobs that weren't in this run's listing. For WhatJobs, a country
+      // that did not fetch cleanly is excluded: an outage must not read as "the
+      // jobs in that market are gone".
+      let protectCountries = [];
+      if (empConfig.source === 'WHATJOBS') {
+        const sweep = lastSweepReport();
+        protectCountries = (sweep.countries || []).filter((c) => !c.healthy).map((c) => c.country);
+        stats.sweep = {
+          countries: (sweep.countries || []).length,
+          unhealthy: protectCountries.length,
+          rateLimited: (sweep.countries || []).filter((c) => c.rateLimited > 0).map((c) => c.code),
+          failed: (sweep.countries || []).filter((c) => !c.healthy).map((c) => c.code),
+        };
+      }
       stats.markedInactive = await markStaleInactive(
         empConfig.source,
         empConfig.aggregate ? null : empConfig.company,
         seenExternalIds,
+        { protectCountries },
       );
 
       // PCC post-step: enrich any stub-description jobs with detail-page text + requirements.
@@ -762,4 +840,4 @@ async function runAllEmployers(employers, opts = {}) {
   return allStats;
 }
 
-module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue, expireUnseen, alertZeroResults, fetchForEmployer };
+module.exports = { runAllEmployers, upsertJob, processEmployer, revalidateActiveJobs, expirePastDue, expireUnseen, alertZeroResults, fetchForEmployer, markStaleInactive, staleWhere, SAMPLED_SOURCES, unseenGraceHours };

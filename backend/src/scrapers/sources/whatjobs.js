@@ -33,7 +33,64 @@ const logger = require('../../config/logger');
 const { extractRequirements } = require('../normalize');
 
 const CALL_DELAY_MS = 1200;
+const MAX_ATTEMPTS = 3;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ── Pacing that reacts to the limiter ───────────────────────────────────────
+// 1.2 s between calls has never drawn a 429 from this API (three weeks of cron
+// runs, zero non-200s). But "has never" is not "cannot": a partner limiter can
+// tighten without notice, and the failure mode here is the dangerous kind —
+// silently fewer rows, which downstream reads as "those jobs are gone".
+//
+// So every call goes through getJson(), which honours Retry-After, retries a
+// 429/5xx up to MAX_ATTEMPTS, and PERMANENTLY slows the rest of the sweep once
+// it has seen one. A rate-limited sweep now takes longer; it does not come back
+// short and quiet.
+let paceMs = CALL_DELAY_MS;
+
+function retryAfterMs(headers) {
+  const h = headers && (headers['retry-after'] ?? headers['Retry-After']);
+  if (h == null) return null;
+  const secs = Number(h);
+  if (Number.isFinite(secs)) return Math.min(60000, Math.max(0, secs * 1000));
+  const when = Date.parse(h);                       // HTTP-date form
+  return Number.isFinite(when) ? Math.min(60000, Math.max(0, when - Date.now())) : null;
+}
+
+/**
+ * One API call, with backoff. Throws the last error if every attempt fails;
+ * the thrown error carries `.status` and `.rateLimited` for the sweep report.
+ */
+async function getJson(params, tally) {
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      tally.calls++;
+      const resp = await axios.get('https://api.whatjobs.com/api/v1/jobs.json', {
+        params,
+        headers: { Accept: 'application/json', 'User-Agent': 'CockpitHireBot/1.0 (+https://cockpithire.com)' },
+        timeout: 20000,
+      });
+      return resp.data;
+    } catch (err) {
+      lastErr = err;
+      const status = err.response?.status;
+      const limited = status === 429;
+      if (limited) { tally.rateLimited++; paceMs = Math.min(10000, Math.max(paceMs * 2, 2500)); }
+      else tally.httpErrors++;
+      // Only a limiter or a server fault is worth retrying. A 4xx that is not
+      // 429 is our mistake (bad publisher, bad param) and will not improve.
+      const retryable = limited || (status >= 500) || !status;   // !status = timeout/network
+      if (!retryable || attempt === MAX_ATTEMPTS) break;
+      const wait = retryAfterMs(err.response?.headers) ?? Math.min(30000, 1500 * (2 ** (attempt - 1)));
+      logger.warn({ source: 'WHATJOBS', publisher: params.publisher, keyword: params.keyword, page: params.page,
+        status: status || 'network', attempt, waitMs: wait, newPaceMs: paceMs, msg: 'backing off' });
+      await sleep(wait);
+    }
+  }
+  if (lastErr) { lastErr.status = lastErr.response?.status; lastErr.rateLimited = lastErr.response?.status === 429; }
+  throw lastErr;
+}
 
 // country code → { id: publisher, country: display name, region }
 const PUBLISHERS = {
@@ -186,6 +243,14 @@ function normalize(item, meta) {
   };
 }
 
+// ── The last sweep's per-country health ─────────────────────────────────────
+// Read by the runner. The point is point (c) of the fix: a country whose fetch
+// FAILED must not age its jobs toward expiry, because "the API did not answer"
+// and "the airline took the job down" are not the same fact and must not have
+// the same consequence. Without this the pipeline treats an outage as evidence.
+let _lastSweep = { at: null, countries: [] };
+function lastSweepReport() { return _lastSweep; }
+
 async function fetchWhatJobs() {
   const codes = (process.env.WHATJOBS_COUNTRIES || Object.keys(PUBLISHERS).join(','))
     .split(',').map((c) => c.trim().toLowerCase()).filter((c) => PUBLISHERS[c]);
@@ -198,8 +263,10 @@ async function fetchWhatJobs() {
   const maxPages = Math.min(10, Math.max(1, parseInt(process.env.WHATJOBS_MAX_PAGES || '2', 10)));
   const userIp = await resolveUserIp();
 
+  paceMs = CALL_DELAY_MS;      // a fresh sweep starts optimistic
   const seen = new Set();
   const results = [];
+  const report = [];
 
   for (const code of codes) {
     const meta = PUBLISHERS[code];
@@ -207,23 +274,23 @@ async function fetchWhatJobs() {
     // queries so local-language postings are found; requireContext filters noise.
     const localized = LOCALIZED_KEYWORD[code];
     const countryQueries = localized ? [...queries, localized] : queries;
+    const tally = { calls: 0, rateLimited: 0, httpErrors: 0, shapeErrors: 0 };
     let countryKept = 0;
+    let ok200 = 0;
+
     for (const keyword of countryQueries) {
       for (let page = 1; page <= maxPages; page++) {
         let data;
         try {
-          const resp = await axios.get('https://api.whatjobs.com/api/v1/jobs.json', {
-            params: { publisher: meta.id, user_ip: userIp, keyword, page },
-            headers: { Accept: 'application/json', 'User-Agent': 'CockpitHireBot/1.0 (+https://cockpithire.com)' },
-            timeout: 20000,
-          });
-          data = resp.data;
+          data = await getJson({ publisher: meta.id, user_ip: userIp, keyword, page }, tally);
+          ok200++;
         } catch (err) {
-          logger.error({ source: 'WHATJOBS', code, keyword, page, status: err.response?.status, err: err.message, msg: 'fetch failed' });
+          logger.error({ source: 'WHATJOBS', code, keyword, page, status: err.status, rateLimited: !!err.rateLimited, err: err.message, msg: 'fetch failed after retries' });
           break;
         }
         const items = Array.isArray(data?.data) ? data.data : null;
         if (!items) {
+          tally.shapeErrors++;
           logger.error({ source: 'WHATJOBS', code, keyword, page, msg: 'SHAPE ALERT: no data[] array' });
           break;
         }
@@ -235,16 +302,34 @@ async function fetchWhatJobs() {
           countryKept++;
         }
         logger.info({ source: 'WHATJOBS', code, keyword, page, fetched: items.length, cumulative: results.length, msg: 'page fetched' });
-        await sleep(CALL_DELAY_MS);
+        await sleep(paceMs);
         if (items.length === 0 || page >= (Number(data.last_page) || 1)) break;
       }
     }
+
+    // "Healthy" is a question about the TRANSPORT, not about the row count: a
+    // country that answered every call and happens to have no pilot jobs is
+    // fine, and its (zero) rows are a fact we can act on. A country that was
+    // limited or errored told us nothing.
+    const healthy = ok200 > 0 && tally.rateLimited === 0 && tally.httpErrors === 0 && tally.shapeErrors === 0;
+    report.push({ code, country: meta.country, publisher: meta.id, rows: countryKept, ...tally, ok200, healthy });
+
     // Per-country zero-result signal (a live country should return something for "pilot").
-    if (countryKept === 0) logger.warn({ source: 'WHATJOBS', code, publisher: meta.id, msg: 'zero results for country this run' });
+    if (countryKept === 0) logger.warn({ source: 'WHATJOBS', code, publisher: meta.id, healthy, msg: 'zero results for country this run' });
   }
 
-  logger.info({ source: 'WHATJOBS', total: results.length, countries: codes.length, msg: 'fetch complete' });
+  _lastSweep = { at: new Date().toISOString(), countries: report };
+  const unhealthy = report.filter((r) => !r.healthy);
+  // The whole per-country table in one line, so the next diagnosis is a log
+  // search rather than a 25-minute re-run of the sweep.
+  logger.info({ source: 'WHATJOBS', total: results.length, countries: codes.length,
+    unhealthy: unhealthy.map((r) => `${r.code}:${r.rateLimited ? '429' : r.httpErrors ? 'err' : r.shapeErrors ? 'shape' : 'no-call'}`),
+    paceMs, table: report.map((r) => `${r.code}=${r.rows}${r.healthy ? '' : '!'}`).join(' '), msg: 'fetch complete' });
+  if (unhealthy.length) {
+    logger.warn({ source: 'WHATJOBS', count: unhealthy.length, codes: unhealthy.map((r) => r.code),
+      msg: 'countries did NOT fetch cleanly — their jobs are protected from expiry this run' });
+  }
   return results;
 }
 
-module.exports = { fetchWhatJobs, PUBLISHERS };
+module.exports = { fetchWhatJobs, lastSweepReport, PUBLISHERS };

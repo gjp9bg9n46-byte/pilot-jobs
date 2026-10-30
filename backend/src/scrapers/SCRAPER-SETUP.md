@@ -48,6 +48,62 @@ doesn't look like what you parsed against. Aborting returns `[]`, which the
 runner's zero-result guard treats as a failed run — it skips expiry rather than
 wiping the source. See `sources/jibe.js` / `sources/avature.js` for the pattern.
 
+## Complete listings vs samples — and how a row leaves the board
+
+Before wiring a source, decide which of these two things it answers, because the
+expiry rule depends entirely on it.
+
+**A complete listing** (Lever, Greenhouse, Workday, iCIMS, Avature, Taleo, SmartRecruiters)
+answers *"every opening we have."* A row missing from one fetch has been taken
+down, so `markStaleInactive` expires it on the spot — that is how a filled
+vacancy leaves the board within hours. Keep it that way.
+
+**A sample** (`SAMPLED_SOURCES` in `runner.js`: WhatJobs, Adzuna, Careerjet,
+Jooble, AviationJobSearch, Reed) answers something much weaker: *"page 1–2 of
+what matches these keywords for this publisher, right now."* Ask twice and you
+get overlapping but different sets — ranking shifts, a market goes quiet for an
+hour, a posting lands on page 3 this time. Absence proves nothing.
+
+Treating the second kind as the first caused a measured, month-long leak: in the
+week to 2026-10-30, **858 Careerjet and 329 WhatJobs rows were expired within
+twelve hours of being seen alive**, against 0 for Greenhouse and 1 for iCIMS.
+WhatJobs' visible feed fell 246 → 157 while its fetch health never moved (~1,350
+rows per cycle, zero non-200 responses for three weeks). The feed was not
+shrinking because the jobs were gone; the pipeline was throwing them away.
+
+So for a sampled source, absence starts a clock instead of ending the row:
+`AGGREGATOR_UNSEEN_GRACE_HOURS` (default **72** — twelve 6-hour cycles). Dead
+listings still leave, by three routes that check the posting itself rather than
+inferring from a sample:
+
+1. the nightly **liveness checker** (HEAD→GET on the apply URL, 3 strikes),
+2. the aggregator **freshness cap** at ingest (`JOB_MAX_AGE_DAYS`),
+3. the **14-day unseen backstop** (`JOB_UNSEEN_MAX_DAYS`, `expireUnseen`).
+
+Setting the grace to `0` restores the old one-shot behaviour. `staleWhere()` is
+pure and covered by `__tests__/sampledExpiry.test.js`, which also pins that ATS
+sources still expire immediately — the regression that would hurt most.
+
+### A failed fetch is not an empty market
+
+"The API did not answer" and "that market's jobs were taken down" are different
+facts and must never share a consequence. A multi-tenant source must therefore
+report per-tenant health, not just rows: `sources/whatjobs.js` returns one entry
+per country from `lastSweepReport()` (`rows`, `calls`, `rateLimited`,
+`httpErrors`, `shapeErrors`, `healthy`), and the runner passes every unhealthy
+country to `markStaleInactive` as `protectCountries`, which leaves those rows
+alone entirely.
+
+Note what `healthy` asks: it is a question about the **transport**, not the row
+count. A country that answered every call and has no pilot jobs today is healthy,
+and its zero is a fact worth acting on. A country that was rate-limited told us
+nothing. Per-country counts also land in the run's `CronRun.counts.sweep`, so
+diagnosing the next incident is a query rather than a 40-minute re-run.
+
+Calls go through `getJson()`, which honours `Retry-After`, retries 429/5xx/network
+up to 3 attempts, and permanently halves the pace for the rest of the sweep after
+a single 429. A rate-limited sweep should finish late, never quiet and short.
+
 ## Non-negotiable checks before enabling a source
 
 - **robots.txt for the exact host + paths you fetch** — and it governs *that*
