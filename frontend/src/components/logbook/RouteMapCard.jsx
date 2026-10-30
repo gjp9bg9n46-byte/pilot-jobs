@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ComposableMap, Geographies, Geography, Line, Marker, ZoomableGroup } from 'react-simple-maps';
 import { ChevronRight, X } from 'lucide-react';
-import { profileApi } from '../../services/api';
+import { useAirports } from '../../lib/useAirports';
 
 // ── Where you flew ───────────────────────────────────────────────────────────
 // The web half of the app's logbook map card, drawn the same way: small navy
@@ -26,26 +26,6 @@ const NAVY = '#003F88';
 const isTouch = () => typeof window !== 'undefined'
   && typeof window.matchMedia === 'function'
   && window.matchMedia('(hover: none)').matches;
-
-/** Airports keyed by every code a sector might name, plus the routes. */
-function useAirports() {
-  const [data, setData] = useState(null);
-  useEffect(() => {
-    let alive = true;
-    profileApi.getAirports()
-      .then(({ data: d }) => { if (alive) setData(d); })
-      .catch(() => { if (alive) setData({ airports: [], routes: [] }); });
-    return () => { alive = false; };
-  }, []);
-  return useMemo(() => {
-    const byCode = new Map();
-    for (const a of data?.airports || []) {
-      if (!Number.isFinite(a.lat) || !Number.isFinite(a.lon)) continue;   // never 0,0
-      for (const k of [a.code, a.icao, a.iata]) if (k) byCode.set(String(k).toUpperCase(), a);
-    }
-    return { byCode, routes: data?.routes || [], loaded: !!data };
-  }, [data]);
-}
 
 /** The airports and legs to draw, for the chosen scope. */
 function useFlown(sectors, { byCode, routes }, scope) {
@@ -168,7 +148,8 @@ export default function RouteMapCard({ sectors, scope = 'all', onScopeChange }) 
   const { points, legs, skipped, allTime } = useFlown(sectors, air, scope);
   const [open, setOpen] = useState(false);
 
-  if (air.loaded && !points.length) return null;
+  // Nothing to draw once the airports are in and none of them placed.
+  if (air.byCode.size > 0 && !points.length) return null;
 
   return (
     <>

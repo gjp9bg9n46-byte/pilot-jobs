@@ -241,3 +241,8 @@
   .lb-map-head { flex-wrap: wrap; }
   .lb-map-card { left: 12px; right: 12px; bottom: 12px; }
 }
+
+/* Flight detail: the names under the codes, and the block time beside them. */
+.lb-names { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+.lb-blockv { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600; font-size: 26px; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.lb-blockk { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; color: var(--text-faint); margin-top: 4px; }

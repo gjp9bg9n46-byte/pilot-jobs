@@ -98,12 +98,17 @@ export function useAirportCoords() {
 export type MapScope = 'all' | 'view';
 
 export default function RouteMap({
-  sectors, height = 190, label, explorable = true, scope, onScopeChange,
+  sectors, height = 190, label, explorable = true, scope, onScopeChange, note, pinLabels = false,
 }: {
   sectors: Sector[]; height?: number; label?: string; explorable?: boolean;
   /** 'all' draws every route ever flown; 'view' follows the page on screen. */
   scope?: MapScope;
   onScopeChange?: (s: MapScope) => void;
+  /** Shown at the right of the card header, e.g. "755 nm great circle". */
+  note?: string;
+  /** Write each airport's code beside its dot. Worth it for ONE sector; on
+   *  a career's worth of airports the labels would cover the map. */
+  pinLabels?: boolean;
 }) {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -127,7 +132,11 @@ export default function RouteMap({
   // of routes with how often each was flown; "this view" is the sectors the
   // list is currently showing, which is all the card ever drew before.
   const loaded = !!air?.byCode;
-  const allTime = scope !== 'view' && !!air?.routes?.length;
+  // All-time only when a caller ASKS for it. It used to be the default for
+  // anything that did not say 'view', which quietly turned a single sector's
+  // map on the flight page into the whole career — 59 airports where two
+  // belonged.
+  const allTime = scope === 'all' && !!air?.routes?.length;
   const { points, legs, skipped } = useMemo(() => {
     // `select` above always hands over a Map. This guard is for the one case
     // it cannot cover: a build whose cache was written before that change.
@@ -189,6 +198,7 @@ export default function RouteMap({
   const head = (
     <View style={styles.head}>
       {label ? <Text style={styles.label}>{label}</Text> : <View />}
+      {note ? <Text style={styles.note}>{note}</Text> : null}
       {onScopeChange && air?.routes?.length ? (
         <View style={styles.scope}>
           {(['all', 'view'] as MapScope[]).map((sc) => {
@@ -226,11 +236,28 @@ export default function RouteMap({
               {/* Small filled dots. The hollow rings this used to draw grew
                   with the flight count and swallowed the map at a glance. */}
               {projected.pins.map((p) => (
-                <Circle key={p.a.code} cx={p.xy[0]} cy={p.xy[1]} r={2.6} fill="#003F88" />
+                <Circle key={p.a.code} cx={p.xy[0]} cy={p.xy[1]} r={pinLabels ? 4 : 2.6} fill="#003F88" />
               ))}
             </G>
           </Svg>
         ) : null}
+        {/* The codes, beside their dots. Positioned off the same projection
+            the SVG uses, and nudged so a label never sits under its own pin. */}
+        {pinLabels && projected ? projected.pins.map((p) => {
+          const right = p.xy[0] > width / 2;
+          return (
+            <View
+              key={`lab-${p.a.code}`}
+              style={[
+                styles.pinLabel,
+                { top: Math.max(2, Math.min(height - 22, p.xy[1] - 10)) },
+                right ? { right: Math.max(4, width - p.xy[0] + 8) } : { left: Math.max(4, p.xy[0] + 8) },
+              ]}
+            >
+              <Text style={styles.pinLabelText}>{p.a.code}</Text>
+            </View>
+          );
+        }) : null}
       </View>
 
       <View style={styles.foot}>
@@ -242,7 +269,9 @@ export default function RouteMap({
               // the pilot flew to two hundred unplaceable airports.
               ? 'Airports could not be loaded'
               : `${points.length} airport${points.length === 1 ? '' : 's'}`
-                + (allTime ? ' · all time' : ' · this view')
+                // Only where the scope can be CHOSEN. On a single sector's
+                // map "this view" answers a question nobody asked.
+                + (onScopeChange ? (allTime ? ' · all time' : ' · this view') : '')
                 + (skipped > 0 ? ` · ${skipped} without coordinates not shown` : '')}
         </Text>
         {explorable && points.length ? (
@@ -291,6 +320,12 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   scopeBtnOn: { backgroundColor: pilot.navy },
   scopeText: { fontSize: 11.5, fontFamily: fontFamilies.bodyMedium, color: pilot.muted },
   scopeTextOn: { color: '#fff', fontFamily: fontFamilies.bodySemiBold },
+  note: { fontSize: 11.5, color: pilot.faint, fontFamily: fontFamilies.mono },
+  pinLabel: {
+    position: 'absolute', backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line,
+    borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  pinLabelText: { fontFamily: fontFamilies.mono, fontSize: 11, color: pilot.ink },
   frame: { borderRadius: 10, overflow: 'hidden', backgroundColor: '#F4F7FB' },
   foot: { marginTop: layout.rowGap, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   hint: { flex: 1, fontSize: 12, color: pilot.faint, fontFamily: fontFamilies.body },

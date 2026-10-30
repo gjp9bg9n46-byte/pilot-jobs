@@ -8,8 +8,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import { getPendingFlight, setPendingFlight } from '../../../../src/lib/pendingFlight';
-import { landsNextDay, minutesToHHMM, spanMinutes } from '../../../../src/lib/logbookFormat';
-import RouteMap from '../../../../src/components/logbook/RouteMap';
+import {
+  duration, greatCircleNm, landsNextDay, minutesToHHMM, routeNames, spanMinutes,
+  type TimeFormat,
+} from '../../../../src/lib/logbookFormat';
+import RouteMap, { useAirportCoords } from '../../../../src/components/logbook/RouteMap';
+import { useLogbook } from '../../../../src/hooks/queries';
 import { fontFamilies, fontSizes, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 
@@ -31,6 +35,14 @@ export default function FlightDetail() {
       .then(({ data }) => setFlight((data.logs || []).find((l: Any) => l.id === id) || null))
       .catch(() => setFlight(null));
   }, [id, flight]);
+
+  // Both hooks run on EVERY render, before any early return: React counts
+  // hooks by call order, and a return above them makes the next render see a
+  // different number. That is React error #310, and preflight caught it.
+  // hh:mm or decimal — the pilot's own setting, the same one the list uses.
+  const { data: logbook } = useLogbook(1);
+  const timeFormat: TimeFormat = (logbook?.prefs?.timeFormat as TimeFormat) ?? 'hhmm';
+  const { data: air } = useAirportCoords();
 
   if (!flight) {
     return (
@@ -56,6 +68,19 @@ export default function FlightDetail() {
   // their hours that nothing in the row supports.
   const splitMissing = roleHours === 0 && (flight.totalTime || 0) > 0;
   const landings = (flight.landingsDay || 0) + (flight.landingsNight || 0);
+
+  // The two ends of this sector, named and placed where we can. Nothing is
+  // invented: an airport we cannot name contributes only its code, and a
+  // missing coordinate hides the distance rather than guessing one.
+  const at = (code?: string | null) =>
+    (code && air?.byCode instanceof Map ? air.byCode.get(String(code).toUpperCase()) : undefined);
+  const depAp = at(flight.departure);
+  const arrAp = at(flight.arrival);
+  const names = routeNames(
+    { airport: depAp, code: flight.departure },
+    { airport: arrAp, code: flight.arrival },
+  );
+  const distanceNm = greatCircleNm(depAp, arrAp);
   // 0 landings is an answer only when the source recorded landings at all.
   // On an import that had no landings column it is simply unknown.
   const landingsKnown = flight.landingsRecorded === true || landings > 0;
@@ -114,10 +139,23 @@ export default function FlightDetail() {
       </View>
 
       <ScrollView contentContainerStyle={styles.pad}>
-        <View style={styles.routeRow}>
-          <Text style={styles.route}>{flight.departure || '—'}</Text>
-          <Ionicons name="arrow-forward" size={20} color={pilot.faint} />
-          <Text style={styles.route}>{flight.arrival || '—'}</Text>
+        {/* Codes and the block time read together: the route on the left, the
+            number a pilot came for on the right. */}
+        <View style={styles.hero}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={styles.routeRow}>
+              <Text style={styles.route}>{flight.departure || '—'}</Text>
+              <Ionicons name="arrow-forward" size={20} color={pilot.faint} />
+              <Text style={styles.route}>{flight.arrival || '—'}</Text>
+            </View>
+            {names ? <Text style={styles.names}>{names}</Text> : null}
+          </View>
+          {block != null ? (
+            <View style={styles.blockBox}>
+              <Text style={styles.blockValue}>{duration(block / 60, timeFormat)}</Text>
+              <Text style={styles.blockLabel}>BLOCK</Text>
+            </View>
+          ) : null}
         </View>
         <Text style={styles.sub}>
           {[date, flight.flightNumber, flight.displayType || flight.aircraftType, flight.registration].filter(Boolean).join(' · ')}
@@ -125,7 +163,14 @@ export default function FlightDetail() {
 
         {/* This sector's own route. Drawn only when both ends can be placed. */}
         {flight.departure && flight.arrival ? (
-          <RouteMap sectors={[{ from: flight.departure, to: flight.arrival }]} height={150} />
+          <RouteMap
+            sectors={[{ from: flight.departure, to: flight.arrival }]}
+            height={150}
+            label="Route"
+            scope="view"
+            note={distanceNm != null ? `${distanceNm.toLocaleString()} nm great circle` : undefined}
+            pinLabels
+          />
         ) : null}
 
         <View style={styles.card}>
@@ -193,7 +238,12 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   edit: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: 15 },
   empty: { padding: spacing.xl, color: pilot.muted, fontFamily: fontFamilies.body },
 
+  hero: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   routeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  names: { fontSize: 13, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 6 },
+  blockBox: { alignItems: 'flex-end' },
+  blockValue: { fontFamily: fontFamilies.mono, fontSize: 26, color: pilot.navy },
+  blockLabel: { fontFamily: fontFamilies.bodyBold, fontSize: 11, letterSpacing: 0.8, color: pilot.faint, marginTop: 4 },
   route: { fontFamily: fontFamilies.display, fontSize: 28, color: pilot.ink },
   sub: { fontSize: 13, color: pilot.muted, fontFamily: fontFamilies.body, marginTop: 4 },
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import { ArrowRight, Repeat, X } from 'lucide-react';
 import Button from '../primitives/Button';
-import { landsNextDay, minutesToHHMM, overlapLabel, spanMinutes } from '../../lib/logbookFormat';
+import { duration, landsNextDay, minutesToHHMM, overlapLabel, routeNames, spanMinutes } from '../../lib/logbookFormat';
+import { useAirports } from '../../lib/useAirports';
 
 /**
  * One flight, as the mockup's detail screen: the four times across the top,
@@ -10,7 +11,9 @@ import { landsNextDay, minutesToHHMM, overlapLabel, spanMinutes } from '../../li
  * them into. The actions are the ones a line pilot actually needs next:
  * the return trip, the next leg, a duplicate, or delete.
  */
-export default function FlightDetail({ flight, overlap, onClose, onEdit, onReturnTrip, onNextLeg, onDuplicate, onDelete }) {
+export default function FlightDetail({ flight, overlap, timeFormat = 'hhmm', onClose, onEdit, onReturnTrip, onNextLeg, onDuplicate, onDelete }) {
+  // Hooks before the early return, or the order changes between renders.
+  const air = useAirports();
   if (!flight) return null;
   // A flight typed in as a block time alone has no OUT and no IN to span, so
   // the figure it was saved with is the block.
@@ -19,6 +22,13 @@ export default function FlightDetail({ flight, overlap, onClose, onEdit, onRetur
   const airborne = spanMinutes(flight.takeoffTime, flight.landingTime);
   const landings = (flight.landingsDay || 0) + (flight.landingsNight || 0);
   const role = (flight.picTime || 0) > 0 ? 'PIC' : 'SIC';
+  // The two ends, named where we can name them. An airport we cannot name
+  // contributes only its code — nothing here is invented.
+  const at = (code) => (code ? air.byCode.get(String(code).toUpperCase()) : undefined);
+  const names = routeNames(
+    { airport: at(flight.departure), code: flight.departure },
+    { airport: at(flight.arrival), code: flight.arrival },
+  );
   const date = new Date(`${String(flight.date).slice(0, 10)}T00:00:00Z`)
     .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -35,8 +45,21 @@ export default function FlightDetail({ flight, overlap, onClose, onEdit, onRetur
           <button type="button" onClick={onEdit} style={{ background: 'none', border: 0, color: 'var(--accent)', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Edit</button>
         </div>
 
-        <div style={{ marginTop: 10 }}>
-          <div className="route">{flight.departure || '—'} <ArrowRight size={18} style={{ color: 'var(--text-faint)' }} /> {flight.arrival || '—'}</div>
+        {/* Codes and the block time read together: the route on the left,
+            the number a pilot came for on the right. */}
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="route">{flight.departure || '—'} <ArrowRight size={18} style={{ color: 'var(--text-faint)' }} /> {flight.arrival || '—'}</div>
+            {names && <div className="lb-names">{names}</div>}
+          </div>
+          {block != null && (
+            <div style={{ textAlign: 'right', flex: 'none' }}>
+              <div className="lb-blockv mono">{duration(block / 60, timeFormat)}</div>
+              <div className="lb-blockk">BLOCK</div>
+            </div>
+          )}
+        </div>
+        <div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
             {date}{flight.flightNumber ? ` · ${flight.flightNumber}` : ''}{flight.displayType || flight.aircraftType ? ` · ${flight.displayType || flight.aircraftType}` : ''}{flight.registration ? ` · ${flight.registration}` : ''}
           </div>

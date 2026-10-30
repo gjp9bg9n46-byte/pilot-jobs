@@ -315,3 +315,46 @@ export function missingSentence(missing, legNumber) {
   if (!missing.length) return '';
   return `${legNumber ? `Leg ${legNumber}: a` : 'A'}dd ${missing[0]}`;
 }
+
+// ── Great-circle distance ───────────────────────────────────────────────────
+// The shortest path between two airports over the earth, in nautical miles —
+// the distance a pilot means. Haversine on a 6371 km sphere; a flight plan's
+// track distance is longer, so this is labelled "great circle" wherever it is
+// shown rather than passed off as the distance flown.
+
+/** Nautical miles between two {lat, lon}, or null if either is missing. */
+export function greatCircleNm(a, b) {
+  if (!a || !b) return null;
+  for (const p of [a, b]) {
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return null;
+  }
+  const R = 6371;                       // km
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2
+    + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  const km = 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  return Math.round(km / 1.852);
+}
+
+/**
+ * "Jeddah (OEJN) → Alexandria El Nouzha (HEAX)".
+ *
+ * An airport we cannot name, or one with no ICAO, contributes just its code.
+ * Nothing here is invented: a missing name stays missing.
+ */
+export function routeNames(from, to) {
+  const one = (ap, code) => {
+    const c = String(code || '').toUpperCase();
+    if (!ap) return c || null;
+    const name = ap.name || ap.city || null;
+    const icao = ap.icao && String(ap.icao).toUpperCase() !== c ? String(ap.icao).toUpperCase() : null;
+    if (!name) return c || null;
+    return icao ? `${name} (${icao})` : name;
+  };
+  const a = one(from.airport, from.code);
+  const b = one(to.airport, to.code);
+  if (!a && !b) return null;
+  return `${a || '—'} → ${b || '—'}`;
+}

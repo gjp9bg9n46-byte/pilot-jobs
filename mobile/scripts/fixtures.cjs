@@ -47,6 +47,12 @@ function call(handler, req) {
     where: { pilotId: pilot.id, source: 'IMPORTED' },
     orderBy: { date: 'desc' },
   });
+  // And a scanned one: it has all four times where the imported row has two,
+  // so the two together cover both shapes the detail screen must handle.
+  const scanned = await prisma.flightLog.findFirst({
+    where: { pilotId: pilot.id, source: 'SCAN' },
+    orderBy: { date: 'desc' },
+  });
 
   const write = (n, v) => {
     fs.writeFileSync(path.join(OUT, n), JSON.stringify(v, null, 1));
@@ -55,6 +61,8 @@ function call(handler, req) {
   write('bootstrap.json', bootstrap);
   write('airports.json', airports);
   write('flight.json', flight);
+  write('flight-scan.json', scanned || flight);
+  console.log(`  imported ${flight?.departure}->${flight?.arrival}, scanned ${scanned?.departure}->${scanned?.arrival}`);
   // The Jobs tab, the Airlines tab and one job's own page. The jobs list has
   // to include the standing campaign row — a match shape with no percentage,
   // which is what took the tab down.

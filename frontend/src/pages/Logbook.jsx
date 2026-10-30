@@ -1057,6 +1057,7 @@ export default function Logbook() {
       {openFlight && (
         <FlightDetail
           flight={openFlight}
+          timeFormat={timeFormat}
           overlap={findOverlaps(dataset).get(openFlight.id)}
           onClose={() => setOpenFlight(null)}
           onEdit={() => { setEditFlight(openFlight); setOpenFlight(null); }}

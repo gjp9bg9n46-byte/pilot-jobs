@@ -268,3 +268,50 @@ export function recencyLine(currency: any): any {
     info,
   };
 }
+
+type Pt = { lat?: number | null; lon?: number | null };
+type Ap = { name?: string | null; city?: string | null; icao?: string | null };
+type End = { airport?: Ap | null; code?: string | null };
+// ── Great-circle distance ───────────────────────────────────────────────────
+// The shortest path between two airports over the earth, in nautical miles —
+// the distance a pilot means. Haversine on a 6371 km sphere; a flight plan's
+// track distance is longer, so this is labelled "great circle" wherever it is
+// shown rather than passed off as the distance flown.
+
+/** Nautical miles between two {lat, lon}, or null if either is missing. */
+export function greatCircleNm(
+  a?: Pt | null, b?: Pt | null,
+): number | null {
+  if (!a || !b) return null;
+  const [aLat, aLon, bLat, bLon] = [a.lat, a.lon, b.lat, b.lon];
+  for (const v of [aLat, aLon, bLat, bLon]) if (!Number.isFinite(v)) return null;
+  const R = 6371;                       // km
+  const rad = Math.PI / 180;
+  const dLat = ((bLat as number) - (aLat as number)) * rad;
+  const dLon = ((bLon as number) - (aLon as number)) * rad;
+  const h = Math.sin(dLat / 2) ** 2
+    + Math.cos((aLat as number) * rad) * Math.cos((bLat as number) * rad) * Math.sin(dLon / 2) ** 2;
+  const km = 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  return Math.round(km / 1.852);
+}
+
+/**
+ * "Jeddah (OEJN) → Alexandria El Nouzha (HEAX)".
+ *
+ * An airport we cannot name, or one with no ICAO, contributes just its code.
+ * Nothing here is invented: a missing name stays missing.
+ */
+export function routeNames(from: End, to: End): string | null {
+  const one = (ap?: Ap | null, code?: string | null) => {
+    const c = String(code || '').toUpperCase();
+    if (!ap) return c || null;
+    const name = ap.name || ap.city || null;
+    const icao = ap.icao && String(ap.icao).toUpperCase() !== c ? String(ap.icao).toUpperCase() : null;
+    if (!name) return c || null;
+    return icao ? `${name} (${icao})` : name;
+  };
+  const a = one(from.airport, from.code);
+  const b = one(to.airport, to.code);
+  if (!a && !b) return null;
+  return `${a || '—'} → ${b || '—'}`;
+}

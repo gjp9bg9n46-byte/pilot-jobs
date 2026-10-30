@@ -40,6 +40,7 @@ function stubs() {
   const airports = read('airports.json');
   const rest = read('rest.json');
   const flight = read('flight.json');
+  const flightScan = read('flight-scan.json');
   const jobs = read('jobs.json');
   const airlines = read('airlines.json');
   const job = read('job.json');
@@ -66,6 +67,7 @@ function stubs() {
     '/api/airlines/logos': { items: [] },
     '/api/dashboard': { newJobs: 0 },
     __flight: flight,
+    __flightScan: flightScan,
     __job: job,
   };
 }
@@ -183,7 +185,9 @@ async function run() {
       if (!u.pathname.startsWith('/api/')) return req.continue();
       if (req.method() === 'OPTIONS') return req.respond({ status: 204, headers: CORS });
       if (/^\/api\/flight-logs\/[^/]+$/.test(u.pathname)) {
-        return req.respond({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(S.__flight) });
+        const id = u.pathname.split('/').pop();
+        const which = id === S.__flightScan.id ? S.__flightScan : S.__flight;
+        return req.respond({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(which) });
       }
       if (/^\/api\/jobs\/[0-9a-f-]{8,}$/.test(u.pathname)) {
         return req.respond({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(S.__job) });
@@ -209,7 +213,18 @@ async function run() {
       { name: 'Logbook', path: '/logbook', must: [/flights/i] },
       { name: 'map card', path: '/logbook', must: [/airports? · (all time|this view)/i], scroll: 600 },
       { name: 'full map', path: '/logbook/map', must: [/airports?/i] },
-      { name: 'flight detail', path: `/logbook/flight/${S.__flight.id}`, must: [/Block/i] },
+      // Both shapes: an imported row with two times, and a scanned one with
+      // four. Each must name its airports and give the great-circle distance.
+      {
+        name: 'flight detail · imported',
+        path: `/logbook/flight/${S.__flight.id}`,
+        must: [/BLOCK/, /\(\w{4}\) → /, /nm great circle/],
+      },
+      {
+        name: 'flight detail · scanned',
+        path: `/logbook/flight/${S.__flightScan.id}`,
+        must: [/BLOCK/, /\(\w{4}\) → /, /nm great circle/],
+      },
       { name: 'scan', path: '/logbook/scan', must: [] },
       // The three the campaign row took down. The list has to reach the
       // bottom, because that is where a campaign sorts.
@@ -252,6 +267,10 @@ async function run() {
       }
       const text = await page.evaluate(() => document.body.innerText).catch(() => '');
       const bad = FORBIDDEN.filter((f) => f.re.test(text));
+      // A single sector's map must show that sector, not the whole career.
+      if (/flight detail/.test(sc.name) && /· all time/.test(text)) {
+        bad.push({ re: /· all time/, why: "the flight's map is showing every airport, not this sector" });
+      }
       const missing = (sc.must || []).filter((re) => !re.test(text));
       for (const b of bad) failures.push(`[${pass}] ${sc.name}: ${b.why} — "${(text.match(b.re) || [''])[0]}"`);
       for (const m of missing) failures.push(`[${pass}] ${sc.name}: expected ${m} and did not find it`);

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flight Detail Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F5F7FA;--line:#E3E8EF;--soft:#EEF1F5;--ink:#0F1B2D;--sub:#4A5668;--faint:#8592A3;--navy:#003F88;--navy2:#1B3F7A;--tint:#F4F8FD;--chip:#DCE7F5;--green:#15803D;--greenbg:#ECF7EF;--red:#B42318}
+*{box-sizing:border-box}
+body{margin:0;background:#E9EDF2;font-family:Inter,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.top{max-width:1300px;margin:0 auto;padding:30px 24px 0}
+.top h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:27px;margin:0 0 6px}
+.top p{margin:0 0 6px;color:var(--sub);font-size:14.5px;max-width:95ch;line-height:1.55}
+.wrap{max-width:1300px;margin:0 auto;padding:18px 24px 30px;display:flex;flex-wrap:wrap;gap:28px}
+.col{width:390px}
+.step{font-size:13px;color:var(--sub);margin:0 0 10px;line-height:1.45;min-height:56px}
+.step b{color:var(--ink)}
+.phone{width:390px;height:1180px;border-radius:38px;border:10px solid var(--ink);overflow:hidden;background:var(--bg);position:relative}
+.sb{height:44px;background:var(--navy2);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:600}
+.app{background:var(--navy2);color:#fff;height:52px;display:flex;align-items:center;padding:0 16px;font-family:Fraunces,serif;font-size:20px;font-weight:600}
+.nav{background:#fff;border-bottom:1px solid var(--line);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:16px;font-weight:600}
+.nav .l{display:flex;align-items:center;gap:10px}
+.nav .e{color:var(--navy);font-weight:600;font-size:15px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.body{padding:16px}
+.hero{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.codes{font-family:Fraunces,serif;font-weight:600;font-size:34px;line-height:1;display:flex;align-items:center;gap:10px}
+.codes svg{width:20px;height:20px;color:var(--faint)}
+.names{font-size:13px;color:var(--sub);margin-top:6px}
+.blk{text-align:right}
+.blk .v{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:26px;color:var(--navy);line-height:1}
+.blk .k{font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--faint);margin-top:4px}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center;font-size:13px;color:var(--sub)}
+.tag{font-size:11.5px;font-weight:700;border-radius:6px;padding:3px 7px}
+.tag.n{background:var(--chip);color:var(--navy)}
+.tag.g{background:var(--soft);color:var(--sub)}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:12px;overflow:hidden}
+.ch{display:flex;justify-content:space-between;align-items:center;padding:12px 14px 0;font-size:11.5px;font-weight:700;letter-spacing:.07em;color:#6B778A}
+.ch em{font-style:normal;font-weight:500;letter-spacing:0;color:var(--faint)}
+/* map */
+.map{position:relative;height:170px;margin:10px 14px 0;border-radius:10px;background:linear-gradient(180deg,#F1F5FA,#E8EEF6);overflow:hidden}
+.map .lbl{position:absolute;font-size:11px;font-weight:700;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 7px}
+.mapf{display:flex;justify-content:space-between;padding:10px 14px 12px;font-size:12.5px;color:var(--sub)}
+.mapf b{color:var(--ink);font-weight:600}
+/* times */
+.t4{display:grid;grid-template-columns:repeat(4,1fr);margin-top:10px;border-top:1px solid var(--soft)}
+.t4 div{padding:10px 8px 12px;border-right:1px solid var(--soft);text-align:center}
+.t4 div:last-child{border-right:0}
+.t4 .k{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--faint)}
+.t4 .v{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:18px;margin:3px 0 2px}
+.t4 .w{font-size:11px;color:var(--sub)}
+.t4 .none .v{color:#B7C1CE}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px 14px}
+.tile{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tile .k{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--faint)}
+.tile .v{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:17px;margin-top:3px}
+.tile .s{font-size:11.5px;color:var(--faint);margin-top:2px}
+.tile.cr{background:var(--tint);border-color:#D5E1F1}
+.tile.cr .v{color:var(--navy)}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-top:1px solid var(--soft);font-size:14px}
+.kv:first-of-type{border-top:0}
+.kv .k{color:var(--sub)}
+.kv .v{font-weight:600;text-align:right}
+.kv .v small{display:block;font-weight:400;font-size:11.5px;color:var(--faint)}
+.chips{display:flex;gap:6px}
+.chip{font-family:"JetBrains Mono",monospace;font-size:12.5px;font-weight:600;border:1px solid var(--line);border-radius:7px;padding:3px 8px;background:#fff}
+.chip.off{color:#B7C1CE}
+.dash{color:#B7C1CE;font-weight:500}
+.src{display:flex;gap:8px;align-items:center;padding:10px 14px;font-size:12.5px;color:var(--sub);background:var(--bg);border-top:1px solid var(--soft)}
+.q{margin:12px 0 0;border:1px solid #D5E1F1;border-left:3px solid var(--navy);background:var(--tint);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--sub);line-height:1.45}
+.q b{color:var(--navy);display:flex;gap:6px;align-items:center;margin-bottom:2px}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.btn{height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14.5px;border:1px solid var(--line);background:#fff;color:var(--navy)}
+.btn.p{background:var(--navy);border-color:var(--navy);color:#fff}
+.del{text-align:center;color:var(--red);font-weight:600;font-size:14px;margin-top:14px}
+.notes{max-width:1300px;margin:0 auto;padding:0 24px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.notes div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13.5px;color:var(--sub);line-height:1.55}
+.notes h4{margin:0 0 6px;font-size:14px;color:var(--ink)}
+.sample{display:inline-block;font-size:11px;font-weight:700;color:var(--navy);background:var(--chip);border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:4px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+ <symbol id="back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+ <symbol id="arr" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+ <symbol id="ret" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></symbol>
+ <symbol id="copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+ <symbol id="pdf" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3 3 3-3"/></symbol>
+ <symbol id="scan" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></symbol>
+ <symbol id="up" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+ <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+ <symbol id="moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+</svg>
+
+<div class="top">
+ <h1>Flight detail <span class="sample">YOUR SECTORS</span></h1>
+ <p>Two of your real sectors in our light theme and navy. Left: a scanned sector with every time on the form. Right: an imported sector where the file only had OUT and IN, so the page shows exactly what is known and nothing else. Everything on screen comes from data we hold or can calculate: no weather, flight levels, fuel or approach details we never recorded. The commander's name is shortened here.</p>
+</div>
+
+<div class="wrap">
+ <!-- 1 SCANNED -->
+ <div class="col">
+  <p class="step"><b>1 · Scanned sector.</b> JED → ALY, MSC 960, you as pilot flying. Block time leads, the four times say what each moment is, and the source is shown at the bottom.</p>
+  <div class="phone">
+   <div class="sb"><span>17:29</span><span>●●● ▮</span></div>
+   <div class="app">CockpitHire</div>
+   <div class="nav"><span class="l"><svg class="i" style="width:20px;height:20px"><use href="#back"/></svg>Flight</span><span class="e">Edit</span></div>
+   <div class="body">
+    <div class="hero">
+     <div>
+      <div class="codes">JED <svg class="i"><use href="#arr"/></svg> ALY</div>
+      <div class="names">Jeddah (OEJN) → Alexandria El Nouzha (HEAX)</div>
+     </div>
+     <div class="blk"><div class="v">2:25</div><div class="k">BLOCK</div></div>
+    </div>
+    <div class="meta"><span>Tue, 20 Oct 2026</span><span>·</span><span class="mono">MSC 960</span><span class="tag n">A320</span><span class="mono">SU-BWF</span><span class="tag n">PF</span></div>
+
+    <div class="card">
+     <div class="ch"><span>ROUTE</span><em class="mono">755 nm great circle</em></div>
+     <div class="map">
+      <svg viewBox="0 0 330 170" width="100%" height="100%">
+       <path d="M0 40 C60 30 90 60 140 52 S230 30 330 46 L330 0 L0 0Z" fill="#DCE5F0"/>
+       <path d="M150 170 C170 120 200 100 230 80 S300 70 330 90 L330 170Z" fill="#DCE5F0"/>
+       <path d="M0 170 L0 120 C40 110 80 125 120 118 L140 170Z" fill="#DCE5F0"/>
+       <path d="M262 138 Q 190 70 92 52" stroke="#003F88" stroke-width="2" fill="none" stroke-linecap="round"/>
+       <circle cx="262" cy="138" r="5" fill="#fff" stroke="#003F88" stroke-width="2.5"/>
+       <circle cx="92" cy="52" r="5" fill="#003F88"/>
+      </svg>
+      <span class="lbl mono" style="right:12px;bottom:10px">JED</span>
+      <span class="lbl mono" style="left:58px;top:20px">ALY</span>
+     </div>
+     <div class="mapf"><span>Tap to open the map</span><span><b class="mono">2:05</b> airborne</span></div>
+    </div>
+
+    <div class="card">
+     <div class="ch"><span>TIMES</span><em>UTC, as on the report</em></div>
+     <div class="t4">
+      <div><div class="k">OUT</div><div class="v">05:35</div><div class="w">Chocks off</div></div>
+      <div><div class="k">OFF</div><div class="v">05:47</div><div class="w">Airborne</div></div>
+      <div><div class="k">ON</div><div class="v">07:52</div><div class="w">Touchdown</div></div>
+      <div><div class="k">IN</div><div class="v">08:00</div><div class="w">Chocks on</div></div>
+     </div>
+     <div class="tiles">
+      <div class="tile"><div class="k">TAXI</div><div class="v">0:12 · 0:08</div><div class="s">out · in</div></div>
+      <div class="tile"><div class="k">NIGHT</div><div class="v">0:00</div><div class="s">from the report</div></div>
+      <div class="tile cr"><div class="k">SIC CREDIT</div><div class="v">2:25</div><div class="s">First Officer</div></div>
+      <div class="tile"><div class="k">AIRBORNE</div><div class="v">2:05</div><div class="s">OFF to ON</div></div>
+     </div>
+    </div>
+
+    <div class="card">
+     <div class="kv"><span class="k">Role</span><span class="v">First Officer · pilot flying</span></div>
+     <div class="kv"><span class="k">Commander</span><span class="v">Capt. M. F.</span></div>
+     <div class="kv"><span class="k">Landings</span><span class="chips"><span class="chip">1 day</span><span class="chip off">0 night</span></span></div>
+     <div class="kv"><span class="k">Remarks</span><span class="v dash">—</span></div>
+     <div class="src"><svg class="i"><use href="#scan"/></svg>From your scanned voyage report · 20 Oct</div>
+    </div>
+
+    <div class="acts">
+     <span class="btn p"><svg class="i"><use href="#ret"/></svg>Return trip</span>
+     <span class="btn"><svg class="i"><use href="#arr"/></svg>Next leg</span>
+     <span class="btn"><svg class="i"><use href="#copy"/></svg>Duplicate</span>
+     <span class="btn"><svg class="i"><use href="#pdf"/></svg>Export PDF</span>
+    </div>
+    <div class="del">Delete flight</div>
+   </div>
+  </div>
+ </div>
+
+ <!-- 2 IMPORTED -->
+ <div class="col">
+  <p class="step"><b>2 · Imported sector.</b> MED → HBE, SM 0486, from the file you imported. OFF and ON were never recorded, so they're greyed out, with one calm line explaining it and a way to add them.</p>
+  <div class="phone">
+   <div class="sb"><span>17:29</span><span>●●● ▮</span></div>
+   <div class="app">CockpitHire</div>
+   <div class="nav"><span class="l"><svg class="i" style="width:20px;height:20px"><use href="#back"/></svg>Flight</span><span class="e">Edit</span></div>
+   <div class="body">
+    <div class="hero">
+     <div>
+      <div class="codes">MED <svg class="i"><use href="#arr"/></svg> HBE</div>
+      <div class="names">Madinah (OEMA) → Alexandria Borg El Arab (HEBA)</div>
+     </div>
+     <div class="blk"><div class="v">2:11</div><div class="k">BLOCK</div></div>
+    </div>
+    <div class="meta"><span>Thu, 14 May 2026</span><span>·</span><span class="mono">SM 0486</span><span class="tag n">A320</span><span class="mono">SU-BUU</span><span class="tag g">Role: FO</span></div>
+
+    <div class="card">
+     <div class="ch"><span>ROUTE</span><em class="mono">654 nm great circle</em></div>
+     <div class="map">
+      <svg viewBox="0 0 330 170" width="100%" height="100%">
+       <path d="M0 40 C60 30 90 60 140 52 S230 30 330 46 L330 0 L0 0Z" fill="#DCE5F0"/>
+       <path d="M150 170 C170 120 200 100 230 80 S300 70 330 90 L330 170Z" fill="#DCE5F0"/>
+       <path d="M0 170 L0 120 C40 110 80 125 120 118 L140 170Z" fill="#DCE5F0"/>
+       <path d="M276 120 Q 190 66 86 56" stroke="#003F88" stroke-width="2" fill="none" stroke-linecap="round"/>
+       <circle cx="276" cy="120" r="5" fill="#fff" stroke="#003F88" stroke-width="2.5"/>
+       <circle cx="86" cy="56" r="5" fill="#003F88"/>
+      </svg>
+      <span class="lbl mono" style="right:12px;bottom:24px">MED</span>
+      <span class="lbl mono" style="left:52px;top:22px">HBE</span>
+     </div>
+     <div class="mapf"><span>Tap to open the map</span><span class="dash">airborne not recorded</span></div>
+    </div>
+
+    <div class="card">
+     <div class="ch"><span>TIMES</span><em>UTC, as imported</em></div>
+     <div class="t4">
+      <div><div class="k">OUT</div><div class="v">10:40</div><div class="w">Chocks off</div></div>
+      <div class="none"><div class="k">OFF</div><div class="v">--:--</div><div class="w">not recorded</div></div>
+      <div class="none"><div class="k">ON</div><div class="v">--:--</div><div class="w">not recorded</div></div>
+      <div><div class="k">IN</div><div class="v">12:51</div><div class="w">Chocks on</div></div>
+     </div>
+     <div class="tiles">
+      <div class="tile"><div class="k">NIGHT</div><div class="v">0:00</div><div class="s">worked out from the sun</div></div>
+      <div class="tile cr"><div class="k">SIC CREDIT</div><div class="v">2:11</div><div class="s">First Officer</div></div>
+     </div>
+    </div>
+
+    <div class="q"><b><svg class="i"><use href="#info"/></svg>Imported without OFF, ON or landings</b>Your file only had block times. Add them with Edit if you have them; your totals are already right.</div>
+
+    <div class="card">
+     <div class="kv"><span class="k">Role</span><span class="v">First Officer</span></div>
+     <div class="kv"><span class="k">Commander</span><span class="v dash">—</span></div>
+     <div class="kv"><span class="k">Landings</span><span class="v dash">not recorded</span></div>
+     <div class="kv"><span class="k">Remarks</span><span class="v dash">—</span></div>
+     <div class="src"><svg class="i"><use href="#up"/></svg>Imported from your logbook file · June 2026</div>
+    </div>
+
+    <div class="acts">
+     <span class="btn p"><svg class="i"><use href="#ret"/></svg>Return trip</span>
+     <span class="btn"><svg class="i"><use href="#arr"/></svg>Next leg</span>
+     <span class="btn"><svg class="i"><use href="#copy"/></svg>Duplicate</span>
+     <span class="btn"><svg class="i"><use href="#pdf"/></svg>Export PDF</span>
+    </div>
+    <div class="del">Delete flight</div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<div class="notes">
+ <div><h4>Taken from the Stitch design</h4>Block time large at the top, airport names under the codes, a word under each of OUT, OFF, ON and IN, labelled departure and arrival on the map, great-circle distance, day and night landing chips, a highlighted SIC tile, and an export button.</div>
+ <div><h4>Left out on purpose</h4>ADS-B, waypoints, flight level, Mach, wind, fuel burn, approach and runway, weather reports, the captain's licence number and any "verified" badge. We don't record any of it, and showing it would be invented.</div>
+ <div><h4>Calculated, not stored</h4>Distance from the airport coordinates, taxi out and in from OUT/OFF and ON/IN, airborne from OFF to ON. Each one is hidden when the times it needs are missing, never shown as zero.</div>
+</div>
+</body>
+</html>
