@@ -264,6 +264,11 @@ async function fetchWhatJobs() {
   const userIp = await resolveUserIp();
 
   paceMs = CALL_DELAY_MS;      // a fresh sweep starts optimistic
+  // Clear the previous sweep's report before doing anything. The runner uses it
+  // to decide which countries to PROTECT from expiry, and a report left over
+  // from an earlier sweep would answer that question about the wrong run — so
+  // a sweep that dies part-way must leave no report rather than a stale one.
+  _lastSweep = { at: null, countries: [] };
   const seen = new Set();
   const results = [];
   const report = [];

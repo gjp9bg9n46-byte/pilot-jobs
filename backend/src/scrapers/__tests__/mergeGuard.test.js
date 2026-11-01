@@ -199,12 +199,25 @@ test('every scheduled / boot-time job in app.js is wrapped in withCronRun', () =
   const src = fs.readFileSync(require('path').join(__dirname, '../../app.js'), 'utf8');
   // Each entry point gets 200 characters of grace to reach withCronRun; that is
   // far enough for the callback's opening brace and the call itself.
+  //
+  // One hop of indirection is allowed, because a guarded entry point is a real
+  // pattern: the scrape checks whether a sweep is already in flight before it
+  // starts one, so the schedule calls startScrape() and startScrape calls
+  // withCronRun. The hop is FOLLOWED rather than excused — the named function
+  // must itself reach withCronRun, or it still counts as untraced.
   const untraced = [];
-  for (const m of src.matchAll(/(cron\.schedule\(|setImmediate\()/g)) {
+  for (const m of src.matchAll(/(cron\.schedule\(|setImmediate\(|setTimeout\()/g)) {
     const window = src.slice(m.index, m.index + 220);
-    if (!window.includes('withCronRun')) {
-      untraced.push(src.slice(m.index, src.indexOf('\n', m.index)).trim().slice(0, 70));
+    if (window.includes('withCronRun')) continue;
+    // => someFn(...) / => someFn.foo(...) — the single call the callback makes.
+    const hop = window.match(/=>\s*([A-Za-z_$][\w$]*)\s*\(/);
+    if (hop) {
+      const fn = hop[1];
+      const decl = new RegExp(`(?:async\\s+)?function\\s+${fn}\\s*\\(`);
+      const at = src.search(decl);
+      if (at >= 0 && src.slice(at, at + 1200).includes('withCronRun')) continue;
     }
+    untraced.push(src.slice(m.index, src.indexOf('\n', m.index)).trim().slice(0, 70));
   }
   assert.deepStrictEqual(untraced, [], 'these boot/cron entry points write without a CronRun trace');
 });

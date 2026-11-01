@@ -465,6 +465,8 @@ async function processEmployer(empConfig, { dryRun = false } = {}) {
       // jobs in that market are gone".
       let protectCountries = [];
       if (empConfig.source === 'WHATJOBS') {
+        // No report (a sweep that never finished) means no claim about any
+        // country's health, so nothing is protected and nothing is special-cased.
         const sweep = lastSweepReport();
         protectCountries = (sweep.countries || []).filter((c) => !c.healthy).map((c) => c.country);
         stats.sweep = {

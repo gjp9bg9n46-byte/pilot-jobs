@@ -11,7 +11,7 @@ const errorHandler = require('./middleware/errorHandler');
 const { runIngestion } = require('./scrapers/index');
 const { runFullMatch } = require('./services/matchingService');
 const { recomputeJobDerivedStats, refreshWikiFleet } = require('./services/airlineEnrichmentService');
-const { withCronRun } = require('./services/cronRun');
+const { withCronRun, reapOrphanedRuns, isJobInFlight, lastRun, recentAttempt, shouldCatchUp, installShutdownHandlers } = require('./services/cronRun');
 const { recomputeJobIdentity } = require('./services/jobIdentityStore');
 
 const app = express();
@@ -293,9 +293,22 @@ if (RUN_SCHEDULERS) {
 // trace (name, host/commit, start, end, counts, error) and absorbs any throw so a
 // failure logs but never crashes the process. Each fn returns a counts object.
 
+// A deploy replaces the container, so SIGTERM is the normal way a task here
+// dies. Close out whatever this process owns before going, and on the way in
+// close out whatever the last process left behind when it was killed too
+// abruptly to say so. Both before any scheduler starts, so that from here on
+// a CronRun row reading RUNNING really is running and the in-flight guards
+// below can be believed.
+installShutdownHandlers();
+setImmediate(() => withCronRun('orphan-reap', async () => {
+  const r = await reapOrphanedRuns();
+  return r && typeof r === 'object' ? r : undefined;
+}));
+
 // Scheduled scraping every N hours
 const intervalHours = parseInt(process.env.SCRAPE_INTERVAL_HOURS || '6', 10);
-cron.schedule(`0 */${intervalHours} * * *`, () => withCronRun('scrape', async () => {
+
+async function runScrapeCycle() {
   const counts = {};
   try {
     const r = await runIngestion();
@@ -320,13 +333,29 @@ cron.schedule(`0 */${intervalHours} * * *`, () => withCronRun('scrape', async ()
   // ever returned, so llmExtracted was permanently undefined — which is how an
   // expired API key stopped extraction for six days without a single cron
   // record showing it. A health number nobody can read is not a health number.
+  //
+  // The limit was 25, which is 100 a day across four cycles — and it came back
+  // 25/25 on every single run once extraction resumed (100 extracted on 10-31,
+  // 99 on 11-01). A limiter that saturates every run cannot be shown to be
+  // enough, and it wasn't: ~87 newly-eligible rows arrive a day, so the backlog
+  // was draining at ~13/day while the aggregator feed was still growing. 50
+  // gives the backlog real headroom and absorbs the growth. Env-tunable so the
+  // next adjustment is a variable, not a deploy.
+  const llmLimit = Math.max(1, parseInt(process.env.REQ_LLM_LIMIT_PER_RUN || '50', 10));
   try {
     const { extractRequirementsLLM } = require('../scripts/extract-requirements-llm');
-    const r = await extractRequirementsLLM({ limit: 25 });
+    const r = await extractRequirementsLLM({ limit: llmLimit });
     if (r && typeof r === 'object') {
       counts.llmConsidered = r.considered;
       counts.llmExtracted = r.extracted;
       counts.llmFailed = r.failed;
+      counts.llmLimit = llmLimit;
+      // Saturation is the signal that the limit, not the supply, is the
+      // constraint — the thing that was invisible for the whole of last week.
+      if (r.considered >= llmLimit) {
+        logger.warn({ msg: 'REQ-LLM hit its per-run limit — backlog is capped by the limit, not by supply',
+          limit: llmLimit, extracted: r.extracted });
+      }
       // Considered rows but extracted none → the key, the model or the quota.
       // Loud, because the symptom downstream (requirement coverage drifting
       // below the launch gate) takes days to notice and days more to trace.
@@ -353,7 +382,61 @@ cron.schedule(`0 */${intervalHours} * * *`, () => withCronRun('scrape', async ()
     logger.error(`Job-identity recompute failed: ${err.message}`);
   }
   return counts;
-}));
+}
+
+// A scrape takes ~25 minutes, and a rolling deploy briefly runs two containers
+// on the same schedule. Starting a second sweep on top of a live one would
+// double our partner-API calls for no new rows, so the cycle checks first.
+async function startScrape(trigger) {
+  const busy = await isJobInFlight('scrape');
+  if (busy) {
+    logger.warn({ msg: 'scrape skipped — one is already in flight', trigger,
+      since: new Date(busy.startedAt).toISOString(), host: busy.host });
+    return null;
+  }
+  logger.info({ msg: 'scrape cycle starting', trigger });
+  return withCronRun('scrape', runScrapeCycle);
+}
+
+cron.schedule(`0 */${intervalHours} * * *`, () => startScrape('cron'));
+
+// ── Recovering a cycle a deploy killed ──────────────────────────────────────
+// Deploys land during working hours, and the 12:00 UTC cycle is the only one
+// inside that window: of the last 120 cycles, the four that never completed
+// were 12:00 ×3 and 00:00 ×1, each with a new-commit container replacing the
+// old one 0-4 minutes after the sweep began. 00:00, 06:00 and 18:00 UTC have
+// never been lost. Nothing is left stale or locked by the kill — the cost is
+// simply the missed cycle — so the fix is to notice and run it.
+//
+// Three conditions, so a run of rapid deploys cannot turn into a stampede of
+// 25-minute sweeps: a cycle must actually be overdue, nothing may be in
+// flight, and no sweep may have been attempted very recently (an attempt that
+// was itself killed still counts, which is what caps the storm).
+const CATCHUP_DELAY_MIN = Math.max(1, parseInt(process.env.SCRAPE_CATCHUP_DELAY_MIN || '5', 10));
+const CATCHUP_COOLDOWN_MIN = Math.max(5, parseInt(process.env.SCRAPE_CATCHUP_COOLDOWN_MIN || '30', 10));
+
+setTimeout(() => withCronRun('scrape-catchup', async () => {
+  const ok = await lastRun('scrape', 'OK');
+  const hoursSince = ok ? (Date.now() - new Date(ok.startedAt).getTime()) / 36e5 : Infinity;
+  const overdue = hoursSince > intervalHours;
+  const busy = await isJobInFlight('scrape');
+  const recent = await recentAttempt('scrape', CATCHUP_COOLDOWN_MIN);
+  const state = {
+    hoursSinceLastSuccess: ok ? Math.round(hoursSince * 10) / 10 : null,
+    intervalHours, inFlight: !!busy, attemptedWithinCooldown: !!recent,
+  };
+  const { catchUp, reason } = shouldCatchUp(state);
+  const decision = { ...state, overdue, reason };
+  if (!catchUp) {
+    logger.info({ msg: 'no scrape catch-up needed', ...decision });
+    return { ...decision, ranCatchUp: false };
+  }
+  logger.warn({ msg: 'a scrape cycle was missed — running a catch-up now', ...decision });
+  // Deliberately not awaited inside this trace: the catch-up writes its own
+  // 'scrape' CronRun row, and this one records only the decision.
+  startScrape('catch-up').catch((err) => logger.error({ err: err.message, msg: 'catch-up scrape failed' }));
+  return { ...decision, ranCatchUp: true };
+}), CATCHUP_DELAY_MIN * 60000);
 
 // Nightly re-screen of EXISTING live jobs (03:30 UTC) — intake only screens new
 // rows, so this catches jobs that became non-aviation under tightened rules and
