@@ -19,7 +19,7 @@ import { getPendingFlight, clearPendingFlight } from '../../lib/pendingFlight';
 import { minutesToHHMM, spanMinutes } from '../../lib/logbookFormat';
 import { missingForSave, missingSentence, parseBlockHours } from '../../lib/logbook';
 import { fontFamilies, fontSizes, spacing, layout } from '../../theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../theme/ThemeContext';
+import { ThemePalette, useThemeColors, useThemedStyles, lightInputProps } from '../../theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -96,7 +96,7 @@ export default function QuickFlightForm({ title = 'Log a flight' }: { title?: st
   const field = (k: string, label: string, opts: { hint?: string; mono?: boolean; placeholder?: string; flex?: number } = {}) => (
     <View style={[styles.f, { flex: opts.flex ?? 1 }]} key={k}>
       <Text style={styles.label}>{label}{opts.hint ? <Text style={styles.hint}> · {opts.hint}</Text> : null}</Text>
-      <TextInput
+      <TextInput {...lightInputProps}
         value={String(form[k] ?? '')}
         onChangeText={set(k)}
         style={[styles.input, opts.mono && styles.mono]}

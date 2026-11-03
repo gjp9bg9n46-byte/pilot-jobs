@@ -20,7 +20,7 @@ import { notifySuccess } from '../../../src/lib/haptics';
 import { reportClientError } from '../../../src/components/ErrorBoundary';
 import { minutesToHHMM, spanMinutes } from '../../../src/lib/logbookFormat';
 import { fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import { ThemePalette, useThemeColors, useThemedStyles, lightInputProps } from '../../../src/theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -271,7 +271,7 @@ export default function ScanVoyageReport() {
             <View style={{ flex: 1 }}>
               <Text style={styles.warnText}>{scan.header.flags.date.message}</Text>
               <View style={styles.dateRow}>
-                <TextInput
+                <TextInput {...lightInputProps}
                   value={scan.header.date || ''}
                   onChangeText={(v) => setScan((x: Any) => ({ ...x, header: { ...x.header, date: v } }))}
                   style={styles.dateInput}
@@ -302,7 +302,7 @@ export default function ScanVoyageReport() {
             <View style={[styles.cell, flags[k] && styles.cellQ]} key={k}>
               <Text style={styles.cellLabel}>{label}</Text>
               {open ? (
-                <TextInput
+                <TextInput {...lightInputProps}
                   value={s[k] || ''}
                   onChangeText={(v) => setSector(i, { [k]: v })}
                   style={[styles.cellInput, flags[k] && styles.cellInputQ]}

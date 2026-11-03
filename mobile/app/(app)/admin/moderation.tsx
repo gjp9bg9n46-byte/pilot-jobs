@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import api from '../../../src/lib/api';
 import { admin, fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
+import { lightInputProps } from '../../../src/theme/ThemeContext';
 
 const FIELD_LABELS: Record<string, string> = {
   headquarters: 'Headquarters', description: 'Description', bases: 'Bases', fleet: 'Fleet',
@@ -132,7 +133,7 @@ function ContributionCard({ item, onApprove, onReject }: { item: any; onApprove:
 
           {rejecting ? (
             <View style={{ gap: 8 }}>
-              <TextInput style={styles.rejectInput} multiline placeholder="Rejection reason (required, max 500 chars)…" placeholderTextColor={admin.dim} maxLength={500} value={rejectNote} onChangeText={setRejectNote} />
+              <TextInput {...lightInputProps} style={styles.rejectInput} multiline placeholder="Rejection reason (required, max 500 chars)…" placeholderTextColor={admin.dim} maxLength={500} value={rejectNote} onChangeText={setRejectNote} />
               <View style={styles.actionRow}>
                 <Btn label="Cancel" bg={admin.surfaceAlt} fg={admin.muted} disabled={busy} onPress={() => { setRejecting(false); setRejectNote(''); setError(null); }} />
                 <Btn label={busy ? 'Rejecting…' : 'Confirm reject'} bg={admin.reject} fg="#fff" disabled={busy} onPress={handleReject} accessibilityLabel="Confirm reject" />

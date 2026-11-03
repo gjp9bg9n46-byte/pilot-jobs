@@ -21,7 +21,7 @@ import api from '../../../../src/lib/api';
 import { PrimaryButton } from '../../../../src/components/ui';
 import { getPushPermissionStatus, registerForPush, type PushStatus } from '../../../../src/lib/push';
 import { fontFamilies, fontSizes, pilot, semantic, spacing, layout } from '../../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { ThemePalette, useThemeColors, useThemedStyles, lightPickerProps } from '../../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
 const NOTIF_ROWS: [string, string, string?][] = [
@@ -48,7 +48,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
         <Ionicons name="time-outline" size={16} color={pilot.muted} />
       </Pressable>
       {open ? (
-        <DateTimePicker
+        <DateTimePicker {...lightPickerProps}
           value={timeToDate(value)}
           mode="time"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}

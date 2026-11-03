@@ -12,7 +12,7 @@ import { impliedCategory, isClassRating, surfaceOf, withSurface } from '../lib/r
 import { DateField, FieldLabel, SelectField, TextField, Checkbox } from './ui';
 import AircraftCombobox from './AircraftCombobox';
 import { fontFamilies, fontSizes, spacing, layout } from '../theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
+import { ThemePalette, useThemeColors, useThemedStyles, lightInputProps } from '../theme/ThemeContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -66,7 +66,7 @@ function CountryField({ label, value, error, onChange }: { label: string; value:
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.pickBackdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.pickSheet} onPress={(e) => e.stopPropagation()}>
-            <TextInput autoFocus placeholder="Search countries…" placeholderTextColor="#9AA0A6" value={q} onChangeText={setQ} style={[styles.input, { marginBottom: 10 }]} />
+            <TextInput {...lightInputProps} autoFocus placeholder="Search countries…" placeholderTextColor="#9AA0A6" value={q} onChangeText={setQ} style={[styles.input, { marginBottom: 10 }]} />
             <ScrollView keyboardShouldPersistTaps="handled">
               {matches.map((c) => (
                 <Pressable key={c} onPress={() => { onChange(c); setOpen(false); }} style={styles.pickRow}>
@@ -113,7 +113,7 @@ function MultiCountryField({ label, values, hint, onChange }: { label: string; v
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.pickBackdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.pickSheet} onPress={(e) => e.stopPropagation()}>
-            <TextInput autoFocus placeholder="Search countries…" placeholderTextColor="#9AA0A6" value={q} onChangeText={setQ} style={[styles.input, { marginBottom: 10 }]} />
+            <TextInput {...lightInputProps} autoFocus placeholder="Search countries…" placeholderTextColor="#9AA0A6" value={q} onChangeText={setQ} style={[styles.input, { marginBottom: 10 }]} />
             <ScrollView keyboardShouldPersistTaps="handled">
               {matches.map((c) => (
                 <Pressable key={c} onPress={() => add(c)} style={styles.pickRow}><Text style={styles.pickRowText}>{c}</Text></Pressable>

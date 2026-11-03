@@ -20,7 +20,7 @@ import { cvSheetHtml } from '../../../src/cv/sheetHtml';
 import SheetView from '../../../src/cv/SheetView';
 import { useTabBarClearance } from '../../../src/theme/tabBar';
 import { fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import { ThemePalette, useThemeColors, useThemedStyles, lightInputProps } from '../../../src/theme/ThemeContext';
 import { useCvDocument } from '../../../src/hooks/queries';
 import { CvSkeleton } from '../../../src/components/Skeleton';
 import Segmented from '../../../src/components/Segmented';
@@ -212,7 +212,7 @@ function CvBuilderScreen() {
           {checkPanel}
 
           <Text style={styles.secTitle}>Summary</Text>
-          <TextInput style={styles.textarea} multiline value={summary} onChangeText={onSummary}
+          <TextInput {...lightInputProps} style={styles.textarea} multiline value={summary} onChangeText={onSummary}
             placeholder="A short paragraph for recruiters. The only text not taken from your profile."
             placeholderTextColor={pilot.faint} />
           {actionErr ? <Text style={styles.errLine}>{actionErr}</Text> : null}

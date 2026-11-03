@@ -22,7 +22,7 @@ import api from '../../../src/lib/api';
 import { ErrorBanner, PrimaryButton, SelectField, TextField } from '../../../src/components/ui';
 import { formatDate } from '../../../src/lib/profileLabels';
 import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../src/theme/ThemeContext';
+import { ThemePalette, useThemeColors, useThemedStyles, lightPickerProps } from '../../../src/theme/ThemeContext';
 
 const EDUCATION_OPTIONS: [string, string][] = [
   ['', 'Not specified'], ['high_school', 'High School / GED'], ['technical', 'Technical / Vocational'],
@@ -158,7 +158,7 @@ export default function ProfileEdit() {
             <Pressable onPress={() => setValue('passportExpiry', '', { shouldDirty: true })}><Text style={styles.clearDate}>Clear date</Text></Pressable>
           ) : null}
           {showDate ? (
-            <DateTimePicker
+            <DateTimePicker {...lightPickerProps}
               value={passportExpiry ? new Date(passportExpiry) : new Date()}
               mode="date"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}

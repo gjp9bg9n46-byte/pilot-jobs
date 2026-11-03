@@ -12,7 +12,7 @@ import { HiringPill, LogoTile } from '../../../../src/components/airlines/Airlin
 import { shortFleet } from '../../../../src/lib/airlineFacts';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 import { fontFamilies, spacing, layout } from '../../../../src/theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { ThemePalette, useThemeColors, useThemedStyles, lightInputProps } from '../../../../src/theme/ThemeContext';
 import { FlashList } from '@shopify/flash-list';
 import { useAirlines } from '../../../../src/hooks/queries';
 import { CardListSkeleton } from '../../../../src/components/Skeleton';
@@ -74,7 +74,7 @@ function AirlinesList() {
 
       <View style={styles.search}>
         <Ionicons name="search" size={16} color={pilot.faint} />
-        <TextInput
+        <TextInput {...lightInputProps}
           value={q}
           onChangeText={setQ}
           placeholder="Airline, country or aircraft type"

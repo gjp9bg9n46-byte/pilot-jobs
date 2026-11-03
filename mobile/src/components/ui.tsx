@@ -23,7 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { fontFamilies, fontSizes, pilot, semantic, spacing } from '../theme/tokens';
-import { ThemePalette, useThemeColors, useThemedStyles } from '../theme/ThemeContext';
+import { ThemePalette, useThemeColors, useThemedStyles, lightInputProps, lightPickerProps } from '../theme/ThemeContext';
 
 const DP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function fmtDate(d: string): string {
@@ -56,7 +56,7 @@ export function DateField({
       </Pressable>
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
       {open ? (
-        <DateTimePicker
+        <DateTimePicker {...lightPickerProps}
           value={value ? new Date(value) : new Date()}
           mode="date"
           display={Platform.OS === 'ios' ? 'inline' : 'default'}
@@ -243,7 +243,7 @@ export const TextField = React.forwardRef<TextInput, TextFieldProps>(function Te
   return (
     <View style={[styles.field, containerStyle]}>
       <FieldLabel label={label} required={required} hint={hint} />
-      <TextInput
+      <TextInput {...lightInputProps}
         ref={ref}
         style={[styles.input, !!error && styles.inputError, style]}
         placeholderTextColor="#9AA0A6"

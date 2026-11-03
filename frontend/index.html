@@ -6,6 +6,10 @@
     <title>CockpitHire — Aviation Careers Worldwide</title>
     <meta name="description" content="Pilot jobs matched to your licence, ratings, and hours. Verified listings from airline career boards worldwide — free for pilots." />
     <meta name="theme-color" content="#0A1628" />
+    <!-- Dark mode is OFF: never let the browser repaint our form controls,
+         date inputs, autofill or scrollbars in its dark palette. See the
+         matching note on :root in src/styles/design-tokens.css. -->
+    <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:type" content="website" />
@@ -27,6 +31,7 @@
     <link rel="preload" as="image" type="image/avif" href="/hero/flightdeck-port-960.avif" imagesrcset="/hero/flightdeck-port-640.avif 640w, /hero/flightdeck-port-960.avif 960w, /hero/flightdeck-port-1280.avif 1280w" imagesizes="46vw" media="(min-width:821px)" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
+      :root { color-scheme: light; }
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { overflow-x: hidden; max-width: 100%; }
       body { font-family: 'Inter', sans-serif; background: #0A1628; color: #fff; }

@@ -4,6 +4,19 @@
    Surfaces opt into the light theme via the .app-light wrapper (or by setting
    background/color themselves). Loaded once globally from main.jsx. */
 :root {
+  /* ── THE SWITCH (web half) ──────────────────────────────────────────────
+     Dark mode is OFF (2026-11-02, owner's call). The app itself has no dark
+     stylesheet — every surface is hand-styled light, and nothing reads
+     prefers-color-scheme — so the only way dark reached the screen was the
+     browser doing it for us: on a phone or Mac set to dark, the UA repaints
+     form controls, selects, date inputs, autofill backgrounds, spinners and
+     scrollbars in its own dark palette, inside our cream cards.
+     `color-scheme: light` tells the UA not to. Declared here AND inline in
+     index.html, so it holds before this stylesheet has loaded.
+     To bring dark back: build the dark styles, then relax this to
+     `light dark` and let the media query do the work. */
+  color-scheme: light;
+
   --page: #FFFFFF;        /* base page background */
   --bg: #F5F7FA;          /* section / app-screen background (behind cards) */
   --surface: #FFFFFF;     /* card surface */

@@ -22,7 +22,7 @@ import { TextField, SelectField, PrimaryButton, Sheet } from '../../../../src/co
 import { useAuth } from '../../../../src/context/AuthContext';
 import { buildCompleteness, completenessSubtitle, CompletenessItem } from '../../../../src/lib/completeness';
 import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../../src/theme/tokens';
-import { ThemePalette, useTheme, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
+import { ThemePalette, useTheme, useThemeColors, useThemedStyles, DARK_MODE_ENABLED } from '../../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -252,20 +252,24 @@ export default function SettingsScreen() {
           {recommended.map((item) => <CompRow key={item.key} item={item} />)}
         </View>
 
-        {/* Appearance — instant theme toggle, persisted across launches */}
-        <Card title="Appearance" subtitle="Switch between the light and dark look.">
-          <View style={styles.toggleRow}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.toggleLabel}>Dark theme</Text>
-              <Text style={styles.compHint}>Navy background across the whole app</Text>
+        {/* Appearance — hidden while DARK_MODE_ENABLED is false, because a
+            toggle that cannot change anything is worse than no toggle. The card
+            comes back with the switch; nothing here needs rewriting. */}
+        {DARK_MODE_ENABLED ? (
+          <Card title="Appearance" subtitle="Switch between the light and dark look.">
+            <View style={styles.toggleRow}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.toggleLabel}>Dark theme</Text>
+                <Text style={styles.compHint}>Navy background across the whole app</Text>
+              </View>
+              <Switch
+                value={mode === 'dark'}
+                onValueChange={(v) => setMode(v ? 'dark' : 'light')}
+                trackColor={{ true: pilot.navy, false: pilot.line }}
+              />
             </View>
-            <Switch
-              value={mode === 'dark'}
-              onValueChange={(v) => setMode(v ? 'dark' : 'light')}
-              trackColor={{ true: pilot.navy, false: pilot.line }}
-            />
-          </View>
-        </Card>
+          </Card>
+        ) : null}
 
         {/* Account */}
         <Card title="Account" subtitle="Your login credentials and security settings.">

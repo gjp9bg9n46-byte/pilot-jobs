@@ -1,5 +1,6 @@
-// App-wide theme (light / dark) with an instant toggle, persisted via the same
-// secure store the auth token uses.
+// App-wide theme (light / dark), persisted via the same secure store the auth
+// token uses. The dark half is currently switched OFF — see DARK_MODE_ENABLED
+// below, which is the single place that decides.
 //
 // Light = the original editorial-light palette (cream bg, navy accent).
 // Dark   = deep navy (#0A1628 — the landing-page navy, the darkest brand tone)
@@ -44,6 +45,24 @@ export const darkPalette: ThemePalette = {
   amber: '#F0A84B',
 };
 
+// ── THE SWITCH ───────────────────────────────────────────────────────────────
+// Dark mode is OFF for now (2026-11-02, owner's call): the palette needs
+// another pass before it ships. Nothing below was deleted — flip this to true
+// and the whole theme comes back, including the Settings toggle, the stored
+// preference, and device-following keyboards and date pickers.
+export const DARK_MODE_ENABLED: boolean = false;
+
+// Native controls (software keyboard, iOS date picker) follow the DEVICE's
+// appearance, not ours, so they have to be told explicitly. Spread these onto
+// any TextInput / DateTimePicker and they follow the switch above rather than
+// the phone — an iPhone in dark mode would otherwise show a black keyboard
+// under our cream forms. app.json's userInterfaceStyle covers this in a native
+// build; these props cover Expo Go and any host that ignores it.
+export const lightInputProps: { keyboardAppearance?: 'light' | 'dark' | 'default' } =
+  DARK_MODE_ENABLED ? {} : { keyboardAppearance: 'light' };
+export const lightPickerProps: { themeVariant?: 'light' | 'dark' } =
+  DARK_MODE_ENABLED ? {} : { themeVariant: 'light' };
+
 const STORE_KEY = 'themeMode';
 
 type ThemeContextValue = {
@@ -62,19 +81,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>('light');
 
   useEffect(() => {
+    // A mode stored by an earlier build stays on disk, unread, so turning the
+    // switch back on restores whatever the pilot last chose.
+    if (!DARK_MODE_ENABLED) return;
     getItem(STORE_KEY).then((v) => { if (v === 'dark') setModeState('dark'); }).catch(() => {});
   }, []);
 
   const setMode = useCallback((m: ThemeMode) => {
+    if (!DARK_MODE_ENABLED) return;
     setModeState(m);
     setItem(STORE_KEY, m).catch(() => {});
   }, []);
 
+  const dark = DARK_MODE_ENABLED && mode === 'dark';
   const value = useMemo<ThemeContextValue>(() => ({
-    mode,
-    colors: mode === 'dark' ? darkPalette : lightPalette,
+    mode: dark ? 'dark' : 'light',
+    colors: dark ? darkPalette : lightPalette,
     setMode,
-  }), [mode, setMode]);
+  }), [dark, setMode]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

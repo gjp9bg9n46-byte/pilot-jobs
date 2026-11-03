@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import api from '../../../src/lib/api';
 import { admin, fontFamilies, fontSizes, spacing, layout } from '../../../src/theme/tokens';
+import { lightInputProps } from '../../../src/theme/ThemeContext';
 
 const TABS = ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'] as const;
 type Tab = typeof TABS[number];
@@ -173,7 +174,7 @@ export default function AdminEmployers() {
                 );
               })}
             </View>
-            <TextInput style={styles.search} placeholder="Search by company or contact email…" placeholderTextColor={admin.dim} value={search} onChangeText={setSearch} autoCapitalize="none" />
+            <TextInput {...lightInputProps} style={styles.search} placeholder="Search by company or contact email…" placeholderTextColor={admin.dim} value={search} onChangeText={setSearch} autoCapitalize="none" />
           </View>
         }
         ListEmptyComponent={
@@ -200,7 +201,7 @@ export default function AdminEmployers() {
               <>
                 <Text style={styles.mTitle}>{modal.type === 'reject' ? 'Reject' : 'Suspend'} {modal.emp.companyName}</Text>
                 {modal.type === 'suspend' ? <Text style={styles.mNote}>Suspension blocks new job posting but does NOT remove existing jobs from the public Jobs page.</Text> : null}
-                <TextInput style={styles.textarea} multiline placeholder={`Reason (${REASON_MIN}–${REASON_MAX} characters)…`} placeholderTextColor={admin.dim} value={reason} onChangeText={setReason} onBlur={() => setTouched(true)} maxLength={REASON_MAX} />
+                <TextInput {...lightInputProps} style={styles.textarea} multiline placeholder={`Reason (${REASON_MIN}–${REASON_MAX} characters)…`} placeholderTextColor={admin.dim} value={reason} onChangeText={setReason} onBlur={() => setTouched(true)} maxLength={REASON_MAX} />
                 {touched && !reasonValid ? <Text style={styles.mErr}>Reason must be {REASON_MIN}–{REASON_MAX} characters.</Text> : null}
                 <View style={styles.mRow}>
                   <ActBtn label="Cancel" kind="plain" onPress={() => setModal(null)} />
