@@ -423,6 +423,11 @@ function ProfileView() {
         <Pressable style={styles.settingsRow} onPress={() => router.push('/settings/notifications')}>
           <Ionicons name="notifications-outline" size={18} color={pilot.navy} /><Text style={styles.settingsRowText}>Notifications</Text><Ionicons name="chevron-forward" size={18} color={pilot.muted} />
         </Pressable>
+        {/* Tools. The app has no drawer — AppDrawer exists but nothing mounts it
+            — so this row and the Dashboard card are the only ways in. */}
+        <Pressable style={styles.settingsRow} onPress={() => router.push('/tools/pf-pm')}>
+          <Ionicons name="speedometer-outline" size={18} color={pilot.navy} /><Text style={styles.settingsRowText}>Tools</Text><Ionicons name="chevron-forward" size={18} color={pilot.muted} />
+        </Pressable>
         <View style={{ marginTop: 12 }}><SecondaryButton label="Log out" onPress={logout} /></View>
       </ScrollView>
 

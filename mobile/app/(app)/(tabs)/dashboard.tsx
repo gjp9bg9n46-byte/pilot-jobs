@@ -245,6 +245,22 @@ function DashboardScreen() {
               )}
           </View>
         </View>
+
+        {/* PF / PM. Last, because it is the one thing here that is not about
+            finding work — and a whole card rather than a line, because nothing
+            else on this screen leads to it. */}
+        <Pressable style={styles.card} onPress={() => router.push('/tools/pf-pm')} accessibilityRole="button" accessibilityLabel="PF / PM — who's flying today?">
+          <View style={styles.cardHead}>
+            <Text style={styles.cardTitle}>PF / PM</Text>
+            <Text style={styles.link}>Open</Text>
+          </View>
+          <View style={styles.cardBody}>
+            <View style={styles.toolRow}>
+              <Ionicons name="speedometer-outline" size={18} color={pilot.navy} />
+              <Text style={[styles.dim, { flex: 1 }]}>Who&rsquo;s flying today? One fair spin of the dial decides the sector.</Text>
+            </View>
+          </View>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -330,6 +346,9 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   center: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 20, gap: 10 },
   emptyTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.xl, color: pilot.ink, textAlign: 'center' },
   dim: { fontSize: fontSizes.base, color: pilot.muted, fontFamily: fontFamilies.body, lineHeight: 21 },
+  // Icon and text on one line, top-aligned so the icon stays beside the first
+  // line when the text wraps to two or three at a large font scale.
+  toolRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
 
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 16 },
