@@ -24,6 +24,7 @@ import { buildCompleteness, completenessSubtitle, CompletenessItem } from '../..
 import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useTheme, useThemeColors, useThemedStyles, DARK_MODE_ENABLED } from '../../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../../src/theme/tabBar';
+import BuildInfo from '../../../../src/components/BuildInfo';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = Record<string, any>;
@@ -403,6 +404,11 @@ export default function SettingsScreen() {
         </View>
 
         <Pressable style={styles.signOut} onPress={logout}><Ionicons name="log-out-outline" size={18} color={pilot.muted} /><Text style={styles.signOutText}>Sign Out</Text></Pressable>
+
+        {/* Last line on the last screen: what is actually running on this
+            phone. The binary's version and build, and the ID of the JS over
+            it — so "did the update land" is a question the device answers. */}
+        <BuildInfo />
       </ScrollView>
 
       <Sheet visible={deleteOpen} title="Delete account?" onClose={() => setDeleteOpen(false)}>
