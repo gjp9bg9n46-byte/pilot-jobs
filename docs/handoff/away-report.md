@@ -109,3 +109,88 @@ landings. The rule now lives once, server-side, as `currency.trackable`.
 ## Tests
 
 460 backend, 19 mobile, tsc clean, lint clean on every new file.
+
+---
+
+# Added 3 November: layouts, and a stricter import
+
+Two more pieces, both committed on `main` and **both still unpushed** — see
+"What needs you" at the end.
+
+| | commit |
+|---|---|
+| Six authority layouts for the printable logbook | `0c9b882` |
+| Import duplicate detection, hardened | `a643a03` |
+
+## The printable logbook now has six layouts
+
+EASA, FAA, ICAO, Transport Canada, CASA and DGCA India. The pilot picks one
+before exporting; their licence picks it for them first — an FAA licence
+opens on the FAA layout, an ECAA or EASA one on EASA, anything we have no
+layout for on ICAO, which every contracting state's book descends from.
+
+The layout is **data, not code** (`services/logbookFormats.js`): columns,
+widths and the two header rows. The server turns each flight into a row of
+finished strings; both clients draw what they are handed. Adding the next
+authority is a list of columns, not a renderer.
+
+Verified in all six: **17 pages, 32 rows a page, grand total 1592:25**, the
+web PDF and the phone's HTML identical, nothing clipped at any width.
+
+Nothing is called official or approved — each is "[Authority] layout", and a
+test fails if that wording slips.
+
+### Columns we cannot fill yet, and the fields to add
+
+These print blank and are named in the export dialog rather than left for the
+pilot to notice. In the order I would add them:
+
+| Add to `FlightLog` | Needed by | Why it matters |
+|---|---|---|
+| `dualTime` | every layout | the only gap in the EASA sheet |
+| `instructorTime` | FAA, ICAO, TCCA, DGCA | an instructor cannot use those layouts yet |
+| `instrumentActualTime` / `instrumentSimTime` *(fields exist, nothing writes them)* | FAA, TCCA, CASA, DGCA | we hold one IFR figure; under FAA rules "actual instrument" means time in cloud, so it is **not** the same number |
+| `crossCountryTime` *(field exists, imports do not carry it)* | FAA, TCCA | |
+| `icusTime` | CASA | |
+| `approachCount` *(we store one approach type, not a count)* | FAA | |
+| `soloTime`, `fstdTime` | CASA, DGCA, ICAO | FSTD also needs a non-flight session type |
+| `operationType` (single- or multi-pilot) | EASA, ICAO | today multi-pilot time is inferred from our aircraft table, not recorded |
+| `category` / `aircraftClass` per flight | FAA | same: inferred from the type, blank for a type we do not know |
+
+## The import no longer trusts the preview
+
+One rule, in `services/logbookDuplicates.js`, used by the preview **and** by
+the save. They used to be different things — the preview checked, the save
+did not — so a file sent twice, or a logbook that grew between the two
+steps, landed twice.
+
+- **Same route on the same day is no longer enough**: the times must agree
+  within fifteen minutes. Two CAI–RUH shuttles in a day are two sectors, and
+  the old rule deleted one of them.
+- **No times on either side still counts as a duplicate**, or re-importing a
+  file without times would double every flight in it.
+- **Rows are compared against each other too**, so a file that repeats a
+  sector is caught. The first copy stays.
+- The logbook is read **across the span the file covers**, not on exact
+  dates: a flight typed in by hand need not sit at midnight.
+
+The preview says "3 flights skipped — 2 already in your logbook, 1 repeated
+in this file", with the flights one click away and "Import them anyway" still
+there. 29 tests cover the fifteen-minute edge, midnight, a missing time, a
+route sharing one end, in-file repeats, and what the save step writes.
+
+**Not touched:** the voyage-report *scan* has its own duplicate check, which
+already re-tests at save and only ever matches on a flight number, so the
+shuttle problem does not arise there. Worth folding into the same rule one
+day; not worth the risk today.
+
+## What needs you
+
+1. **`git push origin main` was refused by the permission classifier**
+   ("Out-of-place publication"), so both commits are local. Nothing is lost —
+   `git push origin main` is all that is outstanding, and Railway and Vercel
+   deploy from it as usual.
+2. **The app update has not been published.** The gate is clean (29 of 29,
+   unchanged — no new build needed), but the app's layout picker calls a new
+   backend route, so the push has to land first. Then:
+   `eas update --channel production --environment production`.
