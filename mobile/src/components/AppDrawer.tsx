@@ -31,6 +31,9 @@ const MAIN: Item[] = [
   { label: 'Logbook', icon: 'book-outline', route: '/logbook' },
   { label: 'CV Builder', icon: 'document-text-outline', route: '/cv-builder' },
   { label: 'Profile', icon: 'person-outline', route: '/profile' },
+  // Tools lives in the menu, not the bottom bar: the bar is for the four
+  // things a pilot opens daily, and this is not one of them.
+  { label: 'Tools', icon: 'speedometer-outline', route: '/tools/pf-pm' },
 ];
 const ADMIN: Item[] = [
   { label: 'Admin Dashboard', icon: 'shield-checkmark-outline', route: '/admin/dashboard' },

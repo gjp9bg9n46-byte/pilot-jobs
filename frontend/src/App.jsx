@@ -24,6 +24,7 @@ const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 const VerifyEmail = lazy(() => import('./pages/auth/VerifyEmail'));
 const Primitives = lazy(() => import('./pages/dev/Primitives'));
+const PfPmTool = lazy(() => import('./pages/PfPmTool'));
 const Jobs = lazy(() => import('./pages/Jobs'));
 const Airlines = lazy(() => import('./pages/Airlines'));
 const AirlineDetail = lazy(() => import('./pages/AirlineDetail'));
@@ -98,6 +99,9 @@ export default function App() {
           {/* Public, read-only CV. No auth: an airline opens it from a link the
               pilot shared, and it never carries contact details. */}
           <Route path="/cv/s/:token" element={<CvShare />} />
+          {/* Public tools — no auth, no backend. Shareable by design: the
+              PF/PM dial is meant to be opened from a link in a post. */}
+          <Route path="/tools/pf-pm" element={<PfPmTool />} />
           <Route path="/about" element={<About />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
