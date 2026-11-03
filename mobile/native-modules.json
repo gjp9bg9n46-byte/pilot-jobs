@@ -1,12 +1,13 @@
 {
-  "recordedAt": "2026-10-30T11:57:56.132Z",
+  "recordedAt": "2026-11-03T09:58:45.909Z",
   "version": "1.0.0",
-  "buildNumber": "8",
+  "buildNumber": "9",
   "modules": [
     "@react-native-async-storage/async-storage",
     "@react-native-community/datetimepicker",
     "expo",
     "expo-constants",
+    "expo-crypto",
     "expo-document-picker",
     "expo-file-system",
     "expo-font",
