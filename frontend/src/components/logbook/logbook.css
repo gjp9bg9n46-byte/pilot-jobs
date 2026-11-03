@@ -247,3 +247,33 @@
 .lb-blockv { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600; font-size: 26px; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
 .lb-blockk { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; color: var(--text-faint); margin-top: 4px; }
 .lb-map-note { font-size: 11.5px; font-weight: 500; letter-spacing: 0; color: var(--text-faint); }
+
+/* ── Logbook header + list header (phone-first) ────────────────────────────
+   The top row used to carry five controls — hh:mm/decimal, Month/Day, Reports,
+   Import, Add flight — in a flex row that could not wrap. At 390px it measured
+   446px, and because html/body are overflow-x:hidden the page scrolled
+   sideways with its left edge cut off rather than showing a scrollbar.
+   It is Reports alone on a phone now, and the row may wrap if it ever grows. */
+.lb-actions { flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+
+/* Group-by belongs to the list, not the page header. */
+.lb-listhead {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 22px 0 10px; min-width: 0;
+}
+.lb-listhead-k {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-faint);
+}
+.lb-group.lb-group { flex: none; }
+
+@media (max-width: 767px) {
+  /* One side margin for the whole page, and equal air between the stacked
+     cards, so nothing sits against the edge of the screen. */
+  .lb { padding-left: 16px; padding-right: 16px; }
+  .lb-head { gap: 12px; align-items: flex-start; }
+  .lb-actions { width: 100%; justify-content: flex-start; }
+  .lb-tot { gap: 10px; margin-top: 16px; }
+  .lb-rec { margin-top: 10px; }
+  .lb-listhead { margin: 16px 0 10px; }
+}

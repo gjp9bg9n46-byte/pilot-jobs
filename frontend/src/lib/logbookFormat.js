@@ -241,6 +241,19 @@ export function recencyLine(currency) {
   const info = [`${plural(nightCount)} at night in the last 90 days`];
   if (rule.nightNote) info.push(rule.nightNote);
 
+  // Most of the LOGBOOK carries no landings: there is no honest verdict to
+  // give, whatever the 90-day window happens to contain. `trackable` is
+  // computed once on the server (services/logbookSummary) and the Reports page
+  // reads the same flag — before this, the logbook said "Current until 24 Jan"
+  // while Reports declined to judge, about the same pilot on the same data.
+  if (currency.trackable === false) {
+    return {
+      tone: 'unknown',
+      text: 'Landings aren\u2019t recorded on most of your flights. Add them to track recency.',
+      info,
+    };
+  }
+
   // Landings missing from the window: the count is a floor, not a verdict.
   if (currency.incomplete && !totalOk) {
     return {

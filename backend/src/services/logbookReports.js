@@ -21,7 +21,7 @@
 // No crew names appear in this payload. The printable logbook (phase 4) is a
 // personal document and is served elsewhere; reports and share cards are not.
 const prisma = require('../config/database');
-const { computeDerivedTotals, _internals } = require('./logbookSummary');
+const { computeDerivedTotals, landingsCoverage, LANDINGS_COVERAGE_MIN, _internals } = require('./logbookSummary');
 // blockHours/resolveType live behind _internals — the same derivation the
 // logbook summary uses, so the two screens cannot drift apart.
 const { resolveType, blockHours } = _internals;
@@ -48,9 +48,6 @@ const FTL = { last28Days: 100, calendarYear: 900, last12Months: 1000 };
 // EASA FCL.060(b): three take-offs and landings in the preceding 90 days.
 const RECENCY_WINDOW_DAYS = 90;
 const RECENCY_REQUIRED = 3;
-// Below this share of flights carrying landings, a currency verdict would be
-// built on a sliver of the logbook. We say so instead of implying it is whole.
-const LANDINGS_COVERAGE_MIN = 0.5;
 // Fewer than this many months with any flying and a projected date is noise.
 const PACE_MIN_MONTHS_FLOWN = 3;
 const PACE_WINDOW_MONTHS = 12;
@@ -101,8 +98,8 @@ function recency(logs, now, resolveTypeOf) {
   const withLandings = logs.filter(
     (l) => l.landingsRecorded === true || (l.landingsDay || 0) + (l.landingsNight || 0) > 0,
   ).length;
-  const coverage = logs.length ? withLandings / logs.length : 0;
-  const trackable = logs.length > 0 && coverage >= LANDINGS_COVERAGE_MIN;
+  // The same rule the logbook summary applies, from the same module.
+  const trackable = logs.length > 0 && landingsCoverage(logs) >= LANDINGS_COVERAGE_MIN;
 
   const base = {
     trackable,

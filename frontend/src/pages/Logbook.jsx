@@ -673,7 +673,11 @@ export default function Logbook() {
 
   // Preferences decide how every duration on this page is written.
   useEffect(() => { logbookApi.prefs().then(({ data }) => setPrefs(data)).catch(() => {}); }, []);
-  const timeFormat = prefs?.timeFormat || 'hhmm';
+  // hh:mm everywhere. The decimal option is gone: two ways to write the same
+  // number meant every screen had to carry the preference, and nobody asked
+  // for 1.58 hours. Kept as a constant so the shared components' `timeFormat`
+  // prop still reads naturally at each call site.
+  const timeFormat = 'hhmm';
   // Month unless this pilot has chosen Day. Stored in logbook prefs, so the
   // choice is the same on the phone.
   const [groupingOverride, setGroupingOverride] = useState(null);
@@ -695,11 +699,6 @@ export default function Logbook() {
     try { const { data } = await logbookApi.updatePrefs({ grouping: g }); setPrefs(data); }
     catch { /* keep the optimistic choice */ }
   };
-  const setTimeFormat = async (fmt) => {
-    setPrefs((p) => ({ ...(p || {}), timeFormat: fmt }));
-    try { const { data } = await logbookApi.updatePrefs({ timeFormat: fmt }); setPrefs(data); } catch { /* keep the optimistic choice */ }
-  };
-
   // Return trip / Next leg / Duplicate all open the short manual form, filled in.
   const relog = (flight, kind) => {
     const base = {
@@ -899,20 +898,15 @@ export default function Logbook() {
             {(summary?.totals?.flightCount ?? total)} flights{lastFlightStr ? ` · last ${lastFlightStr}` : ''}
           </p>
         </div>
+        {/* On a phone this row is Reports and nothing else. Five controls did
+            not fit 390px and pushed the page 56px wider than the screen, which
+            scrolled the whole layout sideways. Grouping now sits above the
+            list where it belongs, times are always hh:mm, and adding a flight
+            is the floating button that was already there. */}
         <div className="lb-actions">
-          <div className="lb-seg" role="group" aria-label="Time format">
-            <button type="button" className={timeFormat === 'hhmm' ? 'on' : ''} onClick={() => setTimeFormat('hhmm')} aria-pressed={timeFormat === 'hhmm'}>hh:mm</button>
-            <button type="button" className={timeFormat === 'decimal' ? 'on' : ''} onClick={() => setTimeFormat('decimal')} aria-pressed={timeFormat === 'decimal'}>decimal</button>
-          </div>
-          {/* "How much did I fly in October" is the everyday question, so the
-              list groups by month unless the pilot asks for days. */}
-          <div className="lb-group" role="group" aria-label="Group flights by">
-            <button type="button" className={grouping === 'month' ? 'on' : ''} onClick={() => setGrouping('month')} aria-pressed={grouping === 'month'}>Month</button>
-            <button type="button" className={grouping === 'day' ? 'on' : ''} onClick={() => setGrouping('day')} aria-pressed={grouping === 'day'}>Day</button>
-          </div>
           <Button variant="secondary" onClick={() => navigate('/logbook/reports')}>Reports</Button>
           {!isMobile && <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import</Button>}
-          <Button onClick={() => navigate('/logbook/add')}>+ Add flight</Button>
+          {!isMobile && <Button onClick={() => navigate('/logbook/add')}>+ Add flight</Button>}
         </div>
       </div>
 
@@ -969,6 +963,15 @@ export default function Logbook() {
         placeholder="Search all flights by aircraft, registration or airport…"
         style={{ marginBottom: 16 }}
       />
+
+      {/* The list's own header: what the rows below are grouped by. */}
+      <div className="lb-listhead">
+        <span className="lb-listhead-k">Flights</span>
+        <div className="lb-group" role="group" aria-label="Group flights by">
+          <button type="button" className={grouping === 'month' ? 'on' : ''} onClick={() => setGrouping('month')} aria-pressed={grouping === 'month'}>Month</button>
+          <button type="button" className={grouping === 'day' ? 'on' : ''} onClick={() => setGrouping('day')} aria-pressed={grouping === 'day'}>Day</button>
+        </div>
+      </div>
 
       {(!searching && loading) ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>Loading your logbook...</div>

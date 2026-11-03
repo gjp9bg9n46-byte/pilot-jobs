@@ -218,8 +218,10 @@ function LogbookList() {
 
   // How durations are written is a profile preference, shared with the web.
   // Applied locally at once, then written; the bundle carries the stored value.
-  const [timeFormatOverride, setTimeFormatOverride] = useState<TimeFormat | null>(null);
-  const timeFormat: TimeFormat = timeFormatOverride ?? (data?.prefs?.timeFormat as TimeFormat) ?? 'hhmm';
+  // hh:mm everywhere. The decimal option is gone — two ways to write the same
+  // number, a preference to carry onto every screen, and nobody asked for
+  // 1.58 hours. Kept as a constant so the shared components read naturally.
+  const timeFormat: TimeFormat = 'hhmm';
   const grouping: Grouping = groupingOverride ?? (data?.prefs?.grouping as Grouping) ?? 'month';
   // All time by default: a pilot's map is their career, not page 1 of a list.
   const mapScope: MapScope = mapScopeOverride ?? (data?.prefs?.mapScope as MapScope) ?? 'all';
@@ -236,14 +238,6 @@ function LogbookList() {
     tapLight();
     setGroupingOverride(g);
     api.put('/logbook/prefs', { grouping: g })
-      .then(() => qc.invalidateQueries({ queryKey: ['logbook'] }))
-      .catch(() => {});
-  };
-  const setTimeFormat = (fmt: TimeFormat) => {
-    if (fmt === timeFormat) return;
-    tapLight();
-    setTimeFormatOverride(fmt);
-    api.put('/logbook/prefs', { timeFormat: fmt })
       .then(() => qc.invalidateQueries({ queryKey: ['logbook'] }))
       .catch(() => {});
   };
@@ -339,22 +333,6 @@ function LogbookList() {
             {(summary?.totals?.flightCount ?? total)} flights{lastFlightStr ? ` · last ${lastFlightStr}` : ''}
           </Text>
         </View>
-        <View style={{ gap: 6, alignItems: 'flex-end' }}>
-          <Segmented
-            compact
-            style={{ minWidth: 148 }}
-            value={timeFormat}
-            onChange={(f) => setTimeFormat(f as TimeFormat)}
-            options={[{ value: 'hhmm', label: 'hh:mm' }, { value: 'decimal', label: 'decimal' }]}
-          />
-          <Segmented
-            compact
-            style={{ minWidth: 148 }}
-            value={grouping}
-            onChange={(g) => setGrouping(g as Grouping)}
-            options={[{ value: 'month', label: 'Month' }, { value: 'day', label: 'Day' }]}
-          />
-        </View>
       </View>
 
       {/* Totals, then landings in the last 90 days and the day currency lapses */}
@@ -384,9 +362,14 @@ function LogbookList() {
             const r = recencyLine(summary.currency);
             if (!r) return null;
             return (
-              <View style={styles.rec}>
+              <View style={[styles.rec, r.tone === 'unknown' && styles.recTall]}>
                 <View style={[styles.dot, r.tone === 'short' && styles.dotWarn, r.tone === 'unknown' && styles.dotGrey]} />
-                <Text style={styles.recText} numberOfLines={1}><Text style={styles.recStrong}>{r.text}</Text></Text>
+                {/* The strip is one line by design, and the verdict fits it.
+                    The "no landings recorded" prompt is a sentence, so it is
+                    allowed to wrap rather than be cut off mid-word. */}
+                <Text style={styles.recText} numberOfLines={r.tone === 'unknown' ? 3 : 1}>
+                  <Text style={styles.recStrong}>{r.text}</Text>
+                </Text>
                 {/* Everything else true about recency — the night count, and
                     what we do about an authority we have not mapped — sits
                     behind this. The strip stays one line. */}
@@ -447,6 +430,18 @@ function LogbookList() {
 
       {/* Carry-forward editor — opened by the dashboard's "Edit" link */}
       <CarryForwardPanel openSignal={cfOpenSignal} onSaved={() => { void refetch(); }} />
+
+      {/* The list's own header: what the rows below are grouped by. It used to
+          sit in the title row, which on a phone had no space for it. */}
+      <View style={styles.listHead}>
+        <Text style={styles.listHeadK}>Flights</Text>
+        <Segmented
+          compact
+          value={grouping}
+          onChange={(g) => setGrouping(g as Grouping)}
+          options={[{ value: 'month', label: 'Month' }, { value: 'day', label: 'Day' }]}
+        />
+      </View>
     </View>
   );
 
@@ -492,7 +487,7 @@ function LogbookList() {
         data={rows}
         keyExtractor={(r) => r.key}
         getItemType={(r) => r.kind}
-        contentContainerStyle={{ paddingBottom: tabBarClearance, paddingHorizontal: spacing.lg, paddingTop: spacing.xl }}
+        contentContainerStyle={{ paddingBottom: tabBarClearance, paddingHorizontal: layout.screenX, paddingTop: layout.screenTop }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={pilot.navy} />}
         ListHeaderComponent={ListHeader}
@@ -561,6 +556,10 @@ function LogbookList() {
 
 
 const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); return StyleSheet.create({
+  listHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: 12, marginTop: layout.sectionGap, marginBottom: layout.rowGap },
+  listHeadK: { fontSize: 11.5, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
+    color: pilot.muted, fontFamily: fontFamilies.bodyBold },
   reportsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pilot.surface,
     borderWidth: 1, borderColor: pilot.line, borderRadius: radii.lg, padding: layout.cardPad, marginTop: layout.cardGap },
   reportsTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.md, color: pilot.ink },
@@ -580,7 +579,10 @@ const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); re
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#15803D' },
   dotWarn: { backgroundColor: '#B45309' },
   dotGrey: { backgroundColor: pilot.faint },
-  recText: { flex: 1, fontSize: 13, color: pilot.ink, fontFamily: fontFamilies.body },
+  // minWidth:0 or a long unbroken sentence refuses to shrink inside the row
+  // and pushes the card past the screen edge.
+  recText: { flex: 1, minWidth: 0, fontSize: 13, color: pilot.ink, fontFamily: fontFamilies.body, lineHeight: 18 },
+  recTall: { alignItems: 'flex-start' },
   mapDown: {
     backgroundColor: pilot.surface, borderWidth: 1, borderColor: pilot.line,
     borderRadius: 14, padding: layout.cardPad, marginBottom: 12, gap: 4,

@@ -13,6 +13,21 @@ const { recencyRuleFor } = require('./recencyRules');
 // ── Time helpers ───────────────────────────────────────────────────────────
 // Block time is authoritatively re-derived from the off/on-block strings when a
 // row's numeric totalTime is missing/zero, matching the web row display exactly.
+// Below this share of the WHOLE logbook carrying landings, a currency verdict
+// is built on a sliver of a pilot's flying and we decline to give one. Declared
+// here because both the logbook summary and the reports payload must answer the
+// question identically — one rule, one constant, two readers.
+const LANDINGS_COVERAGE_MIN = 0.5;
+
+/** What share of these flights record landings at all? 0 when there are none. */
+function landingsCoverage(logs) {
+  if (!logs || !logs.length) return 0;
+  const withLandings = logs.filter(
+    (l) => l.landingsRecorded === true || (l.landingsDay || 0) + (l.landingsNight || 0) > 0,
+  ).length;
+  return withLandings / logs.length;
+}
+
 function timeToMinutes(s) {
   const m = String(s || '').match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return null;
@@ -250,6 +265,14 @@ async function buildLogbookSummary(pilotId) {
     // With landings missing from some of the window, the count is a floor, not
     // a verdict: say so instead of showing a red "not current".
     incomplete: flightsWithoutLandings > 0,
+    // Whether a verdict can honestly be given at all, judged over the WHOLE
+    // logbook rather than the 90-day window. The same flag and the same rule
+    // the Reports page uses, so the two screens cannot say different things
+    // about the same pilot.
+    trackable: landingsCoverage(sorted) >= LANDINGS_COVERAGE_MIN,
+    flightsWithLandings: sorted.filter((l) => l.landingsRecorded === true
+      || (l.landingsDay || 0) + (l.landingsNight || 0) > 0).length,
+    flightCount: sorted.length,
   };
 
   // ── Months (most recent first, for list section headers) ──────────────────
@@ -449,5 +472,7 @@ module.exports = {
   auditAllDerivedTotals,
   displayTypeFor,
   // exported for unit tests
+  LANDINGS_COVERAGE_MIN,
+  landingsCoverage,
   _internals: { blockFromTimes, blockHours, normaliseType, classForType, typeFromRegistration, resolveType, buildLadder },
 };

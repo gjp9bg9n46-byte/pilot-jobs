@@ -240,6 +240,18 @@ export function recencyLine(currency: any): any {
   if (rule.nightNote) info.push(rule.nightNote);
 
   // Landings missing from the window: the count is a floor, not a verdict.
+  // Most of the LOGBOOK carries no landings: there is no honest verdict to
+  // give, whatever the 90-day window happens to contain. `trackable` comes
+  // from the server (services/logbookSummary) and the Reports page reads the
+  // same flag, so the two screens cannot disagree about the same pilot.
+  if (currency.trackable === false) {
+    return {
+      tone: 'unknown',
+      text: 'Landings aren\u2019t recorded on most of your flights. Add them to track recency.',
+      info,
+    };
+  }
+
   if (currency.incomplete && !totalOk) {
     return {
       tone: 'unknown',
