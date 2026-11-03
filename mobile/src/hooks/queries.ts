@@ -31,6 +31,15 @@ export const keys = {
 // One cached payload shared with the web page, so the two cannot disagree
 // about a number. The server caches it too; this just avoids a refetch on
 // every tab return.
+export function useLogbookReportsYear(year: number | null) {
+  return useQuery({
+    queryKey: ['logbook', 'reports', year],
+    queryFn: () => get<Any>('/logbook/reports', { year }),
+    staleTime: STALE.short,
+    enabled: !!year,
+  });
+}
+
 export function useLogbookReports() {
   return useQuery({ queryKey: keys.logbookReports, queryFn: () => get<Any>('/logbook/reports'), staleTime: STALE.short });
 }

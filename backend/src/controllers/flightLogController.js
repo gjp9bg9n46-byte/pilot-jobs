@@ -442,9 +442,11 @@ exports.reports = async (req, res, next) => {
     const { getLogbookReports, buildLogbookReports } = require('../services/logbookReports');
     // ?_perf=1 measures a REAL uncached build, so it bypasses the cache —
     // timing a cache hit would only ever report the cache.
+    // ?year=2025 selects a past year for the "Year in the sky" deck.
+    const year = /^\d{4}$/.test(String(req.query.year || '')) ? Number(req.query.year) : null;
     const payload = req.query._perf
-      ? await buildLogbookReports(req.pilot.id, { perf: true })
-      : await getLogbookReports(req.pilot.id);
+      ? await buildLogbookReports(req.pilot.id, { perf: true, year })
+      : await getLogbookReports(req.pilot.id, { year });
     if (!payload) return res.status(404).json({ error: 'Pilot not found' });
     res.json(payload);
   } catch (err) {

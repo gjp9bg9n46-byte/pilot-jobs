@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { yearInReviewWindow } from '../lib/yearWindow';
 import { AlertTriangle } from 'lucide-react';
 import { dashboardApi, jobApi } from '../services/api';
 import { LightPage } from '../components/primitives';
@@ -95,6 +96,7 @@ function JobRow({ item, onView, logoUrl }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const yearWindow = yearInReviewWindow();
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [tab, setTab] = useState('allNew');
@@ -147,6 +149,31 @@ export default function Dashboard() {
               );
             })}
           </div>
+        )}
+
+        {/* Your year in the sky — offered only between 1 December and 31
+            January. A year in review in June is not a year in review, and a
+            card that never leaves is furniture nobody reads. */}
+        {yearWindow.open && (
+          <button
+            type="button"
+            onClick={() => navigate('/logbook/reports?tab=year')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left',
+              background: C.navyDeep || '#0B1F3A', border: 0, borderRadius: 14,
+              padding: '18px 20px', marginBottom: 20, cursor: 'pointer', color: '#fff',
+            }}
+          >
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600 }}>
+                Your {yearWindow.year} in the sky is ready.
+              </span>
+              <span style={{ display: 'block', fontSize: 13.5, color: '#C4D2E4', marginTop: 3 }}>
+                Hours, distance, places and the one line worth posting.
+              </span>
+            </span>
+            <span aria-hidden="true" style={{ fontSize: 18, color: '#8FB3E0' }}>→</span>
+          </button>
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 340px', gap: 24, alignItems: 'start' }} className="dash-grid">

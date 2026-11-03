@@ -214,3 +214,81 @@ test('a pilot with no carry-forward is unaffected by the rule', () => {
   assert.strictEqual(career.carryForward, 0);
   assert.strictEqual(flightTimeLimits(logs, NOW).last28Days.hours, 10);
 });
+
+// ── Your year in the sky ────────────────────────────────────────────────────
+const { yearsFlown, buildYear, YEAR_MIN_FLIGHTS } = require('../logbookReports');
+const { _internals } = require('../logbookSummary');
+
+const onDate = (iso, hours = 2, extra = {}) => ({
+  date: new Date(iso), totalTime: hours, offBlocksTime: null, onBlocksTime: null,
+  aircraftType: 'A320', registration: 'SU-BPX', departure: null, arrival: null,
+  picTime: 0, sicTime: hours, nightTime: 0, landingsDay: 0, landingsNight: 0, landingsRecorded: null,
+  ...extra,
+});
+
+test('yearsFlown lists the calendar years with flights, newest first', () => {
+  const logs = [onDate('2024-03-12'), onDate('2026-11-02'), onDate('2025-07-01'), onDate('2026-01-04')];
+  assert.deepStrictEqual(yearsFlown(logs), [2026, 2025, 2024]);
+  assert.deepStrictEqual(yearsFlown([]), []);
+});
+
+test('a year takes only its own flights, and carry-forward reaches none of them', async () => {
+  const logs = [
+    onDate('2025-12-31', 10), // the year before
+    onDate('2026-01-01', 3), onDate('2026-02-01', 3), onDate('2026-03-01', 3),
+    onDate('2026-04-01', 3), onDate('2026-05-01', 3),
+    onDate('2027-01-01', 99), // the year after
+  ];
+  const y = await buildYear(logs, _internals.blockHours, 2026, new Date('2026-06-01T00:00:00Z'));
+  assert.strictEqual(y.year, 2026);
+  assert.strictEqual(y.flightCount, 5);
+  assert.strictEqual(y.sectors, 5);
+  assert.strictEqual(y.hours, 15, 'five 3-hour sectors — neither neighbouring year leaks in');
+  // buildYear is handed flights only. Carry-forward lives on the pilot and has
+  // no date, so there is no path by which it could reach a year at all.
+  assert.strictEqual(y.basis.flightCount, 5);
+});
+
+test('a thin year says so instead of showing near-empty slides', async () => {
+  const logs = [onDate('2026-01-01'), onDate('2026-02-01'), onDate('2026-03-01')];
+  const y = await buildYear(logs, _internals.blockHours, 2026, new Date('2026-06-01T00:00:00Z'));
+  assert.strictEqual(y.flightCount, 3);
+  assert.strictEqual(y.enough, false);
+  assert.strictEqual(y.minFlights, YEAR_MIN_FLIGHTS);
+  assert.strictEqual(y.distance, undefined, 'no slides are computed for a year we will not show');
+});
+
+test('exactly the threshold is enough', async () => {
+  const logs = Array.from({ length: YEAR_MIN_FLIGHTS }, (_, i) => onDate(`2026-0${i + 1}-01`));
+  const y = await buildYear(logs, _internals.blockHours, 2026, new Date('2026-06-01T00:00:00Z'));
+  assert.strictEqual(y.enough, true);
+});
+
+test('a year with no flights at all is reported, not invented', async () => {
+  const y = await buildYear([onDate('2024-05-01')], _internals.blockHours, 2026, new Date('2026-06-01T00:00:00Z'));
+  assert.strictEqual(y.flightCount, 0);
+  assert.strictEqual(y.enough, false);
+  assert.strictEqual(y.hours, undefined);
+});
+
+// ── The seasonal window for the Home card ───────────────────────────────────
+// December shows the year that is ending; January shows the year just gone;
+// the rest of the year it is not offered at all.
+test('the year-in-review window opens in December and January only', () => {
+  // Mirrors lib/yearWindow on both clients. Pinned here because it is the one
+  // rule that decides whether a pilot ever sees the deck without going looking.
+  const win = (iso) => {
+    const now = new Date(iso);
+    const m = now.getUTCMonth();
+    if (m === 11) return { open: true, year: now.getUTCFullYear() };
+    if (m === 0) return { open: true, year: now.getUTCFullYear() - 1 };
+    return { open: false, year: null };
+  };
+  assert.deepStrictEqual(win('2026-12-01T00:00:00Z'), { open: true, year: 2026 });
+  assert.deepStrictEqual(win('2026-12-31T23:59:00Z'), { open: true, year: 2026 });
+  assert.deepStrictEqual(win('2027-01-01T00:00:00Z'), { open: true, year: 2026 });
+  assert.deepStrictEqual(win('2027-01-31T23:59:00Z'), { open: true, year: 2026 });
+  assert.deepStrictEqual(win('2027-02-01T00:00:00Z'), { open: false, year: null });
+  assert.deepStrictEqual(win('2026-06-15T00:00:00Z'), { open: false, year: null });
+  assert.deepStrictEqual(win('2026-11-30T23:59:00Z'), { open: false, year: null });
+});

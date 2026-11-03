@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { logbookApi } from '../services/api';
 import LightPage from '../components/primitives/LightPage';
 import RouteMapCard from '../components/logbook/RouteMapCard';
+import YearInTheSky from '../components/logbook/YearInTheSky';
 import './logbookReports.css';
 
 // Logbook Reports — phase 1.
@@ -63,6 +64,9 @@ function Limit({ label, hours, limit }) {
 export default function LogbookReports() {
   const [data, setData] = useState(null);
   const [showAllAirports, setShowAllAirports] = useState(false);
+  const [tab, setTab] = useState('career');
+  // A past year is a separate payload; the endpoint caches each one.
+  const [yearData, setYearData] = useState(null);
   const [err, setErr] = useState(null);
 
   useEffect(() => {
@@ -90,8 +94,15 @@ export default function LogbookReports() {
 
   const {
     basis, limits, recency, totals, milestone, jobsUnlocked, command, almostThere,
-    distance, places, tails, sun, activity, night, placesBasis,
+    distance, places, tails, sun, activity, night, placesBasis, years,
   } = data;
+  // The payload already carries the current year; a picked year replaces it.
+  const shownYear = yearData || data.year;
+  const pickYear = (yr) => {
+    if (yr === shownYear?.year) return;
+    setYearData(null);
+    logbookApi.reports(yr).then((r) => setYearData(r.data.year)).catch(() => {});
+  };
   const t = totals || {};
   // The map resolves its own coordinates from the airport list, so it takes
   // the routes as plain codes.
@@ -115,6 +126,16 @@ export default function LogbookReports() {
           </p>
         </header>
 
+        <div className="lbr-tabs" role="tablist" aria-label="Reports sections">
+          <button type="button" role="tab" aria-selected={tab === 'career'} className={tab === 'career' ? 'on' : ''} onClick={() => setTab('career')}>Career</button>
+          <button type="button" role="tab" aria-selected={tab === 'year'} className={tab === 'year' ? 'on' : ''} onClick={() => setTab('year')}>Year in the sky</button>
+        </div>
+
+        {tab === 'year' ? (
+          <div className="lbr-grid lbr-grid-one">
+            <YearInTheSky year={shownYear} years={years} onYearChange={pickYear} basis={basis} />
+          </div>
+        ) : (
         <div className="lbr-grid">
 
           {limits && (
@@ -401,6 +422,7 @@ export default function LogbookReports() {
           )}
 
         </div>
+        )}
       </div>
     </LightPage>
   );

@@ -271,8 +271,53 @@ async function jobsSection(jobsP, ctxP, logs, cf, careerDerived, now) {
   return { unlocked, command, almostThere: almost.slice(0, 6) };
 }
 
+// ── Your year in the sky ────────────────────────────────────────────────────
+// One calendar year of the same derivation phase 2 uses, so a figure on the
+// year deck and the same figure on the career cards cannot disagree. Logged
+// flights only: carry-forward has no date, so it belongs to no year.
+//
+// Below this many flights the deck would be a series of near-empty slides,
+// which reads worse than saying so plainly.
+const YEAR_MIN_FLIGHTS = 5;
+
+/** Which calendar years this pilot has flights in, most recent first. */
+function yearsFlown(logs) {
+  return [...new Set((logs || []).map((l) => l.date.getUTCFullYear()))].sort((a, b) => b - a);
+}
+
+async function buildYear(logs, blockHours, year, now) {
+  const inYear = (logs || []).filter((l) => l.date.getUTCFullYear() === year);
+  const base = { year, flightCount: inYear.length, enough: inYear.length >= YEAR_MIN_FLIGHTS, minFlights: YEAR_MIN_FLIGHTS };
+  // Below the threshold the client shows a message, not slides — so there is
+  // nothing to compute, and nothing for a client to render by mistake.
+  if (!base.enough) return base;
+
+  const p = await buildPlaces(inYear, blockHours, now);
+  const hours = p.night.totalHours;
+  const monthsInYear = [...new Set(inYear.map((l) => l.date.toISOString().slice(0, 7)))];
+  // buildPlaces reports the busiest month of whatever it is given, which here
+  // is already this year only.
+  return {
+    ...base,
+    hours,
+    sectors: inYear.length,
+    first: inYear[0].date.toISOString().slice(0, 10),
+    last: inYear[inYear.length - 1].date.toISOString().slice(0, 10),
+    monthsFlown: monthsInYear.length,
+    distance: p.distance,
+    places: { airportCount: p.places.airportCount, countryCount: p.places.countryCount, routes: p.places.routes.slice(0, 200) },
+    topAirport: p.places.airports[0] || null,
+    favouriteTail: p.tails[0] || null,
+    sun: p.sun,
+    night: p.night,
+    busiestMonth: p.activity.busiestMonth,
+    daysFlown: p.activity.daysFlown,
+    basis: p.basis,
+  };
+}
+
 // ── The payload ─────────────────────────────────────────────────────────────
-async function buildLogbookReports(pilotId, { now = new Date(), perf = false } = {}) {
+async function buildLogbookReports(pilotId, { now = new Date(), perf = false, year = null } = {}) {
   // Phase timings, the same `?_perf=1` convention GET /jobs uses. Measuring
   // this from a laptop is measuring the laptop: every query crosses the
   // internet to Railway (~217 ms round trip here, ~1 ms in production), so
@@ -335,6 +380,12 @@ async function buildLogbookReports(pilotId, { now = new Date(), perf = false } =
   // Phase 2. Logged flights only — carry-forward has no route.
   const places = await buildPlaces(logs, blockHours, now);
   mark('places');
+  const years = yearsFlown(logs);
+  // Default to this year, even before it has flights — the deck says so
+  // itself rather than silently showing last year's.
+  const wantYear = Number(year) || now.getUTCFullYear();
+  const yearSection = await buildYear(logs, blockHours, wantYear, now);
+  mark('year');
 
   mark('total');
   return {
@@ -353,6 +404,8 @@ async function buildLogbookReports(pilotId, { now = new Date(), perf = false } =
     night: places.night,
     // How much of the logbook each phase-2 figure could actually use.
     placesBasis: places.basis,
+    years,
+    year: yearSection,
     jobsUnlocked: jobs.unlocked,
     command: jobs.command,
     almostThere: jobs.almostThere,
@@ -368,25 +421,31 @@ const cache = new Map();
 const inflight = new Map();
 const MAX = 200;
 
-function invalidateReports(pilotId) { cache.delete(pilotId); }
+function invalidateReports(pilotId) {
+  // Every year's payload for this pilot, not just the current one: adding a
+  // 2024 flight changes the 2024 deck as surely as today's.
+  for (const k of [...cache.keys()]) if (k === pilotId || k.startsWith(`${pilotId}:`)) cache.delete(k);
+}
 function clearReportsCache() { cache.clear(); inflight.clear(); }
 
 async function getLogbookReports(pilotId, opts) {
   if (!pilotId) return null;
-  const hit = cache.get(pilotId);
+  // The year is part of the key: two years are two payloads.
+  const key = `${pilotId}:${(opts && opts.year) || 'current'}`;
+  const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.payload;
-  const pending = inflight.get(pilotId);
+  const pending = inflight.get(key);
   if (pending) return pending;
 
   const p = buildLogbookReports(pilotId, opts)
     .then((payload) => {
-      cache.delete(pilotId);
-      cache.set(pilotId, { at: Date.now(), payload });
+      cache.delete(key);
+      cache.set(key, { at: Date.now(), payload });
       while (cache.size > MAX) cache.delete(cache.keys().next().value);
       return payload;
     })
-    .finally(() => inflight.delete(pilotId));
-  inflight.set(pilotId, p);
+    .finally(() => inflight.delete(key));
+  inflight.set(key, p);
   return p;
 }
 
@@ -404,4 +463,7 @@ module.exports = {
   LANDINGS_COVERAGE_MIN,
   PACE_WINDOW_MONTHS,
   MILESTONES,
+  yearsFlown,
+  buildYear,
+  YEAR_MIN_FLIGHTS,
 };

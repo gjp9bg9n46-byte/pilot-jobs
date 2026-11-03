@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { yearInReviewWindow } from '../../../src/lib/yearWindow';
 import api from '../../../src/lib/api';
 import { statusMeta } from '../../../src/lib/jobMatch';
 import { companyName, locationName } from '../../../src/lib/displayNames';
@@ -60,6 +61,7 @@ function DashboardScreen() {
   // focus with a full-screen loader; now the previous answer stays up while the
   // new one is on the way.
   const { data, isPending, error: queryError, refetch } = useDashboard();
+  const yearWindow = yearInReviewWindow();
   const err = queryError ? ((queryError as Any)?.response?.data?.error || 'Could not load your dashboard.') : null;
   // Logos come from one cached call for the whole airline table.
   const { data: airlineRefs } = useAirlineLogos();
@@ -129,6 +131,19 @@ function DashboardScreen() {
         })}
 
         {/* New jobs for you */}
+        {/* Your year in the sky — 1 December to 31 January only. A year in
+            review in June is not a year in review, and a card that never
+            leaves is furniture nobody reads. */}
+        {yearWindow.open ? (
+          <Pressable style={styles.yearCard} onPress={() => router.push('/logbook/reports')}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.yearTitle}>Your {yearWindow.year} in the sky is ready.</Text>
+              <Text style={styles.yearSub}>Hours, distance, places and the one line worth posting.</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={18} color="#8FB3E0" />
+          </Pressable>
+        ) : null}
+
         <View style={styles.card}>
           <View style={styles.cardHead}>
             <Text style={styles.cardTitle}>Your matches</Text>
@@ -349,6 +364,10 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   // Icon and text on one line, top-aligned so the icon stays beside the first
   // line when the text wraps to two or three at a large font scale.
   toolRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  yearCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#0B1F3A',
+    borderRadius: 14, padding: 18, marginBottom: 18 },
+  yearTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.lg, color: '#fff' },
+  yearSub: { fontFamily: fontFamilies.body, fontSize: fontSizes.sm, color: '#C4D2E4', marginTop: 3, lineHeight: 19 },
 
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['3xl'], color: pilot.ink, marginBottom: 4 },
   subtitle: { fontFamily: fontFamilies.body, fontSize: fontSizes.base, color: pilot.muted, marginBottom: 16 },

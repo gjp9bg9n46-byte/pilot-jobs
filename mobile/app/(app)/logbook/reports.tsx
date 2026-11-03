@@ -9,12 +9,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
-import { useLogbookReports } from '../../../src/hooks/queries';
+import { useLogbookReports, useLogbookReportsYear } from '../../../src/hooks/queries';
 import { num, num1 } from '../../../src/lib/format';
 import { fontFamilies, fontSizes, layout, radii, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemedStyles, useThemeColors } from '../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../src/theme/tabBar';
 import RouteMap from '../../../src/components/logbook/RouteMap';
+import YearInTheSky from '../../../src/components/logbook/YearInTheSky';
 
 type Any = any;
 
@@ -100,10 +101,14 @@ export default function LogbookReportsScreen() {
   const router = useRouter();
   const bottom = useTabBarClearance();
   const [showAllAirports, setShowAllAirports] = useState(false);
+  const [tab, setTab] = useState<'career' | 'year'>('career');
+  const [pickedYear, setPickedYear] = useState<number | null>(null);
 
   const { data, isPending, error, refetch, isRefetching } = useLogbookReports();
 
   const onRefresh = useCallback(() => { refetch(); }, [refetch]);
+  // A past year is its own payload; the endpoint caches each one.
+  const picked = useLogbookReportsYear(pickedYear);
 
   if (isPending) {
     return (
@@ -122,7 +127,7 @@ export default function LogbookReportsScreen() {
 
   const {
     basis, limits, recency, totals: t, milestone, jobsUnlocked, command, almostThere,
-    distance, places, tails, sun, activity, night, placesBasis,
+    distance, places, tails, sun, activity, night, placesBasis, years,
   } = data;
   // The map resolves its own coordinates, so it takes the routes as codes.
   const mapSectors = (places?.routes || []).map((r: Any) => ({ from: r.from, to: r.to }));
@@ -149,6 +154,23 @@ export default function LogbookReportsScreen() {
           Based on {num(basis.flightCount)} logged flight{basis.flightCount === 1 ? '' : 's'}
           {basis.firstFlight ? `\n${dateLabel(basis.firstFlight)} – ${dateLabel(basis.lastFlight)}` : ''}
         </Text>
+
+        <View style={styles.tabs}>
+          <Pressable onPress={() => setTab('career')} style={[styles.tab, tab === 'career' && styles.tabOn]}>
+            <Text style={[styles.tabT, tab === 'career' && styles.tabTOn]}>Career</Text>
+          </Pressable>
+          <Pressable onPress={() => setTab('year')} style={[styles.tab, tab === 'year' && styles.tabOn]}>
+            <Text style={[styles.tabT, tab === 'year' && styles.tabTOn]}>Year in the sky</Text>
+          </Pressable>
+        </View>
+
+        {tab === 'year' ? (
+          <YearInTheSky
+            year={(pickedYear && picked.data?.year) || data.year}
+            years={years}
+            onYearChange={(y: number) => setPickedYear(y)}
+          />
+        ) : (<>
 
         {limits ? (
           <View style={styles.card}>
@@ -397,6 +419,7 @@ export default function LogbookReportsScreen() {
             <Text style={styles.note}>Ordered by how close the gap is. Fixed-wing roles only.</Text>
           </View>
         ) : null}
+        </>)}
       </ScrollView>
     </SafeAreaView>
   );
@@ -411,6 +434,11 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   backText: { color: pilot.navy, fontSize: fontSizes.base, fontFamily: fontFamilies.bodyMedium },
   content: { paddingHorizontal: layout.screenX, paddingTop: spacing.lg, gap: 12 },
 
+  tabs: { flexDirection: 'row', gap: 4, borderBottomWidth: 1, borderBottomColor: pilot.line, marginTop: spacing.md, marginBottom: spacing.xs },
+  tab: { paddingHorizontal: 12, paddingVertical: 9, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabOn: { borderBottomColor: pilot.navy },
+  tabT: { fontSize: fontSizes.sm, color: pilot.muted, fontFamily: fontFamilies.bodyMedium },
+  tabTOn: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold },
   h1: { fontFamily: fontFamilies.display, fontSize: fontSizes['2xl'], color: pilot.ink },
   lead: { color: pilot.muted, fontSize: fontSizes.base, lineHeight: 21, marginTop: 5 },
   basis: { fontFamily: fontFamilies.mono, fontSize: fontSizes.xs, color: pilot.muted, marginTop: 9, lineHeight: 17 },
