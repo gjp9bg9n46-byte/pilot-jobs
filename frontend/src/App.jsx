@@ -25,6 +25,7 @@ const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 const VerifyEmail = lazy(() => import('./pages/auth/VerifyEmail'));
 const Primitives = lazy(() => import('./pages/dev/Primitives'));
 const PfPmTool = lazy(() => import('./pages/PfPmTool'));
+const LogbookReports = lazy(() => import('./pages/LogbookReports'));
 const Jobs = lazy(() => import('./pages/Jobs'));
 const Airlines = lazy(() => import('./pages/Airlines'));
 const AirlineDetail = lazy(() => import('./pages/AirlineDetail'));
@@ -137,6 +138,7 @@ export default function App() {
             <Route path="alerts" element={<Navigate to="/dashboard" replace />} />
             <Route path="logbook" element={<Logbook />} />
             <Route path="logbook/add" element={<AddFlights />} />
+            <Route path="logbook/reports" element={<LogbookReports />} />
             <Route path="profile" element={<ProfileRedesign />} />
             <Route path="settings" element={<Settings />} />
             <Route path="cv" element={<CVBuilder />} />

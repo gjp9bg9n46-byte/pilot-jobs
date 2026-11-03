@@ -23,8 +23,17 @@ export const keys = {
   airlines: (q: Record<string, unknown>) => ['airlines', 'list', q] as const,
   cv: ['cv', 'document'] as const,
   logbook: (page: number) => ['logbook', 'bootstrap', page] as const,
+  logbookReports: ['logbook', 'reports'] as const,
   profile: ['profile', 'overview'] as const,
 };
+
+// ── Logbook Reports ──────────────────────────────────────────────────────────
+// One cached payload shared with the web page, so the two cannot disagree
+// about a number. The server caches it too; this just avoids a refetch on
+// every tab return.
+export function useLogbookReports() {
+  return useQuery({ queryKey: keys.logbookReports, queryFn: () => get<Any>('/logbook/reports'), staleTime: STALE.short });
+}
 
 // ── Home ─────────────────────────────────────────────────────────────────────
 export function useDashboard() {

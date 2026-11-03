@@ -92,6 +92,8 @@ export const flightLogApi = {
 export const logbookApi = {
   // Single hours-dashboard payload shared by web + app (see backend services/logbookSummary).
   summary: () => api.get('/logbook/summary'),
+  // Logbook Reports (phase 1) — one cached payload, shared with the app.
+  reports: () => api.get('/logbook/reports'),
   // Logbook preferences: hh:mm vs decimal, role preset, remembered aircraft, staff number.
   prefs: () => api.get('/logbook/prefs'),
   updatePrefs: (patch) => api.put('/logbook/prefs', patch),

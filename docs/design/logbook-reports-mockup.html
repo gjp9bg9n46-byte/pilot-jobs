@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<title>Logbook Reports — web mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  color-scheme:light;
+  --page:#FFFFFF; --bg:#F5F7FA; --surface:#FFFFFF;
+  --ink:#0F1B2D; --sub:#4A5668; --faint:#8592A3;
+  --line:#E3E8EF; --navy:#003F88; --navy-hover:#002B5C; --deep:#0B1F3A;
+  --soft:#8FB3E0; --red:#B42318; --green:#15803D;
+  --fd:'Fraunces',Georgia,serif; --fb:'Inter',system-ui,sans-serif; --fm:'JetBrains Mono',ui-monospace,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1160px;margin:0 auto;padding:0 40px}
+
+/* ── page chrome ─────────────────────────────────────────────────── */
+nav{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav .wrap{display:flex;align-items:center;height:60px;gap:28px}
+.logo{font-family:var(--fd);font-size:20px;font-weight:600;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+.logo svg{width:18px;height:18px}
+nav .links{display:flex;gap:22px;font-size:14.5px;color:var(--sub);font-weight:500;margin-left:auto}
+nav .links a{text-decoration:none;color:inherit}
+nav .links .on{color:var(--navy);font-weight:600}
+
+header.head{padding:34px 0 20px}
+header.head h1{font-family:var(--fd);font-size:34px;font-weight:600;letter-spacing:-.6px}
+header.head p{color:var(--sub);font-size:15px;margin-top:6px;max-width:62ch;line-height:1.55}
+.basis{margin-top:12px;font-size:13px;color:var(--faint);font-family:var(--fm)}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:18px 0 26px;overflow-x:auto}
+.tabs button{appearance:none;border:0;background:none;font-family:var(--fb);font-size:14px;font-weight:500;color:var(--sub);
+  padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--navy);border-bottom-color:var(--navy);font-weight:600}
+
+/* ── cards ───────────────────────────────────────────────────────── */
+/* minmax(0,…) not 1fr: a track whose minimum is auto is pushed wider by the
+   widest item's min-content — the long job titles in "Almost there" dragged
+   the whole column to 400px inside a 358px page. */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:16px;align-items:start}
+.grid.two{grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;min-width:0}
+.card h2{font-family:var(--fd);font-size:19px;font-weight:600;letter-spacing:-.2px}
+.card .sub{color:var(--sub);font-size:13.5px;margin-top:4px;line-height:1.5}
+.card .note{color:var(--faint);font-size:12.5px;margin-top:14px;line-height:1.5;border-top:1px solid var(--line);padding-top:12px}
+.sec{margin-bottom:34px}
+.sec > h3{font-family:var(--fd);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+
+/* ── limits ──────────────────────────────────────────────────────── */
+.lim{margin-top:18px}
+.lim + .lim{margin-top:16px}
+.lim .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:7px}
+.lim .k{font-size:14px;color:var(--sub)}
+.lim .v{font-family:var(--fm);font-size:14px;color:var(--ink)}
+.lim .v b{font-weight:500}
+.track{height:7px;background:#EDF1F6;border-radius:4px;overflow:hidden}
+.fill{height:100%;background:var(--navy);border-radius:4px}
+.fill.soft{background:var(--soft)}
+.fill.over{background:var(--red)}
+.lim .left{font-size:12.5px;color:var(--faint);margin-top:6px;font-family:var(--fm)}
+
+/* ── key figure ──────────────────────────────────────────────────── */
+.big{font-family:var(--fd);font-size:40px;font-weight:600;letter-spacing:-1px;line-height:1.05}
+.big .u{font-size:17px;color:var(--sub);font-weight:400;font-family:var(--fb);letter-spacing:0}
+.kcap{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:8px}
+
+/* ── definition rows ─────────────────────────────────────────────── */
+.rows{margin-top:14px}
+.r{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.r:first-child{border-top:0}
+.r .n{flex:1;min-width:0;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r .h{font-family:var(--fm);color:var(--ink);font-size:13.5px}
+.r .bar{width:88px;height:5px;background:#EDF1F6;border-radius:3px;overflow:hidden;flex-shrink:0}
+.r .bar i{display:block;height:100%;background:var(--navy)}
+.chip{font-family:var(--fm);font-size:11.5px;color:var(--sub);background:#F2F5F9;border:1px solid var(--line);
+  border-radius:4px;padding:2px 6px;white-space:nowrap}
+.tick{color:var(--green);font-size:13px}
+.gap{font-family:var(--fm);font-size:13px;color:var(--navy)}
+
+/* ── split / stat strip ──────────────────────────────────────────── */
+/* flex, not grid: a wrapped grid row leaves empty tracks and the grey gap
+   background shows through them as a dead cell. Flex items grow to fill the
+   last row, and the hairlines come from each cell's own border. */
+.strip{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;margin-top:16px}
+.strip div{flex:1 1 104px;min-width:0;padding:13px 12px;
+  border-left:1px solid var(--line);border-top:1px solid var(--line);margin-left:-1px;margin-top:-1px}
+.strip .sv{font-family:var(--fm);font-size:17px;color:var(--ink)}
+.strip .sk{font-size:11.5px;color:var(--faint);margin-top:3px}
+
+/* ── map / heatmap placeholders ──────────────────────────────────── */
+.mapbox{margin-top:16px;height:230px;border:1px solid var(--line);border-radius:10px;background:
+  linear-gradient(0deg,#F7F9FC,#F7F9FC);position:relative;overflow:hidden}
+.mapbox svg{position:absolute;inset:0;width:100%;height:100%}
+/* 7 rows, flowing down then across — a week per column, as a calendar reads. */
+.heat{display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;margin-top:16px}
+.heat i{aspect-ratio:1;border-radius:2px;background:#EDF1F6}
+.heat i.l1{background:#D5E0EE}.heat i.l2{background:#9FBBDC}.heat i.l3{background:#4F7CB5}.heat i.l4{background:var(--navy)}
+.legend{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:var(--faint)}
+.legend i{width:11px;height:11px;border-radius:2px;display:inline-block}
+
+/* ── donut ───────────────────────────────────────────────────────── */
+.donutrow{display:flex;gap:22px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.lg{font-size:13.5px;color:var(--sub);display:flex;flex-direction:column;gap:8px}
+.lg div{display:flex;align-items:center;gap:9px}
+.lg i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.lg b{font-family:var(--fm);font-weight:400;color:var(--ink);margin-left:auto;padding-left:18px}
+
+.flag{margin-top:14px;font-size:12.5px;color:var(--sub);background:#F2F5F9;border:1px solid var(--line);
+  border-left:3px solid var(--navy);border-radius:0 8px 8px 0;padding:10px 12px;line-height:1.5}
+.flag b{font-weight:600;color:var(--ink)}
+
+footer{padding:40px 0 60px;color:var(--faint);font-size:12.5px;text-align:center}
+@media (max-width:820px){
+  .wrap{padding:0 16px}
+  nav .links{display:none}
+  header.head{padding:24px 0 14px}
+  header.head h1{font-size:27px}
+  .grid,.grid.two{grid-template-columns:minmax(0,1fr)}
+  .heat{gap:2px}
+  .big{font-size:34px}
+}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#003F88" stroke-width="2" stroke-linecap="round"><path d="M3 12h14M13 7l5 5-5 5"/><path d="M7 9 4 12l3 3"/></svg> CockpitHire</span>
+  <div class="links"><a href="#">Dashboard</a><a href="#">Jobs</a><a href="#">Airlines</a><a class="on" href="#">Logbook</a><a href="#">CV Builder</a><a href="#">Profile</a><a href="#">Tools</a></div>
+</div></nav>
+
+<div class="wrap">
+  <header class="head">
+    <h1>Reports</h1>
+    <p>What your logbook says about where you are and what you can fly next. Figures come from your logged flights; nothing here is an official record.</p>
+    <p class="basis">Based on 517 logged flights · 12 Mar 2024 – 2 Nov 2026</p>
+  </header>
+
+  <div class="tabs">
+    <button class="on">Useful</button><button>Distance &amp; places</button><button>Patterns</button><button>Year in the sky</button><button>Export</button>
+  </div>
+
+  <!-- ══ PHASE 1 ══════════════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="grid two">
+
+      <!-- 1 · Flight time limits -->
+      <div class="card">
+        <h2>Flight time</h2>
+        <p class="sub">Block hours against the EASA ORO.FTL.210 ceilings. A helper for your own planning — your operator holds the official record.</p>
+
+        <div class="lim">
+          <div class="row"><span class="k">Last 28 days</span><span class="v"><b>77.8</b> of 100 h</span></div>
+          <div class="track"><div class="fill" style="width:77.8%"></div></div>
+          <div class="left">22.2 h remaining</div>
+        </div>
+        <div class="lim">
+          <div class="row"><span class="k">Calendar year 2026</span><span class="v"><b>218.8</b> of 900 h</span></div>
+          <div class="track"><div class="fill soft" style="width:24.3%"></div></div>
+          <div class="left">681.2 h remaining</div>
+        </div>
+        <div class="lim">
+          <div class="row"><span class="k">Last 12 months</span><span class="v"><b>313.0</b> of 1,000 h</span></div>
+          <div class="track"><div class="fill soft" style="width:31.3%"></div></div>
+          <div class="left">687.0 h remaining</div>
+        </div>
+        <p class="note">Carry-forward hours are excluded — these windows count logged flights only.</p>
+      </div>
+
+      <!-- 2 · Recency — THIS ACCOUNT: landings missing on most flights -->
+      <div class="card">
+        <h2>Recency</h2>
+        <p class="sub">Take-offs and landings in the last 90 days, by type.</p>
+        <div class="flag" style="margin-top:18px">Landings aren&rsquo;t recorded on most of your flights. Add them to track recency.</div>
+        <p class="note">9 of your 517 flights have landings recorded — imported rows carried no landings column. We would rather show nothing than a currency date built on a tenth of your flying.</p>
+        <p class="note" style="border:0;padding-top:4px;color:#003F88">State shown: <b>landings missing</b> — what this account sees today.</p>
+      </div>
+
+      <!-- 2b · Recency — the other state, once landings are logged -->
+      <div class="card">
+        <h2>Recency</h2>
+        <p class="sub">Take-offs and landings in the last 90 days, by type. EASA asks for three of each in the preceding 90 days.</p>
+        <div class="rows">
+          <div class="r"><span class="n">A320 · day landings</span><span class="h">5 landings</span><span class="tick">· current</span></div>
+          <div class="r"><span class="n">A320 · night landings</span><span class="h">4 landings</span><span class="tick">· current</span></div>
+        </div>
+        <div class="strip">
+          <div><div class="sv">2 Feb 2027</div><div class="sk">Day currency lapses</div></div>
+          <div><div class="sv">2 Feb 2027</div><div class="sk">Night currency lapses</div></div>
+        </div>
+        <p class="note">Counted from landings recorded in your logbook.</p>
+        <p class="note" style="border:0;padding-top:4px;color:#003F88">State shown: <b>landings recorded</b> — the verdict appears only once most flights carry them.</p>
+      </div>
+
+      <!-- 3 · Totals breakdown -->
+      <div class="card">
+        <h2>Totals</h2>
+        <p class="sub">Every hour in your logbook, split the way an application form asks for it.</p>
+
+        <div class="kcap" style="margin-top:18px">Total time</div>
+        <div class="big">1,592.4 <span class="u">h</span></div>
+
+        <div class="strip">
+          <div><div class="sv">0.0</div><div class="sk">PIC</div></div>
+          <div><div class="sv">1,592.4</div><div class="sk">SIC</div></div>
+          <div><div class="sv">0.0</div><div class="sk">Other</div></div>
+        </div>
+        <div class="strip">
+          <div><div class="sv">333.6</div><div class="sk">Night</div></div>
+          <div><div class="sv" style="color:#8592A3;font-size:13px">Not recorded</div><div class="sk">IFR</div></div>
+          <div><div class="sv">1,592.4</div><div class="sk">Multi-engine</div></div>
+          <div><div class="sv">1,592.4</div><div class="sk">Turbine</div></div>
+          <div><div class="sv">1,592.4</div><div class="sk">Jet</div></div>
+        </div>
+
+        <div class="kcap" style="margin-top:22px">By type</div>
+        <div class="rows">
+          <div class="r"><span class="n">A320 <span class="chip">32A–32G combined</span></span><span class="bar"><i style="width:100%"></i></span><span class="h">1,592.4 h</span></div>
+        </div>
+        <p class="note">Carry-forward hours are included here, because these are career totals.</p>
+      </div>
+
+      <!-- 4 · Next milestone -->
+      <div class="card">
+        <h2>Next milestone</h2>
+        <p class="sub">Your pace over the last six months, carried forward.</p>
+
+        <div class="kcap" style="margin-top:18px">2,000 hours</div>
+        <div class="big">407.6 <span class="u">h to go</span></div>
+        <div class="track" style="margin-top:16px"><div class="fill" style="width:79.6%"></div></div>
+        <div class="left" style="font-family:var(--fm);font-size:12.5px;color:var(--faint);margin-top:7px">1,592.4 of 2,000 h</div>
+
+        <div class="flag">At <b>36.5 hours a month</b>, you reach 2,000 hours around <b>October 2027</b>.</div>
+        <p class="note">Hidden when there are fewer than three months of flying to average.</p>
+      </div>
+
+      <!-- 5 · Jobs unlocked -->
+      <div class="card">
+        <h2>Jobs unlocked this year</h2>
+        <p class="sub">Live jobs you qualify for today that your hours on 1 January would not have reached.</p>
+
+        <div class="kcap" style="margin-top:18px">Since 1 January 2026</div>
+        <div class="big">+14 <span class="u">jobs</span></div>
+
+        <div class="strip">
+          <div><div class="sv">85</div><div class="sk">On 1 Jan</div></div>
+          <div><div class="sv">99</div><div class="sk">Today</div></div>
+          <div><div class="sv">613</div><div class="sk">Live jobs</div></div>
+        </div>
+        <p class="note">The same matching rules the Jobs tab uses, re-run against your totals as they stood on 1 January.</p>
+      </div>
+
+      <!-- 6 · Command upgrade -->
+      <div class="card">
+        <h2>Command</h2>
+        <p class="sub">Where you stand against the stated minimums in our live A320 Captain vacancies. Median of 11 jobs, not a rule of thumb.</p>
+
+        <div class="lim" style="margin-top:18px">
+          <div class="row"><span class="k">Total time</span><span class="v"><b>1,592</b> of 5,000 h</span></div>
+          <div class="track"><div class="fill" style="width:31.8%"></div></div>
+          <div class="left">3,408 h to the median</div>
+        </div>
+        <div class="lim">
+          <div class="row"><span class="k">PIC time</span><span class="v"><b>0</b> of 1,000 h</span></div>
+          <div class="track"><div class="fill" style="width:0%"></div></div>
+          <div class="left">1,000 h to the median</div>
+        </div>
+        <p class="note">Across all 67 Captain vacancies with stated minimums the medians are 4,000 h total and 1,000 h PIC.</p>
+      </div>
+
+      <!-- 7 · Almost qualified -->
+      <div class="card">
+        <h2>Almost there</h2>
+        <p class="sub">Live jobs you meet on every requirement but one.</p>
+        <div class="rows">
+          <div class="r"><span class="n">First Officer · A320 — Wizz Air</span><span class="gap">+37 h on type</span></div>
+          <div class="r"><span class="n">First Officer · B767 — Tasman Cargo</span><span class="gap">+408 h total</span></div>
+          <div class="r"><span class="n">Experienced First Officer — Pilot Assessments</span><span class="gap">+408 h total</span></div>
+          <div class="r"><span class="n">Supervisory Aircraft Pilot — FAA</span><span class="gap">+158 h total</span></div>
+        </div>
+        <p class="note">Ordered by how close the gap is. Jobs needing a rating or licence you do not hold are not listed.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ PHASE 2 ══════════════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="grid two">
+
+      <!-- 8 · Distance -->
+      <div class="card">
+        <h2>Distance flown</h2>
+        <p class="sub">Great-circle distance between the airports in your logbook.</p>
+        <div class="kcap" style="margin-top:18px">Total</div>
+        <div class="big">997,800 <span class="u">km</span></div>
+        <div class="strip">
+          <div><div class="sv">24.9×</div><div class="sk">Around the Earth</div></div>
+          
+        </div>
+        <div class="flag">Around the Earth <b>24.9 times</b>. <b>To the Moon and back, and 60% of the way there again.</b></div>
+        <p class="note">517 of 517 sectors had both airports resolved. Carry-forward hours have no route, so they are not counted.</p>
+      </div>
+
+      <!-- 9 · Map + collection -->
+      <div class="card">
+        <h2>Where you have been</h2>
+        <p class="sub">Every route in your logbook, drawn as a great circle.</p>
+        <div class="mapbox">
+          <svg viewBox="0 0 560 230" preserveAspectRatio="xMidYMid slice">
+            <rect width="560" height="230" fill="#F7F9FC"/>
+            <g stroke="#E3E8EF" stroke-width="1">
+              <path d="M0 60H560M0 115H560M0 170H560M140 0V230M280 0V230M420 0V230"/>
+            </g>
+            <g stroke="#003F88" stroke-width="1.1" fill="none" opacity=".5">
+              <path d="M268 142C300 120 340 112 395 104"/><path d="M268 142C250 118 236 104 214 92"/>
+              <path d="M268 142C292 126 330 132 372 150"/><path d="M268 142C238 132 206 126 168 128"/>
+              <path d="M268 142C286 110 300 86 318 66"/><path d="M268 142C252 150 222 160 190 166"/>
+              <path d="M268 142C306 138 356 128 430 118"/><path d="M268 142C262 112 258 92 250 72"/>
+            </g>
+            <g fill="#0B1F3A">
+              <circle cx="268" cy="142" r="4"/><circle cx="395" cy="104" r="2.5"/><circle cx="214" cy="92" r="2.5"/>
+              <circle cx="372" cy="150" r="2.5"/><circle cx="168" cy="128" r="2.5"/><circle cx="318" cy="66" r="2.5"/>
+              <circle cx="190" cy="166" r="2.5"/><circle cx="430" cy="118" r="2.5"/><circle cx="250" cy="72" r="2.5"/>
+            </g>
+            <text x="268" y="160" font-family="JetBrains Mono" font-size="9" fill="#4A5668" text-anchor="middle">CAI</text>
+          </svg>
+        </div>
+        <div class="strip">
+          <div><div class="sv">59</div><div class="sk">Airports</div></div>
+          <div><div class="sv">20</div><div class="sk">Countries</div></div>
+          <div><div class="sv">4,159</div><div class="sk">Longest leg, km</div></div>
+        </div>
+        <p class="note">Longest sector: Sharm El Sheikh to Almaty, 6 September 2025.</p>
+      </div>
+
+      <!-- 10 · Tails -->
+      <div class="card">
+        <h2>Tails</h2>
+        <p class="sub">The aircraft you have flown most.</p>
+        <div class="rows">
+          <div class="r"><span class="n"><span class="chip">SU-BPX</span></span><span class="bar"><i style="width:100%"></i></span><span class="h">47 sectors</span></div>
+          <div class="r"><span class="n"><span class="chip">SU-BUU</span></span><span class="bar"><i style="width:60%"></i></span><span class="h">28 sectors</span></div>
+          <div class="r"><span class="n"><span class="chip">SU-BUJ</span></span><span class="bar"><i style="width:55%"></i></span><span class="h">26 sectors</span></div>
+          <div class="r"><span class="n"><span class="chip">SU-BTM</span></span><span class="bar"><i style="width:49%"></i></span><span class="h">23 sectors</span></div>
+          <div class="r"><span class="n"><span class="chip">SU-BUQ</span></span><span class="bar"><i style="width:47%"></i></span><span class="h">22 sectors</span></div>
+        </div>
+      </div>
+
+      <!-- 11 · Sunrises -->
+      <div class="card">
+        <h2>Sunrises and sunsets</h2>
+        <p class="sub">Times the sun crossed the horizon while you were airborne, worked out from your off- and on-blocks times and the route between them.</p>
+        <div class="strip">
+          <div><div class="sv">86</div><div class="sk">Sunrises</div></div>
+          <div><div class="sv">124</div><div class="sk">Sunsets</div></div>
+        </div>
+        <p class="note">Needs both block times and two resolvable airports; sectors missing either are skipped and counted in the basis line.</p>
+      </div>
+
+      <!-- 12 · Heatmap -->
+      <div class="card">
+        <h2>Flying days</h2>
+        <p class="sub">Every day you flew, over the last year.</p>
+        <div class="heat" id="heat"></div>
+        <div class="legend">Less <i style="background:#EDF1F6"></i><i style="background:#D5E0EE"></i><i style="background:#9FBBDC"></i><i style="background:#4F7CB5"></i><i style="background:#003F88"></i> More</div>
+        <div class="strip">
+          <div><div class="sv">294</div><div class="sk">Days flown</div></div>
+          <div><div class="sv">Dec 2024</div><div class="sk">Busiest month</div></div>
+          <div><div class="sv">103.2</div><div class="sk">Hours that month</div></div>
+        </div>
+      </div>
+
+      <!-- 13 · Night share -->
+      <div class="card">
+        <h2>Night</h2>
+        <p class="sub">How much of your flying happens after dark.</p>
+        <div class="donutrow">
+          <svg width="128" height="128" viewBox="0 0 128 128">
+            <circle cx="64" cy="64" r="52" fill="none" stroke="#EDF1F6" stroke-width="15"/>
+            <circle cx="64" cy="64" r="52" fill="none" stroke="#003F88" stroke-width="15"
+              stroke-dasharray="68.6 258.1" transform="rotate(-90 64 64)"/>
+            <text x="64" y="61" text-anchor="middle" font-family="Fraunces" font-size="25" fill="#0F1B2D">21%</text>
+            <text x="64" y="78" text-anchor="middle" font-family="Inter" font-size="10" fill="#8592A3">at night</text>
+          </svg>
+          <div class="lg">
+            <div><i style="background:#003F88"></i> Night <b>333.6 h</b></div>
+            <div><i style="background:#EDF1F6"></i> Day <b>1,258.8 h</b></div>
+          </div>
+        </div>
+        <p class="note">Night time is taken from the crew's own column where the sector has one, and worked out from the sun along the route where it does not.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ PHASE 3 + 4 pointer ══════════════════════════════════════ -->
+  <div class="sec">
+    <div class="grid two">
+      <div class="card">
+        <h2>Your year in the sky</h2>
+        <p class="sub">A swipeable summary of 2026, with share cards sized for stories and for the feed. See the separate cards mockup.</p>
+        <p class="note">Live by 1 December.</p>
+      </div>
+      <div class="card">
+        <h2>Printable logbook</h2>
+        <p class="sub">An EASA-layout PDF of your flights, ready to print and sign. See the separate export mockup.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>Mockup · real figures from the test account, 3 November 2026 · not a live screen</footer>
+</div>
+
+<script>
+// Heatmap: a plausible year of flying days drawn from the real monthly totals
+// (busiest Dec, two quiet months in spring 2026, a gap mid-year).
+const months=[0,0,0,0,0,44.7,0,0,0,0,68.5,9.3];
+const h=document.getElementById('heat');let seed=7;
+const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff};
+for(let w=0;w<53;w++){for(let d=0;d<7;d++){
+  const i=document.createElement('i');
+  const m=Math.min(11,Math.floor(w/53*12));
+  const intensity=months[m]/80;
+  const r=rnd();
+  if(r<Math.min(.85,intensity*1.9)){i.className='l'+Math.min(4,1+Math.floor(rnd()*3.4));}
+  h.appendChild(i);
+}}
+</script>
+</body>
+</html>

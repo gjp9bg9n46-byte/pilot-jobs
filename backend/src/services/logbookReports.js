@@ -1,0 +1,362 @@
+'use strict';
+// ── Logbook Reports ─────────────────────────────────────────────────────────
+//
+// ONE endpoint behind GET /logbook/reports, so the web and the app can never
+// disagree about a number. Everything is derived here; the clients format and
+// lay out, and compute nothing.
+//
+// Two rules run through the whole file:
+//
+//  · CARRY-FORWARD is part of a CAREER total and part of nothing else. Hours a
+//    pilot flew before this logbook have no date, no route and no aircraft, so
+//    they cannot belong to a 28-day window, a distance, a map or a year. Every
+//    windowed figure below is computed from logged flights only, and the
+//    payload carries `basis` so the client can say "Based on N logged flights".
+//
+//  · A FIELD NOTHING WROTE TO IS NOT ZERO. An import with no instrument column
+//    leaves instrumentTime at its 0 default; reporting "0.0 h IFR" over 517
+//    sectors states something we do not know. computeDerivedTotals returns a
+//    `recorded` map and anything false here is reported as unknown.
+//
+// No crew names appear in this payload. The printable logbook (phase 4) is a
+// personal document and is served elsewhere; reports and share cards are not.
+const prisma = require('../config/database');
+const { computeDerivedTotals, _internals } = require('./logbookSummary');
+// blockHours/resolveType live behind _internals — the same derivation the
+// logbook summary uses, so the two screens cannot drift apart.
+const { resolveType, blockHours } = _internals;
+const { getActiveJobs } = require('./activeJobs');
+const { contextFromPilot, matchJob, jobAircraftCategory } = require('./jobMatch');
+
+const DAY = 86400000;
+const round1 = (n) => Math.round(n * 10) / 10;
+
+// EASA ORO.FTL.210 block-hour ceilings. A planning aid: the operator holds the
+// official record, and the client says so.
+const FTL = { last28Days: 100, calendarYear: 900, last12Months: 1000 };
+// EASA FCL.060(b): three take-offs and landings in the preceding 90 days.
+const RECENCY_WINDOW_DAYS = 90;
+const RECENCY_REQUIRED = 3;
+// Below this share of flights carrying landings, a currency verdict would be
+// built on a sliver of the logbook. We say so instead of implying it is whole.
+const LANDINGS_COVERAGE_MIN = 0.5;
+// Fewer than this many months with any flying and a projected date is noise.
+const PACE_MIN_MONTHS_FLOWN = 3;
+const PACE_WINDOW_MONTHS = 12;
+
+const MILESTONES = [500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 15000, 20000];
+
+/** Month key in UTC: "2026-11". */
+const ym = (d) => d.toISOString().slice(0, 7);
+
+/** The N calendar months ending with the current one, oldest first. */
+function recentMonthKeys(now, n) {
+  const out = [];
+  const y = now.getUTCFullYear(); const m = now.getUTCMonth();
+  for (let i = n - 1; i >= 0; i--) out.push(ym(new Date(Date.UTC(y, m - i, 1))));
+  return out;
+}
+
+// ── Flight time against the FTL ceilings ────────────────────────────────────
+function flightTimeLimits(logs, now) {
+  const t = now.getTime();
+  const from28 = t - 28 * DAY;
+  const from365 = t - 365 * DAY;
+  const yearStart = Date.UTC(now.getUTCFullYear(), 0, 1);
+  let b28 = 0; let bYear = 0; let b365 = 0; let inWindow = 0;
+  for (const log of logs) {
+    const at = log.date.getTime();
+    const block = blockHours(log);
+    if (at >= from28) b28 += block;
+    if (at >= yearStart) bYear += block;
+    if (at >= from365) { b365 += block; inWindow += 1; }
+  }
+  // Nothing in twelve months: three empty bars say less than no card at all.
+  if (!inWindow) return null;
+  return {
+    last28Days: { hours: round1(b28), limit: FTL.last28Days },
+    calendarYear: { hours: round1(bYear), limit: FTL.calendarYear, year: now.getUTCFullYear() },
+    last12Months: { hours: round1(b365), limit: FTL.last12Months },
+  };
+}
+
+// ── Recency ─────────────────────────────────────────────────────────────────
+// Per type, because currency is per type. Honest about its own basis: if most
+// flights carry no landings, we show no verdict at all.
+function recency(logs, now, resolveTypeOf) {
+  const from = now.getTime() - RECENCY_WINDOW_DAYS * DAY;
+  const window = logs.filter((l) => l.date.getTime() >= from);
+
+  const withLandings = logs.filter(
+    (l) => l.landingsRecorded === true || (l.landingsDay || 0) + (l.landingsNight || 0) > 0,
+  ).length;
+  const coverage = logs.length ? withLandings / logs.length : 0;
+  const trackable = logs.length > 0 && coverage >= LANDINGS_COVERAGE_MIN;
+
+  const base = {
+    trackable,
+    windowDays: RECENCY_WINDOW_DAYS,
+    required: RECENCY_REQUIRED,
+    flightsWithLandings: withLandings,
+    flightCount: logs.length,
+  };
+  if (!trackable) return { ...base, byType: [] };
+
+  // Newest first: the Nth-most-recent landing is the one whose roll-out date
+  // drops the count below the requirement.
+  const byType = new Map();
+  for (const l of [...window].sort((a, b) => b.date - a.date)) {
+    const type = resolveTypeOf(l) || 'Unknown';
+    if (!byType.has(type)) byType.set(type, { type, day: [], night: [] });
+    const e = byType.get(type);
+    for (let i = 0; i < (l.landingsDay || 0); i++) e.day.push(l.date);
+    for (let i = 0; i < (l.landingsNight || 0); i++) e.night.push(l.date);
+  }
+  const verdict = (dates) => {
+    const count = dates.length;
+    const current = count >= RECENCY_REQUIRED;
+    // Currency lapses 90 days after the flight carrying the 3rd-newest landing.
+    const pivot = current ? dates[RECENCY_REQUIRED - 1] : null;
+    return {
+      count,
+      current,
+      lapsesOn: pivot ? new Date(pivot.getTime() + RECENCY_WINDOW_DAYS * DAY).toISOString().slice(0, 10) : null,
+    };
+  };
+  return {
+    ...base,
+    byType: [...byType.values()]
+      .map((e) => ({ type: e.type, day: verdict(e.day), night: verdict(e.night) }))
+      .sort((a, b) => (b.day.count + b.night.count) - (a.day.count + a.night.count)),
+  };
+}
+
+// ── Next milestone, from the pace of the last 12 CALENDAR months ────────────
+// Calendar months, including the ones with no flying: a pilot who flew hard in
+// two months and not at all for ten is not on a 60-hour-a-month pace.
+function milestone(logs, careerTotal, now) {
+  const next = MILESTONES.find((h) => h > careerTotal);
+  if (!next) return null;
+  const remaining = round1(next - careerTotal);
+
+  const keys = recentMonthKeys(now, PACE_WINDOW_MONTHS);
+  const inWindow = new Set(keys);
+  const perMonth = new Map(keys.map((k) => [k, 0]));
+  for (const log of logs) {
+    const k = ym(log.date);
+    if (inWindow.has(k)) perMonth.set(k, perMonth.get(k) + blockHours(log));
+  }
+  const flown = [...perMonth.values()];
+  const monthsFlown = flown.filter((h) => h > 0).length;
+  const pace = flown.reduce((a, b) => a + b, 0) / PACE_WINDOW_MONTHS;
+
+  const base = { current: round1(careerTotal), next, remaining };
+  // Too little to extrapolate from, or no flying at all in the window.
+  if (monthsFlown < PACE_MIN_MONTHS_FLOWN || pace <= 0) return { ...base, pace: null, eta: null };
+
+  const monthsToGo = Math.ceil(remaining / pace);
+  const eta = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + monthsToGo, 1));
+  return {
+    ...base,
+    pace: round1(pace),
+    paceWindowMonths: PACE_WINDOW_MONTHS,
+    monthsFlown,
+    eta: eta.toISOString().slice(0, 7),
+  };
+}
+
+// ── Jobs: unlocked this year, command minimums, and the closest gaps ────────
+function totalsAsOf(logs, cf, cutoff) {
+  return computeDerivedTotals(logs.filter((l) => l.date.getTime() < cutoff), cf);
+}
+
+const median = (xs) => {
+  const a = xs.filter((n) => Number.isFinite(n) && n > 0).sort((x, y) => x - y);
+  return a.length ? a[Math.floor(a.length / 2)] : null;
+};
+
+/** How many of these jobs the pilot qualifies for, under the shared matcher. */
+function qualifyingCount(jobs, ctx) {
+  let n = 0;
+  for (const job of jobs) {
+    const m = matchJob(job, ctx);
+    if (m && m.status === 'QUALIFY') n += 1;
+  }
+  return n;
+}
+
+async function jobsSection(pilot, logs, cf, careerDerived, now) {
+  const jobs = await getActiveJobs();
+  if (!jobs || !jobs.length) return { unlocked: null, command: null, almostThere: [] };
+
+  const ctxNow = contextFromPilot(pilot, careerDerived);
+  if (!ctxNow) return { unlocked: null, command: null, almostThere: [] };
+
+  // ── Unlocked since 1 January: the same matcher, run against the totals the
+  //    pilot had then. Only hours move backwards here — licences and ratings
+  //    are taken as they are today, because we do not store when they were
+  //    earned, and inventing that would be worse than leaving it out.
+  const jan1 = Date.UTC(now.getUTCFullYear(), 0, 1);
+  const ctxJan = contextFromPilot(pilot, totalsAsOf(logs, cf, jan1));
+  const today = qualifyingCount(jobs, ctxNow);
+  const onJan1 = ctxJan ? qualifyingCount(jobs, ctxJan) : null;
+  const unlocked = onJan1 == null ? null : {
+    today, onJan1, delta: today - onJan1, activeJobs: jobs.length, since: new Date(jan1).toISOString().slice(0, 10),
+  };
+
+  // ── Command: the real minimums in live Captain vacancies, preferring the
+  //    pilot's own main type so the comparison is one they can act on.
+  const mainType = ((careerDerived.byType || [])[0] || {}).type || null;
+  const captains = jobs.filter((j) => String(j.role || '').toUpperCase() === 'CAPTAIN'
+    && jobAircraftCategory(j) !== 'helicopter'
+    && (Number(j.reqMinTotalHours) > 0 || Number(j.reqMinPicHours) > 0));
+  const onType = mainType
+    ? captains.filter((j) => (j.aircraftTypes || []).concat(j.reqTypeRatings || [])
+      .some((t) => String(t).toUpperCase().includes(mainType)))
+    : [];
+  const pool = onType.length >= 3 ? onType : captains;
+  const command = pool.length ? {
+    type: onType.length >= 3 ? mainType : null,
+    sampleSize: pool.length,
+    medianTotalHours: median(pool.map((j) => Number(j.reqMinTotalHours))),
+    medianPicHours: median(pool.map((j) => Number(j.reqMinPicHours))),
+    yourTotalHours: careerDerived.totalTime,
+    yourPicHours: careerDerived.picTime,
+  } : null;
+
+  // ── Almost there: fixed-wing only, exactly one requirement short.
+  //    The matcher already decides this — status SHORT means precisely one
+  //    stated requirement is not met, and `shortfall` is the phrase it uses
+  //    everywhere else in the product. Re-deriving it here would be a second
+  //    opinion that could disagree with the Jobs tab about the same job.
+  const almost = [];
+  for (const job of jobs) {
+    if (jobAircraftCategory(job) === 'helicopter') continue;
+    const m = matchJob(job, ctxNow);
+    if (!m || m.status !== 'SHORT') continue;
+    const row = (m.requirements || []).find((r) => r.status === 'unmet');
+    // Sort by the size of the gap where it is hours, so "37 more" leads
+    // "408 more"; anything non-numeric sorts last but is still shown.
+    const need = row && row.group === 'hours' ? Number(String(row.reqText).replace(/[^\d.]/g, '')) : null;
+    const have = row && row.group === 'hours' ? Number(String(row.pilotText || '').replace(/[^\d.]/g, '')) : null;
+    const gapHours = Number.isFinite(need) && Number.isFinite(have) && need > have
+      ? Math.round(need - have) : null;
+    almost.push({
+      id: job.id,
+      title: job.title,
+      company: job.company,
+      requirement: row ? row.label : null,
+      shortfall: m.shortfall,
+      gapHours,
+    });
+  }
+  almost.sort((a, b) => {
+    if (a.gapHours == null && b.gapHours == null) return 0;
+    if (a.gapHours == null) return 1;
+    if (b.gapHours == null) return -1;
+    return a.gapHours - b.gapHours;
+  });
+  return { unlocked, command, almostThere: almost.slice(0, 6) };
+}
+
+// ── The payload ─────────────────────────────────────────────────────────────
+async function buildLogbookReports(pilotId, { now = new Date() } = {}) {
+  const [pilot, logs] = await Promise.all([
+    prisma.pilot.findUnique({
+      where: { id: pilotId },
+      include: { certificates: true, ratings: true, medicals: true, rightToWork: true, instructorRatings: true },
+    }),
+    prisma.flightLog.findMany({ where: { pilotId }, orderBy: { date: 'asc' } }),
+  ]);
+  if (!pilot) return null;
+  const cf = pilot.carryForward || {};
+  const derived = computeDerivedTotals(logs, cf);
+  const typeOf = (l) => resolveType(l).type || null;
+
+  const carryForwardHours = round1(Number(cf.totalTime) || 0);
+  const basis = {
+    flightCount: logs.length,
+    firstFlight: logs.length ? logs[0].date.toISOString().slice(0, 10) : null,
+    lastFlight: logs.length ? logs[logs.length - 1].date.toISOString().slice(0, 10) : null,
+    carryForwardHours,
+  };
+
+  const rec = derived.recorded || {};
+  const totals = {
+    // Career totals — carry-forward included, because that is what a career is.
+    totalTime: derived.totalTime,
+    picTime: derived.picTime,
+    sicTime: derived.sicTime,
+    // No training column exists yet, so the remainder is named for what it is.
+    otherTime: round1(Math.max(0, derived.totalTime - derived.picTime - derived.sicTime)),
+    nightTime: rec.nightTime ? derived.nightTime : null,
+    instrumentTime: rec.instrumentTime ? derived.instrumentTime : null,
+    crossCountryTime: rec.crossCountryTime ? derived.crossCountryTime : null,
+    multiEngineTime: derived.multiEngineTime || null,
+    turbineTime: derived.turbineTime || null,
+    jetTime: derived.jetTime || null,
+    carryForward: carryForwardHours,
+    byType: derived.byType || [],
+  };
+
+  const jobs = await jobsSection(pilot, logs, cf, derived, now);
+
+  return {
+    generatedAt: now.toISOString(),
+    basis,
+    limits: flightTimeLimits(logs, now),
+    recency: recency(logs, now, typeOf),
+    totals,
+    milestone: milestone(logs, derived.totalTime, now),
+    jobsUnlocked: jobs.unlocked,
+    command: jobs.command,
+    almostThere: jobs.almostThere,
+  };
+}
+
+// ── Cache ───────────────────────────────────────────────────────────────────
+// The report is several seconds of work (517 flights × 613 jobs) and does not
+// change between two taps. Same shape as matchContextCache: short TTL, and an
+// explicit invalidate for the write paths that touch totals.
+const TTL_MS = Number(process.env.REPORTS_CACHE_TTL_MS || 120000);
+const cache = new Map();
+const inflight = new Map();
+const MAX = 200;
+
+function invalidateReports(pilotId) { cache.delete(pilotId); }
+function clearReportsCache() { cache.clear(); inflight.clear(); }
+
+async function getLogbookReports(pilotId, opts) {
+  if (!pilotId) return null;
+  const hit = cache.get(pilotId);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.payload;
+  const pending = inflight.get(pilotId);
+  if (pending) return pending;
+
+  const p = buildLogbookReports(pilotId, opts)
+    .then((payload) => {
+      cache.delete(pilotId);
+      cache.set(pilotId, { at: Date.now(), payload });
+      while (cache.size > MAX) cache.delete(cache.keys().next().value);
+      return payload;
+    })
+    .finally(() => inflight.delete(pilotId));
+  inflight.set(pilotId, p);
+  return p;
+}
+
+module.exports = {
+  getLogbookReports,
+  buildLogbookReports,
+  invalidateReports,
+  clearReportsCache,
+  // exported for tests — pure, no database
+  flightTimeLimits,
+  recency,
+  milestone,
+  recentMonthKeys,
+  FTL,
+  LANDINGS_COVERAGE_MIN,
+  PACE_WINDOW_MONTHS,
+  MILESTONES,
+};

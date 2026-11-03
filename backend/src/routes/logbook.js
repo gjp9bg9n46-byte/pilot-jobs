@@ -38,6 +38,8 @@ router.use((req, res, next) => {
 
 // Hours-dashboard summary shared by web + app (see services/logbookSummary).
 router.get('/summary', flightLogController.summary);
+// Logbook Reports (phase 1): limits, recency, totals, milestone, jobs.
+router.get('/reports', flightLogController.reports);
 // One call for everything the Logbook tab opens with (prefs + quota + summary
 // + first page). See controllers/bundleController.js.
 router.get('/bootstrap', bundles.logbookBootstrap);

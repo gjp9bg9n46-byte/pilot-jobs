@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<title>Logbook Reports — app mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#F5F7FA;--surface:#FFFFFF;--ink:#0F1B2D;--sub:#4A5668;--faint:#8592A3;
+  --line:#E3E8EF;--navy:#003F88;--deep:#0B1F3A;--soft:#8FB3E0;--green:#15803D;
+  --fd:'Fraunces',Georgia,serif;--fb:'Inter',system-ui,sans-serif;--fm:'JetBrains Mono',ui-monospace,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#DCE2EA;font-family:var(--fb);color:var(--ink);padding:0;-webkit-font-smoothing:antialiased}
+
+/* the phone column — 390 wide, exactly as the app renders */
+.phone{width:390px;margin:0 auto;background:var(--bg);min-height:100vh;position:relative;display:flex;flex-direction:column}
+
+/* app chrome: navy header, bottom tabs */
+.appbar{background:var(--deep);padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:4}
+.appbar .brand{font-family:var(--fd);font-size:17px;font-weight:600;color:#fff;display:flex;align-items:center;gap:7px}
+.appbar .brand svg{width:15px;height:15px}
+.appbar .ic{margin-left:auto;display:flex;gap:16px;opacity:.9}
+.appbar .ic svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:1.7}
+
+.navrow{background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:11px 16px}
+.navrow .back{display:flex;align-items:center;gap:6px;color:var(--navy);font-size:14px;font-weight:500;text-decoration:none}
+.navrow .back svg{width:16px;height:16px;stroke:var(--navy);fill:none;stroke-width:2}
+
+.head{padding:18px 16px 4px}
+.head h1{font-family:var(--fd);font-size:26px;font-weight:600;letter-spacing:-.4px}
+.head p{color:var(--sub);font-size:13.5px;margin-top:5px;line-height:1.5}
+.basis{font-family:var(--fm);font-size:11.5px;color:var(--faint);margin-top:9px}
+
+.segs{display:flex;gap:7px;padding:14px 16px 4px;overflow-x:auto;scrollbar-width:none}
+.segs::-webkit-scrollbar{display:none}
+.segs span{flex:0 0 auto;font-size:13px;font-weight:500;color:var(--sub);background:#fff;border:1px solid var(--line);
+  border-radius:999px;padding:7px 13px;white-space:nowrap}
+.segs span.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+
+.body{padding:12px 16px 0;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{font-family:var(--fd);font-size:17px;font-weight:600}
+.card .sub{color:var(--sub);font-size:13px;margin-top:4px;line-height:1.5}
+.card .note{color:var(--faint);font-size:12px;margin-top:13px;line-height:1.5;border-top:1px solid var(--line);padding-top:11px}
+
+.lim{margin-top:15px}
+.lim+.lim{margin-top:14px}
+.lim .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+.lim .k{font-size:13.5px;color:var(--sub)}
+.lim .v{font-family:var(--fm);font-size:13px}
+.track{height:7px;background:#EDF1F6;border-radius:4px;overflow:hidden}
+.fill{height:100%;background:var(--navy);border-radius:4px}
+.fill.soft{background:var(--soft)}
+.left{font-family:var(--fm);font-size:11.5px;color:var(--faint);margin-top:5px}
+
+.kcap{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600;margin:16px 0 7px}
+.big{font-family:var(--fd);font-size:33px;font-weight:600;letter-spacing:-.8px;line-height:1.05}
+.big .u{font-size:15px;color:var(--sub);font-weight:400;font-family:var(--fb);letter-spacing:0}
+
+.strip{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;margin-top:14px}
+.strip div{flex:1 1 92px;min-width:0;padding:11px 10px;
+  border-left:1px solid var(--line);border-top:1px solid var(--line);margin-left:-1px;margin-top:-1px}
+.strip .sv{font-family:var(--fm);font-size:15px}
+.strip .sk{font-size:11px;color:var(--faint);margin-top:3px}
+
+.rows{margin-top:12px}
+.r{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+.r:first-child{border-top:0}
+.r .n{flex:1;min-width:0;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r .h{font-family:var(--fm);font-size:12.5px}
+.r .bar{width:62px;height:5px;background:#EDF1F6;border-radius:3px;overflow:hidden;flex-shrink:0}
+.r .bar i{display:block;height:100%;background:var(--navy)}
+.chip{font-family:var(--fm);font-size:11px;color:var(--sub);background:#F2F5F9;border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+.tick{color:var(--green);font-size:13px}
+.gap{font-family:var(--fm);font-size:12.5px;color:var(--navy);white-space:nowrap}
+
+.flag{margin-top:13px;font-size:12.5px;color:var(--sub);background:#F2F5F9;border:1px solid var(--line);
+  border-left:3px solid var(--navy);border-radius:0 8px 8px 0;padding:10px 11px;line-height:1.5}
+.flag b{font-weight:600;color:var(--ink)}
+
+.mapbox{margin-top:14px;height:190px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#F7F9FC}
+.mapbox svg{width:100%;height:100%;display:block}
+.heat{display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;margin-top:14px}
+.heat i{aspect-ratio:1;border-radius:2px;background:#EDF1F6}
+.heat i.l1{background:#D5E0EE}.heat i.l2{background:#9FBBDC}.heat i.l3{background:#4F7CB5}.heat i.l4{background:var(--navy)}
+.legend{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:11.5px;color:var(--faint)}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.donutrow{display:flex;gap:16px;align-items:center;margin-top:14px}
+.lg{font-size:13px;color:var(--sub);display:flex;flex-direction:column;gap:7px;flex:1}
+.lg div{display:flex;align-items:center;gap:8px}
+.lg i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.lg b{font-family:var(--fm);font-weight:400;color:var(--ink);margin-left:auto}
+
+.tabbar{position:sticky;bottom:0;margin-top:20px;background:#fff;border-top:1px solid var(--line);
+  display:flex;padding:9px 6px calc(9px + env(safe-area-inset-bottom));gap:2px}
+.tabbar div{flex:1;text-align:center;font-size:10.5px;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar div.on{color:var(--navy);font-weight:600}
+.tabbar svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7}
+.sechead{font-family:var(--fd);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:10px 2px 0}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="appbar">
+    <span class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M3 12h14M13 7l5 5-5 5"/><path d="M7 9 4 12l3 3"/></svg> CockpitHire</span>
+    <span class="ic">
+      <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </span>
+  </div>
+
+  <div class="navrow">
+    <a class="back" href="#"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg> Logbook</a>
+  </div>
+
+  <div class="head">
+    <h1>Reports</h1>
+    <p>What your logbook says about where you are and what you can fly next.</p>
+    <p class="basis">Based on 517 logged flights<br/>12 Mar 2024 – 2 Nov 2026</p>
+  </div>
+
+  <div class="segs">
+    <span class="on">Useful</span><span>Distance</span><span>Patterns</span><span>Year in the sky</span><span>Export</span>
+  </div>
+
+  <div class="body">
+
+    <div class="card">
+      <h2>Flight time</h2>
+      <p class="sub">Block hours against the EASA ORO.FTL.210 ceilings. A helper for your own planning — your operator holds the official record.</p>
+      <div class="lim">
+        <div class="row"><span class="k">Last 28 days</span><span class="v">77.8 of 100 h</span></div>
+        <div class="track"><div class="fill" style="width:77.8%"></div></div>
+        <div class="left">22.2 h remaining</div>
+      </div>
+      <div class="lim">
+        <div class="row"><span class="k">Calendar year 2026</span><span class="v">218.8 of 900 h</span></div>
+        <div class="track"><div class="fill soft" style="width:24.3%"></div></div>
+        <div class="left">681.2 h remaining</div>
+      </div>
+      <div class="lim">
+        <div class="row"><span class="k">Last 12 months</span><span class="v">313.0 of 1,000 h</span></div>
+        <div class="track"><div class="fill soft" style="width:31.3%"></div></div>
+        <div class="left">687.0 h remaining</div>
+      </div>
+      <p class="note">Carry-forward hours are excluded — these windows count logged flights only.</p>
+    </div>
+
+    <div class="card">
+      <h2>Recency</h2>
+      <p class="sub">Take-offs and landings in the last 90 days, by type.</p>
+      <div class="flag" style="margin-top:15px">Landings aren&rsquo;t recorded on most of your flights. Add them to track recency.</div>
+      <p class="note">9 of your 517 flights have landings recorded — imported rows carried no landings column.</p>
+    </div>
+
+    <div class="card">
+      <h2>Totals</h2>
+      <p class="sub">Every hour in your logbook, split the way an application form asks for it.</p>
+      <div class="kcap">Total time</div>
+      <div class="big">1,592.4 <span class="u">h</span></div>
+      <div class="strip">
+        <div><div class="sv">0.0</div><div class="sk">PIC</div></div>
+        <div><div class="sv">1,592.4</div><div class="sk">SIC</div></div>
+        <div><div class="sv">0.0</div><div class="sk">Other</div></div>
+      </div>
+      <div class="strip">
+        <div><div class="sv">333.6</div><div class="sk">Night</div></div>
+        <div><div class="sv" style="color:#8592A3;font-size:12px">Not recorded</div><div class="sk">IFR</div></div>
+        <div><div class="sv">1,592.4</div><div class="sk">Multi</div></div>
+        <div><div class="sv">1,592.4</div><div class="sk">Turbine</div></div>
+        <div><div class="sv">1,592.4</div><div class="sk">Jet</div></div>
+      </div>
+      <div class="kcap">By type</div>
+      <div class="rows">
+        <div class="r"><span class="n">A320 <span class="chip">32A–32G</span></span><span class="bar"><i style="width:100%"></i></span><span class="h">1,592.4 h</span></div>
+      </div>
+      <p class="note">Carry-forward hours are included here, because these are career totals.</p>
+    </div>
+
+    <div class="card">
+      <h2>Next milestone</h2>
+      <p class="sub">Your pace over the last six months, carried forward.</p>
+      <div class="kcap">2,000 hours</div>
+      <div class="big">407.6 <span class="u">h to go</span></div>
+      <div class="track" style="margin-top:14px"><div class="fill" style="width:79.6%"></div></div>
+      <div class="left">1,592.4 of 2,000 h</div>
+      <div class="flag">At <b>36.5 hours a month</b>, you reach 2,000 hours around <b>October 2027</b>.</div>
+    </div>
+
+    <div class="card">
+      <h2>Jobs unlocked this year</h2>
+      <p class="sub">Live jobs you qualify for today that your hours on 1 January would not have reached.</p>
+      <div class="kcap">Since 1 January 2026</div>
+      <div class="big">+14 <span class="u">jobs</span></div>
+      <div class="strip">
+        <div><div class="sv">85</div><div class="sk">On 1 Jan</div></div>
+        <div><div class="sv">99</div><div class="sk">Today</div></div>
+        <div><div class="sv">613</div><div class="sk">Live jobs</div></div>
+      </div>
+      <p class="note">The same matching rules the Jobs tab uses, re-run against your totals as they stood on 1 January.</p>
+    </div>
+
+    <div class="card">
+      <h2>Command</h2>
+      <p class="sub">Where you stand against the stated minimums in our live A320 Captain vacancies. Median of 11 jobs.</p>
+      <div class="lim" style="margin-top:15px">
+        <div class="row"><span class="k">Total time</span><span class="v">1,592 of 5,000 h</span></div>
+        <div class="track"><div class="fill" style="width:31.8%"></div></div>
+        <div class="left">3,408 h to the median</div>
+      </div>
+      <div class="lim">
+        <div class="row"><span class="k">PIC time</span><span class="v">0 of 1,000 h</span></div>
+        <div class="track"><div class="fill" style="width:0%"></div></div>
+        <div class="left">1,000 h to the median</div>
+      </div>
+      <p class="note">Across all 67 Captain vacancies with stated minimums the medians are 4,000 h total and 1,000 h PIC.</p>
+    </div>
+
+    <div class="card">
+      <h2>Almost there</h2>
+      <p class="sub">Live jobs you meet on every requirement but one.</p>
+      <div class="rows">
+        <div class="r"><span class="n">First Officer · A320 — Wizz Air</span><span class="gap">+37 h type</span></div>
+        <div class="r"><span class="n">Supervisory Aircraft Pilot — FAA</span><span class="gap">+158 h</span></div>
+        <div class="r"><span class="n">First Officer · B767 — Tasman Cargo</span><span class="gap">+408 h</span></div>
+      </div>
+      <p class="note">Ordered by how close the gap is.</p>
+    </div>
+
+    <div class="card">
+      <h2>Distance flown</h2>
+      <p class="sub">Great-circle distance between the airports in your logbook.</p>
+      <div class="kcap">Total</div>
+      <div class="big">997,800 <span class="u">km</span></div>
+      <div class="strip">
+        <div><div class="sv">24.9×</div><div class="sk">Around the Earth</div></div>
+        
+      </div>
+      <div class="flag">Around the Earth <b>24.9 times</b>. <b>To the Moon and back, and 60% of the way there again.</b></div>
+    </div>
+
+    <div class="card">
+      <h2>Where you have been</h2>
+      <p class="sub">Every route in your logbook, drawn as a great circle.</p>
+      <div class="mapbox">
+        <svg viewBox="0 0 358 190" preserveAspectRatio="xMidYMid slice">
+          <rect width="358" height="190" fill="#F7F9FC"/>
+          <g stroke="#E3E8EF" stroke-width="1"><path d="M0 50H358M0 95H358M0 140H358M90 0V190M179 0V190M268 0V190"/></g>
+          <g stroke="#003F88" stroke-width="1.1" fill="none" opacity=".5">
+            <path d="M171 117C192 100 220 93 252 86"/><path d="M171 117C158 98 148 87 133 77"/>
+            <path d="M171 117C188 105 212 110 238 124"/><path d="M171 117C151 109 128 105 104 107"/>
+            <path d="M171 117C183 93 193 74 204 57"/><path d="M171 117C160 123 140 131 120 136"/>
+            <path d="M171 117C196 114 228 106 276 98"/>
+          </g>
+          <g fill="#0B1F3A">
+            <circle cx="171" cy="117" r="3.6"/><circle cx="252" cy="86" r="2.3"/><circle cx="133" cy="77" r="2.3"/>
+            <circle cx="238" cy="124" r="2.3"/><circle cx="104" cy="107" r="2.3"/><circle cx="204" cy="57" r="2.3"/>
+            <circle cx="120" cy="136" r="2.3"/><circle cx="276" cy="98" r="2.3"/>
+          </g>
+          <text x="171" y="132" font-family="JetBrains Mono" font-size="8" fill="#4A5668" text-anchor="middle">CAI</text>
+        </svg>
+      </div>
+      <div class="strip">
+        <div><div class="sv">59</div><div class="sk">Airports</div></div>
+        <div><div class="sv">20</div><div class="sk">Countries</div></div>
+        <div><div class="sv">4,159</div><div class="sk">Longest, km</div></div>
+      </div>
+      <p class="note">Longest sector: Sharm El Sheikh to Almaty, 6 September 2025.</p>
+    </div>
+
+    <div class="card">
+      <h2>Tails</h2>
+      <p class="sub">The aircraft you have flown most.</p>
+      <div class="rows">
+        <div class="r"><span class="n"><span class="chip">SU-BPX</span></span><span class="bar"><i style="width:100%"></i></span><span class="h">47</span></div>
+        <div class="r"><span class="n"><span class="chip">SU-BUU</span></span><span class="bar"><i style="width:60%"></i></span><span class="h">28</span></div>
+        <div class="r"><span class="n"><span class="chip">SU-BUJ</span></span><span class="bar"><i style="width:55%"></i></span><span class="h">26</span></div>
+        <div class="r"><span class="n"><span class="chip">SU-BTM</span></span><span class="bar"><i style="width:49%"></i></span><span class="h">23</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Sunrises and sunsets</h2>
+      <p class="sub">Times the sun crossed the horizon while you were airborne, from your block times and the route between them.</p>
+      <div class="strip">
+        <div><div class="sv">86</div><div class="sk">Sunrises</div></div>
+        <div><div class="sv">124</div><div class="sk">Sunsets</div></div>
+      </div>
+      <p class="note">Needs both block times and two resolvable airports.</p>
+    </div>
+
+    <div class="card">
+      <h2>Flying days</h2>
+      <p class="sub">Every day you flew, over the last year.</p>
+      <div class="heat" id="heat"></div>
+      <div class="legend">Less <i style="background:#EDF1F6"></i><i style="background:#D5E0EE"></i><i style="background:#9FBBDC"></i><i style="background:#4F7CB5"></i><i style="background:#003F88"></i> More</div>
+      <div class="strip">
+        <div><div class="sv">294</div><div class="sk">Days flown</div></div>
+        <div><div class="sv">Dec 2024</div><div class="sk">Busiest month</div></div>
+        <div><div class="sv">103.2</div><div class="sk">Hours</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Night</h2>
+      <p class="sub">How much of your flying happens after dark.</p>
+      <div class="donutrow">
+        <svg width="108" height="108" viewBox="0 0 128 128" style="flex-shrink:0">
+          <circle cx="64" cy="64" r="52" fill="none" stroke="#EDF1F6" stroke-width="15"/>
+          <circle cx="64" cy="64" r="52" fill="none" stroke="#003F88" stroke-width="15" stroke-dasharray="68.6 258.1" transform="rotate(-90 64 64)"/>
+          <text x="64" y="61" text-anchor="middle" font-family="Fraunces" font-size="25" fill="#0F1B2D">21%</text>
+          <text x="64" y="78" text-anchor="middle" font-family="Inter" font-size="10" fill="#8592A3">at night</text>
+        </svg>
+        <div class="lg">
+          <div><i style="background:#003F88"></i> Night <b>333.6 h</b></div>
+          <div><i style="background:#EDF1F6"></i> Day <b>1,258.8 h</b></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tabbar">
+    <div><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2z"/></svg>Home</div>
+    <div><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Jobs</div>
+    <div><svg viewBox="0 0 24 24"><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M8 8h6M8 12h6"/></svg>CV</div>
+    <div class="on"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h7"/></svg>Logbook</div>
+    <div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</div>
+  </div>
+</div>
+
+<script>
+const months=[0,0,0,0,0,44.7,0,0,0,0,68.5,9.3];
+const h=document.getElementById('heat');let seed=7;
+const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff};
+for(let w=0;w<53;w++){for(let d=0;d<7;d++){
+  const i=document.createElement('i');
+  const m=Math.min(11,Math.floor(w/53*12));
+  if(rnd()<Math.min(.85,(months[m]/80)*1.9)){i.className='l'+Math.min(4,1+Math.floor(rnd()*3.4));}
+  h.appendChild(i);
+}}
+</script>
+</body>
+</html>

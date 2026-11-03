@@ -1,0 +1,72 @@
+/* Logbook Reports — phase 1. Shares the product palette from design-tokens.css. */
+.lbr-wrap { max-width: 1160px; margin: 0 auto; padding: 0 40px 64px; }
+
+.lbr-head { padding: 28px 0 18px; }
+.lbr-back { font-size: 14px; color: var(--accent); text-decoration: none; font-weight: 500; }
+.lbr-back:hover { text-decoration: underline; }
+.lbr-head h1 { font-family: var(--font-display); font-size: 34px; font-weight: 600; letter-spacing: -.6px; margin-top: 10px; }
+.lbr-lead { color: var(--text-secondary); font-size: 15px; margin-top: 6px; max-width: 62ch; line-height: 1.55; }
+.lbr-basis { margin-top: 12px; font-size: 13px; color: var(--text-faint); font-family: var(--font-mono); }
+.lbr-loading, .lbr-err { padding: 60px 0; color: var(--text-secondary); font-size: 15px; }
+
+/* minmax(0,…) not 1fr: an auto minimum lets the widest item — a long job title
+   — drag the whole column past the viewport on a phone. */
+.lbr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: 16px; align-items: start; }
+.lbr-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-width: 0; }
+.lbr-card h2 { font-family: var(--font-display); font-size: 19px; font-weight: 600; letter-spacing: -.2px; }
+.lbr-sub { color: var(--text-secondary); font-size: 13.5px; margin-top: 4px; line-height: 1.5; }
+.lbr-note { color: var(--text-faint); font-size: 12.5px; margin-top: 14px; line-height: 1.5; border-top: 1px solid var(--border); padding-top: 12px; }
+.lbr-flag { margin-top: 14px; font-size: 13px; color: var(--text-secondary); background: #F2F5F9;
+  border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+  padding: 11px 13px; line-height: 1.55; }
+.lbr-flag b { font-weight: 600; color: var(--text-primary); }
+
+/* limits */
+.lim { margin-top: 18px; }
+.lim-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 7px; }
+.lim-k { font-size: 14px; color: var(--text-secondary); }
+.lim-v { font-family: var(--font-mono); font-size: 14px; color: var(--text-primary); white-space: nowrap; }
+.track { height: 7px; background: #EDF1F6; border-radius: 4px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); border-radius: 4px; }
+.fill.soft { background: var(--accent-soft); }
+.fill.over { background: #B42318; }
+.lim-left { font-size: 12.5px; color: var(--text-faint); margin-top: 6px; font-family: var(--font-mono); }
+
+/* key figure */
+.kcap { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; margin: 18px 0 8px; }
+.big { font-family: var(--font-display); font-size: 40px; font-weight: 600; letter-spacing: -1px; line-height: 1.05; }
+.bu { font-size: 17px; color: var(--text-secondary); font-weight: 400; font-family: var(--font-body); letter-spacing: 0; }
+
+/* stat strip — flex, not grid: a wrapped grid row leaves empty tracks and the
+   hairline background shows through them as a dead cell. */
+.strip { display: flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; margin-top: 16px; }
+.strip > div { flex: 1 1 104px; min-width: 0; padding: 13px 12px;
+  border-left: 1px solid var(--border); border-top: 1px solid var(--border); margin-left: -1px; margin-top: -1px; }
+.sv { font-family: var(--font-mono); font-size: 17px; color: var(--text-primary); }
+.sv-sm { font-size: 14px; }
+.sv-missing { font-size: 13px; color: var(--text-faint); font-family: var(--font-body); }
+.su { font-size: 13px; color: var(--text-secondary); }
+.sk { font-size: 11.5px; color: var(--text-faint); margin-top: 3px; }
+
+/* rows */
+.rows { margin-top: 14px; }
+.r { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--border); font-size: 14px; }
+.r:first-child { border-top: 0; }
+.r-n { flex: 1; min-width: 0; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r-h { font-family: var(--font-mono); color: var(--text-primary); font-size: 13.5px; white-space: nowrap; }
+.r-bar { width: 88px; height: 5px; background: #EDF1F6; border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+.r-bar i { display: block; height: 100%; background: var(--accent); }
+.r-ok { color: #15803D; font-size: 13px; white-space: nowrap; }
+.r-no { color: var(--text-faint); font-size: 13px; white-space: nowrap; }
+.r-gap { font-family: var(--font-mono); font-size: 13px; color: var(--accent); white-space: nowrap; }
+a.r-link { text-decoration: none; }
+a.r-link:hover .r-n { color: var(--text-primary); }
+
+@media (max-width: 820px) {
+  .lbr-wrap { padding: 0 16px 48px; }
+  .lbr-head { padding: 20px 0 14px; }
+  .lbr-head h1 { font-size: 27px; }
+  .lbr-grid { grid-template-columns: minmax(0, 1fr); }
+  .big { font-size: 34px; }
+}

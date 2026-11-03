@@ -20,7 +20,7 @@ import { timeToMinutes } from '../../../../src/lib/logbook';
 import { duration, findOverlaps, groupBy, Grouping, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
 import AddFlightSheet from '../../../../src/components/logbook/AddFlightSheet';
 import { setPendingFlight as stashFlight } from '../../../../src/lib/pendingFlight';
-import { fontFamilies, fontSizes, pilot, spacing, layout } from '../../../../src/theme/tokens';
+import { fontFamilies, fontSizes, pilot, radii, spacing, layout } from '../../../../src/theme/tokens';
 import { ThemePalette, useThemeColors, useThemedStyles } from '../../../../src/theme/ThemeContext';
 import { useFabClearance } from '../../../../src/theme/tabBar';
 import { FlashList } from '@shopify/flash-list';
@@ -409,6 +409,17 @@ function LogbookList() {
       {/* Hours dashboard (real data from /logbook/summary) */}
       <LogbookDashboard summary={summary} onEditCarryForward={() => setCfOpenSignal((s) => s + 1)} timeFormat={timeFormat} />
 
+      {/* Reports lives as its own page, not a card: it is several screens of
+          figures and a pilot opens it deliberately, not on every glance. */}
+      <Pressable style={styles.reportsRow} onPress={() => router.push('/logbook/reports')}>
+        <Ionicons name="stats-chart-outline" size={18} color={pilot.navy} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.reportsTitle}>Reports</Text>
+          <Text style={styles.reportsSub} numberOfLines={1}>Flight time, recency, totals and what you nearly qualify for</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={pilot.muted} />
+      </Pressable>
+
       {/* Where this page of flights went. Follows the list: change page or
           switch Month/Day and the map follows. Below the hours, because
           currency is the number a pilot needs first. */}
@@ -550,6 +561,10 @@ function LogbookList() {
 
 
 const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); return StyleSheet.create({
+  reportsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pilot.surface,
+    borderWidth: 1, borderColor: pilot.line, borderRadius: radii.lg, padding: layout.cardPad, marginTop: layout.cardGap },
+  reportsTitle: { fontFamily: fontFamilies.display, fontSize: fontSizes.md, color: pilot.ink },
+  reportsSub: { fontFamily: fontFamilies.body, fontSize: fontSizes.xs, color: pilot.muted, marginTop: 2 },
   // ── The rebuilt list (mockup): header, totals, recency, day groups, FAB ──
   headRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
   seg: { flexDirection: 'row', borderWidth: 1, borderColor: pilot.line, borderRadius: 8, overflow: 'hidden', backgroundColor: pilot.surface },

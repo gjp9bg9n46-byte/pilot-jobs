@@ -18,11 +18,26 @@ test('normaliseType strips variant suffixes to a family key', () => {
   assert.strictEqual(normaliseType(''), '');
 });
 
-test('classForType: multi/turbine vs single-piston, unknown → null', () => {
-  assert.deepStrictEqual(classForType('A320'), { multi: true, turbine: true });
+test('classForType: multi/turbine/jet vs single-piston, unknown → null', () => {
+  assert.deepStrictEqual(classForType('A320'), { multi: true, turbine: true, jet: true });
+  // A turboprop is turbine and is NOT a jet — a form asks for them separately.
+  assert.deepStrictEqual(classForType('ATR72'), { multi: true, turbine: true, jet: false });
   assert.deepStrictEqual(classForType('DA42'), { multi: true, turbine: false });
   assert.deepStrictEqual(classForType('C172'), { multi: false, turbine: false });
   assert.strictEqual(classForType('ZZZ99'), null);
+});
+
+// An operator roster exports IATA subtype codes rather than the type. A pilot
+// on one fleet must not see it split into seven rows in their own logbook.
+test('normaliseType folds the A320-family subtype codes 32A–32G into A320', () => {
+  for (const c of ['32A', '32B', '32C', '32D', '32E', '32F', '32G']) {
+    assert.strictEqual(normaliseType(c), 'A320', `${c} should read as A320`);
+  }
+  assert.strictEqual(normaliseType('32a'), 'A320');
+  // Not every 32-prefixed token is the family: leave anything else alone.
+  assert.strictEqual(normaliseType('32H'), '32H');
+  assert.strictEqual(normaliseType('320'), '320');
+  assert.strictEqual(normaliseType('B732'), 'B732');
 });
 
 test('typeFromRegistration: Air Cairo SU-B** truncated reg → A320', () => {

@@ -433,3 +433,17 @@ exports.summary = async (req, res, next) => {
     next(err);
   }
 };
+
+// Logbook Reports — one cached payload, so web and app cannot disagree about a
+// number. See services/logbookReports.js for the carry-forward and
+// "not recorded" rules.
+exports.reports = async (req, res, next) => {
+  try {
+    const { getLogbookReports } = require('../services/logbookReports');
+    const payload = await getLogbookReports(req.pilot.id);
+    if (!payload) return res.status(404).json({ error: 'Pilot not found' });
+    res.json(payload);
+  } catch (err) {
+    next(err);
+  }
+};

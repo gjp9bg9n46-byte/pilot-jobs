@@ -910,6 +910,7 @@ export default function Logbook() {
             <button type="button" className={grouping === 'month' ? 'on' : ''} onClick={() => setGrouping('month')} aria-pressed={grouping === 'month'}>Month</button>
             <button type="button" className={grouping === 'day' ? 'on' : ''} onClick={() => setGrouping('day')} aria-pressed={grouping === 'day'}>Day</button>
           </div>
+          <Button variant="secondary" onClick={() => navigate('/logbook/reports')}>Reports</Button>
           {!isMobile && <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import</Button>}
           <Button onClick={() => navigate('/logbook/add')}>+ Add flight</Button>
         </div>

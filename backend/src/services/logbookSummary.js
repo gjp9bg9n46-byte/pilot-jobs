@@ -35,22 +35,30 @@ function blockHours(log) {
 
 // ── Aircraft type → engine class ───────────────────────────────────────────
 // Normalise a raw type to a family key (A320-200 → A320, B737-800 → B737).
+// IATA-style A320-family subtype codes. An operator's roster exports these
+// instead of the type ("32A" for an A320, "32N" for a neo), and a pilot who
+// flies one fleet should not see it split into seven rows in their own
+// logbook. 32A–32G all mean an A320-family aeroplane.
+const A320_FAMILY_CODE = /^32[A-G]$/;
+
 function normaliseType(raw) {
   const t = String(raw || '').toUpperCase().trim();
   if (!t) return '';
   // Family key = first token before any variant separator: B737-800 → B737.
-  return t.split(/[\s\-/]+/)[0];
+  const head = t.split(/[\s\-/]+/)[0];
+  return A320_FAMILY_CODE.test(head) ? 'A320' : head;
 }
-// multi = >1 engine; turbine = jet/turboprop powerplant.
+// multi = >1 engine; turbine = jet OR turboprop; jet = turbofan/turbojet only.
+// An ATR is turbine and is NOT a jet, and a form asks for them separately.
 const TYPE_CLASS = {
-  A319: { multi: true, turbine: true }, A320: { multi: true, turbine: true },
-  A321: { multi: true, turbine: true }, A318: { multi: true, turbine: true },
-  B737: { multi: true, turbine: true }, B738: { multi: true, turbine: true },
-  B739: { multi: true, turbine: true }, B777: { multi: true, turbine: true },
-  B787: { multi: true, turbine: true }, B747: { multi: true, turbine: true },
-  E170: { multi: true, turbine: true }, E190: { multi: true, turbine: true },
-  ATR72: { multi: true, turbine: true }, ATR42: { multi: true, turbine: true },
-  DH8: { multi: true, turbine: true }, Q400: { multi: true, turbine: true },
+  A319: { multi: true, turbine: true, jet: true }, A320: { multi: true, turbine: true, jet: true },
+  A321: { multi: true, turbine: true, jet: true }, A318: { multi: true, turbine: true, jet: true },
+  B737: { multi: true, turbine: true, jet: true }, B738: { multi: true, turbine: true, jet: true },
+  B739: { multi: true, turbine: true, jet: true }, B777: { multi: true, turbine: true, jet: true },
+  B787: { multi: true, turbine: true, jet: true }, B747: { multi: true, turbine: true, jet: true },
+  E170: { multi: true, turbine: true, jet: true }, E190: { multi: true, turbine: true, jet: true },
+  ATR72: { multi: true, turbine: true, jet: false }, ATR42: { multi: true, turbine: true, jet: false },
+  DH8: { multi: true, turbine: true, jet: false }, Q400: { multi: true, turbine: true, jet: false },
   DA42: { multi: true, turbine: false }, BE76: { multi: true, turbine: false },
   PA34: { multi: true, turbine: false }, C172: { multi: false, turbine: false },
   C152: { multi: false, turbine: false }, PA28: { multi: false, turbine: false },
@@ -290,7 +298,12 @@ async function aircraftBreakdown(pilotId, { limit = 20 } = {}) {
 // instead of loading every flight on each /jobs request. Pure — no I/O.
 function computeDerivedTotals(logs, cf) {
   const cfNum = (k) => (Number.isFinite(+((cf || {})[k])) ? +cf[k] : 0);
-  let total = 0, pic = 0, sic = 0, night = 0, ifr = 0, cc = 0, multi = 0, turbine = 0, landings = 0;
+  let total = 0, pic = 0, sic = 0, night = 0, ifr = 0, cc = 0, multi = 0, turbine = 0, jet = 0, landings = 0;
+  // Which columns the source actually carried. A field nothing ever wrote to
+  // is NOT zero — it is unknown, and the report says "Not recorded" rather
+  // than claiming the pilot has flown no instrument time in 517 sectors.
+  const seen = { picTime: false, sicTime: false, nightTime: false, instrumentTime: false,
+    crossCountryTime: false, multiEngineTime: false, turbineTime: false, jetTime: false, landings: false };
   let lastDate = null;
   const byTypeMap = new Map();
   for (const log of logs) {
@@ -302,6 +315,12 @@ function computeDerivedTotals(logs, cf) {
     const cls = classForType(type);
     multi += (log.multiEngineTime > 0) ? log.multiEngineTime : (cls && cls.multi ? block : 0);
     turbine += (log.turbineTime > 0) ? log.turbineTime : (cls && cls.turbine ? block : 0);
+    jet += (log.jetTime > 0) ? log.jetTime : (cls && cls.jet ? block : 0);
+    for (const k of ['picTime', 'sicTime', 'instrumentTime', 'crossCountryTime', 'multiEngineTime', 'turbineTime', 'jetTime']) {
+      if (Number(log[k]) > 0) seen[k] = true;
+    }
+    if (log.nightTime != null) seen.nightTime = true;
+    if (log.landingsRecorded === true || (log.landingsDay || 0) + (log.landingsNight || 0) > 0) seen.landings = true;
     if (type) {
       if (!byTypeMap.has(type)) byTypeMap.set(type, { hours: 0, regs: new Set(), inferred });
       const e = byTypeMap.get(type); e.hours += block;
@@ -323,12 +342,17 @@ function computeDerivedTotals(logs, cf) {
     crossCountryTime: round1(cc + cfNum('crossCountryTime')),
     multiEngineTime: round1(multi + cfNum('multiEngineTime')),
     turbineTime: round1(turbine + cfNum('turbineTime')),
+    jetTime: round1(jet + cfNum('jetTime')),
     landings: landings + cfNum('landingsDay') + cfNum('landingsNight'),
     carryForward: round1(cfNum('totalTime')),
     flightCount: logs.length,
     lastFlightDate: lastDate ? lastDate.toISOString().slice(0, 10) : null,
     picSicSplitValid: T > 0 && (P + S) <= T * 1.05 && (P + S) >= T * 0.5,
     byType,
+    // A class inferred from the type gives us multi/turbine/jet even when the
+    // source had no such column, so those count as recorded once any flight
+    // resolved to a known class.
+    recorded: seen,
   };
 }
 
@@ -341,6 +365,11 @@ async function recomputeDerivedTotals(pilotId) {
   ]);
   const d = computeDerivedTotals(logs, (pilot && pilot.carryForward) || {});
   await prisma.pilot.update({ where: { id: pilotId }, data: { derivedTotals: d } });
+  // Every write that moves a pilot's totals comes through here, so this is the
+  // one place the reports cache has to be dropped. Without it a pilot adds a
+  // flight and their Reports page keeps the old figures until the TTL expires.
+  // Required lazily: logbookReports requires this module.
+  try { require('./logbookReports').invalidateReports(pilotId); } catch { /* reports not loaded */ }
   return d;
 }
 
@@ -420,5 +449,5 @@ module.exports = {
   auditAllDerivedTotals,
   displayTypeFor,
   // exported for unit tests
-  _internals: { blockFromTimes, normaliseType, classForType, typeFromRegistration, resolveType, buildLadder },
+  _internals: { blockFromTimes, blockHours, normaliseType, classForType, typeFromRegistration, resolveType, buildLadder },
 };
