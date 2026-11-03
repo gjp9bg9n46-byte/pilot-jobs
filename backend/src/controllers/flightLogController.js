@@ -439,8 +439,12 @@ exports.summary = async (req, res, next) => {
 // "not recorded" rules.
 exports.reports = async (req, res, next) => {
   try {
-    const { getLogbookReports } = require('../services/logbookReports');
-    const payload = await getLogbookReports(req.pilot.id);
+    const { getLogbookReports, buildLogbookReports } = require('../services/logbookReports');
+    // ?_perf=1 measures a REAL uncached build, so it bypasses the cache —
+    // timing a cache hit would only ever report the cache.
+    const payload = req.query._perf
+      ? await buildLogbookReports(req.pilot.id, { perf: true })
+      : await getLogbookReports(req.pilot.id);
     if (!payload) return res.status(404).json({ error: 'Pilot not found' });
     res.json(payload);
   } catch (err) {

@@ -206,6 +206,29 @@ function buildContextInner(pilot, flightCerts, totals) {
   };
 }
 
+// The SAME context with different flight totals.
+//
+// Reports asks "what would I have qualified for on 1 January": same licences,
+// same ratings, same medical, different hours. Re-fetching the pilot and its
+// five relations to answer that costs six round trips for data that has not
+// changed, so the totals are swapped on a context we already hold.
+//
+// It lives here, beside buildContextInner, because these three fields are the
+// only ones derived from totals — and if a fourth is ever added there, it has
+// to be added here in the same edit.
+function withTotals(ctx, totals) {
+  if (!ctx) return null;
+  const roleSplitKnown = (typeof totals?.picSicSplitValid === 'boolean')
+    ? totals.picSicSplitValid
+    : (((Number(totals?.picTime) || 0) + (Number(totals?.sicTime) || 0)) > 0);
+  return {
+    ...ctx,
+    totals: totals || {},
+    roleSplitKnown,
+    matchable: ctx.certTypes?.size > 0 || ((totals && totals.totalTime) > 0),
+  };
+}
+
 // ── Job classifiers (aircraft category + instructor/examiner role) ───────────
 const ROTOR_TYPE = /\b(as3\d\d|aw1\d\d|ec1\d\d|h1[0-9]{2}|s-?(?:76|92|61)|b(?:206|407|412|429)|bk117|md5\d\d|md902|r22|r44|r66|nh90|uh-?60|a109|a119|mi-?\d|ka-?\d{2})\b/i;
 const ROTOR_WORD = /\b(helicopter|rotor[\s-]?wing|rotary[\s-]?wing|rotorcraft|\bhems\b|offshore\s+helicopter)\b/i;
@@ -645,6 +668,6 @@ function titleCaseWord(s) {
 module.exports = {
   CAMPAIGN_MATCH,
   regionForCountry, defaultRegionForPilot, REGIONS,
-  buildMatchContext, contextFromPilot, matchJob, medicalLabel, workAuthLabel,
+  buildMatchContext, contextFromPilot, withTotals, matchJob, medicalLabel, workAuthLabel,
   jobAircraftCategory, jobInstructorKind, normCategory, jobIsEvent, jobEligibility,
 };

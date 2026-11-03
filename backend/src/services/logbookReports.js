@@ -26,7 +26,18 @@ const { computeDerivedTotals, _internals } = require('./logbookSummary');
 // logbook summary uses, so the two screens cannot drift apart.
 const { resolveType, blockHours } = _internals;
 const { getActiveJobs } = require('./activeJobs');
-const { contextFromPilot, matchJob, jobAircraftCategory } = require('./jobMatch');
+const { withTotals, matchJob, jobAircraftCategory } = require('./jobMatch');
+const { getMatchContext } = require('./matchContextCache');
+
+// The fields computeDerivedTotals, the windows, recency and type resolution
+// actually read. Everything else on a FlightLog is dead weight over the wire.
+const FLIGHT_SELECT = {
+  date: true, totalTime: true, offBlocksTime: true, onBlocksTime: true,
+  picTime: true, sicTime: true, nightTime: true, instrumentTime: true,
+  crossCountryTime: true, multiEngineTime: true, turbineTime: true, jetTime: true,
+  landingsDay: true, landingsNight: true, landingsRecorded: true,
+  aircraftType: true, registration: true,
+};
 
 const DAY = 86400000;
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -185,24 +196,51 @@ function qualifyingCount(jobs, ctx) {
   return n;
 }
 
-async function jobsSection(pilot, logs, cf, careerDerived, now) {
-  const jobs = await getActiveJobs();
-  if (!jobs || !jobs.length) return { unlocked: null, command: null, almostThere: [] };
+async function jobsSection(jobsP, ctxP, logs, cf, careerDerived, now) {
+  // Both were started at the top of the build and have been loading while the
+  // flights were read, so this is a join, not a fetch.
+  const [jobs, ctxNow] = await Promise.all([jobsP, ctxP]);
+  if (!jobs || !jobs.length || !ctxNow) return { unlocked: null, command: null, almostThere: [] };
 
-  const ctxNow = contextFromPilot(pilot, careerDerived);
-  if (!ctxNow) return { unlocked: null, command: null, almostThere: [] };
+  // ── ONE pass over the job list, not three. Today's qualify count and the
+  //    one-requirement-short list come from the same verdict per job.
+  let today = 0;
+  const almost = [];
+  for (const job of jobs) {
+    const m = matchJob(job, ctxNow);
+    if (!m) continue;
+    if (m.status === 'QUALIFY') { today += 1; continue; }
+    if (m.status !== 'SHORT') continue;
+    if (jobAircraftCategory(job) === 'helicopter') continue;
+    const row = (m.requirements || []).find((r) => r.status === 'unmet');
+    const need = row && row.group === 'hours' ? Number(String(row.reqText).replace(/[^\d.]/g, '')) : null;
+    const have = row && row.group === 'hours' ? Number(String(row.pilotText || '').replace(/[^\d.]/g, '')) : null;
+    almost.push({
+      id: job.id,
+      title: job.title,
+      company: job.company,
+      requirement: row ? row.label : null,
+      shortfall: m.shortfall,
+      gapHours: Number.isFinite(need) && Number.isFinite(have) && need > have ? Math.round(need - have) : null,
+    });
+  }
 
-  // ── Unlocked since 1 January: the same matcher, run against the totals the
-  //    pilot had then. Only hours move backwards here — licences and ratings
-  //    are taken as they are today, because we do not store when they were
-  //    earned, and inventing that would be worse than leaving it out.
+  // ── Unlocked since 1 January: the same matcher against the totals the pilot
+  //    had then. Only hours move backwards — licences and ratings are taken as
+  //    they are today, because we do not store when they were earned and
+  //    inventing that would be worse than leaving it out.
   const jan1 = Date.UTC(now.getUTCFullYear(), 0, 1);
-  const ctxJan = contextFromPilot(pilot, totalsAsOf(logs, cf, jan1));
-  const today = qualifyingCount(jobs, ctxNow);
-  const onJan1 = ctxJan ? qualifyingCount(jobs, ctxJan) : null;
-  const unlocked = onJan1 == null ? null : {
-    today, onJan1, delta: today - onJan1, activeJobs: jobs.length, since: new Date(jan1).toISOString().slice(0, 10),
-  };
+  const flownThisYear = logs.some((l) => l.date.getTime() >= jan1);
+  let unlocked;
+  if (!flownThisYear) {
+    // Nothing logged this year, so the January context is today's context and
+    // a second pass over 613 jobs could only return the same number.
+    unlocked = { today, onJan1: today, delta: 0, activeJobs: jobs.length, since: new Date(jan1).toISOString().slice(0, 10) };
+  } else {
+    const ctxJan = withTotals(ctxNow, totalsAsOf(logs, cf, jan1));
+    const onJan1 = qualifyingCount(jobs, ctxJan);
+    unlocked = { today, onJan1, delta: today - onJan1, activeJobs: jobs.length, since: new Date(jan1).toISOString().slice(0, 10) };
+  }
 
   // ── Command: the real minimums in live Captain vacancies, preferring the
   //    pilot's own main type so the comparison is one they can act on.
@@ -224,32 +262,7 @@ async function jobsSection(pilot, logs, cf, careerDerived, now) {
     yourPicHours: careerDerived.picTime,
   } : null;
 
-  // ── Almost there: fixed-wing only, exactly one requirement short.
-  //    The matcher already decides this — status SHORT means precisely one
-  //    stated requirement is not met, and `shortfall` is the phrase it uses
-  //    everywhere else in the product. Re-deriving it here would be a second
-  //    opinion that could disagree with the Jobs tab about the same job.
-  const almost = [];
-  for (const job of jobs) {
-    if (jobAircraftCategory(job) === 'helicopter') continue;
-    const m = matchJob(job, ctxNow);
-    if (!m || m.status !== 'SHORT') continue;
-    const row = (m.requirements || []).find((r) => r.status === 'unmet');
-    // Sort by the size of the gap where it is hours, so "37 more" leads
-    // "408 more"; anything non-numeric sorts last but is still shown.
-    const need = row && row.group === 'hours' ? Number(String(row.reqText).replace(/[^\d.]/g, '')) : null;
-    const have = row && row.group === 'hours' ? Number(String(row.pilotText || '').replace(/[^\d.]/g, '')) : null;
-    const gapHours = Number.isFinite(need) && Number.isFinite(have) && need > have
-      ? Math.round(need - have) : null;
-    almost.push({
-      id: job.id,
-      title: job.title,
-      company: job.company,
-      requirement: row ? row.label : null,
-      shortfall: m.shortfall,
-      gapHours,
-    });
-  }
+  // Closest gap first; a non-numeric shortfall sorts last but is still shown.
   almost.sort((a, b) => {
     if (a.gapHours == null && b.gapHours == null) return 0;
     if (a.gapHours == null) return 1;
@@ -260,17 +273,36 @@ async function jobsSection(pilot, logs, cf, careerDerived, now) {
 }
 
 // ── The payload ─────────────────────────────────────────────────────────────
-async function buildLogbookReports(pilotId, { now = new Date() } = {}) {
+async function buildLogbookReports(pilotId, { now = new Date(), perf = false } = {}) {
+  // Phase timings, the same `?_perf=1` convention GET /jobs uses. Measuring
+  // this from a laptop is measuring the laptop: every query crosses the
+  // internet to Railway (~217 ms round trip here, ~1 ms in production), so
+  // the only honest numbers come from the deployed server.
+  const t0 = Date.now();
+  const marks = {};
+  const mark = (k) => { marks[k] = Date.now() - t0; };
+  // Four independent reads, so they go out together rather than one after the
+  // other. Sequentially this is four round trips stacked; in parallel it costs
+  // the slowest of them. The job list and the match context are shared caches
+  // that the Jobs tab and the dashboard usually have warm already.
+  const jobsP = getActiveJobs();
+  const ctxP = getMatchContext(pilotId, prisma);
+  // Only the columns the derivation reads. A logbook is hundreds of rows and
+  // the unused ones (remarks, flight numbers, scan ids) are the wide columns.
   const [pilot, logs] = await Promise.all([
-    prisma.pilot.findUnique({
-      where: { id: pilotId },
-      include: { certificates: true, ratings: true, medicals: true, rightToWork: true, instructorRatings: true },
-    }),
-    prisma.flightLog.findMany({ where: { pilotId }, orderBy: { date: 'asc' } }),
+    prisma.pilot.findUnique({ where: { id: pilotId }, select: { id: true, carryForward: true } }),
+    prisma.flightLog.findMany({ where: { pilotId }, orderBy: { date: 'asc' }, select: FLIGHT_SELECT }),
   ]);
-  if (!pilot) return null;
+  mark('load');
+  if (!pilot) {
+    // Nothing to report on. Settle the in-flight promises so a rejection
+    // cannot surface later as an unhandled rejection.
+    jobsP.catch(() => {}); ctxP.catch(() => {});
+    return null;
+  }
   const cf = pilot.carryForward || {};
   const derived = computeDerivedTotals(logs, cf);
+  mark('derive');
   const typeOf = (l) => resolveType(l).type || null;
 
   const carryForwardHours = round1(Number(cf.totalTime) || 0);
@@ -299,10 +331,13 @@ async function buildLogbookReports(pilotId, { now = new Date() } = {}) {
     byType: derived.byType || [],
   };
 
-  const jobs = await jobsSection(pilot, logs, cf, derived, now);
+  const jobs = await jobsSection(jobsP, ctxP, logs, cf, derived, now);
+  mark('jobs');
 
+  mark('total');
   return {
     generatedAt: now.toISOString(),
+    ...(perf ? { _timing: marks } : {}),
     basis,
     limits: flightTimeLimits(logs, now),
     recency: recency(logs, now, typeOf),

@@ -170,3 +170,47 @@ test('milestone: the next rung is always above the career total, carry-forward a
   assert.strictEqual(milestone([flight(daysAgo(1), 1)], 1999.9, NOW).next, 2000);
   assert.strictEqual(milestone([flight(daysAgo(1), 1)], 2000, NOW).next, 2500);
 });
+
+// ── Carry-forward ───────────────────────────────────────────────────────────
+// The rule the whole report rests on: hours flown before this logbook are part
+// of a CAREER total and part of nothing else. They have no date, so they
+// cannot land in a 28-day window — and a pilot who imported 3,000 hours must
+// not be told they flew 3,010 in the last month.
+//
+// Verified end to end against a real account (cftest-carryforward@example.com)
+// as well; this pins it without needing one.
+const { computeDerivedTotals } = require('../logbookSummary');
+
+const CF = { totalTime: 3000, picTime: 2500, sicTime: 500, nightTime: 400 };
+
+test('carry-forward is in the career total and in none of the windows', () => {
+  const logs = [
+    flight(daysAgo(5), 10),     // 28d + year + 12mo
+    flight(daysAgo(100), 20),   // 12mo (and the year, early in a year)
+    flight(daysAgo(500), 40),   // older than everything
+  ];
+  const career = computeDerivedTotals(logs, CF);
+  assert.strictEqual(career.totalTime, 3070, 'career total = 3,000 carried + 70 logged');
+  assert.strictEqual(career.carryForward, 3000);
+
+  const l = flightTimeLimits(logs, NOW);
+  assert.strictEqual(l.last28Days.hours, 10, '28 days sees the one recent flight only');
+  assert.strictEqual(l.last12Months.hours, 30, 'twelve months sees two flights, not 3,030');
+  assert.ok(l.calendarYear.hours < CF.totalTime, 'the calendar year cannot contain undated hours');
+});
+
+test('carry-forward reaches the milestone, because a milestone is a career figure', () => {
+  const logs = [flight(daysAgo(5), 10)];
+  const career = computeDerivedTotals(logs, CF);
+  const m = milestone(logs, career.totalTime, NOW);
+  assert.strictEqual(m.current, 3010);
+  assert.strictEqual(m.next, 4000, 'the next rung is measured from the career total');
+});
+
+test('a pilot with no carry-forward is unaffected by the rule', () => {
+  const logs = [flight(daysAgo(5), 10)];
+  const career = computeDerivedTotals(logs, {});
+  assert.strictEqual(career.totalTime, 10);
+  assert.strictEqual(career.carryForward, 0);
+  assert.strictEqual(flightTimeLimits(logs, NOW).last28Days.hours, 10);
+});
