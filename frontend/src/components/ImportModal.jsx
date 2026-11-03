@@ -73,6 +73,18 @@ function applyMapping(rawRows, headers, mapping, duplicateSet = new Set()) {
     .filter(Boolean);
 }
 
+/**
+ * What we are skipping, in a sentence. Two kinds of duplicate now exist —
+ * one the logbook already holds, and one the file repeats — and a pilot
+ * should not have to guess which they are looking at.
+ */
+function duplicateSentence(total, inLogbook, inFile) {
+  const flights = `${total} flight${total === 1 ? '' : 's'}`;
+  if (!inFile) return `${flights} already in your logbook, skipped.`;
+  if (!inLogbook) return `${flights} repeated in this file, skipped.`;
+  return `${flights} skipped — ${inLogbook} already in your logbook, ${inFile} repeated in this file.`;
+}
+
 function formatRoute(fields) {
   const dep = (fields.departure || '').toUpperCase();
   const arr = (fields.arrival || '').toUpperCase();
@@ -106,6 +118,17 @@ function toCsvCell(v) {
 // ─── Inline styles ─── (overlay/modal/header/title/body retired — now uses the
 // <Modal size="lg"> primitive for backdrop, title, X, scroll-lock, focus, escape)
 const css = {
+  // The duplicate note: a quiet panel, not a warning.
+  dupNote: {
+    border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)',
+    padding: '10px 12px', marginBottom: 12,
+  },
+  dupLink: {
+    background: 'none', border: 0, padding: 0, cursor: 'pointer',
+    font: '600 13px var(--font-body)', color: 'var(--accent)', textDecoration: 'underline',
+  },
+  dupList: { margin: '8px 0 0', paddingLeft: 18, maxHeight: 180, overflowY: 'auto' },
+  dupItem: { fontSize: 12.5, lineHeight: 1.6, color: 'var(--text-primary)' },
   footer: {
     padding: '16px 24px', borderTop: '1px solid var(--border)',
     display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0,
@@ -167,6 +190,7 @@ export default function ImportModal({ onClose, onImportDone }) {
   const [userMapping, setUserMapping] = useState({});
   const [mappingOpen, setMappingOpen] = useState(false);
   const [includeDuplicates, setIncludeDuplicates] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(false);
   const [sheetNote, setSheetNote] = useState(''); // multi-sheet xlsx note for the preview
 
   // Result
@@ -179,15 +203,28 @@ export default function ImportModal({ onClose, onImportDone }) {
   );
 
   // Derived display rows (re-computed when mapping changes — no API call)
+  // Each duplicate arrives with its reason — already in the logbook, or
+  // repeated inside this very file — so the preview can say which.
+  const duplicateInfo = useMemo(() => {
+    const list = parsedData?.duplicates
+      || (parsedData?.duplicateIndices || []).map((index) => ({ index, where: 'logbook' }));
+    return new Map(list.map((d) => [d.index, d]));
+  }, [parsedData]);
+
   const displayRows = useMemo(() => {
     if (!parsedData) return [];
-    const dupSet = new Set(parsedData.duplicateIndices || []);
-    return applyMapping(parsedData.rawRows, parsedData.headers, effectiveMapping, dupSet);
-  }, [parsedData, effectiveMapping]);
+    return applyMapping(parsedData.rawRows, parsedData.headers, effectiveMapping, new Set(duplicateInfo.keys()));
+  }, [parsedData, effectiveMapping, duplicateInfo]);
 
   const validRows     = useMemo(() => displayRows.filter(r => !r.error), [displayRows]);
   const errorRows     = useMemo(() => displayRows.filter(r =>  r.error), [displayRows]);
   const duplicateRows = useMemo(() => validRows.filter(r => r.duplicate), [validRows]);
+  // The ones we will skip, each with the reason, ready to show.
+  const duplicateList = useMemo(() => displayRows
+    .map((row, i) => ({ row, info: duplicateInfo.get(i) }))
+    .filter(({ row, info }) => info && !row.error), [displayRows, duplicateInfo]);
+  const inFile = duplicateList.filter(({ info }) => info.where === 'file').length;
+  const inLogbook = duplicateList.length - inFile;
   // Rows that will actually be submitted (excludes duplicates unless user opts in)
   const toImportRows  = useMemo(
     () => validRows.filter(r => includeDuplicates || !r.duplicate),
@@ -290,8 +327,10 @@ export default function ImportModal({ onClose, onImportDone }) {
     setStep('confirming');
     try {
       const toSubmit = toImportRows.map(r => r.fields);
-      const { data } = await flightLogApi.importConfirm(toSubmit);
-      setResult({ imported: data.imported, skipped: data.skipped });
+      const { data } = await flightLogApi.importConfirm(toSubmit, includeDuplicates);
+      // The server checks again at the moment of writing, so it may have
+      // skipped more than the preview knew about.
+      setResult({ imported: data.imported, skipped: data.skipped, skippedDuplicates: data.skippedDuplicates || 0 });
       setStep('done');
       onImportDone?.();
     } catch (err) {
@@ -388,11 +427,11 @@ export default function ImportModal({ onClose, onImportDone }) {
               {/* Stats bar */}
               <div style={css.statsBar}>
                 <span style={{ color: SEM.green, fontWeight: 700 }}>
-                  ✓ {validRows.length} ready
+                  ✓ {toImportRows.length} ready
                 </span>
                 {duplicateRows.length > 0 && (
-                  <span style={{ color: SEM.amber, fontWeight: 700 }}>
-                    ⚠ {duplicateRows.length} {duplicateRows.length === 1 ? 'duplicate' : 'duplicates'}
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {duplicateRows.length} already logged
                   </span>
                 )}
                 {errorRows.length > 0 && (
@@ -412,17 +451,53 @@ export default function ImportModal({ onClose, onImportDone }) {
                 </div>
               )}
 
-              {/* Include duplicates checkbox — only shown when duplicates exist */}
-              {duplicateRows.length > 0 && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 12 }}>
-                  <input
-                    type="checkbox"
-                    checked={includeDuplicates}
-                    onChange={e => setIncludeDuplicates(e.target.checked)}
-                    style={{ accentColor: 'var(--accent)', width: 15, height: 15 }}
-                  />
-                  Include duplicates in import ({duplicateRows.length} flight{duplicateRows.length !== 1 ? 's' : ''} already in your logbook)
-                </label>
+              {/* What we are going to skip, and why. Stated plainly, with the
+                  flights themselves one click away — and the pilot can still
+                  overrule it. */}
+              {duplicateList.length > 0 && (
+                <div style={css.dupNote}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+                      {duplicateSentence(duplicateList.length, inLogbook, inFile)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDuplicates(v => !v)}
+                      style={css.dupLink}
+                    >
+                      {showDuplicates ? 'Hide them' : 'See them'}
+                    </button>
+                  </div>
+
+                  {showDuplicates && (
+                    <ul style={css.dupList}>
+                      {duplicateList.slice(0, 50).map(({ row, info }) => (
+                        <li key={info.index} style={css.dupItem}>
+                          <span style={{ fontWeight: 600 }}>
+                            {row.fields.date || info.date || '—'} · {formatRoute(row.fields) || '—'}
+                            {row.fields.flightNumber ? ` · ${row.fields.flightNumber}` : ''}
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)' }}>
+                            {' '}— {info.where === 'file' ? 'repeated in this file' : 'already in your logbook'}
+                          </span>
+                        </li>
+                      ))}
+                      {duplicateList.length > 50 && (
+                        <li style={css.dupItem}>…and {duplicateList.length - 50} more.</li>
+                      )}
+                    </ul>
+                  )}
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-secondary)', cursor: 'pointer', marginTop: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={includeDuplicates}
+                      onChange={e => setIncludeDuplicates(e.target.checked)}
+                      style={{ accentColor: 'var(--accent)', width: 15, height: 15 }}
+                    />
+                    Import them anyway
+                  </label>
+                </div>
               )}
 
               {/* Column mapping section */}
@@ -495,12 +570,12 @@ export default function ImportModal({ onClose, onImportDone }) {
                         ...css.td,
                         borderTop: '1px solid var(--border)',
                         borderBottom: '1px solid var(--border)',
-                        background: isErr ? '#FEF2F2' : isDup ? '#FFFBEB' : 'var(--surface)',
-                        color: isErr ? SEM.red : isDup ? SEM.amber : 'var(--text-primary)',
+                        background: isErr ? '#FEF2F2' : 'var(--surface)',
+                        color: isErr ? SEM.red : isDup ? 'var(--text-faint)' : 'var(--text-primary)',
                       };
                       const cols = previewCols.map((col, ci) => {
                         let content = '';
-                        if (col === 'status') content = isErr ? '✗' : isDup ? '⚠' : '✓';
+                        if (col === 'status') content = isErr ? '✗' : isDup ? '–' : '✓';
                         else if (col === 'date') content = row.fields.date || '—';
                         else if (col === 'route') content = formatRoute(row.fields);
                         else if (col === 'block') content = formatBlock(row.fields);
@@ -513,9 +588,9 @@ export default function ImportModal({ onClose, onImportDone }) {
                               ...(ci === 0 ? css.tdFirst : {}),
                               ...(ci === previewCols.length - 1 && errorRows.length === 0 ? css.tdLast : {}),
                               color: col === 'status'
-                                ? (isErr ? SEM.red : isDup ? SEM.amber : SEM.green)
+                                ? (isErr ? SEM.red : isDup ? 'var(--text-faint)' : SEM.green)
                                 : col === 'route'
-                                ? (isDup ? SEM.amber : 'var(--text-primary)')
+                                ? (isDup ? 'var(--text-faint)' : 'var(--text-primary)')
                                 : rowStyle.color,
                               fontWeight: col === 'status' ? 800 : col === 'route' ? 700 : 400,
                             }}
@@ -560,6 +635,11 @@ export default function ImportModal({ onClose, onImportDone }) {
               {result.skipped > 0 && (
                 <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>
                   {result.skipped} {result.skipped === 1 ? 'row' : 'rows'} had errors and were skipped.
+                </div>
+              )}
+              {result.skippedDuplicates > 0 && (
+                <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                  {result.skippedDuplicates} {result.skippedDuplicates === 1 ? 'flight was' : 'flights were'} already in your logbook and {result.skippedDuplicates === 1 ? 'was' : 'were'} skipped.
                 </div>
               )}
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8 }}>

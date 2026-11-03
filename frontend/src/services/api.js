@@ -86,7 +86,10 @@ export const flightLogApi = {
   }),
   // 60s timeout — chunked bulk insert finishes in ~1-3s even at the 5k cap, so a
   // hang past 60s means something's wrong; fail cleanly instead of waiting forever.
-  importConfirm: (rows) => api.post('/flight-logs/import/confirm', { rows }, { timeout: 60000 }),
+  // The server checks for duplicates again before writing; `includeDuplicates`
+  // is the pilot saying they want them anyway.
+  importConfirm: (rows, includeDuplicates = false) =>
+    api.post('/flight-logs/import/confirm', { rows, includeDuplicates }, { timeout: 60000 }),
 };
 
 export const logbookApi = {

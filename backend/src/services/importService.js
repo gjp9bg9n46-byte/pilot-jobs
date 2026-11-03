@@ -339,6 +339,9 @@ function extractKeyFields(rawRows, headers, mapping) {
     flightNumber: (get(raw, 'flightNumber') || '').toUpperCase().replace(/\s/g, '') || null,
     departure:    (get(raw, 'departure')    || '').toUpperCase() || null,
     arrival:      (get(raw, 'arrival')      || '').toUpperCase() || null,
+    // The time is part of the rule: two CAI-RUH sectors on one day are two
+    // flights unless they left within fifteen minutes of each other.
+    offBlocksTime: parseFlexTime(get(raw, 'offBlocksTime')),
   }));
 }
 

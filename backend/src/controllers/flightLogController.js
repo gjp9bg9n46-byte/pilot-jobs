@@ -2,6 +2,7 @@ const { randomUUID } = require('crypto');
 const prisma = require('../config/database');
 const { parseForeFlight, parseLogbookPro } = require('../services/logbookParserService');
 const { parseCSV, detectMapping, coerceRow, extractKeyFields, enrichColumns } = require('../services/importService');
+const { duplicatesAgainstLogbook, planImport } = require('../services/logbookDuplicates');
 const { buildLogbookSummary, displayTypeFor } = require('../services/logbookSummary');
 const { buildFlightRow, cleanField } = require('../services/logbookEntry');
 
@@ -283,41 +284,20 @@ exports.importParse = async (req, res, next) => {
     // (registration vs aircraft type). May add synthetic columns → reassign.
     ({ headers, rawRows } = enrichColumns(headers, rawRows, mapping));
 
-    // Duplicate detection — query DB for existing flights matching key fields
+    // Duplicates — against the logbook AND against the rest of this file.
+    // The same rule runs again at the save step (see importConfirm), because
+    // a preview is a snapshot and the logbook can move under it.
     const keyFields = extractKeyFields(rawRows, headers, mapping);
-    const uniqueDates = [...new Set(keyFields.map(k => k.date).filter(Boolean))];
+    const duplicates = await duplicatesAgainstLogbook(prisma, req.pilot.id, keyFields);
 
-    const duplicateIndices = [];
-    if (uniqueDates.length > 0) {
-      const existing = await prisma.flightLog.findMany({
-        where: { pilotId: req.pilot.id, date: { in: uniqueDates } },
-        select: { date: true, flightNumber: true, departure: true, arrival: true },
-      });
-
-      const byDate = {};
-      for (const e of existing) {
-        const d = new Date(e.date).toISOString().split('T')[0];
-        if (!byDate[d]) byDate[d] = [];
-        byDate[d].push({
-          flightNumber: (e.flightNumber || '').toUpperCase().replace(/\s/g, ''),
-          departure:    (e.departure    || '').toUpperCase(),
-          arrival:      (e.arrival      || '').toUpperCase(),
-        });
-      }
-
-      keyFields.forEach((k, i) => {
-        if (!k.date) return;
-        const d = k.date.split('T')[0];
-        const candidates = byDate[d] || [];
-        const isDup = candidates.some(e =>
-          (k.flightNumber && e.flightNumber && k.flightNumber === e.flightNumber) ||
-          (k.departure && k.arrival && k.departure === e.departure && k.arrival === e.arrival)
-        );
-        if (isDup) duplicateIndices.push(i);
-      });
-    }
-
-    res.json({ headers, mapping, rawRows, duplicateIndices });
+    res.json({
+      headers,
+      mapping,
+      rawRows,
+      duplicates,
+      // Kept for the clients that only ever wanted the row numbers.
+      duplicateIndices: duplicates.map((d) => d.index),
+    });
   } catch (err) {
     next(err);
   }
@@ -336,6 +316,7 @@ exports.importConfirm = async (req, res, next) => {
 
     const valid = [];
     const skipped = [];
+    const validIndex = [];   // where each valid row sat in the request
 
     // Did the file have a landings column at all? If any row carries a value —
     // "0" included — then it did, and a zero elsewhere means "no landing".
@@ -352,11 +333,35 @@ exports.importConfirm = async (req, res, next) => {
         skipped.push({ rowIndex: i + 1, errors });
       } else {
         valid.push(coerced);
+        validIndex.push(i);
       }
     }
 
     if (valid.length === 0) {
       return res.status(422).json({ error: 'No valid rows to import.', details: skipped });
+    }
+
+    // ── The same duplicate check, again, at the moment of writing ──────────
+    // The preview was a snapshot: the logbook may have grown since (a second
+    // tab, a scan, the same file sent twice), and a file can repeat a sector
+    // inside itself. Checking only in the preview meant trusting the client
+    // about what is already saved.
+    const duplicates = await duplicatesAgainstLogbook(prisma, req.pilot.id, valid);
+    // The pilot can still say "import them anyway" in the preview; then they
+    // are counted and reported, not dropped.
+    const plan = planImport({
+      valid, validIndex, duplicates, includeDuplicates: req.body.includeDuplicates === true,
+    });
+    const toWrite = plan.write;
+
+    if (toWrite.length === 0) {
+      return res.status(200).json({
+        imported: 0,
+        skipped: skipped.length,
+        skippedDuplicates: plan.skippedDuplicates,
+        duplicates: plan.duplicates,
+        batchId: null,
+      });
     }
 
     const batchId = randomUUID();
@@ -365,7 +370,7 @@ exports.importConfirm = async (req, res, next) => {
     // INSERTs in a transaction. ~1-3s at 5k vs ~25-75s before. Not wrapped in a
     // transaction: partial success on a large historical import beats an
     // all-or-nothing rollback (mirrors the legacy importer).
-    const data = valid.map(row => ({
+    const data = toWrite.map(row => ({
       ...row,
       pilotId: req.pilot.id,
       source: 'IMPORTED',
@@ -378,7 +383,13 @@ exports.importConfirm = async (req, res, next) => {
     }
 
     await require('../services/logbookSummary').recomputeDerivedTotals(req.pilot.id);
-    res.status(201).json({ imported, skipped: skipped.length, batchId });
+    res.status(201).json({
+      imported,
+      skipped: skipped.length,
+      skippedDuplicates: plan.skippedDuplicates,
+      duplicates: plan.duplicates,
+      batchId,
+    });
   } catch (err) {
     next(err);
   }

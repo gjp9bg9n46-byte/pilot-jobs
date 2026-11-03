@@ -36,7 +36,8 @@ const PICK_TYPES = [
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Parsed = { headers: string[]; mapping: Record<string, string>; rawRows: any[][]; duplicateIndices?: number[] };
+type Duplicate = { index: number; where: 'logbook' | 'file'; date?: string | null; from?: string | null; to?: string | null; flightNumber?: string | null };
+type Parsed = { headers: string[]; mapping: Record<string, string>; rawRows: any[][]; duplicateIndices?: number[]; duplicates?: Duplicate[] };
 type DisplayRow = { rowIndex: number; fields: Record<string, string>; error: string | null; duplicate: boolean };
 
 function toCsvCell(v: unknown): string {
@@ -62,6 +63,18 @@ function applyMapping(rawRows: unknown[][], headers: string[], mapping: Record<s
     return { rowIndex: i + 1, fields, error: clientValidate(fields), duplicate: dupSet.has(i) };
   }).filter(Boolean) as DisplayRow[];
 }
+/**
+ * What we are skipping, in a sentence. Two kinds of duplicate now exist —
+ * one the logbook already holds, and one the file repeats — and a pilot
+ * should not have to guess which they are looking at.
+ */
+function duplicateSentence(total: number, inLogbook: number, inFile: number): string {
+  const flights = `${total} flight${total === 1 ? '' : 's'}`;
+  if (!inFile) return `${flights} already in your logbook, skipped.`;
+  if (!inLogbook) return `${flights} repeated in this file, skipped.`;
+  return `${flights} skipped — ${inLogbook} already in your logbook, ${inFile} repeated in this file.`;
+}
+
 function formatRoute(f: Record<string, string>): string {
   const dep = (f.departure || '').toUpperCase();
   const arr = (f.arrival || '').toUpperCase();
@@ -77,17 +90,32 @@ export default function ImportFlights() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [parsed, setParsed] = useState<Parsed | null>(null);
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; skippedDuplicates?: number } | null>(null);
+  const [showDupes, setShowDupes] = useState(false);
+  const [includeDupes, setIncludeDupes] = useState(false);
   const launched = useRef(false);
+
+  const dupeInfo = useMemo(() => {
+    const list: Duplicate[] = parsed?.duplicates
+      || (parsed?.duplicateIndices || []).map((index) => ({ index, where: 'logbook' as const }));
+    return new Map(list.map((d) => [d.index, d]));
+  }, [parsed]);
 
   const displayRows = useMemo(() => {
     if (!parsed) return [];
-    return applyMapping(parsed.rawRows, parsed.headers, parsed.mapping || {}, new Set(parsed.duplicateIndices || []));
-  }, [parsed]);
+    return applyMapping(parsed.rawRows, parsed.headers, parsed.mapping || {}, new Set(dupeInfo.keys()));
+  }, [parsed, dupeInfo]);
   const validRows = useMemo(() => displayRows.filter((r) => !r.error), [displayRows]);
   const errorRows = useMemo(() => displayRows.filter((r) => r.error), [displayRows]);
   const dupRows = useMemo(() => validRows.filter((r) => r.duplicate), [validRows]);
-  const toImport = useMemo(() => validRows.filter((r) => !r.duplicate), [validRows]);
+  // Each duplicate carries its reason: already in the logbook, or repeated
+  // inside this very file.
+  const dupeList = useMemo(() => displayRows
+    .map((row, i) => ({ row, info: dupeInfo.get(i) }))
+    .filter((x): x is { row: DisplayRow; info: Duplicate } => !!x.info && !x.row.error), [displayRows, dupeInfo]);
+  const inFile = dupeList.filter(({ info }) => info.where === 'file').length;
+  const inLogbook = dupeList.length - inFile;
+  const toImport = useMemo(() => validRows.filter((r) => includeDupes || !r.duplicate), [validRows, includeDupes]);
   const datesMapped = REQUIRED_FIELDS.every((f) => (parsed?.mapping || {})[f]);
 
   // Open the OS file picker DIRECTLY the moment the screen mounts.
@@ -153,8 +181,11 @@ export default function ImportFlights() {
     setError(''); setStep('confirming');
     try {
       const rows = toImport.map((r) => r.fields);
-      const { data } = await api.post('/flight-logs/import/confirm', { rows }, { timeout: 60000 });
-      setResult({ imported: data.imported, skipped: data.skipped });
+      const { data } = await api.post('/flight-logs/import/confirm',
+        { rows, includeDuplicates: includeDupes }, { timeout: 60000 });
+      // The server checks again at the moment of writing, so it may have
+      // skipped more than the preview knew about.
+      setResult({ imported: data.imported, skipped: data.skipped, skippedDuplicates: data.skippedDuplicates || 0 });
       setStep('done');
     } catch (err) {
       const timedOut = isAxiosError(err) && (err.code === 'ECONNABORTED' || /timeout/i.test(err.message || ''));
@@ -195,13 +226,42 @@ export default function ImportFlights() {
           <>
             {error ? <View style={styles.errorBanner}><Text style={styles.errorText}>{error}</Text></View> : null}
             <View style={styles.statsBar}>
-              <Text style={[styles.stat, { color: SEM.green }]}>✓ {validRows.length} ready</Text>
-              {dupRows.length > 0 ? <Text style={[styles.stat, { color: SEM.amber }]}>⚠ {dupRows.length} dup</Text> : null}
+              <Text style={[styles.stat, { color: SEM.green }]}>✓ {toImport.length} ready</Text>
+              {dupRows.length > 0 ? <Text style={styles.statMuted}>{dupRows.length} already logged</Text> : null}
               {errorRows.length > 0 ? <Text style={[styles.stat, { color: SEM.red }]}>✗ {errorRows.length} error{errorRows.length === 1 ? '' : 's'}</Text> : null}
               <Text style={styles.statMuted}>{parsed.rawRows.length} rows parsed</Text>
             </View>
             {note ? <Text style={styles.note}>{note}</Text> : null}
             {!datesMapped ? <View style={styles.warnBanner}><Text style={styles.warnText}>Couldn't auto-detect a date column — the file may be unsupported.</Text></View> : null}
+
+            {/* What we are going to skip, and why — with the flights one tap
+                away, and the pilot still able to overrule it. */}
+            {dupeList.length > 0 ? (
+              <View style={styles.dupNote}>
+                <Text style={styles.dupText}>{duplicateSentence(dupeList.length, inLogbook, inFile)}</Text>
+                <Pressable onPress={() => setShowDupes((v) => !v)} hitSlop={8}>
+                  <Text style={styles.dupLink}>{showDupes ? 'Hide them' : 'See them'}</Text>
+                </Pressable>
+                {showDupes ? (
+                  <View style={styles.dupList}>
+                    {dupeList.slice(0, 25).map(({ row, info }) => (
+                      <Text key={info.index} style={styles.dupItem} numberOfLines={2}>
+                        {row.fields.date || info.date || '—'} · {formatRoute(row.fields)}
+                        {row.fields.flightNumber ? ` · ${row.fields.flightNumber}` : ''}
+                        {info.where === 'file' ? ' — repeated in this file' : ' — already in your logbook'}
+                      </Text>
+                    ))}
+                    {dupeList.length > 25 ? <Text style={styles.dupItem}>…and {dupeList.length - 25} more.</Text> : null}
+                  </View>
+                ) : null}
+                <Pressable onPress={() => setIncludeDupes((v) => !v)} hitSlop={8} style={styles.dupCheckRow}>
+                  <View style={[styles.checkbox, includeDupes && styles.checkboxOn]}>
+                    {includeDupes ? <Ionicons name="checkmark" size={12} color="#fff" /> : null}
+                  </View>
+                  <Text style={styles.dupCheckLabel}>Import them anyway</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             <Text style={styles.previewTitle}>Preview (first 10 of {displayRows.length})</Text>
             <View style={styles.previewTable}>
@@ -212,7 +272,7 @@ export default function ImportFlights() {
               </View>
               {displayRows.slice(0, 10).map((r) => (
                 <View key={r.rowIndex} style={styles.previewRow}>
-                  <Text style={[styles.pcell, styles.pStatus, { color: r.error ? SEM.red : r.duplicate ? SEM.amber : SEM.green }]}>{r.error ? '✗' : r.duplicate ? '⚠' : '✓'}</Text>
+                  <Text style={[styles.pcell, styles.pStatus, { color: r.error ? SEM.red : r.duplicate ? pilot.muted : SEM.green }]}>{r.error ? '✗' : r.duplicate ? '–' : '✓'}</Text>
                   <Text style={[styles.pcell, styles.pDate, styles.mono]} numberOfLines={1}>{r.fields.date || '—'}</Text>
                   <Text style={[styles.pcell, styles.pRoute]} numberOfLines={1}>{formatRoute(r.fields)}</Text>
                 </View>
@@ -236,6 +296,11 @@ export default function ImportFlights() {
             <Ionicons name="checkmark-circle" size={52} color={SEM.green} />
             <Text style={styles.doneTitle}>{result.imported} {result.imported === 1 ? 'flight' : 'flights'} imported</Text>
             {result.skipped > 0 ? <Text style={styles.body}>{result.skipped} {result.skipped === 1 ? 'row' : 'rows'} had errors and were skipped.</Text> : null}
+            {result.skippedDuplicates ? (
+              <Text style={styles.body}>
+                {result.skippedDuplicates} {result.skippedDuplicates === 1 ? 'flight was' : 'flights were'} already in your logbook and {result.skippedDuplicates === 1 ? 'was' : 'were'} skipped.
+              </Text>
+            ) : null}
             <Text style={styles.body}>Your logbook has been updated.</Text>
             <Pressable style={styles.primaryBtn} onPress={() => router.replace('/logbook')}><Text style={styles.primaryBtnText}>Done</Text></Pressable>
           </View>
@@ -261,6 +326,19 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   statsBar: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: pilot.surface, borderRadius: 10, padding: 12, marginBottom: 12, flexWrap: 'wrap' },
   stat: { fontFamily: fontFamilies.bodyBold, fontSize: fontSizes.sm },
   statMuted: { marginLeft: 'auto', color: pilot.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.xs },
+
+  // The duplicate note: a quiet panel, not a warning.
+  dupNote: { borderWidth: StyleSheet.hairlineWidth, borderColor: pilot.line, borderRadius: 8,
+    backgroundColor: pilot.page, padding: 12, marginBottom: spacing.md },
+  dupText: { color: pilot.ink, fontFamily: fontFamilies.body, fontSize: fontSizes.sm, lineHeight: 20 },
+  dupLink: { color: pilot.navy, fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm, marginTop: 6 },
+  dupList: { marginTop: 8, gap: 3 },
+  dupItem: { color: pilot.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.xs, lineHeight: 17 },
+  dupCheckRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1, borderColor: pilot.line,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: pilot.surface },
+  checkboxOn: { backgroundColor: pilot.navy, borderColor: pilot.navy },
+  dupCheckLabel: { color: pilot.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.sm },
   note: { color: pilot.muted, fontFamily: fontFamilies.body, fontSize: fontSizes.xs, marginBottom: 12 },
   previewTitle: { fontFamily: fontFamilies.bodySemiBold, fontSize: fontSizes.sm, color: pilot.ink, marginBottom: 8 },
   previewTable: { borderWidth: 1, borderColor: pilot.line, borderRadius: 10, overflow: 'hidden', marginBottom: 20 },
