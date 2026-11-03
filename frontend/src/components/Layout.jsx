@@ -32,6 +32,10 @@ const NAV_ITEMS = [
     icon: <Ico extra={<><rect x="3" y="2" width="12" height="14" rx="1.5"/><line x1="6" y1="5.5" x2="12" y2="5.5"/><line x1="6" y1="8" x2="12" y2="8"/><line x1="6" y1="10.5" x2="9" y2="10.5"/><circle cx="11.5" cy="12" r="2"/><path d="M13 13.5l1.5 1.5"/></>} /> },
   { to: '/profile',  label: 'Profile',
     icon: <Ico extra={<><circle cx="9" cy="6.5" r="2.5"/><path d="M3 16a6 6 0 0112 0"/></>} /> },
+  // Tools sits last, after Profile, matching the app's drawer order. An
+  // instrument dial rather than a wrench: what lives here is PF / PM.
+  { to: '/tools/pf-pm', label: 'Tools',
+    icon: <Ico extra={<><circle cx="9" cy="9" r="6.5"/><path d="M9 9l3.5-2.5"/><circle cx="9" cy="9" r="1"/></>} /> },
 ];
 
 const BOTTOM_NAV_ITEMS = [
@@ -46,9 +50,9 @@ const SIDEBAR_NAV = [
   ...BOTTOM_NAV_ITEMS,
 ];
 
-// Wide-desktop (≥1024) top bar: all 6 primary links inline (C#8); only Settings +
+// Wide-desktop (≥1024) top bar: the primary links inline (C#8); only Settings +
 // Support live in the hamburger dropdown.
-const TOP_NAV = [...NAV_ITEMS];                 // Dashboard, Jobs, Airlines, Logbook, CV, Profile
+const TOP_NAV = [...NAV_ITEMS];                 // Dashboard, Jobs, Airlines, Logbook, CV, Profile, Tools
 const MENU_ITEMS = [...BOTTOM_NAV_ITEMS];       // Settings, Support
 
 const PAGE_TITLES = {
@@ -486,8 +490,10 @@ export default function Layout() {
         <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {SIDEBAR_NAV.map(({ to, icon, label }, i) => (
             <React.Fragment key={to}>
-              {/* Divider before Settings (index 6 = after CV Builder and Profile) */}
-              {i === 6 && <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px 8px' }} />}
+              {/* Divider between the primary links and Settings/Support. Derived
+                  from NAV_ITEMS, not a hard-coded index: it used to be 6, which
+                  quietly became the wrong row the moment a link was added. */}
+              {i === NAV_ITEMS.length && <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px 8px' }} />}
               <NavLink to={to} className="nav-link ch-navitem" style={({ isActive }) => navLinkStyle(isActive)}>
                 <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{icon}</span>
                 {label}

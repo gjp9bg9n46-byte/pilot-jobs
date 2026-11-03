@@ -47,7 +47,7 @@ export default function Landing() {
     <div className="lp">
       <nav><div className="wrap">
         <Link className="logo" to="/"><PlaneMark size={20} /> CockpitHire</Link>
-        <div className="links"><a href="#how">How it works</a><Link to="/jobs">Jobs</Link><Link to="/airlines">Airlines</Link><Link to="/employer/register">For employers</Link></div>
+        <div className="links"><a href="#how">How it works</a><Link to="/jobs">Jobs</Link><Link to="/airlines">Airlines</Link><Link className="toolslink" to="/tools/pf-pm">Tools</Link><Link to="/employer/register">For employers</Link></div>
         <div className="navr">
           <Link className="btn ghost" to="/login">Log in</Link>
           <Link className="btn primary" to="/register">Create free profile</Link>

@@ -8,7 +8,7 @@
 .lp .wrap{max-width:1160px;margin:0 auto;padding:0 40px}
 .lp h1,.lp h2,.lp h3{font-family:Fraunces,Georgia,serif;font-weight:600;letter-spacing:-.01em;margin:0}
 .lp .eyebrow{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--navy);margin:0 0 14px}
-.lp .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 22px;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer;border:0;font-family:inherit;transition:background .16s,transform .16s,box-shadow .16s}
+.lp .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 22px;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer;border:0;font-family:inherit;white-space:nowrap;transition:background .16s,transform .16s,box-shadow .16s}
 .lp .btn.primary{background:var(--navy);color:#fff}
 .lp .btn.primary:hover{background:#00336e;transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,63,136,.24)}
 .lp .btn.ghost{border:1px solid var(--line);color:var(--ink);background:#fff}
@@ -136,6 +136,16 @@
   .lp .wrap{padding:0 16px}
   .lp nav .wrap{height:60px}
   .lp .links,.lp .navr .btn.primary{display:none}
+  /* The phone nav has no drawer — the menu button is a shortcut to /login.
+     Tools is the one link that has to survive that, because the tool is the
+     thing people arrive from Instagram to use. Only Tools comes back. */
+  .lp .links{display:flex;margin-left:auto}
+  .lp .links a:not(.toolslink){display:none}
+  /* Three children instead of two means a third 36px gap, and the bar runs
+     past the right edge — invisibly, because html/body are overflow-x:hidden.
+     The phone bar sets its own spacing. */
+  .lp nav .wrap{gap:10px}
+  .lp .navr{margin-left:0;gap:8px}
   .lp .menu{display:flex}
   .lp .hero{padding:32px 0 36px}
   .lp .hero .wrap{grid-template-columns:minmax(0,1fr);gap:30px}
@@ -175,3 +185,11 @@
   .lp .fbot{flex-direction:column;gap:6px}
 }
 @media (prefers-reduced-motion:reduce){.lp *{transition:none !important}}
+
+/* Narrowest phones (iPhone SE 1st gen and similar). Adding Tools to the bar
+   costs 37px, and below 360 there is nowhere to take it from — so the "Log in"
+   button steps aside. Nothing is lost: the hamburger beside it is also a link
+   to /login, so the destination is still one tap away. */
+@media (max-width:359px){
+  .lp .navr .btn.ghost{display:none}
+}
