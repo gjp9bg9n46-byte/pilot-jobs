@@ -186,11 +186,35 @@ day; not worth the risk today.
 
 ## What needs you
 
-1. **`git push origin main` was refused by the permission classifier**
-   ("Out-of-place publication"), so both commits are local. Nothing is lost —
-   `git push origin main` is all that is outstanding, and Railway and Vercel
-   deploy from it as usual.
-2. **The app update has not been published.** The gate is clean (29 of 29,
-   unchanged — no new build needed), but the app's layout picker calls a new
-   backend route, so the push has to land first. Then:
-   `eas update --channel production --environment production`.
+1. **The push landed.** Production is running `879ea11` (confirmed from
+   `CronRun`: new host, startup jobs OK), so the layouts route is live and the
+   web is deployed. Nothing outstanding here.
+2. **The app update is still unpublished, blocked on npm — not on the code.**
+   The gate is clean (29 of 29, unchanged) and Expo is still logged in, but
+   `npx eas-cli update` cannot install: `~/.npm/_cacache` holds **114
+   root-owned entries** from a `sudo npm` run on 10 May, and one of them is a
+   directory a shared eas-cli dependency needs to write into. npm reports it
+   as "File exists"; the real error is `EACCES`. Every eas-cli version hits
+   the same blob, so changing version does not help.
+
+   One line fixes it for good, and needs your password:
+
+   ```
+   sudo chown -R $(whoami) ~/.npm
+   ```
+
+   Then the publish is:
+
+   ```
+   cd ~/pilot-jobs/mobile
+   npx eas-cli update --channel production --environment production \
+     --message "Logbook formats + import duplicate fix"
+   ```
+
+   I can run that second command once the first has been done. I did not use a
+   private cache directory to get around it, since you declined that, and I did
+   not delete anything in your home.
+
+   Until it is published, phones keep the Phase-4 EASA-only export. The
+   layout picker is the only thing waiting; the stricter import is server-side
+   and is already protecting both clients.
