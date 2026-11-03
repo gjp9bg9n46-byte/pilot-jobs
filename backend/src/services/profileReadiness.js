@@ -61,6 +61,31 @@ function statusFor(date, { dueDays = DEFAULT_DUE_DAYS, now = new Date() } = {}) 
 // Build the readiness item list. `needsAttention` items (expired/expiring/due/
 // missing) drive the strip; 'ok' items are omitted. A blocker is a licence,
 // medical or passport that is expired or expiring within 7 days.
+// Which licences still count. A higher licence SUPERSEDES the lower ones
+// (ATPL > CPL > PPL), so a superseded licence is never a readiness item, never
+// a blocker, and never raises the "Pick your licence authority" prompt — the
+// active licence covers it.
+//
+// Pure and exported because the authority prompt used to re-derive this set
+// with its own filter over ALL licences, which is how a pilot with an ATPL
+// (authority set) and an old PPL (authority "unknown", migrated) was told to
+// pick an authority they had already picked. One definition, one source.
+const LICENCE_RANK = ['ATPL', 'ATP', 'MPL', 'CPL', 'PPL'];
+const licenceRankOf = (t) => { const i = LICENCE_RANK.indexOf(t); return i === -1 ? 99 : i; };
+
+function selectActiveLicences(certificates) {
+  const licences = (certificates || []).filter((c) => !['ELP', 'IR', 'ME', 'SE'].includes(c.type));
+  if (!licences.length) return { active: [], hasAny: false, highestRank: 99 };
+  const highestRank = Math.min(...licences.map((c) => licenceRankOf(c.type)));
+  return { active: licences.filter((c) => licenceRankOf(c.type) <= highestRank), hasAny: true, highestRank };
+}
+
+/** Does any ACTIVE licence still have an unset ("unknown") issuing authority? */
+function needsAuthorityPrompt(certificates) {
+  const { active } = selectActiveLicences(certificates);
+  return active.some((c) => String(c.issuingAuthority || '').toLowerCase() === 'unknown');
+}
+
 async function computeReadiness(pilotId) {
   const pilot = await prisma.pilot.findUnique({
     where: { id: pilotId },
@@ -76,23 +101,18 @@ async function computeReadiness(pilotId) {
     items.push({ type, label, date: date ? new Date(date).toISOString() : null, level: s.level, days: s.days, fix, blocker, ...extra });
   };
 
-  // Licences (non-ELP; the sub-ratings IR/ME/SE aren't licences). A higher licence
-  // SUPERSEDES the lower ones (ATPL > CPL > PPL), so a superseded licence is never a
-  // readiness item or blocker — the active (highest) licence covers it.
-  const LICENCE_RANK = ['ATPL', 'ATP', 'MPL', 'CPL', 'PPL'];
-  const rankOf = (t) => { const i = LICENCE_RANK.indexOf(t); return i === -1 ? 99 : i; };
-  const licences = pilot.certificates.filter((c) => !['ELP', 'IR', 'ME', 'SE'].includes(c.type));
-  const highestRank = licences.length ? Math.min(...licences.map((c) => rankOf(c.type))) : 99;
-  if (!licences.length) {
+  const { active: activeLicences, hasAny: hasAnyLicence } = selectActiveLicences(pilot.certificates);
+  if (!hasAnyLicence) {
     push('licence', 'Add your licence', null, { blockerEligible: false });
   } else {
-    for (const c of licences) {
-      if (rankOf(c.type) > highestRank) continue; // superseded by a higher licence → skip
+    const active = activeLicences;
+    for (const c of active) {
       push('licence', `${c.type} licence`, c.expiryDate, { blockerEligible: true, extra: { itemId: c.id } });
     }
-    // Authority still unknown (migrated from bogus "ICAO") on ANY licence → ONE grey
-    // prompt, never red. The shared match reads it as ? until the pilot picks it.
-    if (licences.some((c) => String(c.issuingAuthority || '').toLowerCase() === 'unknown')) {
+    // Authority still unknown (migrated from bogus "ICAO") on an ACTIVE licence →
+    // ONE grey prompt, never red. A superseded licence cannot raise it: the
+    // pilot is not asked to fix a licence we no longer show them.
+    if (needsAuthorityPrompt(pilot.certificates)) {
       items.push({ type: 'authority', label: 'Pick your licence authority', date: null, level: 'missing', days: null, fix: '/profile', blocker: false });
     }
   }
@@ -195,4 +215,4 @@ async function computeStrengthAndNudge(pilotId) {
   return { strength, nudge, qualifyCount, incompleteCount: incomplete.length };
 }
 
-module.exports = { computeReadiness, computeStrengthAndNudge, trainingDue, TRAINING_VALIDITY_MONTHS, calendarDaysUntil, statusFor, ELP_DUE_DAYS, DEFAULT_DUE_DAYS };
+module.exports = { selectActiveLicences, needsAuthorityPrompt, computeReadiness, computeStrengthAndNudge, trainingDue, TRAINING_VALIDITY_MONTHS, calendarDaysUntil, statusFor, ELP_DUE_DAYS, DEFAULT_DUE_DAYS };

@@ -61,3 +61,43 @@ test('the ELP window is narrower than the default: day 75 is amber by default, o
   assert.strictEqual(statusFor(inDays(75), { now: NOW }).level, 'due');
   assert.strictEqual(elpStatus(inDays(75)).level, 'ok');
 });
+
+// ── A superseded licence must not ask for an authority ───────────────────────
+// Reported from the app: a pilot holding an ATPL with its authority already set
+// was still shown "Pick your licence authority". The per-licence loop skipped
+// superseded licences correctly, but the authority check re-filtered the FULL
+// list, so an old PPL left at "unknown" by the ICAO migration kept raising it.
+// The two now share one definition; these pin that they agree.
+const { selectActiveLicences, needsAuthorityPrompt } = require('../profileReadiness');
+
+const lic = (type, issuingAuthority = 'EASA') => ({ id: `${type}-1`, type, issuingAuthority, expiryDate: null });
+
+test('selectActiveLicences: the highest licence supersedes the lower ones', () => {
+  const { active, hasAny } = selectActiveLicences([lic('PPL'), lic('ATPL'), lic('CPL')]);
+  assert.strictEqual(hasAny, true);
+  assert.deepStrictEqual(active.map((c) => c.type), ['ATPL']);
+});
+
+test('selectActiveLicences: ratings are not licences, and no licence is no licence', () => {
+  assert.strictEqual(selectActiveLicences([{ type: 'ELP' }, { type: 'IR' }, { type: 'ME' }]).hasAny, false);
+  assert.strictEqual(selectActiveLicences([]).hasAny, false);
+  assert.strictEqual(selectActiveLicences(undefined).hasAny, false);
+});
+
+test('a superseded licence with authority "unknown" does NOT raise the prompt', () => {
+  // The exact reported shape: current ATPL is set, an old PPL never was.
+  assert.strictEqual(needsAuthorityPrompt([lic('ATPL', 'EASA'), lic('PPL', 'unknown')]), false);
+});
+
+test('the ACTIVE licence with authority "unknown" DOES raise the prompt', () => {
+  assert.strictEqual(needsAuthorityPrompt([lic('ATPL', 'unknown'), lic('PPL', 'EASA')]), true);
+  // Case and null are both "not set".
+  assert.strictEqual(needsAuthorityPrompt([lic('ATPL', 'UNKNOWN')]), true);
+  assert.strictEqual(needsAuthorityPrompt([lic('ATPL', null)]), false);
+});
+
+test('same-rank licences are both active, so either can raise the prompt', () => {
+  const two = [lic('ATPL', 'EASA'), lic('ATPL', 'unknown')];
+  assert.strictEqual(selectActiveLicences(two).active.length, 2);
+  assert.strictEqual(needsAuthorityPrompt(two), true);
+});
