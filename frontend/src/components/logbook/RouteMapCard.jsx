@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ComposableMap, Geographies, Geography, Line, Marker, ZoomableGroup } from 'react-simple-maps';
 import { ChevronRight, X } from 'lucide-react';
 import { useAirports } from '../../lib/useAirports';
+// The card carries its own styles. It used to rely on whichever page imported
+// them; on the Reports page, which does not, the footer lost its flex row and
+// the caption ran into "Tap to explore".
+import './logbook.css';
 
 // ── Where you flew ───────────────────────────────────────────────────────────
 // The web half of the app's logbook map card, drawn the same way: small navy

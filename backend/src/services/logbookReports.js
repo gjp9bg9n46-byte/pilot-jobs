@@ -27,6 +27,7 @@ const { computeDerivedTotals, landingsCoverage, LANDINGS_COVERAGE_MIN, _internal
 const { resolveType, blockHours } = _internals;
 const { getActiveJobs } = require('./activeJobs');
 const { withTotals, matchJob, jobAircraftCategory } = require('./jobMatch');
+const { buildPlaces } = require('./logbookPlaces');
 const { getMatchContext } = require('./matchContextCache');
 
 // The fields computeDerivedTotals, the windows, recency and type resolution
@@ -37,6 +38,7 @@ const FLIGHT_SELECT = {
   crossCountryTime: true, multiEngineTime: true, turbineTime: true, jetTime: true,
   landingsDay: true, landingsNight: true, landingsRecorded: true,
   aircraftType: true, registration: true,
+  departure: true, arrival: true,
 };
 
 const DAY = 86400000;
@@ -330,6 +332,9 @@ async function buildLogbookReports(pilotId, { now = new Date(), perf = false } =
 
   const jobs = await jobsSection(jobsP, ctxP, logs, cf, derived, now);
   mark('jobs');
+  // Phase 2. Logged flights only — carry-forward has no route.
+  const places = await buildPlaces(logs, blockHours, now);
+  mark('places');
 
   mark('total');
   return {
@@ -340,6 +345,14 @@ async function buildLogbookReports(pilotId, { now = new Date(), perf = false } =
     recency: recency(logs, now, typeOf),
     totals,
     milestone: milestone(logs, derived.totalTime, now),
+    distance: places.distance,
+    places: places.places,
+    tails: places.tails,
+    sun: places.sun,
+    activity: places.activity,
+    night: places.night,
+    // How much of the logbook each phase-2 figure could actually use.
+    placesBasis: places.basis,
     jobsUnlocked: jobs.unlocked,
     command: jobs.command,
     almostThere: jobs.almostThere,

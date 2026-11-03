@@ -3,16 +3,18 @@
 // Every number comes from GET /logbook/reports, the same payload the web page
 // reads. Nothing is computed here: a figure that differed between the two
 // would be a bug a pilot could not explain.
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { useLogbookReports } from '../../../src/hooks/queries';
 import { num, num1 } from '../../../src/lib/format';
 import { fontFamilies, fontSizes, layout, radii, spacing } from '../../../src/theme/tokens';
 import { ThemePalette, useThemedStyles, useThemeColors } from '../../../src/theme/ThemeContext';
 import { useTabBarClearance } from '../../../src/theme/tabBar';
+import RouteMap from '../../../src/components/logbook/RouteMap';
 
 type Any = any;
 
@@ -56,11 +58,48 @@ function Limit({ label, hours, limit, styles }: { label: string; hours: number; 
   );
 }
 
+/** A year of flying days, a week per column — the way a calendar reads. */
+function Heatmap({ days, styles }: { days: Any[]; styles: Any }) {
+  const byDate = new Map(days.map((d: Any) => [d.date, d]));
+  const end = new Date();
+  const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 11, 1));
+  const first = new Date(start);
+  first.setUTCDate(first.getUTCDate() - ((first.getUTCDay() + 6) % 7));
+  const cells: { key: string; lvl: number }[] = [];
+  for (const d = new Date(first); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const key = d.toISOString().slice(0, 10);
+    const hit = byDate.get(key) as Any;
+    const lvl = !hit ? 0 : hit.hours >= 8 ? 4 : hit.hours >= 5 ? 3 : hit.hours >= 2 ? 2 : 1;
+    cells.push({ key, lvl });
+  }
+  // Columns of seven, laid out left to right. A fixed-width grid would clip on
+  // a narrow phone, so the week columns wrap within the card instead.
+  const weeks: { key: string; lvl: number }[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return (
+    <>
+      <View style={styles.heat}>
+        {weeks.map((w) => (
+          <View key={w[0].key} style={styles.heatCol}>
+            {w.map((c) => <View key={c.key} style={[styles.heatCell, styles[`heat${c.lvl}` as keyof typeof styles] as Any]} />)}
+          </View>
+        ))}
+      </View>
+      <View style={styles.heatKey}>
+        <Text style={styles.heatKeyT}>Less</Text>
+        {[0, 1, 2, 3, 4].map((l) => <View key={l} style={[styles.heatSwatch, styles[`heat${l}` as keyof typeof styles] as Any]} />)}
+        <Text style={styles.heatKeyT}>More</Text>
+      </View>
+    </>
+  );
+}
+
 export default function LogbookReportsScreen() {
   const styles = useThemedStyles(createStyles);
   const pilot = useThemeColors();
   const router = useRouter();
   const bottom = useTabBarClearance();
+  const [showAllAirports, setShowAllAirports] = useState(false);
 
   const { data, isPending, error, refetch, isRefetching } = useLogbookReports();
 
@@ -81,7 +120,15 @@ export default function LogbookReportsScreen() {
     );
   }
 
-  const { basis, limits, recency, totals: t, milestone, jobsUnlocked, command, almostThere } = data;
+  const {
+    basis, limits, recency, totals: t, milestone, jobsUnlocked, command, almostThere,
+    distance, places, tails, sun, activity, night, placesBasis,
+  } = data;
+  // The map resolves its own coordinates, so it takes the routes as codes.
+  const mapSectors = (places?.routes || []).map((r: Any) => ({ from: r.from, to: r.to }));
+  const skippedNote = placesBasis?.withoutAirports
+    ? ` ${num(placesBasis.withoutAirports)} flight${placesBasis.withoutAirports === 1 ? '' : 's'} without airports aren\u2019t included.`
+    : '';
 
   return (
     <SafeAreaView edges={[]} style={styles.safe}>
@@ -224,6 +271,119 @@ export default function LogbookReportsScreen() {
           </View>
         ) : null}
 
+        {distance && placesBasis?.withAirports > 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.h2}>Distance flown</Text>
+            <Text style={styles.sub}>Great-circle distance between the airports in your logbook.</Text>
+            <Text style={styles.kcap}>Total</Text>
+            <Text style={styles.big}>{num(distance.km)}<Text style={styles.bu}> km</Text></Text>
+            <View style={styles.strip}>
+              <View style={styles.cell}><Text style={styles.sv}>{num1(distance.earthLaps)}×</Text><Text style={styles.sk}>Around the Earth</Text></View>
+              <View style={styles.cell}><Text style={styles.sv}>{num1(distance.moonPercent)}%</Text><Text style={styles.sk}>Of the way to the Moon</Text></View>
+            </View>
+            <Text style={styles.flag}>Around the Earth {num1(distance.earthLaps)} times. {distance.moonPhrase}.</Text>
+            {distance.longest ? (
+              <Text style={styles.note}>
+                Longest sector: {distance.longest.fromName || distance.longest.from} to {distance.longest.toName || distance.longest.to},
+                {' '}{num(distance.longest.km)} km on {dateLabel(distance.longest.date)}.{skippedNote}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {places?.airportCount > 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.h2}>Where you have been</Text>
+            <Text style={styles.sub}>Every route in your logbook, drawn as a great circle.</Text>
+            <View style={{ marginTop: spacing.md }}>
+              <RouteMap sectors={mapSectors} height={190} scope="all" />
+            </View>
+            <View style={styles.strip}>
+              <View style={styles.cell}><Text style={styles.sv}>{num(places.airportCount)}</Text><Text style={styles.sk}>Airports</Text></View>
+              <View style={styles.cell}><Text style={styles.sv}>{num(places.countryCount)}</Text><Text style={styles.sk}>Countries</Text></View>
+              <View style={styles.cell}><Text style={styles.sv}>{num(places.routes?.length)}</Text><Text style={styles.sk}>Routes</Text></View>
+            </View>
+            <Text style={styles.kcap}>Most visited</Text>
+            {(showAllAirports ? places.airports : places.airports.slice(0, 6)).map((a: Any) => (
+              <View style={styles.row} key={a.code}>
+                <Text style={styles.code}>{a.code}</Text>
+                <Text style={styles.rowN} numberOfLines={1}>{a.name || a.city || ''}</Text>
+                <Text style={styles.rowH}>{num(a.visits)}</Text>
+              </View>
+            ))}
+            {places.airports.length > 6 ? (
+              <Pressable onPress={() => setShowAllAirports((v) => !v)} hitSlop={8}>
+                <Text style={styles.more}>{showAllAirports ? 'Show fewer' : `Show all ${num(places.airports.length)} airports`}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        {tails?.length ? (
+          <View style={styles.card}>
+            <Text style={styles.h2}>Tails</Text>
+            <Text style={styles.sub}>The aircraft you have flown most.</Text>
+            {tails.map((tl: Any) => (
+              <View style={styles.row} key={tl.registration}>
+                <Text style={styles.code}>{tl.registration}</Text>
+                <View style={styles.bar}><View style={[styles.barFill, { width: `${Math.max(4, (tl.sectors / tails[0].sectors) * 100)}%` }]} /></View>
+                <Text style={styles.rowH}>{num(tl.sectors)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {sun && (sun.sunrises > 0 || sun.sunsets > 0) ? (
+          <View style={styles.card}>
+            <Text style={styles.h2}>Sunrises and sunsets</Text>
+            <Text style={styles.sub}>Times the sun crossed the horizon while you were airborne, from your block times and the route between them.</Text>
+            <View style={styles.strip}>
+              <View style={styles.cell}><Text style={styles.sv}>{num(sun.sunrises)}</Text><Text style={styles.sk}>Sunrises</Text></View>
+              <View style={styles.cell}><Text style={styles.sv}>{num(sun.sunsets)}</Text><Text style={styles.sk}>Sunsets</Text></View>
+            </View>
+            <Text style={styles.note}>
+              Counted across {num(sun.flightsCounted)} flight{sun.flightsCounted === 1 ? '' : 's'}.
+              {sun.flightsSkipped > 0 ? ` ${num(sun.flightsSkipped)} without block times or resolvable airports aren\u2019t included.` : ''}
+            </Text>
+          </View>
+        ) : null}
+
+        {activity?.days?.length ? (
+          <View style={styles.card}>
+            <Text style={styles.h2}>Flying days</Text>
+            <Text style={styles.sub}>Every day you flew, over the last twelve months.</Text>
+            <Heatmap days={activity.days} styles={styles} />
+            <View style={styles.strip}>
+              <View style={styles.cell}><Text style={styles.sv}>{num(activity.daysFlown)}</Text><Text style={styles.sk}>Days flown</Text></View>
+              {activity.busiestMonth ? <View style={styles.cell}><Text style={styles.svSm}>{monthName(activity.busiestMonth.month)}</Text><Text style={styles.sk}>Busiest month</Text></View> : null}
+              {activity.busiestMonth ? <View style={styles.cell}><Text style={styles.sv}>{num1(activity.busiestMonth.hours)}</Text><Text style={styles.sk}>Hours</Text></View> : null}
+            </View>
+          </View>
+        ) : null}
+
+        {night?.percent != null ? (
+          <View style={styles.card}>
+            <Text style={styles.h2}>Night</Text>
+            <Text style={styles.sub}>How much of your flying happens after dark.</Text>
+            <View style={styles.donutRow}>
+              <Svg width={108} height={108} viewBox="0 0 128 128">
+                <Circle cx={64} cy={64} r={52} fill="none" stroke="#EDF1F6" strokeWidth={15} />
+                <Circle
+                  cx={64} cy={64} r={52} fill="none" stroke={pilot.navy} strokeWidth={15}
+                  strokeDasharray={`${(night.percent / 100) * 326.7} 326.7`} transform="rotate(-90 64 64)"
+                />
+                <SvgText x={64} y={61} textAnchor="middle" fontFamily={fontFamilies.display} fontSize={25} fill={pilot.ink}>{`${night.percent}%`}</SvgText>
+                <SvgText x={64} y={78} textAnchor="middle" fontFamily={fontFamilies.body} fontSize={10} fill={pilot.muted}>at night</SvgText>
+              </Svg>
+              <View style={styles.legend}>
+                <View style={styles.legendRow}><View style={[styles.legendDot, { backgroundColor: pilot.navy }]} /><Text style={styles.legendK}>Night</Text><Text style={styles.legendV}>{num1(night.nightHours)} h</Text></View>
+                <View style={styles.legendRow}><View style={[styles.legendDot, { backgroundColor: '#EDF1F6' }]} /><Text style={styles.legendK}>Day</Text><Text style={styles.legendV}>{num1(night.totalHours - night.nightHours)} h</Text></View>
+              </View>
+            </View>
+            <Text style={styles.note}>{night.percent}% of your flying is at night.</Text>
+          </View>
+        ) : null}
+
         {almostThere?.length ? (
           <View style={styles.card}>
             <Text style={styles.h2}>Almost there</Text>
@@ -294,6 +454,25 @@ const createStyles = (pilot: ThemePalette) => StyleSheet.create({
   ok: { color: '#15803D', fontSize: fontSizes.xs },
   no: { color: pilot.muted, fontSize: fontSizes.xs },
   gap: { fontFamily: fontFamilies.mono, fontSize: fontSizes.xs, color: pilot.navy },
+  code: { fontFamily: fontFamilies.mono, fontSize: fontSizes.xs, color: pilot.ink },
+  more: { marginTop: 11, color: pilot.navy, fontSize: fontSizes.sm, fontFamily: fontFamilies.bodyMedium },
+  heat: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: spacing.md },
+  heatCol: { gap: 2 },
+  heatCell: { width: 7, height: 7, borderRadius: 2, backgroundColor: '#EDF1F6' },
+  heat0: { backgroundColor: '#EDF1F6' },
+  heat1: { backgroundColor: '#D5E0EE' },
+  heat2: { backgroundColor: '#9FBBDC' },
+  heat3: { backgroundColor: '#4F7CB5' },
+  heat4: { backgroundColor: pilot.navy },
+  heatKey: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 9 },
+  heatKeyT: { fontSize: 11.5, color: pilot.muted, fontFamily: fontFamilies.body },
+  heatSwatch: { width: 10, height: 10, borderRadius: 2 },
+  donutRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },
+  legend: { flex: 1, minWidth: 0, gap: 7 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  legendDot: { width: 9, height: 9, borderRadius: 5 },
+  legendK: { flex: 1, minWidth: 0, color: pilot.muted, fontSize: fontSizes.sm },
+  legendV: { fontFamily: fontFamilies.mono, fontSize: fontSizes.sm, color: pilot.ink },
   bar: { width: 62, height: 5, backgroundColor: '#EDF1F6', borderRadius: 3, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: pilot.navy },
 });

@@ -116,4 +116,7 @@ async function isNightLanding({ date, arrival, on }) {
   return solarElevation(b.lat, b.lon, window.from) < CIVIL_TWILIGHT_DEG;
 }
 
-module.exports = { nightMinutes, isNightLanding, solarElevation, toMinutes, utcWindow, CIVIL_TWILIGHT_DEG };
+// interpolate() is the great-circle position at fraction f of a leg. Exported
+// because the reports' sunrise/sunset count walks the same path this module
+// already samples for night time — one piece of spherical geometry, not two.
+module.exports = { nightMinutes, isNightLanding, solarElevation, interpolate, toMinutes, utcWindow, CIVIL_TWILIGHT_DEG };

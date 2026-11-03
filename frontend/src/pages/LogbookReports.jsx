@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { logbookApi } from '../services/api';
 import LightPage from '../components/primitives/LightPage';
+import RouteMapCard from '../components/logbook/RouteMapCard';
 import './logbookReports.css';
 
 // Logbook Reports — phase 1.
@@ -61,6 +62,7 @@ function Limit({ label, hours, limit }) {
 
 export default function LogbookReports() {
   const [data, setData] = useState(null);
+  const [showAllAirports, setShowAllAirports] = useState(false);
   const [err, setErr] = useState(null);
 
   useEffect(() => {
@@ -86,8 +88,18 @@ export default function LogbookReports() {
     );
   }
 
-  const { basis, limits, recency, totals, milestone, jobsUnlocked, command, almostThere } = data;
+  const {
+    basis, limits, recency, totals, milestone, jobsUnlocked, command, almostThere,
+    distance, places, tails, sun, activity, night, placesBasis,
+  } = data;
   const t = totals || {};
+  // The map resolves its own coordinates from the airport list, so it takes
+  // the routes as plain codes.
+  const mapSectors = (places?.routes || []).map((r) => ({ from: r.from, to: r.to }));
+  // Said once, wherever a figure could not use the whole logbook.
+  const skippedNote = placesBasis?.withoutAirports
+    ? ` ${num(placesBasis.withoutAirports)} flight${placesBasis.withoutAirports === 1 ? '' : 's'} without airports aren’t included.`
+    : '';
 
   return (
     <LightPage className="lbr">
@@ -270,8 +282,153 @@ export default function LogbookReports() {
             </section>
           )}
 
+          {distance && placesBasis?.withAirports > 0 && (
+            <section className="lbr-card">
+              <h2>Distance flown</h2>
+              <p className="lbr-sub">Great-circle distance between the airports in your logbook.</p>
+              <div className="kcap">Total</div>
+              <div className="big">{num(distance.km)}<span className="bu"> km</span></div>
+              <div className="strip">
+                <div><div className="sv">{num1(distance.earthLaps)}×</div><div className="sk">Around the Earth</div></div>
+                <div><div className="sv">{num1(distance.moonPercent)}%</div><div className="sk">Of the way to the Moon</div></div>
+              </div>
+              <p className="lbr-flag">Around the Earth <b>{num1(distance.earthLaps)} times</b>. <b>{distance.moonPhrase}.</b></p>
+              {distance.longest && (
+                <p className="lbr-note">Longest sector: {distance.longest.fromName || distance.longest.from} to{' '}
+                  {distance.longest.toName || distance.longest.to}, {num(distance.longest.km)} km on {dateLabel(distance.longest.date)}.
+                  {skippedNote}
+                </p>
+              )}
+            </section>
+          )}
+
+          {places?.airportCount > 0 && (
+            <section className="lbr-card">
+              <h2>Where you have been</h2>
+              <p className="lbr-sub">Every route in your logbook, drawn as a great circle.</p>
+              <div className="lbr-map">
+                <RouteMapCard sectors={mapSectors} scope="all" label="" />
+              </div>
+              <div className="strip">
+                <div><div className="sv">{num(places.airportCount)}</div><div className="sk">Airports</div></div>
+                <div><div className="sv">{num(places.countryCount)}</div><div className="sk">Countries</div></div>
+                <div><div className="sv">{num(places.routes?.length)}</div><div className="sk">Routes</div></div>
+              </div>
+              <div className="kcap">Most visited</div>
+              <div className="rows">
+                {(showAllAirports ? places.airports : places.airports.slice(0, 6)).map((a) => (
+                  <div className="r" key={a.code}>
+                    <span className="r-n"><b className="r-code">{a.code}</b> {a.name || a.city || ''}</span>
+                    <span className="r-h">{num(a.visits)}</span>
+                  </div>
+                ))}
+              </div>
+              {places.airports.length > 6 && (
+                <button type="button" className="lbr-more" onClick={() => setShowAllAirports((v) => !v)}>
+                  {showAllAirports ? 'Show fewer' : `Show all ${num(places.airports.length)} airports`}
+                </button>
+              )}
+            </section>
+          )}
+
+          {tails?.length > 0 && (
+            <section className="lbr-card">
+              <h2>Tails</h2>
+              <p className="lbr-sub">The aircraft you have flown most.</p>
+              <div className="rows">
+                {tails.map((t2) => (
+                  <div className="r" key={t2.registration}>
+                    <span className="r-n"><b className="r-code">{t2.registration}</b></span>
+                    <span className="r-bar"><i style={{ width: `${Math.max(4, (t2.sectors / tails[0].sectors) * 100)}%` }} /></span>
+                    <span className="r-h">{num(t2.sectors)} sector{t2.sectors === 1 ? '' : 's'}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {sun && (sun.sunrises > 0 || sun.sunsets > 0) && (
+            <section className="lbr-card">
+              <h2>Sunrises and sunsets</h2>
+              <p className="lbr-sub">Times the sun crossed the horizon while you were airborne, worked out from your
+                off- and on-blocks times and the route between them.</p>
+              <div className="strip">
+                <div><div className="sv">{num(sun.sunrises)}</div><div className="sk">Sunrises</div></div>
+                <div><div className="sv">{num(sun.sunsets)}</div><div className="sk">Sunsets</div></div>
+              </div>
+              <p className="lbr-note">
+                Counted across {num(sun.flightsCounted)} flight{sun.flightsCounted === 1 ? '' : 's'}.
+                {sun.flightsSkipped > 0 ? ` ${num(sun.flightsSkipped)} without block times or resolvable airports aren’t included.` : ''}
+              </p>
+            </section>
+          )}
+
+          {activity?.days?.length > 0 && (
+            <section className="lbr-card">
+              <h2>Flying days</h2>
+              <p className="lbr-sub">Every day you flew, over the last twelve months.</p>
+              <Heatmap days={activity.days} />
+              <div className="strip">
+                <div><div className="sv">{num(activity.daysFlown)}</div><div className="sk">Days flown</div></div>
+                {activity.busiestMonth && <div><div className="sv sv-sm">{monthName(activity.busiestMonth.month)}</div><div className="sk">Busiest month</div></div>}
+                {activity.busiestMonth && <div><div className="sv">{num1(activity.busiestMonth.hours)}</div><div className="sk">Hours that month</div></div>}
+              </div>
+            </section>
+          )}
+
+          {night?.percent != null && (
+            <section className="lbr-card">
+              <h2>Night</h2>
+              <p className="lbr-sub">How much of your flying happens after dark.</p>
+              <div className="lbr-donutrow">
+                <svg width="128" height="128" viewBox="0 0 128 128" role="img" aria-label={`${night.percent}% at night`}>
+                  <circle cx="64" cy="64" r="52" fill="none" stroke="#EDF1F6" strokeWidth="15" />
+                  <circle
+                    cx="64" cy="64" r="52" fill="none" stroke="var(--accent)" strokeWidth="15"
+                    strokeDasharray={`${(night.percent / 100) * 326.7} 326.7`} transform="rotate(-90 64 64)"
+                  />
+                  <text x="64" y="61" textAnchor="middle" fontFamily="var(--font-display)" fontSize="25" fill="var(--text-primary)">{night.percent}%</text>
+                  <text x="64" y="78" textAnchor="middle" fontFamily="var(--font-body)" fontSize="10" fill="var(--text-faint)">at night</text>
+                </svg>
+                <div className="lbr-legend">
+                  <div><i style={{ background: 'var(--accent)' }} /> Night <b>{num1(night.nightHours)} h</b></div>
+                  <div><i style={{ background: '#EDF1F6' }} /> Day <b>{num1(night.totalHours - night.nightHours)} h</b></div>
+                </div>
+              </div>
+              <p className="lbr-note">{night.percent}% of your flying is at night. Night time is taken from the crew&rsquo;s own
+                column where the sector has one, and worked out from the sun along the route where it does not.</p>
+            </section>
+          )}
+
         </div>
       </div>
     </LightPage>
+  );
+}
+
+/** A year of flying days, a week per column — the way a calendar reads. */
+function Heatmap({ days }) {
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  const end = new Date();
+  const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 11, 1));
+  // Begin on the Monday on or before the first of that month.
+  const first = new Date(start);
+  first.setUTCDate(first.getUTCDate() - ((first.getUTCDay() + 6) % 7));
+  const cells = [];
+  for (let d = new Date(first); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const key = d.toISOString().slice(0, 10);
+    const hit = byDate.get(key);
+    const lvl = !hit ? 0 : hit.hours >= 8 ? 4 : hit.hours >= 5 ? 3 : hit.hours >= 2 ? 2 : 1;
+    cells.push({ key, lvl, hours: hit?.hours || 0 });
+  }
+  return (
+    <>
+      <div className="lbr-heat" role="img" aria-label={`${days.length} flying days in the last twelve months`}>
+        {cells.map((c) => <i key={c.key} className={`l${c.lvl}`} title={c.hours ? `${c.key}: ${c.hours} h` : c.key} />)}
+      </div>
+      <div className="lbr-heatkey">
+        Less <i className="l0" /><i className="l1" /><i className="l2" /><i className="l3" /><i className="l4" /> More
+      </div>
+    </>
   );
 }
