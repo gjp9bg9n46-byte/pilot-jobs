@@ -26,7 +26,7 @@ import { IMAGE_FADE_MS } from '../../../../src/theme/motion';
 import { useProfileOverview } from '../../../../src/hooks/queries';
 import { ProfileSkeleton } from '../../../../src/components/Skeleton';
 import { tapLight } from '../../../../src/lib/haptics';
-import { hours } from '../../../../src/lib/format';
+import { hours, num, num1 } from '../../../../src/lib/format';
 import { withErrorBoundary } from '../../../../src/components/ErrorBoundary';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -257,9 +257,9 @@ function ProfileView() {
         {/* ── SNAPSHOT + STRENGTH ─────────────────────────────────────────── */}
         {totals && (
           <View style={styles.snap}>
-            <View style={styles.snapCell}><Text style={styles.snapV}>{Math.round(totals.total).toLocaleString()}<Text style={styles.snapU}> h</Text></Text><Text style={styles.snapK}>Total time</Text></View>
-            {mainType && byTypeHours.has(normType(mainType)) && <View style={[styles.snapCell, styles.snapBorderL]}><Text style={styles.snapV}>{Math.round(byTypeHours.get(normType(mainType)) || 0).toLocaleString()}<Text style={styles.snapU}> h</Text></Text><Text style={styles.snapK}>On {properCase(mainType)}</Text></View>}
-            <View style={[styles.snapCell, styles.snapBorderT]}><Text style={styles.snapV}>{(totals.flightCount || 0).toLocaleString()}</Text><Text style={styles.snapK}>Flights logged</Text></View>
+            <View style={styles.snapCell}><Text style={styles.snapV}>{num(Math.round(totals.total))}<Text style={styles.snapU}> h</Text></Text><Text style={styles.snapK}>Total time</Text></View>
+            {mainType && byTypeHours.has(normType(mainType)) && <View style={[styles.snapCell, styles.snapBorderL]}><Text style={styles.snapV}>{num(Math.round(byTypeHours.get(normType(mainType)) || 0))}<Text style={styles.snapU}> h</Text></Text><Text style={styles.snapK}>On {properCase(mainType)}</Text></View>}
+            <View style={[styles.snapCell, styles.snapBorderT]}><Text style={styles.snapV}>{num(totals.flightCount || 0)}</Text><Text style={styles.snapK}>Flights logged</Text></View>
             {ratings.length > 0 && <View style={[styles.snapCell, styles.snapBorderT, styles.snapBorderL]}><Text style={styles.snapV}>{ratings.length}</Text><Text style={styles.snapK}>Rating{ratings.length === 1 ? '' : 's'}</Text></View>}
           </View>
         )}
@@ -578,7 +578,7 @@ export function FlightDashboard({ totals, styles, palette }: { totals: Any; styl
             ))}
           </Svg>
           <View style={styles.donutCenter}>
-            <Text style={styles.donutNum}>{total.toFixed(0)}</Text>
+            <Text style={styles.donutNum}>{num(Math.round(total))}</Text>
             <Text style={styles.donutLabel}>Total hrs</Text>
           </View>
         </View>
@@ -587,7 +587,7 @@ export function FlightDashboard({ totals, styles, palette }: { totals: Any; styl
             <View key={x.label} style={styles.legendRow}>
               <View style={[styles.legendDot, { backgroundColor: x.color }]} />
               <Text style={styles.legendLabel}>{x.label}</Text>
-              <Text style={styles.legendVal}>{x.value.toFixed(1)}</Text>
+              <Text style={styles.legendVal}>{num1(x.value)}</Text>
             </View>
           ))}
         </View>
@@ -598,7 +598,7 @@ export function FlightDashboard({ totals, styles, palette }: { totals: Any; styl
           <View key={bl.label} style={styles.barBlock}>
             <View style={styles.barHead}>
               <Text style={styles.barLabel}>{bl.label}</Text>
-              <Text style={styles.barVal}>{bl.value.toFixed(1)} h · {Math.round(pct)}%</Text>
+              <Text style={styles.barVal}>{num1(bl.value)} h · {Math.round(pct)}%</Text>
             </View>
             <View style={styles.barTrack}>
               <View style={[styles.barFill, { width: `${pct}%` }]} />

@@ -11,3 +11,13 @@ export const num = (n: number | string | null | undefined): string => {
 // Hours, the one house format: "1,500 h" — comma thousands, space, lowercase h.
 // Never "hrs", never "1.500".
 export const hours = (n: number | string | null | undefined): string => `${num(n)} h`;
+
+// One decimal, still comma-grouped: "1,592.5". For the breakdowns that need
+// the fraction — a bare toFixed(1) gives "1592.5", which is the same number
+// written in a way nobody reads at a glance.
+export const num1 = (n: number | string | null | undefined): string => {
+  const v = Number(n);
+  return Number.isFinite(v)
+    ? v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : '—';
+};

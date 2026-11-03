@@ -57,7 +57,7 @@
     },
     "owner": "aladinnn",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/950ece23-2926-451e-bb44-cf5bd2d9b8f9"
