@@ -1,0 +1,38 @@
+/* "Print logbook" — the trigger and its range dialog. */
+.pl-btn {
+  font: 600 14px var(--font-body); padding: 9px 16px; border-radius: 8px;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer;
+  white-space: nowrap;
+}
+.pl-btn:disabled { opacity: .55; cursor: default; }
+.pl-link {
+  font: 500 14px var(--font-body); color: var(--accent); background: none; border: 0;
+  padding: 0; cursor: pointer; white-space: nowrap;
+}
+.pl-link:hover { text-decoration: underline; }
+
+.pl-backdrop {
+  position: fixed; inset: 0; background: rgba(11, 31, 58, .45); z-index: 70;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.pl-panel {
+  background: var(--surface); border-radius: 14px; padding: 22px;
+  width: min(440px, 100%); max-height: 90vh; overflow-y: auto;
+}
+.pl-panel h2 { font-family: var(--font-display); font-size: 21px; font-weight: 600; }
+.pl-sub { color: var(--text-secondary); font-size: 13.5px; margin-top: 5px; line-height: 1.5; }
+
+/* auto-fit so the two fields stack rather than overflow on a narrow phone */
+.pl-range { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 12px; margin-top: 18px; }
+.pl-range label { display: block; min-width: 0; }
+.pl-range span { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px; }
+.pl-range input {
+  width: 100%; height: 40px; border: 1px solid var(--border); border-radius: 8px;
+  padding: 0 10px; font: 400 14px var(--font-body); background: var(--surface); color: var(--text-primary);
+}
+.pl-hint { font-size: 12.5px; color: var(--text-faint); margin-top: 8px; }
+.pl-note { font-size: 13px; color: var(--text-secondary); margin-top: 14px; background: #F2F5F9;
+  border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 10px 12px; line-height: 1.5; }
+.pl-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
+.pl-ghost { font: 500 14px var(--font-body); background: none; border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 16px; color: var(--text-secondary); cursor: pointer; }

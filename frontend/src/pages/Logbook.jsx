@@ -18,6 +18,7 @@ import DayList from '../components/logbook/DayList';
 import FlightDetail from '../components/logbook/FlightDetail';
 import { duration, findOverlaps, recencyLine, parseBlockHours, missingForSave, missingSentence } from '../lib/logbookFormat';
 import '../components/logbook/logbook.css';
+import PrintLogbook from '../components/logbook/PrintLogbook';
 import { LightPage, Card, Input, Button, Badge, Modal } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -905,6 +906,7 @@ export default function Logbook() {
             is the floating button that was already there. */}
         <div className="lb-actions">
           <Button variant="secondary" onClick={() => navigate('/logbook/reports')}>Reports</Button>
+          {!isMobile && <PrintLogbook variant="link" />}
           {!isMobile && <Button variant="secondary" onClick={() => setShowImport(true)} style={{ gap: 7 }}><Upload size={14} /> Import</Button>}
           {!isMobile && <Button onClick={() => navigate('/logbook/add')}>+ Add flight</Button>}
         </div>

@@ -40,6 +40,8 @@ router.use((req, res, next) => {
 router.get('/summary', flightLogController.summary);
 // Logbook Reports (phase 1): limits, recency, totals, milestone, jobs.
 router.get('/reports', flightLogController.reports);
+// Printable logbook (phase 4): EASA-layout rows, paginated with page totals.
+router.get('/print', flightLogController.printable);
 // One call for everything the Logbook tab opens with (prefs + quota + summary
 // + first page). See controllers/bundleController.js.
 router.get('/bootstrap', bundles.logbookBootstrap);

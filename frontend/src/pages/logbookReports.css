@@ -114,3 +114,5 @@ a.r-link:hover .r-n { color: var(--text-primary); }
 .lbr-tabs button.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 /* The deck is one column at every width — a story is not a dashboard. */
 .lbr-grid-one { grid-template-columns: minmax(0, 1fr); max-width: 620px; }
+
+.lbr-headactions { margin-top: 14px; }

@@ -434,6 +434,24 @@ exports.summary = async (req, res, next) => {
   }
 };
 
+// The printable logbook (EASA Part-FCL layout). Pagination and the running
+// totals are computed on the server so the web download and the phone's PDF
+// are the same document. Not cached: it is a deliberate, occasional export,
+// and a stale page total is worse than a second of work.
+exports.printable = async (req, res, next) => {
+  try {
+    const { buildPrintableLogbook } = require('../services/logbookPrint');
+    const ymd = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+    const payload = await buildPrintableLogbook(req.pilot.id, {
+      from: ymd(req.query.from), to: ymd(req.query.to),
+    });
+    if (!payload) return res.status(404).json({ error: 'Pilot not found' });
+    res.json(payload);
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Logbook Reports — one cached payload, so web and app cannot disagree about a
 // number. See services/logbookReports.js for the carry-forward and
 // "not recorded" rules.

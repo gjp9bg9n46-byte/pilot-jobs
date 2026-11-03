@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../src/lib/api';
 import CarryForwardPanel from '../../../../src/components/CarryForwardPanel';
 import LogbookDashboard from '../../../../src/components/logbook/LogbookDashboard';
+import PrintLogbook from '../../../../src/components/logbook/PrintLogbook';
 import { setPendingFlight } from '../../../../src/lib/pendingFlight';
 import { timeToMinutes } from '../../../../src/lib/logbook';
 import { duration, findOverlaps, groupBy, Grouping, overlapLabel, overnightReturnOf, recencyLine, TimeFormat } from '../../../../src/lib/logbookFormat';
@@ -403,6 +404,12 @@ function LogbookList() {
         <Ionicons name="chevron-forward" size={18} color={pilot.muted} />
       </Pressable>
 
+      {/* The printable logbook. A personal document, so it carries the PIC
+          name the reports deliberately leave out. */}
+      <View style={styles.printRow}>
+        <PrintLogbook variant="row" />
+      </View>
+
       {/* Where this page of flights went. Follows the list: change page or
           switch Month/Day and the map follows. Below the hours, because
           currency is the number a pilot needs first. */}
@@ -556,6 +563,7 @@ function LogbookList() {
 
 
 const createStyles = (pilot: ThemePalette) => { const CARD = makeCard(pilot); return StyleSheet.create({
+  printRow: { alignItems: 'flex-start', paddingHorizontal: 2 },
   listHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     gap: 12, marginTop: layout.sectionGap, marginBottom: layout.rowGap },
   listHeadK: { fontSize: 11.5, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',

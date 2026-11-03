@@ -4,6 +4,7 @@ import { logbookApi } from '../services/api';
 import LightPage from '../components/primitives/LightPage';
 import RouteMapCard from '../components/logbook/RouteMapCard';
 import YearInTheSky from '../components/logbook/YearInTheSky';
+import PrintLogbook from '../components/logbook/PrintLogbook';
 import './logbookReports.css';
 
 // Logbook Reports — phase 1.
@@ -120,6 +121,7 @@ export default function LogbookReports() {
           <h1>Reports</h1>
           <p className="lbr-lead">What your logbook says about where you are and what you can fly next.
             Figures come from your logged flights; nothing here is an official record.</p>
+          <div className="lbr-headactions"><PrintLogbook /></div>
           <p className="lbr-basis">
             Based on {num(basis.flightCount)} logged flight{basis.flightCount === 1 ? '' : 's'}
             {basis.firstFlight ? ` · ${dateLabel(basis.firstFlight)} – ${dateLabel(basis.lastFlight)}` : ''}

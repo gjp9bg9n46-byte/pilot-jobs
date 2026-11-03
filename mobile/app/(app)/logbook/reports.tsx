@@ -16,6 +16,7 @@ import { ThemePalette, useThemedStyles, useThemeColors } from '../../../src/them
 import { useTabBarClearance } from '../../../src/theme/tabBar';
 import RouteMap from '../../../src/components/logbook/RouteMap';
 import YearInTheSky from '../../../src/components/logbook/YearInTheSky';
+import PrintLogbook from '../../../src/components/logbook/PrintLogbook';
 
 type Any = any;
 
@@ -154,6 +155,10 @@ export default function LogbookReportsScreen() {
           Based on {num(basis.flightCount)} logged flight{basis.flightCount === 1 ? '' : 's'}
           {basis.firstFlight ? `\n${dateLabel(basis.firstFlight)} – ${dateLabel(basis.lastFlight)}` : ''}
         </Text>
+
+        <View style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>
+          <PrintLogbook />
+        </View>
 
         <View style={styles.tabs}>
           <Pressable onPress={() => setTab('career')} style={[styles.tab, tab === 'career' && styles.tabOn]}>
