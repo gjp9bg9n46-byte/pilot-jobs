@@ -94,8 +94,11 @@ export const logbookApi = {
   summary: () => api.get('/logbook/summary'),
   // Logbook Reports (phase 1) — one cached payload, shared with the app.
   reports: (year) => api.get('/logbook/reports', year ? { params: { year } } : undefined),
-  // The printable logbook: EASA rows already paginated with page totals.
+  // The printable logbook: rows already paginated with page totals, drawn
+  // against the authority layout in `params.format`.
   printable: (params) => api.get('/logbook/print', { params }),
+  // The layouts on offer plus the one this pilot's licence suggests.
+  printFormats: () => api.get('/logbook/print/formats'),
   // Logbook preferences: hh:mm vs decimal, role preset, remembered aircraft, staff number.
   prefs: () => api.get('/logbook/prefs'),
   updatePrefs: (patch) => api.put('/logbook/prefs', patch),

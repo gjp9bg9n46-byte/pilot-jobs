@@ -42,6 +42,7 @@ router.get('/summary', flightLogController.summary);
 router.get('/reports', flightLogController.reports);
 // Printable logbook (phase 4): EASA-layout rows, paginated with page totals.
 router.get('/print', flightLogController.printable);
+router.get('/print/formats', flightLogController.printFormats);
 // One call for everything the Logbook tab opens with (prefs + quota + summary
 // + first page). See controllers/bundleController.js.
 router.get('/bootstrap', bundles.logbookBootstrap);

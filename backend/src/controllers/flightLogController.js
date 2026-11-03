@@ -434,19 +434,42 @@ exports.summary = async (req, res, next) => {
   }
 };
 
-// The printable logbook (EASA Part-FCL layout). Pagination and the running
-// totals are computed on the server so the web download and the phone's PDF
-// are the same document. Not cached: it is a deliberate, occasional export,
-// and a stale page total is worse than a second of work.
+// The printable logbook. The layout comes from ?format= (one of the ids in
+// services/logbookFormats); an unknown or absent one falls back to whatever
+// the pilot's licence authority suggests, so the first export is already the
+// right shape. Pagination and the running totals are computed on the server
+// so the web download and the phone's PDF are the same document. Not cached:
+// it is a deliberate, occasional export, and a stale page total is worse than
+// a second of work.
 exports.printable = async (req, res, next) => {
   try {
     const { buildPrintableLogbook } = require('../services/logbookPrint');
     const ymd = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
     const payload = await buildPrintableLogbook(req.pilot.id, {
-      from: ymd(req.query.from), to: ymd(req.query.to),
+      from: ymd(req.query.from), to: ymd(req.query.to), format: req.query.format || null,
     });
     if (!payload) return res.status(404).json({ error: 'Pilot not found' });
     res.json(payload);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// The layouts on offer, and which one this pilot's licence suggests. Cheap
+// enough to call when the export dialog opens: it reads certificates, not
+// flights, so the picker is populated before anything is built.
+exports.printFormats = async (req, res, next) => {
+  try {
+    const formats = require('../services/logbookFormats');
+    const prisma = require('../config/database');
+    const certs = await prisma.pilotCertificate.findMany({
+      where: { pilotId: req.pilot.id },
+      select: { type: true, issuingAuthority: true },
+    });
+    res.json({
+      formats: formats.formatList(),
+      suggestedFormat: formats.defaultFormatFor(certs),
+    });
   } catch (err) {
     next(err);
   }

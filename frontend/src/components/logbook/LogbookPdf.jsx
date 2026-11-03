@@ -1,15 +1,19 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
-// The printable logbook, EASA Part-FCL layout, A4 landscape.
+// The printable logbook, A4 landscape, in whichever authority's layout the
+// pilot chose.
 //
-// The rows, the page breaks and the three totals lines all come from the
-// server (services/logbookPrint), so this file only draws. The phone's PDF is
-// drawn from the same payload, which is how the two stay identical.
+// This file DRAWS and nothing else. The columns, their widths, the two header
+// rows, every cell as a finished string, the page breaks and the three totals
+// lines all arrive from the server (services/logbookPrint +
+// services/logbookFormats). The phone's PDF is drawn from the same payload,
+// which is how the two stay identical — and why a new layout needs no change
+// here at all.
 //
 // Blanks are blank. A column the logbook never recorded prints empty, because
-// in a Part-FCL book an empty cell means "not recorded" and 0:00 means "none,
-// and we checked".
+// in a logbook an empty cell means "not recorded" and 0:00 means "none, and we
+// checked".
 
 Font.registerHyphenationCallback((w) => [w]); // never hyphenate inside a cell
 
@@ -18,22 +22,8 @@ const LINE = '#8D9AAC';
 const HEAD = '#E7EDF5';
 const SOFT = '#F8FAFC';
 
-// Column widths in percent, summing to 100. Sized for the real columns:
-// the places and times are narrow, remarks takes what is left.
-const W = {
-  date: 5.2,
-  depPlace: 4.2, depTime: 4.2, arrPlace: 4.2, arrTime: 4.2,
-  type: 5.4, reg: 6.0,
-  multi: 5.0, total: 5.0,
-  picName: 9.0,
-  ldgDay: 3.6, ldgNight: 3.6,
-  night: 5.0, ifr: 5.0,
-  fPic: 5.0, fCo: 5.0, fDual: 5.0,
-  remarks: 15.4,
-};
-
 const s = StyleSheet.create({
-  page: { paddingTop: 22, paddingBottom: 20, paddingHorizontal: 22, fontSize: 6.2, color: INK, fontFamily: 'Helvetica' },
+  page: { paddingTop: 22, paddingBottom: 20, paddingHorizontal: 22, color: INK, fontFamily: 'Helvetica' },
   head: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', borderBottomWidth: 1.2, borderBottomColor: INK, paddingBottom: 5, marginBottom: 6 },
   title: { fontSize: 12, fontFamily: 'Helvetica-Bold' },
   holder: { fontSize: 6.6, color: '#4A5668', marginTop: 2 },
@@ -44,9 +34,9 @@ const s = StyleSheet.create({
   cellL: { textAlign: 'left' },
   first: { borderLeftWidth: 0.5, borderLeftColor: LINE },
 
-  grp: { flexDirection: 'row', backgroundColor: HEAD, borderTopWidth: 0.5, borderTopColor: LINE },
+  grp: { flexDirection: 'row', backgroundColor: HEAD, borderTopWidth: 0.5, borderTopColor: LINE, borderLeftWidth: 0.5, borderLeftColor: LINE },
   grpCell: { borderRightWidth: 0.5, borderRightColor: LINE, paddingVertical: 2.4, textAlign: 'center', fontFamily: 'Helvetica-Bold', fontSize: 5.6 },
-  sub: { flexDirection: 'row', backgroundColor: HEAD },
+  sub: { flexDirection: 'row', backgroundColor: HEAD, borderLeftWidth: 0.5, borderLeftColor: LINE },
   subCell: { borderRightWidth: 0.5, borderRightColor: LINE, paddingVertical: 2.2, textAlign: 'center', fontSize: 5.4, color: '#4A5668' },
 
   totRow: { flexDirection: 'row', backgroundColor: SOFT, borderBottomWidth: 0.5, borderBottomColor: LINE },
@@ -58,115 +48,92 @@ const s = StyleSheet.create({
   foot: { position: 'absolute', bottom: 8, left: 22, right: 22, flexDirection: 'row', justifyContent: 'space-between', fontSize: 5.6, color: '#8592A3' },
 });
 
-const C = ({ w, children, left, first, style }) => (
-  <View style={[s.cell, { width: `${w}%` }, left && s.cellL, first && s.first, style]}>
+// A twenty-one column layout needs a little less type than an eighteen.
+const bodySize = (n) => (n >= 20 ? 5.9 : 6.2);
+
+const C = ({ w, children, align, first, style }) => (
+  <View style={[s.cell, { width: `${w}%` }, align === 'left' && s.cellL, first && s.first, style]}>
     <Text>{children || ' '}</Text>
   </View>
 );
 
-function HeaderRows() {
-  const g = (w, t, style) => <View style={[s.grpCell, { width: `${w}%` }, style]}><Text>{t}</Text></View>;
-  const sc = (w, t) => <View style={[s.subCell, { width: `${w}%` }]}><Text>{t}</Text></View>;
+function HeaderRows({ header }) {
   return (
     <>
-      <View style={[s.grp, { borderLeftWidth: 0.5, borderLeftColor: LINE }]}>
-        {g(W.date, 'Date')}
-        {g(W.depPlace + W.depTime, 'Departure')}
-        {g(W.arrPlace + W.arrTime, 'Arrival')}
-        {g(W.type + W.reg, 'Aircraft')}
-        {g(W.multi, 'Multi-pilot')}
-        {g(W.total, 'Total')}
-        {g(W.picName, 'PIC name')}
-        {g(W.ldgDay + W.ldgNight, 'Landings')}
-        {g(W.night + W.ifr, 'Conditions')}
-        {g(W.fPic + W.fCo + W.fDual, 'Pilot function')}
-        {g(W.remarks, 'Remarks')}
+      <View style={s.grp}>
+        {header.top.map((h, i) => (
+          <View key={`t${i}`} style={[s.grpCell, { width: `${h.w}%` }]}><Text>{h.label || ' '}</Text></View>
+        ))}
       </View>
-      <View style={[s.sub, { borderLeftWidth: 0.5, borderLeftColor: LINE }]}>
-        {sc(W.date, '')}
-        {sc(W.depPlace, 'Place')}{sc(W.depTime, 'Time')}
-        {sc(W.arrPlace, 'Place')}{sc(W.arrTime, 'Time')}
-        {sc(W.type, 'Type')}{sc(W.reg, 'Reg')}
-        {sc(W.multi, 'time')}{sc(W.total, 'time')}
-        {sc(W.picName, '')}
-        {sc(W.ldgDay, 'Day')}{sc(W.ldgNight, 'Night')}
-        {sc(W.night, 'Night')}{sc(W.ifr, 'IFR')}
-        {sc(W.fPic, 'PIC')}{sc(W.fCo, 'Co-pilot')}{sc(W.fDual, 'Dual')}
-        {sc(W.remarks, '')}
+      <View style={s.sub}>
+        {header.sub.map((h, i) => (
+          <View key={`s${i}`} style={[s.subCell, { width: `${h.w}%` }]}><Text>{h.label || ' '}</Text></View>
+        ))}
       </View>
     </>
   );
 }
 
-function TotalsRow({ label, t, bold }) {
-  const lead = W.date + W.depPlace + W.depTime + W.arrPlace + W.arrTime + W.type + W.reg;
+function TotalsRow({ line, format }) {
+  const cols = format.columns.slice(format.labelSpan);
   return (
     <View style={s.totRow}>
-      <View style={[s.totLabel, { width: `${lead}%` }]}><Text style={bold && s.bold}>{label}</Text></View>
-      <C w={W.multi} style={bold && s.bold}>{t.multiPilot}</C>
-      <C w={W.total} style={bold && s.bold}>{t.total}</C>
-      <C w={W.picName}>{' '}</C>
-      <C w={W.ldgDay} style={bold && s.bold}>{t.landingsDay}</C>
-      <C w={W.ldgNight} style={bold && s.bold}>{t.landingsNight}</C>
-      <C w={W.night} style={bold && s.bold}>{t.night}</C>
-      <C w={W.ifr} style={bold && s.bold}>{t.ifr}</C>
-      <C w={W.fPic} style={bold && s.bold}>{t.pic}</C>
-      <C w={W.fCo} style={bold && s.bold}>{t.coPilot}</C>
-      <C w={W.fDual} style={bold && s.bold}>{t.dual}</C>
-      <C w={W.remarks}>{' '}</C>
+      <View style={[s.totLabel, { width: `${format.labelWidth}%` }]}>
+        <Text style={line.bold ? s.bold : undefined}>{line.label}</Text>
+      </View>
+      {cols.map((col, i) => (
+        <C key={col.key} w={col.w} align={col.align} style={line.bold ? s.bold : undefined}>
+          {line.cells[i]}
+        </C>
+      ))}
     </View>
   );
 }
 
 export default function LogbookPdf({ doc }) {
-  const { pilot, range, pages, generatedAt } = doc;
+  const { pilot, range, pages, generatedAt, format } = doc;
   const when = new Date(generatedAt).toISOString().slice(0, 10);
+  const fontSize = bodySize(format.columns.length);
   return (
     <Document title={`${pilot.name} — flight log`} author="CockpitHire">
       {pages.map((pg, pi) => (
-        <Page key={pg.index} size="A4" orientation="landscape" style={s.page}>
+        <Page key={pg.index} size="A4" orientation="landscape" style={[s.page, { fontSize }]}>
           <View style={s.head}>
             <View>
-              <Text style={s.title}>Pilot Flight Log</Text>
+              <Text style={s.title}>{format.title}</Text>
               <Text style={s.holder}>
                 Holder: {pilot.name}{pilot.licence ? ` · Licence: ${pilot.licence}` : ''}
               </Text>
             </View>
             <Text style={s.meta}>
-              EASA Part-FCL layout{'\n'}
+              {format.label}{'\n'}
               {range.from && range.to ? `${range.from} to ${range.to}` : 'All flights'}
               {'\n'}Page {pg.index} of {pages.length} · generated {when}
             </Text>
           </View>
 
-          <HeaderRows />
+          <HeaderRows header={format.header} />
 
-          {pg.rows.map((r, i) => (
-            <View style={s.row} key={`${r.date}-${i}`}>
-              <C w={W.date} first>{r.date.slice(8, 10)}/{r.date.slice(5, 7)}/{r.date.slice(2, 4)}</C>
-              <C w={W.depPlace}>{r.depPlace}</C><C w={W.depTime}>{r.depTime}</C>
-              <C w={W.arrPlace}>{r.arrPlace}</C><C w={W.arrTime}>{r.arrTime}</C>
-              <C w={W.type}>{r.type}</C><C w={W.reg}>{r.registration}</C>
-              <C w={W.multi}>{r.f.multiPilot}</C>
-              <C w={W.total}>{r.f.total}</C>
-              <C w={W.picName} left>{r.picName}</C>
-              <C w={W.ldgDay}>{r.f.landingsDay}</C><C w={W.ldgNight}>{r.f.landingsNight}</C>
-              <C w={W.night}>{r.f.night}</C><C w={W.ifr}>{r.f.ifr}</C>
-              <C w={W.fPic}>{r.f.pic}</C><C w={W.fCo}>{r.f.coPilot}</C><C w={W.fDual}>{r.f.dual}</C>
-              <C w={W.remarks} left>{r.remarks}</C>
+          {pg.cells.map((cells, ri) => (
+            <View style={s.row} key={`r${pg.index}-${ri}`}>
+              {cells.map((v, ci) => (
+                <C key={format.columns[ci].key} w={format.columns[ci].w} align={format.columns[ci].align} first={ci === 0}>
+                  {v}
+                </C>
+              ))}
             </View>
           ))}
 
           {/* Ruled to the bottom, as a real page is. */}
           {Array.from({ length: pg.blankRows }).map((_, i) => (
             <View style={s.row} key={`blank-${i}`}>
-              {Object.values(W).map((w, n) => <C key={n} w={w} first={n === 0}>{' '}</C>)}
+              {format.columns.map((col, n) => <C key={col.key} w={col.w} first={n === 0}>{' '}</C>)}
             </View>
           ))}
 
-          <TotalsRow label="This page" t={pg.totals.thisPage} />
-          <TotalsRow label="Previous pages" t={pg.totals.previousPages} />
-          <TotalsRow label="Total to date" t={pg.totals.toDate} bold />
+          {pg.totalsLines.map((line) => (
+            <TotalsRow key={line.label} line={line} format={format} />
+          ))}
 
           {/* The signature block belongs at the end of the book, not on every page. */}
           {pi === pages.length - 1 && (
@@ -178,7 +145,7 @@ export default function LogbookPdf({ doc }) {
           )}
 
           <View style={s.foot} fixed>
-            <Text>CockpitHire · cockpithire.com</Text>
+            <Text>CockpitHire · cockpithire.com · {format.note}</Text>
             <Text>Page {pg.index} of {pages.length}</Text>
           </View>
         </Page>
